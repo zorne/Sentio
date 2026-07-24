@@ -21,6 +21,9 @@ export type RunOutcome =
 export interface RunParams {
   tenantId: string;
   taskId: string;
+  /** Instance d'agent exécutée — porte le curseur d'autonomie que le
+   *  Policy Engine consulte avant chaque effet de bord (archi §7). */
+  agentInstanceId: string;
   identity: AgentIdentity;
   task: { title: string; input: Record<string, unknown> };
   tools: Tool[];
@@ -36,10 +39,10 @@ export class AgentRuntime {
   ) {}
 
   async run(params: RunParams): Promise<RunOutcome> {
-    const { tenantId, taskId, identity, task, tools, dataClass } = params;
+    const { tenantId, taskId, agentInstanceId, identity, task, tools, dataClass } = params;
     const toolByKey = new Map(tools.map((t) => [t.key, t]));
     const trace: ToolTrace[] = [];
-    const toolCtx: ToolContext = { tenantId, agentInstanceId: "n/a", taskId };
+    const toolCtx: ToolContext = { tenantId, agentInstanceId, taskId };
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
       const assembled = this.context.assemble({

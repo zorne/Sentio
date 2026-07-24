@@ -112,6 +112,7 @@ async function main() {
   const outcome = await runtime.run({
     tenantId,
     taskId,
+    agentInstanceId: "instance-demo",
     identity: {
       name: "Employé IA · Commercial",
       role: "Prospection & qualification",

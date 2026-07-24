@@ -22,6 +22,10 @@ import type { ExecutionStore, ExecutionEvent, StoredExecutionEvent } from "./exe
 import { AgentRuntime } from "./runtime/index.js";
 import { createReadLeadsTool } from "./tools/impl/crm-read-leads.js";
 import type { LeadRepository, LeadRow } from "./tools/impl/crm-read-leads.js";
+import { createUpdateLeadNotesTool } from "./tools/impl/crm-update-lead.js";
+import type { LeadWriteRepository } from "./tools/impl/crm-update-lead.js";
+import { AutonomyPolicyEngine, DEFAULT_AUTONOMY } from "./policy/index.js";
+import type { AutonomyResolver, AutonomyConfig } from "./policy/index.js";
 
 const DEMO_TENANT_ID = "00000000-0000-0000-0000-000000000001"; // migration 0003
 const DEMO_AGENT_INSTANCE_ID = "00000000-0000-0000-0000-000000000002"; // migration 0005
@@ -34,7 +38,7 @@ function requireEnv(name: string): string {
 
 // ─── Repository de leads : lit la vraie table `lead` (RLS contourne via
 // service role implicite ici — connexion directe, pas via l'API cliente) ──
-class PgLeadRepository implements LeadRepository {
+class PgLeadRepository implements LeadRepository, LeadWriteRepository {
   constructor(private readonly db: Client) {}
 
   async listForTenant(tenantId: string): Promise<LeadRow[]> {
@@ -51,6 +55,26 @@ class PgLeadRepository implements LeadRepository {
       notes: r.notes,
     }));
   }
+
+  async updateNotes(tenantId: string, email: string, notes: string): Promise<boolean> {
+    const res = await this.db.query(
+      `update lead set notes = $3 where tenant_id = $1 and email = $2`,
+      [tenantId, email, notes]
+    );
+    return (res.rowCount ?? 0) > 0;
+  }
+}
+
+/** Lit le curseur d'autonomie réel depuis agent_instance.autonomy. */
+class PgAutonomyResolver implements AutonomyResolver {
+  constructor(private readonly db: Client) {}
+
+  async resolve(agentInstanceId: string): Promise<AutonomyConfig> {
+    const res = await this.db.query(`select autonomy from agent_instance where id = $1`, [
+      agentInstanceId,
+    ]);
+    return { ...DEFAULT_AUTONOMY, ...(res.rows[0]?.autonomy ?? {}) };
+  }
 }
 
 // ─── BYOK : résout la clé Gemini du tenant. En Phase 1 démo, on lit la
@@ -59,12 +83,6 @@ class PgLeadRepository implements LeadRepository {
 const credentialResolver: CredentialResolver = {
   async resolve(): Promise<TenantCredential> {
     return { provider: "gemini", dataPolicy: "no_train", apiKey: requireEnv("GEMINI_API_KEY") };
-  },
-};
-
-const allowAllPolicy: PolicyEngine = {
-  async check(): Promise<PolicyDecision> {
-    return "allow"; // outil "read" → autonomie auto (archi §7)
   },
 };
 
@@ -127,10 +145,15 @@ async function main() {
     );
     const taskId: string = taskRes.rows[0].id;
 
+    const repo = new PgLeadRepository(db);
     const gateway = new ModelGateway(credentialResolver).register(new GeminiProvider());
-    const readLeadsTool: Tool = createReadLeadsTool(new PgLeadRepository(db));
-    const registry = new ToolRegistry().register(readLeadsTool);
-    const executor = new ToolExecutor(allowAllPolicy, consoleAudit);
+    const registry = new ToolRegistry()
+      .register(createReadLeadsTool(repo))
+      .register(createUpdateLeadNotesTool(repo));
+
+    // Vrai curseur d'autonomie, lu en base — plus de "tout est permis".
+    const policy = new AutonomyPolicyEngine(new PgAutonomyResolver(db));
+    const executor = new ToolExecutor(policy, consoleAudit);
     const store = new PgExecutionStore(db);
     const journal = new RunJournal(store, DEMO_TENANT_ID, taskId);
     const runtime = new AgentRuntime(gateway, new ContextAssembler(), executor, journal);
@@ -141,15 +164,17 @@ async function main() {
     const outcome = await runtime.run({
       tenantId: DEMO_TENANT_ID,
       taskId,
+      agentInstanceId: DEMO_AGENT_INSTANCE_ID,
       identity: {
         name: "Employé IA · Commercial",
         role: "Prospection & qualification",
         systemPrompt:
           "Tu prépares des fiches de brief avant les rendez-vous commerciaux. " +
-          "Choisis le lead le plus pertinent parmi ceux disponibles et rédige sa fiche.",
+          "Choisis le lead le plus pertinent, rédige sa fiche, puis consigne " +
+          "dans ses notes que la fiche a été préparée (via crm.update_lead_notes).",
       },
-      task: { title: "Préparer la fiche de RDV pour le prochain appel", input: {} },
-      tools: registry.forAgent(["crm.read_leads"]),
+      task: { title: "Préparer la fiche de RDV et consigner le suivi", input: {} },
+      tools: registry.forAgent(["crm.read_leads", "crm.update_lead_notes"]),
       dataClass: "test", // ADR-003 : données de démo uniquement
     });
 
