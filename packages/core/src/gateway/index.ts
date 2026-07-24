@@ -23,12 +23,27 @@ export interface TenantCredential {
   apiKey: string;
 }
 
+/**
+ * Un tour de conversation structuré — PAS du texte narratif imitant un
+ * appel d'outil. Cette distinction a été ajoutée après un bug réel : en
+ * encodant l'historique en texte libre ("[Appel outil X] input=..."),
+ * Gemini finissait par IMITER ce motif en prose au lieu d'émettre un
+ * vrai appel de fonction structuré (aucune action n'était alors
+ * réellement exécutée, mais aucun test de politique n'était possible
+ * non plus). Chaque provider encode ces tours dans son propre format
+ * natif de function-calling (voir gateway/providers/gemini.ts).
+ */
+export type ConversationTurn =
+  | { kind: "text"; role: "user" | "model"; content: string }
+  | { kind: "tool_call"; toolKey: string; input: unknown }
+  | { kind: "tool_result"; toolKey: string; result: unknown };
+
 export interface GenerateRequest {
   tenantId: string;
   /** Obligatoire : force l'appelant à déclarer la nature des données. */
   dataClass: DataClass;
   system: string;
-  messages: Array<{ role: "user" | "assistant"; content: string }>;
+  messages: ConversationTurn[];
   /** Outils exposés au modèle (schémas). Le gateway ne les exécute pas. */
   tools?: unknown[];
   maxTokens?: number;
@@ -37,7 +52,10 @@ export interface GenerateRequest {
 export interface GenerateResult {
   text: string;
   toolCalls: Array<{ name: string; input: unknown }>;
-  usage: { inputTokens: number; outputTokens: number; provider: ProviderName };
+  /** `model` : variante réellement utilisée — utile quand le provider
+   *  bascule dans une chaîne de secours (ADR-012), pour observer quel
+   *  modèle a effectivement répondu derrière la panne du premier choix. */
+  usage: { inputTokens: number; outputTokens: number; provider: ProviderName; model?: string };
 }
 
 /** Un provider concret (Gemini, Anthropic, …) implémente ça. */

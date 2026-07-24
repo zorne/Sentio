@@ -72,3 +72,24 @@ Journal des décisions structurantes. On n'en revient pas sans une nouvelle entr
 **Pourquoi c'est mieux, pas juste plus simple :** zéro friction ET zéro dépendance tierce ET isolation multi-tenant native (contrairement à un Sheet public partagé par tout le monde). C'est aussi le premier pas concret vers le vrai CRM interne visé par la Project Bible (Ch.24), pas un contournement de démo.
 **Conséquence :** `sheets.read_leads` (ADR-007/008) est retiré du code. `agent_definition.default_tools` pour l'agent Sales pointera vers `crm.read_leads`.
 **Migration future (Phase 3+) :** si un client utilise déjà un vrai CRM externe (HubSpot, Salesforce...), un nouvel outil `crm.read_leads` alternatif sera ajouté avec le même contrat `Tool` — zéro changement au runtime.
+
+## ADR-010 — Autonomie à trois valeurs : auto / confirm / confirm_once
+**Date :** 2026-07-24
+**Décision :** `AutonomySetting` accepte désormais `confirm_once`, en plus de `auto`/`notify`/`confirm`/`deny`. En mode `confirm_once`, la première action d'une classe d'effet demande validation ; une fois accordée (table `standing_approval`, migration 0006), les actions suivantes de cette classe s'exécutent seules — jusqu'à révocation.
+**Portée choisie :** la validation vaut pour TOUTES les actions futures de cette classe d'effet sur cet agent (pas seulement le même destinataire, pas seulement la tâche en cours) — parcours de mise en confiance le plus lisible pour un client non technique.
+**Sécurité :** révocable à tout moment (suppression de la ligne `standing_approval`) ; sans implémentation de `StandingApprovalStore` fournie, `confirm_once` se dégrade en `confirm` (prudent par défaut, jamais l'inverse).
+
+## ADR-011 — Function-calling multi-tours : encodage natif, pas de texte narratif
+**Date :** 2026-07-24
+**Incident réel observé :** en testant `confirm_once` sur 3 outils enchaînés (lecture → écriture → email), l'agent a écrit en texte final `[Appel outil mail.send] input={...}` SANS jamais réellement appeler l'outil. Cause : `ContextAssembler` encodait l'historique des appels d'outils en texte libre imitant un appel plutôt qu'en tours structurés — au 3ᵉ outil, Gemini a fini par imiter ce motif textuel en prose au lieu d'émettre un vrai appel de fonction structuré.
+**Conséquence observée :** aucune action dangereuse (rien n'est exécuté sans vrai appel d'outil — le Policy Engine n'a rien eu à bloquer), mais le test de `confirm_once` était invalide et un utilisateur lisant le texte final aurait pu croire l'email envoyé alors qu'il ne l'était pas.
+**Correctif :** `GenerateRequest.messages` devient `ConversationTurn[]` — union structurée (`text` / `tool_call` / `tool_result`), plus fidèle et provider-agnostique. `GeminiProvider` encode nativement : tour `model` avec `functionCall` suivi d'un tour `user` avec `functionResponse`, conformément au contrat multi-tours de l'API Gemini (functionResponse doit suivre IMMÉDIATEMENT le functionCall correspondant).
+**Principe retenu :** ne jamais reconstituer un événement structuré (appel d'outil, décision) en texte libre dans le contexte envoyé au modèle — un LLM imite les motifs qu'on lui montre, y compris ceux qu'on voulait qu'il lise passivement.
+
+## ADR-012 — Chaîne de modèles de secours : jamais à court de tokens
+**Date :** 2026-07-24
+**Contrainte fondateur :** ne jamais être bloqué par un quota gratuit épuisé.
+**Décision :** `GeminiProvider` essaie une CHAÎNE de variantes gratuites (`gemini-2.5-flash` → `gemini-2.0-flash` → `gemini-2.5-flash-lite`), chacune ayant son propre quota côté Google. Sur erreur 429 (quota), il passe au modèle suivant ; si toute la chaîne est épuisée, il attend le délai suggéré par Google (ou 5s par défaut) puis reboucle sur toute la chaîne, jusqu'à 3 cycles avant d'abandonner avec une erreur claire.
+**Pourquoi pas un autre provider (Cloudflare) tout de suite :** aurait nécessité un nouveau compte/clé (friction déjà vécue avec Google Cloud Console/MFA). Cette solution est €0, zéro compte supplémentaire, et couvre la cause réelle observée en test (quota épuisé après usage intensif en développement).
+**Limite assumée :** les erreurs NON liées au quota (4xx logique, 5xx serveur) ne sont jamais rebouclées — seul un 429 déclenche le fallback, pour ne pas masquer un vrai bug derrière des tentatives silencieuses.
+**Évolution prévue :** le même mécanisme (boucle sur une liste ordonnée, filtrage strict sur l'erreur de quota) s'étendra naturellement à un vrai multi-provider (Cloudflare, ADR-006) quand le besoin de résilience dépassera ce qu'une seule chaîne Gemini peut couvrir — sans changer le contrat `ModelProvider`.

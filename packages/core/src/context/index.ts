@@ -5,6 +5,7 @@
 // ════════════════════════════════════════════════════════════════════
 
 import type { Tool } from "../tools/index.js";
+import type { ConversationTurn } from "../gateway/index.js";
 
 export interface AgentIdentity {
   name: string;
@@ -35,7 +36,7 @@ export interface AssembleParams {
 
 export interface AssembledContext {
   system: string;
-  messages: Array<{ role: "user" | "assistant"; content: string }>;
+  messages: ConversationTurn[];
   tools: Array<{ name: string; description: string; parameters: Record<string, unknown> }>;
 }
 
@@ -56,19 +57,17 @@ export class ContextAssembler {
       .filter(Boolean)
       .join("\n");
 
-    const messages: AssembledContext["messages"] = [{ role: "user", content: userMessage }];
+    const messages: AssembledContext["messages"] = [
+      { kind: "text", role: "user", content: userMessage },
+    ];
 
-    // Réinjecte les résultats d'outils déjà obtenus dans ce run, pour que
-    // le modèle sache ce qu'il a déjà fait et raisonne sur les résultats.
+    // Réinjecte l'historique RÉEL du run (les appels ont vraiment eu
+    // lieu, ce ne sont pas des tours reconstitués en texte libre — voir
+    // gateway/index.ts ConversationTurn). Chaque provider encode ces
+    // tours dans son propre format natif de function-calling.
     for (const trace of priorTrace) {
-      messages.push({
-        role: "assistant",
-        content: `[Appel outil ${trace.toolKey}] input=${JSON.stringify(trace.input)}`,
-      });
-      messages.push({
-        role: "user",
-        content: `[Résultat ${trace.toolKey}] ${JSON.stringify(trace.result)}`,
-      });
+      messages.push({ kind: "tool_call", toolKey: trace.toolKey, input: trace.input });
+      messages.push({ kind: "tool_result", toolKey: trace.toolKey, result: trace.result });
     }
 
     return {

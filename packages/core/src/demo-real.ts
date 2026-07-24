@@ -25,7 +25,12 @@ import type { LeadRepository, LeadRow } from "./tools/impl/crm-read-leads.js";
 import { createUpdateLeadNotesTool } from "./tools/impl/crm-update-lead.js";
 import type { LeadWriteRepository } from "./tools/impl/crm-update-lead.js";
 import { AutonomyPolicyEngine, DEFAULT_AUTONOMY } from "./policy/index.js";
-import type { AutonomyResolver, AutonomyConfig } from "./policy/index.js";
+import type {
+  AutonomyResolver,
+  AutonomyConfig,
+  StandingApprovalStore,
+  EffectClass,
+} from "./policy/index.js";
 import { createSendMailTool } from "./tools/impl/mail-send.js";
 import type { MailTransport, OutgoingEmail } from "./tools/impl/mail-send.js";
 
@@ -87,6 +92,41 @@ class PgAutonomyResolver implements AutonomyResolver {
       agentInstanceId,
     ]);
     return { ...DEFAULT_AUTONOMY, ...(res.rows[0]?.autonomy ?? {}) };
+  }
+}
+
+/** Validations permanentes du mode "confirm_once" (migration 0006). */
+class PgStandingApprovalStore implements StandingApprovalStore {
+  constructor(private readonly db: Client) {}
+
+  async hasApproval(agentInstanceId: string, effect: EffectClass): Promise<boolean> {
+    const res = await this.db.query(
+      `select 1 from standing_approval where agent_instance_id = $1 and effect_class = $2`,
+      [agentInstanceId, effect]
+    );
+    return (res.rowCount ?? 0) > 0;
+  }
+
+  async grant(params: {
+    tenantId: string;
+    agentInstanceId: string;
+    effect: EffectClass;
+    grantedBy?: string;
+    firstTaskId?: string;
+  }): Promise<void> {
+    await this.db.query(
+      `insert into standing_approval (tenant_id, agent_instance_id, effect_class, granted_by, first_task_id)
+       values ($1, $2, $3, $4, $5)
+       on conflict (agent_instance_id, effect_class) do nothing`,
+      [params.tenantId, params.agentInstanceId, params.effect, params.grantedBy ?? null, params.firstTaskId ?? null]
+    );
+  }
+
+  async revoke(agentInstanceId: string, effect: EffectClass): Promise<void> {
+    await this.db.query(
+      `delete from standing_approval where agent_instance_id = $1 and effect_class = $2`,
+      [agentInstanceId, effect]
+    );
   }
 }
 
@@ -165,8 +205,9 @@ async function main() {
       .register(createUpdateLeadNotesTool(repo))
       .register(createSendMailTool(new NoopMailTransport()));
 
-    // Vrai curseur d'autonomie, lu en base — plus de "tout est permis".
-    const policy = new AutonomyPolicyEngine(new PgAutonomyResolver(db));
+    // Vrai curseur d'autonomie + validations permanentes (confirm_once).
+    const approvals = new PgStandingApprovalStore(db);
+    const policy = new AutonomyPolicyEngine(new PgAutonomyResolver(db), approvals);
     const executor = new ToolExecutor(policy, consoleAudit);
     const store = new PgExecutionStore(db);
     const journal = new RunJournal(store, DEMO_TENANT_ID, taskId);
