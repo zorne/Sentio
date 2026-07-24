@@ -35,6 +35,10 @@ export interface RunParams {
   task: { title: string; input: Record<string, unknown> };
   tools: Tool[];
   dataClass: "test" | "real"; // ADR-004/005 : déclaré par l'appelant, jamais deviné
+  /** Mémoire long terme chargée par l'appelant AVANT le run (archi §5) —
+   *  le runtime ne connaît aucun store de mémoire, il ne fait que la
+   *  transmettre au Context Assembler (principe n°2). */
+  memoryFacts?: string[];
 }
 
 export type ApprovalDecision =
@@ -139,7 +143,7 @@ export class AgentRuntime {
   }
 
   private async continueLoop(params: RunParams, trace: ToolTrace[]): Promise<RunOutcome> {
-    const { tenantId, taskId, agentInstanceId, identity, task, tools, dataClass } = params;
+    const { tenantId, taskId, agentInstanceId, identity, task, tools, dataClass, memoryFacts } = params;
     const toolByKey = new Map(tools.map((t) => [t.key, t]));
     const toolCtx: ToolContext = { tenantId, agentInstanceId, taskId };
 
@@ -149,6 +153,7 @@ export class AgentRuntime {
         task,
         availableTools: tools,
         priorTrace: trace,
+        ...(memoryFacts !== undefined ? { memoryFacts } : {}),
       });
 
       const result = await this.gateway.generate({

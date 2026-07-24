@@ -102,3 +102,25 @@ Journal des décisions structurantes. On n'en revient pas sans une nouvelle entr
 **`trustFuture` :** un "approve" peut aussi accorder une validation permanente (`confirm_once`, ADR-010) en un seul geste — le propriétaire n'a pas à faire deux actions séparées pour dire "oui, et ne me redemande plus".
 **Script :** `approve-real.ts`, point d'entrée CLI (préfigure l'endpoint API réel de Phase 2) : `node dist/approve-real.js <taskId> approve|reject [--trust]`.
 **Factorisation :** le câblage Postgres partagé entre `demo-real.ts` et `approve-real.ts` a été extrait dans `wiring.ts` pour ne pas dupliquer les implémentations de repository/policy/gateway.
+
+## ADR-014 — Mémoire long terme : faits structurés + réflexion post-run tolérante
+**Date :** 2026-07-24
+**Décision :** table `agent_memory` (migration 0007) — 1 ligne = 1 fait court en texte, rattaché à un `agent_instance` et à la tâche source. Lue avant chaque run (`memoryFacts` injectés dans le Context Assembler), écrite après via une fonction `reflect()` qui résume le journal du run en 0-3 faits.
+**Pas de vectoriel maintenant :** archi §5 — les faits structurés couvrent 80% du besoin utile (« Marc a été relancé le 14 mai », « Julie préfère le matin »). Un moteur sémantique/embeddings sera envisagé en Phase 4+, uniquement si un vrai besoin de non-structuré apparaît.
+**Pas de fine-tuning, ADR non renversé :** l'apprentissage passe par ce que le modèle LIT au prochain run, pas par ses poids (archi §8).
+**Tolérance à l'échec de la réflexion (correctif suite à un incident) :** un premier test a échoué avec quota Gemini épuisé PENDANT la réflexion post-run — la tâche réelle était pourtant accomplie, mais le programme sortait en erreur. Correctif : `reflectAndRemember` intercepte toute erreur, la loggue en warning, et retourne `[]`. Principe : **la mémoire est un bonus, jamais une contrainte sur le succès de la tâche.**
+
+## ADR-015 — Retry Gemini : plafond de délai + plus de cycles
+**Date :** 2026-07-24
+**Contexte :** en test intensif, les 3 modèles de la chaîne peuvent se retrouver épuisés en même temps, Google renvoyant un "retry in 59s" — le paramètre `MAX_LOOPS = 3` × délai réel finissait par abandonner avant que Google débloque.
+**Décision :** `MAX_LOOPS` passe à 5, et chaque cycle d'attente est plafonné à `MAX_BACKOFF_MS = 30s` — quel que soit le délai suggéré par Google, on ne fige jamais un run plus de ~2 minutes au total, quitte à retester plus tôt qu'annoncé.
+**Pourquoi pas plus :** au-delà, le vrai correctif n'est plus le retry mais un second provider (Cloudflare, ADR-006) — on refuse de bloquer un client 5 minutes en le laissant croire que "ça va reprendre".
+
+## ADR-016 — Multi-provider avec fallback : Gemini + Groq
+**Date :** 2026-07-24
+**Constat clé :** ajouter plus de MODÈLES à la chaîne Gemini n'aide pas — tous partagent la même limite globale par jour du compte Google (RPD partagé). La vraie résilience vient de comptes SÉPARÉS.
+**Décision :** `CredentialResolver.resolve()` renvoie désormais une LISTE ordonnée de credentials, pas une seule. Le `ModelGateway` essaie chaque provider dans l'ordre, tombant sur le suivant en cas d'échec. Groq est ajouté comme provider secondaire — quota gratuit ~14 400 req/j indépendant, très rapide (<1s), aucun compte Cloud Console/MFA à traverser (une clé sur console.groq.com, comme AI Studio).
+**Règle d'or ADR-004 renforcée, pas contournée :** Groq est marqué `data_policy: 'free'` (tier gratuit non contractuellement no-train). Le gateway SAUTE silencieusement un provider incompatible avec la `dataClass` de la requête au lieu d'échouer — un provider 'free' ne verra donc jamais de données réelles, par construction. Test réel du principe qui n'était que théorique jusqu'ici.
+**Retry Gemini réduit :** `MAX_LOOPS` de Gemini abaissé de 5 à 2 (backoff plafonné à 10s) — avec un fallback multi-provider derrière, mieux vaut passer à Groq (<1s) que d'attendre Gemini plusieurs cycles.
+**Dégradation propre :** `GROQ_API_KEY` optionnel. Si absent, seul Gemini est utilisé — le système reste fonctionnel, juste sans le filet.
+**Extension future :** ajouter un provider = un fichier `providers/*.ts` + une ligne dans `credentialResolver.resolve()`. Aucun changement au runtime, aux agents, ni au gateway. Cerebras (~14 400 req/j) ou un vrai provider payant no-train pour la prod suivront le même chemin.

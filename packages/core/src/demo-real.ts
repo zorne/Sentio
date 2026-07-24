@@ -18,6 +18,7 @@ import {
   DEMO_AGENT_INSTANCE_ID,
   SALES_AGENT_TASK,
   buildDemoRuntimeDeps,
+  reflectAndRemember,
   requireEnv,
 } from "./wiring.js";
 
@@ -42,6 +43,15 @@ async function main() {
     console.log("=== Run RÉEL — Sales Agent, relance prospect ===");
     console.log(`Tenant: ${DEMO_TENANT_ID}  Task: ${taskId}\n`);
 
+    // Mémoire long terme (archi §5) : ce que l'agent a retenu des runs
+    // précédents, injecté dans le contexte AVANT de commencer.
+    const memoryFacts = (await deps.memory.list(DEMO_AGENT_INSTANCE_ID)).map((f) => f.fact);
+    if (memoryFacts.length) {
+      console.log(`Mémoire chargée (${memoryFacts.length} faits):`);
+      for (const f of memoryFacts) console.log(`  - ${f}`);
+      console.log();
+    }
+
     const outcome = await runtime.run({
       tenantId: DEMO_TENANT_ID,
       taskId,
@@ -50,6 +60,7 @@ async function main() {
       task: SALES_AGENT_TASK.task,
       tools: deps.registry.forAgent([...SALES_AGENT_TASK.toolKeys]),
       dataClass: "test", // ADR-003 : données de démo uniquement
+      memoryFacts,
     });
 
     await db.query(`update task set status = $1, updated_at = now() where id = $2`, [
@@ -65,6 +76,17 @@ async function main() {
     const events = await deps.store.read(taskId);
     console.log(`\n=== Journal réel (${events.length} événements dans execution_event) ===`);
     for (const e of events) console.log(`  #${e.seq} ${e.kind}`);
+
+    // Réflexion post-run (archi §8) : UNIQUEMENT si le run est terminé —
+    // pas de réflexion sur une tâche encore suspendue, elle n'a pas fini
+    // d'apprendre quoi que ce soit tant qu'elle attend une validation.
+    if (outcome.status === "done") {
+      const facts = await reflectAndRemember(deps, { taskId, finalText: outcome.text, events });
+      if (facts.length) {
+        console.log(`\n🧠 Mémorisé (${facts.length}):`);
+        for (const f of facts) console.log(`  - ${f}`);
+      }
+    }
 
     if (outcome.status === "waiting_human") {
       console.log(

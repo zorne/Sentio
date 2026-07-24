@@ -30,8 +30,12 @@ export interface AssembleParams {
   task: TaskContext;
   availableTools: Tool[];
   /** Historique des outils déjà appelés dans CE run (mémoire de travail,
-   *  archi §5 — l'état de la tâche en cours, rien de plus pour l'instant). */
+   *  archi §5 — l'état de la tâche en cours). */
   priorTrace: ToolTrace[];
+  /** Mémoire long terme (archi §5, §8) : faits retenus des runs
+   *  précédents de CET agent. Optionnelle — un agent sans historique
+   *  fonctionne normalement, juste sans ces rappels. */
+  memoryFacts?: string[];
 }
 
 export interface AssembledContext {
@@ -42,13 +46,19 @@ export interface AssembledContext {
 
 export class ContextAssembler {
   assemble(params: AssembleParams): AssembledContext {
-    const { identity, task, availableTools, priorTrace } = params;
+    const { identity, task, availableTools, priorTrace, memoryFacts } = params;
 
     const system = [
       `Tu es ${identity.name}, ${identity.role}.`,
       identity.systemPrompt,
       "Utilise les outils disponibles pour accomplir la tâche. Réponds de façon concise et factuelle.",
-    ].join("\n\n");
+      memoryFacts?.length
+        ? "Ce que tu sais déjà de tes tâches précédentes :\n" +
+          memoryFacts.map((f) => `- ${f}`).join("\n")
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
 
     const userMessage = [
       `Tâche : ${task.title}`,

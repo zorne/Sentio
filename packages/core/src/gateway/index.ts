@@ -64,9 +64,16 @@ export interface ModelProvider {
   generate(req: GenerateRequest, cred: TenantCredential): Promise<GenerateResult>;
 }
 
-/** Résout la clé BYOK d'un tenant (déchiffre depuis tenant_ai_credential). */
+/** Résout les clés BYOK d'un tenant (déchiffrées depuis
+ *  tenant_ai_credential), dans l'ORDRE D'ESSAI voulu par le client.
+ *
+ *  Renvoyer une liste (pas une seule credential) est ce qui permet la
+ *  résilience multi-provider (ADR-016) : quand le provider primaire est
+ *  à court de quota, le gateway bascule sur le suivant sans intervention,
+ *  chaque saut restant soumis à la règle d'or (données réelles jamais
+ *  vers un tier 'free'). Une liste vide signifie "aucune clé". */
 export interface CredentialResolver {
-  resolve(tenantId: string): Promise<TenantCredential | null>;
+  resolve(tenantId: string): Promise<TenantCredential[]>;
 }
 
 export class GatewayError extends Error {}
@@ -97,18 +104,42 @@ export class ModelGateway {
   }
 
   async generate(req: GenerateRequest): Promise<GenerateResult> {
-    const cred = await this.credentials.resolve(req.tenantId);
-    if (!cred) {
+    const creds = await this.credentials.resolve(req.tenantId);
+    if (creds.length === 0) {
       throw new GatewayError(
         `Aucune clé IA (BYOK) configurée pour le tenant ${req.tenantId}. ` +
           "L'inférence est facturée sur le compte du client (ADR-005)."
       );
     }
-    assertDataPolicy(req.dataClass, cred.dataPolicy);
 
-    const provider = this.providers.get(cred.provider);
-    if (!provider) throw new GatewayError(`Provider non branché: ${cred.provider}`);
+    const errors: string[] = [];
+    for (const cred of creds) {
+      // La règle d'or (ADR-004) filtre AVANT l'appel : un provider 'free'
+      // est simplement sauté silencieusement pour des données 'real' —
+      // pas un échec, juste "pas éligible pour cette classe de données".
+      if (req.dataClass === "real" && cred.dataPolicy === "free") {
+        errors.push(`${cred.provider}: sauté (free/train incompatible avec données réelles)`);
+        continue;
+      }
+      const provider = this.providers.get(cred.provider);
+      if (!provider) {
+        errors.push(`${cred.provider}: non branché`);
+        continue;
+      }
+      try {
+        return await provider.generate(req, cred);
+      } catch (err) {
+        const e = err instanceof Error ? err : new Error(String(err));
+        errors.push(`${cred.provider}: ${e.message.slice(0, 200)}`);
+        // On continue vers le provider suivant. Les erreurs strictement
+        // non transitoires (4xx logique) sont déjà filtrées provider-side
+        // (voir gemini.ts isRetryableError), donc une erreur ici mérite
+        // un vrai fallback plutôt que d'être masquée en silence.
+      }
+    }
 
-    return provider.generate(req, cred);
+    throw new GatewayError(
+      `Tous les providers ont échoué pour le tenant ${req.tenantId}:\n  - ${errors.join("\n  - ")}`
+    );
   }
 }

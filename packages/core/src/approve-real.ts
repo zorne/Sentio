@@ -22,6 +22,7 @@ import {
   DEMO_AGENT_INSTANCE_ID,
   SALES_AGENT_TASK,
   buildDemoRuntimeDeps,
+  reflectAndRemember,
   requireEnv,
 } from "./wiring.js";
 
@@ -49,6 +50,10 @@ async function main() {
 
     console.log(`=== Reprise de la tâche ${taskId} — décision: ${action}${decision.action === "approve" && decision.trustFuture ? " (+ validation permanente)" : ""} ===\n`);
 
+    // Même mémoire que le run initial : la reprise continue avec les
+    // mêmes rappels, pas un contexte amnésique.
+    const memoryFacts = (await deps.memory.list(DEMO_AGENT_INSTANCE_ID)).map((f) => f.fact);
+
     const outcome = await runtime.resume(
       {
         tenantId: DEMO_TENANT_ID,
@@ -58,6 +63,7 @@ async function main() {
         task: SALES_AGENT_TASK.task,
         tools: deps.registry.forAgent([...SALES_AGENT_TASK.toolKeys]),
         dataClass: "test",
+        memoryFacts,
       },
       decision,
       deps.approvals
@@ -76,6 +82,14 @@ async function main() {
     const events = await deps.store.read(taskId);
     console.log(`\n=== Journal réel (${events.length} événements au total) ===`);
     for (const e of events) console.log(`  #${e.seq} ${e.kind}`);
+
+    if (outcome.status === "done") {
+      const facts = await reflectAndRemember(deps, { taskId, finalText: outcome.text, events });
+      if (facts.length) {
+        console.log(`\n🧠 Mémorisé (${facts.length}):`);
+        for (const f of facts) console.log(`  - ${f}`);
+      }
+    }
   } finally {
     await db.end();
   }

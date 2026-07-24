@@ -20,8 +20,13 @@ const BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
  *  Studio pour toutes. Ordre: la plus capable d'abord. */
 const DEFAULT_MODEL_CHAIN = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-flash-lite"];
 
-const MAX_LOOPS = 3; // on reboucle sur toute la chaîne au plus 3 fois avant d'abandonner
-const DEFAULT_BACKOFF_MS = 5000;
+// Avec un vrai fallback multi-provider en amont (ADR-016), il vaut mieux
+// que Gemini rende la main VITE quand toute sa chaîne est saturée, plutôt
+// que d'attendre plusieurs cycles — Groq répondra en <1s. Une passe rapide
+// sur les modèles + un unique retry court suffisent.
+const MAX_LOOPS = 2;
+const DEFAULT_BACKOFF_MS = 3000;
+const MAX_BACKOFF_MS = 10_000;
 
 /** Outil au format Gemini (functionDeclarations). */
 interface GeminiTool {
@@ -44,7 +49,8 @@ function isRetryableError(status: number): boolean {
 function parseRetryDelayMs(detail: string): number {
   const match = detail.match(/retry in ([\d.]+)s/i);
   const seconds = match?.[1];
-  return seconds ? Math.ceil(parseFloat(seconds) * 1000) : DEFAULT_BACKOFF_MS;
+  const suggested = seconds ? Math.ceil(parseFloat(seconds) * 1000) : DEFAULT_BACKOFF_MS;
+  return Math.min(suggested, MAX_BACKOFF_MS); // plafond dur : voir MAX_BACKOFF_MS
 }
 
 function sleep(ms: number): Promise<void> {

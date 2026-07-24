@@ -57,8 +57,8 @@ const fakeReadLeads: Tool = {
 
 // ─── Fakes d'infrastructure (en mémoire) ──────────────────────────────
 const credentialResolver: CredentialResolver = {
-  async resolve(): Promise<TenantCredential> {
-    return { provider: "gemini", dataPolicy: "no_train", apiKey: "fake-key" };
+  async resolve(): Promise<TenantCredential[]> {
+    return [{ provider: "gemini", dataPolicy: "no_train", apiKey: "fake-key" }];
   },
 };
 

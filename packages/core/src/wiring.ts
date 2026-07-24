@@ -13,6 +13,7 @@ import { Client } from "pg";
 import { ModelGateway } from "./gateway/index.js";
 import type { TenantCredential, CredentialResolver } from "./gateway/index.js";
 import { GeminiProvider } from "./gateway/providers/gemini.js";
+import { GroqProvider } from "./gateway/providers/groq.js";
 import { ToolRegistry, ToolExecutor } from "./tools/index.js";
 import type { PolicyEngine, ToolAuditSink } from "./tools/index.js";
 import type { ExecutionStore, ExecutionEvent, StoredExecutionEvent } from "./execution/index.js";
@@ -24,6 +25,8 @@ import { AutonomyPolicyEngine, DEFAULT_AUTONOMY } from "./policy/index.js";
 import type { AutonomyResolver, AutonomyConfig, StandingApprovalStore, EffectClass } from "./policy/index.js";
 import { createSendMailTool } from "./tools/impl/mail-send.js";
 import type { MailTransport, OutgoingEmail } from "./tools/impl/mail-send.js";
+import { reflect } from "./memory/index.js";
+import type { MemoryStore, MemoryFact } from "./memory/index.js";
 
 export const DEMO_TENANT_ID = "00000000-0000-0000-0000-000000000001"; // migration 0003
 export const DEMO_AGENT_INSTANCE_ID = "00000000-0000-0000-0000-000000000002"; // migration 0005
@@ -148,6 +151,38 @@ class PgExecutionStore implements ExecutionStore {
   }
 }
 
+/** Mémoire long terme (migration 0007) — faits structurés par agent_instance. */
+class PgMemoryStore implements MemoryStore {
+  constructor(private readonly db: Client) {}
+
+  async list(agentInstanceId: string, limit = 20): Promise<MemoryFact[]> {
+    const res = await this.db.query(
+      `select id, fact, source_task_id, created_at from agent_memory
+       where agent_instance_id = $1 order by created_at desc limit $2`,
+      [agentInstanceId, limit]
+    );
+    return res.rows.map((r) => ({
+      id: r.id,
+      fact: r.fact,
+      sourceTaskId: r.source_task_id,
+      createdAt: r.created_at,
+    }));
+  }
+
+  async remember(params: {
+    tenantId: string;
+    agentInstanceId: string;
+    fact: string;
+    sourceTaskId?: string;
+  }): Promise<void> {
+    await this.db.query(
+      `insert into agent_memory (tenant_id, agent_instance_id, fact, source_task_id)
+       values ($1, $2, $3, $4)`,
+      [params.tenantId, params.agentInstanceId, params.fact, params.sourceTaskId ?? null]
+    );
+  }
+}
+
 const consoleAudit: ToolAuditSink = {
   async onCall(tool, input) {
     console.log(`  [tool_call] ${tool.key}`, JSON.stringify(input));
@@ -160,12 +195,23 @@ const consoleAudit: ToolAuditSink = {
   },
 };
 
-// ─── BYOK : résout la clé Gemini du tenant. En Phase 1 démo, on lit la
-// clé du fondateur depuis .env plutôt que tenant_ai_credential (aucun
-// vrai onboarding client encore) — assumé, à remplacer en Phase 2/3. ──
+// ─── BYOK : résout les clés IA du tenant. En Phase 1 démo, on lit les
+// clés du fondateur depuis .env plutôt que tenant_ai_credential (aucun
+// vrai onboarding client encore) — assumé, à remplacer en Phase 2/3.
+//
+// Ordre de fallback (ADR-016) : Gemini (no-train, primaire) → Groq (free,
+// quota indépendant ~72x plus large, secours). GROQ_API_KEY est optionnel :
+// si absent, on tourne avec Gemini seul (dégradation propre). ─────────
 const credentialResolver: CredentialResolver = {
-  async resolve(): Promise<TenantCredential> {
-    return { provider: "gemini", dataPolicy: "no_train", apiKey: requireEnv("GEMINI_API_KEY") };
+  async resolve(): Promise<TenantCredential[]> {
+    const creds: TenantCredential[] = [
+      { provider: "gemini", dataPolicy: "no_train", apiKey: requireEnv("GEMINI_API_KEY") },
+    ];
+    const groqKey = process.env.GROQ_API_KEY;
+    if (groqKey) {
+      creds.push({ provider: "groq", dataPolicy: "free", apiKey: groqKey });
+    }
+    return creds;
   },
 };
 
@@ -177,12 +223,17 @@ export interface DemoRuntimeDeps {
   executor: ToolExecutor;
   store: ExecutionStore;
   approvals: StandingApprovalStore;
+  memory: MemoryStore;
 }
 
 /** Construit tout le câblage Postgres+Gemini pour le tenant de démo. */
 export function buildDemoRuntimeDeps(db: Client): DemoRuntimeDeps {
   const repo = new PgLeadRepository(db);
-  const gateway = new ModelGateway(credentialResolver).register(new GeminiProvider());
+  // Providers branchés en dur : le gateway choisira parmi CEUX pour lesquels
+  // le tenant a une credential (ADR-016). Register est idempotent.
+  const gateway = new ModelGateway(credentialResolver)
+    .register(new GeminiProvider())
+    .register(new GroqProvider());
   const registry = new ToolRegistry()
     .register(createReadLeadsTool(repo))
     .register(createUpdateLeadNotesTool(repo))
@@ -192,8 +243,9 @@ export function buildDemoRuntimeDeps(db: Client): DemoRuntimeDeps {
   const policy = new AutonomyPolicyEngine(new PgAutonomyResolver(db), approvals);
   const executor = new ToolExecutor(policy, consoleAudit);
   const store = new PgExecutionStore(db);
+  const memory = new PgMemoryStore(db);
 
-  return { db, gateway, registry, policy, executor, store, approvals };
+  return { db, gateway, registry, policy, executor, store, approvals, memory };
 }
 
 /** L'identité et les outils de l'agent Sales démo — partagés entre le
@@ -211,3 +263,37 @@ export const SALES_AGENT_TASK = {
   task: { title: "Relancer le prospect le plus pertinent", input: {} },
   toolKeys: ["crm.read_leads", "crm.update_lead_notes", "mail.send"] as const,
 };
+
+/** Réflexion post-run (archi §8), factorisée entre demo-real.ts et
+ *  approve-real.ts.
+ *
+ *  TOLÉRANTE À L'ÉCHEC PAR DESSEIN : la mémoire est un bonus, jamais
+ *  une contrainte sur le succès de la tâche. Un quota Gemini épuisé
+ *  APRÈS que le vrai travail a été fait ne doit pas transformer une
+ *  tâche accomplie en échec vu du client. On loggue et on continue. */
+export async function reflectAndRemember(
+  deps: DemoRuntimeDeps,
+  params: { taskId: string; finalText: string; events: StoredExecutionEvent[] }
+): Promise<string[]> {
+  try {
+    const facts = await reflect(deps.gateway, {
+      tenantId: DEMO_TENANT_ID,
+      dataClass: "test",
+      finalText: params.finalText,
+      events: params.events,
+    });
+    for (const fact of facts) {
+      await deps.memory.remember({
+        tenantId: DEMO_TENANT_ID,
+        agentInstanceId: DEMO_AGENT_INSTANCE_ID,
+        fact,
+        sourceTaskId: params.taskId,
+      });
+    }
+    return facts;
+  } catch (err) {
+    const e = err instanceof Error ? err : new Error(String(err));
+    console.warn(`⚠️  Réflexion post-run ignorée (tâche déjà terminée): ${e.message.slice(0, 120)}`);
+    return [];
+  }
+}
