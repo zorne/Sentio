@@ -56,3 +56,19 @@ Journal des décisions structurantes. On n'en revient pas sans une nouvelle entr
 **Pourquoi Google Sheet :** €0, aucune inscription tierce (pas d'OAuth CRM à intégrer en Phase 1), et c'est l'outil que la cible (Ch.9) utilise déjà avant d'avoir un vrai CRM. Remplaçable par un vrai CRM en Phase 3 : même contrat `Tool`, zéro impact sur le runtime.
 **Pourquoi la fiche de RDV plutôt que qualification/relance :** effet `read` uniquement → autonomie automatique par défaut, aucune validation humaine à construire pour la première démo, zéro action irréversible. Prouve toute la boucle (lecture réelle → raisonnement → sortie structurée → traçage complet) sans risque.
 **Un seul outil, pas deux :** la rédaction de la fiche est la réponse finale du modèle (texte), pas un outil séparé — inutile d'ajouter une abstraction pour ça (principe « refuser la complexité qui n'apporte aucune valeur »).
+
+## ADR-008 — Lecture du Sheet via publication CSV, pas via l'API Sheets
+**Date :** 2026-07-24
+**Contexte :** l'API Google Sheets exige une clé créée dans Google Cloud Console, qui exige désormais la MFA sur le compte Google (bloquant, chronophage pour une démo).
+**Décision :** l'outil `sheets.read_leads` lit un CSV public obtenu via « Fichier → Partager → Publier sur le Web → CSV » du Sheet — un simple `fetch()` HTTP, aucune clé, aucun compte Cloud à configurer.
+**Compromis assumé :** le Sheet doit être publié publiquement en lecture (pas de contrôle d'accès Google). Acceptable en Phase 1 (données de test uniquement, ADR-003). À revisiter en Phase 3 quand on migrera vers un vrai CRM avec OAuth propre par tenant.
+**Conséquence code :** `createReadLeadsTool()` ne prend plus de `SheetsCredentialResolver` — l'URL CSV est fournie directement en paramètre d'outil (résolue depuis la config de l'agent_instance).
+**Statut :** remplacé par ADR-009 avant mise en œuvre — conservé ici pour l'historique de la décision.
+
+## ADR-009 — Abandon de Google Sheets : leads stockés dans notre propre base (mini-CRM interne)
+**Date :** 2026-07-24
+**Contexte :** même la publication CSV (ADR-008) demande des clics dans les menus Google. Le fondateur demande une solution encore plus simple, sans aucune dépendance Google.
+**Décision :** les leads sont stockés dans une table `lead` de notre propre base Supabase (migration 0003), rattachée au tenant, RLS activée comme le reste du schéma. L'outil devient `crm.read_leads` (remplace `sheets.read_leads`) et lit directement via un `LeadRepository`, sans appel réseau externe ni clé d'aucune sorte.
+**Pourquoi c'est mieux, pas juste plus simple :** zéro friction ET zéro dépendance tierce ET isolation multi-tenant native (contrairement à un Sheet public partagé par tout le monde). C'est aussi le premier pas concret vers le vrai CRM interne visé par la Project Bible (Ch.24), pas un contournement de démo.
+**Conséquence :** `sheets.read_leads` (ADR-007/008) est retiré du code. `agent_definition.default_tools` pour l'agent Sales pointera vers `crm.read_leads`.
+**Migration future (Phase 3+) :** si un client utilise déjà un vrai CRM externe (HubSpot, Salesforce...), un nouvel outil `crm.read_leads` alternatif sera ajouté avec le même contrat `Tool` — zéro changement au runtime.
