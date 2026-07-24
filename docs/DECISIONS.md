@@ -93,3 +93,12 @@ Journal des décisions structurantes. On n'en revient pas sans une nouvelle entr
 **Pourquoi pas un autre provider (Cloudflare) tout de suite :** aurait nécessité un nouveau compte/clé (friction déjà vécue avec Google Cloud Console/MFA). Cette solution est €0, zéro compte supplémentaire, et couvre la cause réelle observée en test (quota épuisé après usage intensif en développement).
 **Limite assumée :** les erreurs NON liées au quota (4xx logique, 5xx serveur) ne sont jamais rebouclées — seul un 429 déclenche le fallback, pour ne pas masquer un vrai bug derrière des tentatives silencieuses.
 **Évolution prévue :** le même mécanisme (boucle sur une liste ordonnée, filtrage strict sur l'erreur de quota) s'étendra naturellement à un vrai multi-provider (Cloudflare, ADR-006) quand le besoin de résilience dépassera ce qu'une seule chaîne Gemini peut couvrir — sans changer le contrat `ModelProvider`.
+**Extension (même jour) :** un 503 réel observé en test ("high demand, temporary") a montré que le quota n'est pas la seule panne transitoire. `isRetryableError` couvre désormais 429 ET tout 5xx (panne serveur passagère) — jamais les 4xx logiques (requête invalide, clé refusée), qui doivent remonter immédiatement pour ne pas masquer un vrai bug.
+
+## ADR-013 — Reprise après validation humaine (HITL, moitié manquante)
+**Date :** 2026-07-24
+**Contexte :** une tâche suspendue en `waiting_human` (ADR-010) n'avait aucun moyen d'être débloquée — fonctionnalité à moitié construite.
+**Décision :** `AgentRuntime.resume(params, decision, approvals?)` reconstruit la trace d'outils et l'action en attente depuis le journal (`reconstructTrace`, lecture pure d'`execution_event` — aucun état en mémoire requis, donc résiste à un redémarrage du process). Sur "approve", exécute l'outil suspendu directement (sans repasser par le Policy Engine, qui redemanderait indéfiniment) puis continue la boucle normalement. Sur "reject", termine la tâche sans exécuter.
+**`trustFuture` :** un "approve" peut aussi accorder une validation permanente (`confirm_once`, ADR-010) en un seul geste — le propriétaire n'a pas à faire deux actions séparées pour dire "oui, et ne me redemande plus".
+**Script :** `approve-real.ts`, point d'entrée CLI (préfigure l'endpoint API réel de Phase 2) : `node dist/approve-real.js <taskId> approve|reject [--trust]`.
+**Factorisation :** le câblage Postgres partagé entre `demo-real.ts` et `approve-real.ts` a été extrait dans `wiring.ts` pour ne pas dupliquer les implémentations de repository/policy/gateway.

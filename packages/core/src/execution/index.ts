@@ -69,6 +69,12 @@ export class RunJournal {
     });
   }
 
+  /** Relit l'historique complet du run — sert à reconstruire la trace
+   *  d'outils et l'action en attente lors d'une reprise (voir runtime). */
+  async read(): Promise<StoredExecutionEvent[]> {
+    return this.store.read(this.taskId);
+  }
+
   /** Reprise après suspension (waiting_human) ou crash : on repart du
    *  dernier seq persisté — les runs sont reprenables par construction. */
   static async resume(

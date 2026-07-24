@@ -30,8 +30,13 @@ interface GeminiTool {
   parameters?: Record<string, unknown>;
 }
 
-function isQuotaError(status: number): boolean {
-  return status === 429; // RESOURCE_EXHAUSTED — jamais pour une autre erreur (4xx/5xx logique)
+/** 429 = quota épuisé ; 5xx = panne transitoire côté Google (ex. 503
+ *  "high demand"). Les deux justifient un essai sur le modèle suivant.
+ *  Jamais les 4xx logiques (400/401/403/404) : ceux-là indiquent un vrai
+ *  bug (requête mal formée, clé invalide...) qu'il ne faut pas masquer
+ *  derrière des tentatives silencieuses. */
+function isRetryableError(status: number): boolean {
+  return status === 429 || (status >= 500 && status < 600);
 }
 
 /** Extrait le délai suggéré par Google ("Please retry in 35.2s") si présent,
@@ -61,12 +66,12 @@ export class GeminiProvider implements ModelProvider {
           return await this.callModel(model, req, cred);
         } catch (err) {
           const e = err instanceof Error ? err : new Error(String(err));
-          const quotaMatch = e.message.match(/^Gemini (\d+):(.*)$/s);
-          if (quotaMatch && isQuotaError(Number(quotaMatch[1]))) {
+          const statusMatch = e.message.match(/^Gemini (\d+):(.*)$/s);
+          if (statusMatch && isRetryableError(Number(statusMatch[1]))) {
             lastError = e;
-            continue; // ce modèle est à court → on essaie le suivant de la chaîne
+            continue; // quota épuisé ou panne transitoire → modèle suivant de la chaîne
           }
-          throw e; // erreur non liée au quota : on ne boucle pas dessus, on remonte
+          throw e; // erreur non transitoire : on ne boucle pas dessus, on remonte
         }
       }
       // Toute la chaîne est à court : on attend avant de reboucler (archi
@@ -127,9 +132,9 @@ export class GeminiProvider implements ModelProvider {
     });
 
     if (!res.ok) {
-      // 429 = quota épuisé pour CE modèle → generate() bascule sur le
-      // suivant de la chaîne (ADR-012). Le préfixe "Gemini {status}:" est
-      // le contrat parsé par isQuotaError, ne pas le reformuler.
+      // 429/5xx → generate() bascule sur le suivant de la chaîne (ADR-012).
+      // Le préfixe "Gemini {status}:" est le contrat parsé par
+      // isRetryableError, ne pas le reformuler.
       const detail = await res.text().catch(() => "");
       throw new GatewayError(`Gemini ${res.status}: ${detail.slice(0, 500)}`);
     }
