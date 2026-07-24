@@ -1,0 +1,17 @@
+{
+  "name": "employes-ia",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "services/*"
+  ],
+  "scripts": {
+    "typecheck": "tsc -b packages/core"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}

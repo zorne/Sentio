@@ -1,0 +1,12 @@
+{
+  "name": "@employes-ia/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./gateway": "./src/gateway/index.ts",
+    "./gateway/providers/gemini": "./src/gateway/providers/gemini.ts",
+    "./tools": "./src/tools/index.ts",
+    "./execution": "./src/execution/index.ts"
+  }
+}
