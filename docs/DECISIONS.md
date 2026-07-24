@@ -49,3 +49,10 @@ Journal des décisions structurantes. On n'en revient pas sans une nouvelle entr
 **Réserve n°1 (usage commercial) :** le free tier Gemini est réservé au développement. Résolu par BYOK (ADR-005) : chaque client utilise SA clé Google dans SON cadre ; la plateforme orchestre, elle ne revend pas d'inférence. Le client passe sur SON tier payant quand son volume grossit — toujours €0 pour la plateforme.
 **Réserve n°2 (quotas mouvants) :** Google a déjà réduit les quotas fin 2025. Mitigé par le ModelGateway (changement de provider = config) + fallback Cloudflare.
 **Conséquence dans le code :** en base, `data_policy` d'une credential Gemini EEA = 'no_train' (c'est contractuel) ; la règle d'or du gateway laisse donc passer les données réelles pour les tenants européens sur Gemini free.
+
+## ADR-007 — Phase 1 : premier agent = Sales, première tâche = fiche de RDV via Google Sheet
+**Date :** 2026-07-24
+**Décision :** premier outil réel = `sheets.read_leads` (lecture seule, Google Sheets API v4 + clé API gratuite). Première tâche démontrée : préparer une fiche de brief avant un rendez-vous commercial, à partir d'un lead lu dans un Sheet.
+**Pourquoi Google Sheet :** €0, aucune inscription tierce (pas d'OAuth CRM à intégrer en Phase 1), et c'est l'outil que la cible (Ch.9) utilise déjà avant d'avoir un vrai CRM. Remplaçable par un vrai CRM en Phase 3 : même contrat `Tool`, zéro impact sur le runtime.
+**Pourquoi la fiche de RDV plutôt que qualification/relance :** effet `read` uniquement → autonomie automatique par défaut, aucune validation humaine à construire pour la première démo, zéro action irréversible. Prouve toute la boucle (lecture réelle → raisonnement → sortie structurée → traçage complet) sans risque.
+**Un seul outil, pas deux :** la rédaction de la fiche est la réponse finale du modèle (texte), pas un outil séparé — inutile d'ajouter une abstraction pour ça (principe « refuser la complexité qui n'apporte aucune valeur »).

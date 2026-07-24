@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "devDependencies": {
+    "@types/node": "^22.0.0"
+  },
   "exports": {
     "./gateway": "./src/gateway/index.ts",
     "./gateway/providers/gemini": "./src/gateway/providers/gemini.ts",
