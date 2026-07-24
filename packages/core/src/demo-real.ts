@@ -26,6 +26,8 @@ import { createUpdateLeadNotesTool } from "./tools/impl/crm-update-lead.js";
 import type { LeadWriteRepository } from "./tools/impl/crm-update-lead.js";
 import { AutonomyPolicyEngine, DEFAULT_AUTONOMY } from "./policy/index.js";
 import type { AutonomyResolver, AutonomyConfig } from "./policy/index.js";
+import { createSendMailTool } from "./tools/impl/mail-send.js";
+import type { MailTransport, OutgoingEmail } from "./tools/impl/mail-send.js";
 
 const DEMO_TENANT_ID = "00000000-0000-0000-0000-000000000001"; // migration 0003
 const DEMO_AGENT_INSTANCE_ID = "00000000-0000-0000-0000-000000000002"; // migration 0005
@@ -62,6 +64,17 @@ class PgLeadRepository implements LeadRepository, LeadWriteRepository {
       [tenantId, email, notes]
     );
     return (res.rowCount ?? 0) > 0;
+  }
+}
+
+/** Transport mail factice : la démo ne doit JAMAIS envoyer de vrai email.
+ *  Le but est de prouver le blocage par l'autonomie, pas d'écrire à
+ *  quelqu'un. Un vrai transport (Resend/SMTP) viendra plus tard, une
+ *  fois le flux de validation humaine construit. */
+class NoopMailTransport implements MailTransport {
+  async send(email: OutgoingEmail): Promise<{ messageId: string }> {
+    console.log(`  [mail SIMULÉ — aucun envoi réel] → ${email.to} : "${email.subject}"`);
+    return { messageId: "simulated-no-send" };
   }
 }
 
@@ -149,7 +162,8 @@ async function main() {
     const gateway = new ModelGateway(credentialResolver).register(new GeminiProvider());
     const registry = new ToolRegistry()
       .register(createReadLeadsTool(repo))
-      .register(createUpdateLeadNotesTool(repo));
+      .register(createUpdateLeadNotesTool(repo))
+      .register(createSendMailTool(new NoopMailTransport()));
 
     // Vrai curseur d'autonomie, lu en base — plus de "tout est permis".
     const policy = new AutonomyPolicyEngine(new PgAutonomyResolver(db));
@@ -169,12 +183,13 @@ async function main() {
         name: "Employé IA · Commercial",
         role: "Prospection & qualification",
         systemPrompt:
-          "Tu prépares des fiches de brief avant les rendez-vous commerciaux. " +
-          "Choisis le lead le plus pertinent, rédige sa fiche, puis consigne " +
-          "dans ses notes que la fiche a été préparée (via crm.update_lead_notes).",
+          "Tu relances les prospects. Consulte les leads, choisis le plus " +
+          "pertinent à relancer, consigne ton analyse dans ses notes " +
+          "(crm.update_lead_notes), puis envoie-lui un email de relance " +
+          "(mail.send).",
       },
-      task: { title: "Préparer la fiche de RDV et consigner le suivi", input: {} },
-      tools: registry.forAgent(["crm.read_leads", "crm.update_lead_notes"]),
+      task: { title: "Relancer le prospect le plus pertinent", input: {} },
+      tools: registry.forAgent(["crm.read_leads", "crm.update_lead_notes", "mail.send"]),
       dataClass: "test", // ADR-003 : données de démo uniquement
     });
 
