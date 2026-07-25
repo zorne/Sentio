@@ -1,35 +1,16 @@
 "use client";
 
 // ════════════════════════════════════════════════════════════════════
-// TaskLive — s'abonne à Supabase Realtime sur execution_event pour la
-// tâche en cours, et affiche chaque nouvel événement au fur et à mesure.
-//
-// C'est ce qui fait vivre le dashboard : le client voit exactement ce
-// que fait l'agent, sans polling, sans rafraîchir. Le journal
-// append-only (ADR-Phase 0) rend ça trivial — on ne gère que les inserts.
+// TaskLive — s'abonne à Supabase Realtime sur execution_event et affiche
+// ce que fait l'employé IA en LANGAGE CLAIR (voir lib/humanize.ts).
+// Aucun JSON, aucun terme technique par défaut — un client doit
+// comprendre sans explication (Ch.3 Philosophie Produit).
 // ════════════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
-
-interface EventRow {
-  id: number;
-  seq: number;
-  kind: string;
-  payload: Record<string, unknown>;
-  created_at: string;
-}
-
-const KIND_LABEL: Record<string, string> = {
-  model_decision: "Décision du modèle",
-  tool_call: "Appel d'outil",
-  tool_result: "Résultat d'outil",
-  human_wait: "En attente humaine",
-  human_decision: "Décision humaine",
-  error: "Erreur",
-  final: "Réponse finale",
-};
+import { humanizeTask, type EventRow, type Step } from "@/lib/humanize";
 
 export function TaskLive({
   taskId,
@@ -39,6 +20,7 @@ export function TaskLive({
   initialEvents: EventRow[];
 }) {
   const [events, setEvents] = useState<EventRow[]>(initialEvents);
+  const [showRaw, setShowRaw] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -47,23 +29,15 @@ export function TaskLive({
       .channel(`task-${taskId}`)
       .on(
         "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "execution_event",
-          filter: `task_id=eq.${taskId}`,
-        },
+        { event: "INSERT", schema: "public", table: "execution_event", filter: `task_id=eq.${taskId}` },
         (payload) => {
           const row = payload.new as EventRow;
           setEvents((prev) => {
-            // Idempotent : si l'événement est déjà là (via refresh serveur),
-            // on ne le duplique pas.
             if (prev.some((e) => e.id === row.id)) return prev;
             return [...prev, row].sort((a, b) => a.seq - b.seq);
           });
-          // Un événement final ou human_wait change le statut de la tâche —
-          // on refresh pour que la bannière "Validation requise" (server-side)
-          // apparaisse ou disparaisse correctement.
+          // Un human_wait ou final change le statut affiché par la page
+          // (bannière de validation, résumé) — on la resynchronise.
           if (row.kind === "human_wait" || row.kind === "final") {
             router.refresh();
           }
@@ -76,42 +50,55 @@ export function TaskLive({
     };
   }, [taskId, router]);
 
-  if (events.length === 0) {
-    return <div className="empty">Aucun événement encore. L'agent va démarrer…</div>;
+  const { steps, summary } = humanizeTask(events);
+
+  if (steps.length === 0 && !summary) {
+    return <div className="empty">Votre employé se met au travail…</div>;
   }
 
   return (
-    <div className="card" style={{ padding: 0 }}>
-      {events.map((e) => (
-        <div key={e.id} className="event-row">
-          <span className="seq">#{e.seq}</span>
-          <span className="kind">{KIND_LABEL[e.kind] ?? e.kind}</span>
-          <span className="payload">{summarize(e.kind, e.payload)}</span>
+    <div>
+      <div className="card" style={{ padding: 0 }}>
+        {steps.map((step, i) => (
+          <StepRow key={step.key + i} step={step} />
+        ))}
+        {summary && (
+          <div className="step-row step-row--summary">
+            <span className="step-icon step-icon--done" aria-hidden="true" />
+            <div>
+              <div className="step-title">Tâche terminée</div>
+              <div className="step-detail">{summary}</div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <button className="raw-toggle" onClick={() => setShowRaw((v) => !v)}>
+        {showRaw ? "Masquer" : "Afficher"} le détail technique
+      </button>
+      {showRaw && (
+        <div className="card" style={{ padding: 0, marginTop: 8 }}>
+          {events.map((e) => (
+            <div key={e.id} className="event-row">
+              <span className="seq">#{e.seq}</span>
+              <span className="kind">{e.kind}</span>
+              <span className="payload">{JSON.stringify(e.payload).slice(0, 200)}</span>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
 
-function summarize(kind: string, payload: Record<string, unknown>): string {
-  if (kind === "model_decision") {
-    const calls = payload.toolCalls as Array<{ name: string }> | undefined;
-    if (calls?.length) return `→ appelle ${calls.map((c) => c.name).join(", ")}`;
-    const text = payload.text as string | undefined;
-    return text ? text.slice(0, 200) + (text.length > 200 ? "…" : "") : "";
-  }
-  if (kind === "tool_call") {
-    return `${payload.tool} ${JSON.stringify(payload.input ?? {}).slice(0, 150)}`;
-  }
-  if (kind === "tool_result") {
-    return `${payload.tool} → ${JSON.stringify(payload.result ?? {}).slice(0, 150)}`;
-  }
-  if (kind === "final") {
-    const text = payload.text as string | undefined;
-    return text?.slice(0, 300) ?? "";
-  }
-  if (kind === "human_wait") return `en attente pour ${payload.tool}`;
-  if (kind === "human_decision") return `${payload.tool} → ${payload.decision}`;
-  if (kind === "error") return String(payload.reason ?? payload.message ?? "");
-  return "";
+function StepRow({ step }: { step: Step }) {
+  return (
+    <div className="step-row">
+      <span className={`step-icon step-icon--${step.icon}`} aria-hidden="true" />
+      <div>
+        <div className="step-title">{step.title}</div>
+        {step.detail && <div className="step-detail">{step.detail}</div>}
+      </div>
+    </div>
+  );
 }

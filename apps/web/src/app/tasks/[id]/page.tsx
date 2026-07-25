@@ -13,16 +13,18 @@ import { pool } from "@/lib/db";
 import { TaskLive } from "@/components/TaskLive";
 import { ApproveControls } from "@/components/ApproveControls";
 import { Logomark } from "@/components/Logomark";
+import { humanizeTask, type EventRow } from "@/lib/humanize";
 
 export const dynamic = "force-dynamic";
 
-interface EventRow {
-  id: number;
-  seq: number;
-  kind: string;
-  payload: Record<string, unknown>;
-  created_at: string;
-}
+const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
+  done: { label: "Terminé", cls: "done" },
+  waiting_human: { label: "Attend votre validation", cls: "waiting" },
+  running: { label: "En cours", cls: "running" },
+  queued: { label: "En file d'attente", cls: "running" },
+  failed: { label: "Échec", cls: "running" },
+  canceled: { label: "Annulé", cls: "running" },
+};
 
 export default async function TaskPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: taskId } = await params;
@@ -40,6 +42,9 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
     [taskId]
   );
 
+  const { pending } = humanizeTask(events);
+  const status = STATUS_LABEL[task.status] ?? { label: task.status, cls: "running" };
+
   return (
     <>
       <nav className="nav">
@@ -55,22 +60,23 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
       <section>
         <div className="container">
           <h1>{task.title}</h1>
-          <p style={{ color: "var(--text-tertiary)", fontSize: 13, marginBottom: 24 }}>
-            Statut&nbsp;: <strong style={{ color: "var(--text-primary)" }}>{task.status}</strong>
-            &nbsp;·&nbsp;Task <span className="mono">{taskId.slice(0, 12)}</span>
-          </p>
+          <div style={{ marginBottom: 24 }}>
+            <span className={`status-chip ${status.cls}`}>
+              <span className="dot" />
+              {status.label}
+            </span>
+          </div>
 
-          {task.status === "waiting_human" && (
-            <div className="card" style={{ marginBottom: 24, borderColor: "rgba(251,191,36,0.35)" }}>
-              <h2 style={{ marginBottom: 8 }}>Validation requise</h2>
-              <p style={{ color: "var(--text-secondary)", fontSize: 13.5, marginBottom: 16 }}>
-                L'agent a préparé une action irréversible. Approuvez pour qu'il continue, refusez pour l'arrêter.
-              </p>
+          {task.status === "waiting_human" && pending && (
+            <div className="card card--pending">
+              <h2 style={{ marginBottom: 8 }}>Votre employé attend votre accord</h2>
+              <p className="pending-question">{pending.title}</p>
+              <pre className="pending-detail">{pending.detail}</pre>
               <ApproveControls taskId={taskId} />
             </div>
           )}
 
-          <h2>Trace d'exécution</h2>
+          <h2>Ce que fait votre employé</h2>
           <TaskLive taskId={taskId} initialEvents={events} />
         </div>
       </section>

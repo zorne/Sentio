@@ -102,6 +102,58 @@ section { padding: 48px 0; }
 .btn-reject { background: rgba(248,113,113,0.08); color: var(--red); border: 1px solid rgba(248,113,113,0.25); }
 .btn-reject:hover { background: rgba(248,113,113,0.15); }
 
+/* ─── Étapes en langage clair (remplace le journal technique brut) ─── */
+.step-row {
+  display: flex; gap: 14px; align-items: flex-start;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.step-row:last-child { border-bottom: none; }
+.step-row--summary { background: rgba(110,231,168,0.04); }
+
+.step-icon {
+  flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%;
+  margin-top: 2px;
+  background: var(--bg-elevated); border: 1px solid var(--border-default);
+  position: relative;
+}
+.step-icon::after {
+  content: ""; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 7px; height: 7px; border-radius: 2px;
+}
+.step-icon--read::after { background: var(--text-tertiary); border-radius: 50%; }
+.step-icon--write::after { background: #93c5fd; }
+.step-icon--mail::after { background: var(--amber); }
+.step-icon--error::after { background: var(--red); }
+.step-icon--done { border-color: rgba(110,231,168,0.4); }
+.step-icon--done::after { background: var(--green); border-radius: 50%; }
+
+.step-title { font-size: 14px; color: var(--text-primary); font-weight: 500; }
+.step-detail {
+  font-size: 13px; color: var(--text-secondary); margin-top: 4px;
+  white-space: pre-wrap; line-height: 1.5;
+}
+
+.raw-toggle {
+  margin-top: 12px; background: none; border: none; cursor: pointer;
+  font-size: 12px; color: var(--text-tertiary); font-family: inherit;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.raw-toggle:hover { color: var(--text-secondary); }
+
+.card--pending {
+  margin-bottom: 24px;
+  border-color: rgba(251,191,36,0.35);
+  background: rgba(251,191,36,0.04);
+}
+.pending-question { font-size: 15px; color: var(--text-primary); margin-bottom: 12px; font-weight: 500; }
+.pending-detail {
+  font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: var(--text-secondary);
+  background: var(--bg-void); border: 1px solid var(--border-subtle); border-radius: 8px;
+  padding: 14px; white-space: pre-wrap; line-height: 1.6; margin-bottom: 16px;
+}
+
 .event-row {
   display: grid; grid-template-columns: 40px 140px 1fr; gap: 12px;
   padding: 10px 16px; border-bottom: 1px solid var(--border-subtle);
