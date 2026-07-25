@@ -43,6 +43,74 @@ function useDotTexture() {
   }, []);
 }
 
+/** Texture de halo — chute plus large et plus douce que le point, pour
+ *  faire de la lumière plutôt que des grains. */
+function useGlowTexture() {
+  return useMemo(() => {
+    const size = 256;
+    const c = document.createElement("canvas");
+    c.width = c.height = size;
+    const ctx = c.getContext("2d")!;
+    const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    g.addColorStop(0, "rgba(255,255,255,1)");
+    g.addColorStop(0.12, "rgba(255,255,255,0.62)");
+    g.addColorStop(0.32, "rgba(255,255,255,0.2)");
+    g.addColorStop(0.62, "rgba(255,255,255,0.05)");
+    g.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, size);
+    const t = new THREE.CanvasTexture(c);
+    t.needsUpdate = true;
+    return t;
+  }, []);
+}
+
+/**
+ * Le cœur — la source de lumière qui manquait. Trois halos additifs
+ * superposés à des échelles et des teintes différentes : le plus serré
+ * donne le point blanc incandescent, les plus larges la diffusion.
+ *
+ * C'est la manière la moins chère d'obtenir un rendu de bloom : un vrai
+ * post-processing coûterait plusieurs passes de rendu plein écran pour un
+ * résultat à peine différent à cette échelle.
+ */
+function Nucleus() {
+  const glow = useGlowTexture();
+  const pulse = useRef<THREE.Group>(null);
+
+  useFrame(({ clock }) => {
+    if (!pulse.current) return;
+    // Respiration très lente : le noyau doit sembler vivant, pas clignoter.
+    const s = 1 + Math.sin(clock.elapsedTime * 0.55) * 0.045;
+    pulse.current.scale.setScalar(s);
+  });
+
+  const layers: Array<{ scale: number; color: string; opacity: number }> = [
+    { scale: 3.9, color: "#3ba876", opacity: 0.5 },
+    { scale: 2.1, color: "#6ee7a8", opacity: 0.62 },
+    { scale: 1.05, color: "#eafff4", opacity: 0.95 },
+    { scale: 0.42, color: "#ffffff", opacity: 1 },
+  ];
+
+  return (
+    <group ref={pulse}>
+      {layers.map((l) => (
+        <sprite key={l.scale} scale={[l.scale, l.scale, l.scale]}>
+          <spriteMaterial
+            map={glow}
+            color={l.color}
+            transparent
+            opacity={l.opacity}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            depthTest={false}
+          />
+        </sprite>
+      ))}
+    </group>
+  );
+}
+
 /** Coque de points répartis en spirale de Fibonacci — distribution
  *  régulière sans amas, contrairement à un tirage aléatoire naïf. */
 function CoreShell({ count = 3400, radius = 1.05 }: { count?: number; radius?: number }) {
@@ -67,7 +135,10 @@ function CoreShell({ count = 3400, radius = 1.05 }: { count?: number; radius?: n
 
       // Dégradé du pôle vers l'équateur, une pointe de mint sur la frange.
       tmp.copy(PALE).lerp(MINT, Math.pow(Math.abs(y), 3) * 0.55);
-      const fade = 0.42 + Math.random() * 0.58;
+      // Plancher relevé : à 0.42, la moitié des points étaient quasi
+      // éteints et la coque se lisait comme du bruit plutôt que de la
+      // matière lumineuse.
+      const fade = 0.72 + Math.random() * 0.28;
       col[i * 3] = tmp.r * fade;
       col[i * 3 + 1] = tmp.g * fade;
       col[i * 3 + 2] = tmp.b * fade;
@@ -86,7 +157,7 @@ function CoreShell({ count = 3400, radius = 1.05 }: { count?: number; radius?: n
   return (
     <points ref={ref} geometry={geometry}>
       <pointsMaterial
-        size={0.016}
+        size={0.02}
         map={dot}
         vertexColors
         transparent
@@ -193,10 +264,13 @@ export default function Core3D() {
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       style={{ pointerEvents: "none" }}
     >
-      {/* Le noyau couronne le titre plutôt que de le traverser : décalé
-          vers le haut, il laisse la typographie poser sur un fond net. */}
-      <group position={[0, 0.42, 0]}>
+      {/* Le noyau couronne le titre plutôt que de le traverser. À 0.42 le
+          cœur incandescent tombait au milieu du mot « travaille » et
+          mangeait les jambages ; remonté, il occupe le vide au-dessus et
+          la typographie pose sur un fond net. */}
+      <group position={[0, 1.22, 0]}>
         <Parallax>
+          <Nucleus />
           <CoreShell />
           {/* Rayons contenus dans la demi-largeur visible (~2.8 unités à
               cette focale) : au-delà, les satellites sortent du cadre et

@@ -114,11 +114,11 @@ html { scroll-behavior: smooth; }
      bande où court le titre, pour que la typographie ne lutte jamais
      contre les particules. */
   mask-image:
-    radial-gradient(ellipse 62% 54% at 50% 34%, #000 30%, transparent 76%),
-    linear-gradient(180deg, #000 44%, rgba(0, 0, 0, 0.25) 58%, #000 82%);
+    radial-gradient(ellipse 74% 58% at 50% 20%, #000 46%, transparent 86%),
+    linear-gradient(180deg, #000 40%, rgba(0, 0, 0, 0.45) 56%, #000 82%);
   -webkit-mask-image:
-    radial-gradient(ellipse 62% 54% at 50% 34%, #000 30%, transparent 76%),
-    linear-gradient(180deg, #000 44%, rgba(0, 0, 0, 0.25) 58%, #000 82%);
+    radial-gradient(ellipse 74% 58% at 50% 20%, #000 46%, transparent 86%),
+    linear-gradient(180deg, #000 40%, rgba(0, 0, 0, 0.45) 56%, #000 82%);
   mask-composite: intersect;
   -webkit-mask-composite: source-in;
 }
