@@ -493,3 +493,11 @@ html { scroll-behavior: smooth; }
   .adv-caret, .adv-think i { animation: none !important; }
   .adv-log { scroll-behavior: auto; }
 }
+
+.lp-foot-links { display: flex; gap: 22px; flex-wrap: wrap; }
+.lp-foot-links a {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+  color: var(--ink-3); text-decoration: none;
+  transition: color 0.2s var(--ease);
+}
+.lp-foot-links a:hover { color: var(--ink-2); }

@@ -197,8 +197,14 @@ export default function LandingPage() {
 
       <footer className="lp-foot">
         <div className="lp-shell lp-foot-in">
-          <span>© 2026 sentia</span>
-          <span>hébergement européen · journal permanent · rgpd</span>
+          <span>© 2026 SENTIA</span>
+          <div className="lp-foot-links">
+            <Link href="/legal/confidentialite">Confidentialité</Link>
+            <Link href="/legal/cgu">Conditions</Link>
+            <Link href="/legal/mentions">Mentions légales</Link>
+            <Link href="/legal/rgpd">Vos droits</Link>
+          </div>
+          <span>hébergement européen · rgpd</span>
         </div>
       </footer>
     </div>
