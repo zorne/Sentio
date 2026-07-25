@@ -69,9 +69,6 @@ export default function LandingPage() {
             <Link href="/onboarding" className="lp-btn lp-btn--primary">
               Recruter mon employé
             </Link>
-            <Link href="/dashboard" className="lp-btn lp-btn--ghost">
-              Voir le tableau de bord
-            </Link>
           </div>
         </div>
 
@@ -192,9 +189,6 @@ export default function LandingPage() {
             <div className="lp-th-act">
               <Link href="/onboarding" className="lp-btn lp-btn--primary">
                 Recruter mon employé
-              </Link>
-              <Link href="/dashboard" className="lp-btn lp-btn--ghost">
-                Voir une mission réelle
               </Link>
             </div>
           </Reveal>
