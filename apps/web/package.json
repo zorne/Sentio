@@ -9,19 +9,23 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@employes-ia/core": "workspace:*",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
+    "@supabase/ssr": "^0.5.0",
+    "@supabase/supabase-js": "^2.45.0",
     "next": "^15.0.0",
+    "pg": "^8.13.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@supabase/supabase-js": "^2.45.0",
-    "@supabase/ssr": "^0.5.0",
-    "@employes-ia/core": "workspace:*",
-    "pg": "^8.13.0"
+    "three": "^0.185.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@types/pg": "^8.11.0",
+    "@types/three": "^0.185.1",
     "typescript": "^5.5.0"
   }
 }
