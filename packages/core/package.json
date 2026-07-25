@@ -14,7 +14,13 @@
   "exports": {
     "./gateway": "./src/gateway/index.ts",
     "./gateway/providers/gemini": "./src/gateway/providers/gemini.ts",
+    "./gateway/providers/groq": "./src/gateway/providers/groq.ts",
     "./tools": "./src/tools/index.ts",
-    "./execution": "./src/execution/index.ts"
+    "./execution": "./src/execution/index.ts",
+    "./context": "./src/context/index.ts",
+    "./runtime": "./src/runtime/index.ts",
+    "./policy": "./src/policy/index.ts",
+    "./memory": "./src/memory/index.ts",
+    "./wiring": "./src/wiring.ts"
   }
 }

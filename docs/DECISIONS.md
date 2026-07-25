@@ -124,3 +124,10 @@ Journal des décisions structurantes. On n'en revient pas sans une nouvelle entr
 **Retry Gemini réduit :** `MAX_LOOPS` de Gemini abaissé de 5 à 2 (backoff plafonné à 10s) — avec un fallback multi-provider derrière, mieux vaut passer à Groq (<1s) que d'attendre Gemini plusieurs cycles.
 **Dégradation propre :** `GROQ_API_KEY` optionnel. Si absent, seul Gemini est utilisé — le système reste fonctionnel, juste sans le filet.
 **Extension future :** ajouter un provider = un fichier `providers/*.ts` + une ligne dans `credentialResolver.resolve()`. Aucun changement au runtime, aux agents, ni au gateway. Cerebras (~14 400 req/j) ou un vrai provider payant no-train pour la prod suivront le même chemin.
+
+## ADR-017 — App web : Next.js (App Router) sur Vercel
+**Date :** 2026-07-25
+**Décision :** l'app cliente (`apps/web`) est une Next.js 15 App Router en TypeScript, déployée sur Vercel free. Auth par Supabase Auth (déjà en base, RLS active). Temps réel via Supabase Realtime (WebSocket sur `execution_event`).
+**Pourquoi Next.js et pas SvelteKit ou HTML pur :** (1) même langage que le back → types partagés end-to-end (ADR-001). (2) Server Components + Server Actions donnent le server-side sans construire d'API dédiée maintenant. (3) Écosystème le plus dense pour recruter demain. (4) Vercel free tier généreux, déploiement automatique depuis GitHub.
+**Frontière stricte :** l'app web n'appelle JAMAIS le `AgentRuntime` directement — elle passe par des Server Actions ou routes API qui, elles, utilisent le noyau. La landing statique existante (`apps/landing/index.html`) peut être migrée telle quelle en `page.tsx` de la racine plus tard, sans urgence.
+**€0 confirmé :** Vercel Hobby (déploiement + preview branches), Supabase Auth (inclus dans le free tier déjà utilisé). Aucune nouvelle dépense.
