@@ -1,0 +1,343 @@
+/* ════════════════════════════════════════════════════════════════════
+   Landing — design system dédié (préfixe .lp-)
+   Principes appliqués (audit skill brandkit, mode « Dark Product / Operator ») :
+   — UN seul accent (mint) répété partout, jamais de seconde couleur décorative
+   — grande respiration, typographie sparse, densité maîtrisée
+   — détails premium discrets (labels mono, filets fins, numérotation)
+   — zéro dégradé générique, zéro blob, zéro stock imagery
+   Animations en CSS natif (GPU) — pas de Framer/GSAP/Three : le budget
+   de performance sert la conversion, pas la démonstration technique.
+   ════════════════════════════════════════════════════════════════════ */
+
+.lp {
+  --accent: #6ee7a8;
+  --accent-dim: rgba(110, 231, 168, 0.14);
+  --accent-line: rgba(110, 231, 168, 0.3);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --shell: 1120px;
+}
+
+.lp-shell { max-width: var(--shell); margin: 0 auto; padding: 0 28px; }
+
+/* Les ancres du menu doivent s'arrêter SOUS la barre collante, sinon le
+   titre de section disparaît derrière elle au clic. */
+.lp-section[id] { scroll-margin-top: 78px; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+/* ─── Navigation ─────────────────────────────────────────────────── */
+.lp-nav {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(5, 5, 5, 0.72);
+  backdrop-filter: saturate(180%) blur(16px);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.lp-nav-in {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 62px;
+}
+.lp-nav-links { display: flex; gap: 30px; }
+.lp-nav-links a {
+  font-size: 13.5px; color: var(--text-secondary); text-decoration: none;
+  transition: color 0.2s var(--ease);
+}
+.lp-nav-links a:hover { color: var(--text-primary); }
+@media (max-width: 780px) { .lp-nav-links { display: none; } }
+
+/* ─── Boutons ────────────────────────────────────────────────────── */
+.lp-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 42px; padding: 0 20px; border-radius: 10px;
+  font-size: 14px; font-weight: 500; font-family: inherit;
+  text-decoration: none; border: 1px solid transparent; cursor: pointer;
+  transition: transform 0.18s var(--ease), background 0.18s var(--ease),
+              border-color 0.18s var(--ease), box-shadow 0.25s var(--ease);
+  will-change: transform;
+}
+.lp-btn:active { transform: translateY(1px); }
+.lp-btn--primary { background: #fff; color: #08090a; }
+.lp-btn--primary:hover { box-shadow: 0 6px 28px rgba(255, 255, 255, 0.18); transform: translateY(-1px); }
+.lp-btn--ghost { border-color: var(--border-default); color: var(--text-secondary); background: transparent; }
+.lp-btn--ghost:hover { border-color: var(--border-strong); color: var(--text-primary); background: var(--glass); }
+.lp-btn--sm { height: 36px; padding: 0 15px; font-size: 13px; border-radius: 8px; }
+
+/* ─── Rythme des sections ────────────────────────────────────────── */
+.lp-section { padding: 108px 0; position: relative; }
+.lp-section + .lp-section { border-top: 1px solid var(--border-subtle); }
+@media (max-width: 720px) { .lp-section { padding: 72px 0; } }
+
+.lp-eyebrow {
+  display: inline-flex; align-items: center; gap: 9px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11.5px; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--text-tertiary); margin-bottom: 22px;
+}
+.lp-eyebrow::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 10px var(--accent-line);
+  animation: lp-breathe 2.6s ease-in-out infinite;
+}
+@keyframes lp-breathe { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+
+.lp-h2 {
+  font-size: clamp(26px, 3.4vw, 38px); font-weight: 500;
+  letter-spacing: -0.025em; line-height: 1.16; margin-bottom: 16px;
+}
+.lp-lead {
+  font-size: 16px; line-height: 1.65; color: var(--text-secondary);
+  max-width: 560px;
+}
+.lp-head { max-width: 640px; margin-bottom: 56px; }
+
+/* ─── Hero ───────────────────────────────────────────────────────── */
+.lp-hero { padding: 92px 0 80px; text-align: center; position: relative; overflow: hidden; }
+.lp-hero-in { position: relative; z-index: 2; }
+.lp-hero h1 {
+  font-size: clamp(34px, 5.6vw, 62px); font-weight: 500;
+  letter-spacing: -0.035em; line-height: 1.05;
+  max-width: 15ch; margin: 0 auto 22px;
+}
+.lp-hero h1 em { font-style: normal; color: var(--text-tertiary); }
+.lp-hero-sub {
+  font-size: clamp(15px, 1.7vw, 18px); line-height: 1.6;
+  color: var(--text-secondary); max-width: 54ch; margin: 0 auto 34px;
+}
+.lp-hero-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.lp-hero-note {
+  margin-top: 18px; font-size: 12.5px; color: var(--text-tertiary);
+}
+
+/* Halo unique derrière le hero — remplace tout dégradé décoratif */
+/* Largeur relative : à 900px fixes, le halo est plus large que l'écran sur
+   mobile et son bord coupé par overflow:hidden devient une démarcation
+   verticale visible. */
+.lp-hero::before {
+  content: ""; position: absolute; inset: -20% 0 auto 50%;
+  width: min(900px, 160vw); height: 620px; transform: translateX(-50%);
+  background: radial-gradient(ellipse at 50% 0%, rgba(110, 231, 168, 0.07), transparent 62%);
+  pointer-events: none;
+}
+
+/* ─── Panneau démo agent (la preuve, pas la promesse) ────────────── */
+.lp-demo {
+  margin-top: 62px; border: 1px solid var(--border-subtle);
+  border-radius: 14px; background: var(--bg-surface);
+  overflow: hidden; text-align: left;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+}
+.lp-demo-bar {
+  display: flex; align-items: center; gap: 9px;
+  padding: 12px 16px; border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+}
+.lp-demo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border-strong); }
+.lp-demo-title {
+  margin-left: 6px; font-size: 12.5px; color: var(--text-tertiary);
+  font-family: 'IBM Plex Mono', monospace;
+}
+.lp-demo-live {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 7px;
+  font-size: 11px; color: var(--accent);
+  font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.06em;
+}
+.lp-demo-live::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent); animation: lp-breathe 1.5s ease-in-out infinite;
+}
+.lp-demo-body { padding: 8px 0; min-height: 316px; }
+
+/* Sur écran étroit, le titre long fait passer la barre sur deux lignes.
+   On ne garde que l'indicateur « en direct », qui porte l'information. */
+@media (max-width: 560px) {
+  .lp-demo-title { display: none; }
+  .lp-demo-body { min-height: 0; }
+  .lp-step, .lp-demo-foot { padding-left: 15px; padding-right: 15px; }
+  .lp-gate { margin-left: 15px; margin-right: 15px; }
+  .lp-demo-foot { flex-direction: column; gap: 6px; }
+}
+
+.lp-step {
+  display: grid; grid-template-columns: 26px 1fr; gap: 14px;
+  padding: 13px 20px; align-items: start;
+  opacity: 0; transform: translateY(6px);
+  animation: lp-step-in 0.5s var(--ease) forwards;
+}
+@keyframes lp-step-in { to { opacity: 1; transform: none; } }
+.lp-step-mark {
+  width: 20px; height: 20px; border-radius: 50%; margin-top: 1px;
+  border: 1px solid var(--border-default); background: var(--bg-void);
+  display: grid; place-items: center; flex-shrink: 0;
+}
+.lp-step-mark i {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--text-tertiary);
+  display: block;
+}
+.lp-step--act .lp-step-mark { border-color: var(--accent-line); }
+.lp-step--act .lp-step-mark i { background: var(--accent); }
+.lp-step-t { font-size: 14px; color: var(--text-primary); }
+.lp-step-d {
+  font-size: 13px; color: var(--text-secondary); margin-top: 3px;
+  line-height: 1.5; white-space: pre-wrap;
+}
+.lp-step-d code {
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+/* Carte de validation — le moment de vérité du produit */
+.lp-gate {
+  margin: 10px 20px 18px; padding: 18px;
+  border: 1px solid rgba(251, 191, 36, 0.32); border-radius: 12px;
+  background: rgba(251, 191, 36, 0.05);
+  opacity: 0; transform: translateY(8px);
+  animation: lp-step-in 0.6s var(--ease) forwards;
+}
+.lp-gate-q { font-size: 14.5px; font-weight: 500; margin-bottom: 12px; }
+.lp-gate-mail {
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+  color: var(--text-secondary); line-height: 1.65;
+  background: var(--bg-void); border: 1px solid var(--border-subtle);
+  border-radius: 8px; padding: 12px 14px; margin-bottom: 14px;
+  white-space: pre-wrap;
+}
+.lp-gate-row { display: flex; gap: 9px; flex-wrap: wrap; align-items: center; }
+.lp-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 13px; border-radius: 8px;
+  font-size: 12.5px; font-weight: 500;
+}
+.lp-pill--yes { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent-line); }
+.lp-pill--no { background: rgba(248, 113, 113, 0.08); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.24); }
+.lp-gate-hint { font-size: 12px; color: var(--text-tertiary); margin-left: 4px; }
+
+.lp-demo-foot {
+  border-top: 1px solid var(--border-subtle); padding: 13px 20px;
+  font-size: 12px; color: var(--text-tertiary);
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.lp-replay {
+  background: none; border: none; padding: 0; cursor: pointer;
+  color: var(--text-tertiary); font: inherit;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.lp-replay:hover { color: var(--text-secondary); }
+
+/* ─── Grilles ────────────────────────────────────────────────────── */
+.lp-grid { display: grid; gap: 18px; }
+.lp-grid--3 { grid-template-columns: repeat(3, 1fr); }
+.lp-grid--2 { grid-template-columns: repeat(2, 1fr); }
+
+/* Le wrapper d'animation (.lp-rv) s'intercale entre la grille et la carte
+   et absorbe l'étirement : sans ceci, les cartes d'une même rangée ont des
+   hauteurs différentes et leurs boutons ne s'alignent plus. */
+.lp-grid > .lp-rv { display: flex; }
+.lp-grid > .lp-rv > * { flex: 1; }
+@media (max-width: 900px) { .lp-grid--3 { grid-template-columns: 1fr; } .lp-grid--2 { grid-template-columns: 1fr; } }
+
+.lp-card {
+  border: 1px solid var(--border-subtle); border-radius: 14px;
+  background: var(--glass); padding: 26px 24px;
+  transition: border-color 0.3s var(--ease), transform 0.3s var(--ease), background 0.3s var(--ease);
+}
+.lp-card:hover { border-color: var(--border-default); background: var(--glass-hover); transform: translateY(-3px); }
+.lp-card-n {
+  font-family: 'IBM Plex Mono', monospace; font-size: 11.5px;
+  color: var(--text-tertiary); margin-bottom: 18px; letter-spacing: 0.05em;
+}
+.lp-card h3 { font-size: 17px; font-weight: 500; letter-spacing: -0.012em; margin-bottom: 9px; }
+.lp-card p { font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
+.lp-card-note {
+  margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border-subtle);
+  font-size: 12.5px; line-height: 1.55; color: var(--text-tertiary);
+}
+.lp-card-note b { color: var(--text-secondary); font-weight: 500; }
+
+/* ─── Catalogue d'agents ─────────────────────────────────────────── */
+.lp-roster { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border-subtle);
+  border: 1px solid var(--border-subtle); border-radius: 14px; overflow: hidden; }
+@media (max-width: 900px) { .lp-roster { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .lp-roster { grid-template-columns: 1fr; } }
+.lp-role {
+  background: var(--bg-void); padding: 22px 20px;
+  display: flex; flex-direction: column; gap: 7px; min-height: 116px;
+  transition: background 0.25s var(--ease);
+}
+.lp-role:hover { background: var(--bg-surface); }
+.lp-role-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.lp-role-name { font-size: 14.5px; font-weight: 500; }
+.lp-role-desc { font-size: 13px; color: var(--text-tertiary); line-height: 1.5; }
+.lp-tag {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10.5px;
+  letter-spacing: 0.06em; padding: 3px 8px; border-radius: 999px;
+  border: 1px solid var(--border-default); color: var(--text-tertiary);
+  white-space: nowrap;
+}
+.lp-tag--live { color: var(--accent); border-color: var(--accent-line); background: var(--accent-dim); }
+
+/* ─── Étapes numérotées ──────────────────────────────────────────── */
+.lp-flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; }
+@media (max-width: 860px) { .lp-flow { grid-template-columns: 1fr; } }
+.lp-flow-item { padding: 0 26px; border-left: 1px solid var(--border-subtle); }
+.lp-flow-item:first-child { padding-left: 0; border-left: none; }
+@media (max-width: 860px) {
+  .lp-flow-item { padding: 22px 0 0 0; border-left: none; border-top: 1px solid var(--border-subtle); }
+  .lp-flow-item:first-child { padding-top: 0; border-top: none; }
+}
+.lp-flow-n {
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--accent);
+  margin-bottom: 14px;
+}
+.lp-flow-item h3 { font-size: 16px; font-weight: 500; margin-bottom: 8px; }
+.lp-flow-item p { font-size: 13.5px; line-height: 1.6; color: var(--text-secondary); }
+
+/* ─── Tarifs ─────────────────────────────────────────────────────── */
+.lp-price {
+  border: 1px solid var(--border-subtle); border-radius: 14px;
+  padding: 30px 26px; background: var(--bg-void);
+  display: flex; flex-direction: column;
+}
+.lp-price--hot { border-color: var(--accent-line); background: linear-gradient(180deg, rgba(110,231,168,0.05), transparent 70%); }
+.lp-price-tier {
+  font-family: 'IBM Plex Mono', monospace; font-size: 11.5px;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary);
+  margin-bottom: 12px;
+}
+.lp-price-amt { font-size: 30px; font-weight: 500; letter-spacing: -0.03em; margin-bottom: 6px; }
+.lp-price-amt span { font-size: 14px; color: var(--text-tertiary); font-weight: 400; letter-spacing: 0; }
+.lp-price-sub { font-size: 13px; color: var(--text-secondary); margin-bottom: 22px; }
+.lp-price ul { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 26px; flex: 1; }
+.lp-price li { font-size: 13.5px; color: var(--text-secondary); display: flex; gap: 10px; line-height: 1.45; }
+.lp-price li::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); margin-top: 7px; flex-shrink: 0; }
+
+/* ─── Confiance ──────────────────────────────────────────────────── */
+.lp-trust { display: flex; flex-direction: column; gap: 1px; background: var(--border-subtle);
+  border: 1px solid var(--border-subtle); border-radius: 14px; overflow: hidden; }
+.lp-trust-row { background: var(--bg-void); padding: 20px 22px; }
+.lp-trust-row h4 { font-size: 14.5px; font-weight: 500; margin-bottom: 6px; }
+.lp-trust-row p { font-size: 13.5px; color: var(--text-secondary); line-height: 1.55; }
+
+/* ─── CTA final ──────────────────────────────────────────────────── */
+.lp-final { text-align: center; padding: 118px 0; }
+.lp-final h2 {
+  font-size: clamp(28px, 4.2vw, 44px); font-weight: 500;
+  letter-spacing: -0.03em; line-height: 1.12; max-width: 18ch; margin: 0 auto 16px;
+}
+.lp-final p { font-size: 16px; color: var(--text-secondary); margin-bottom: 32px; }
+
+/* ─── Pied de page ───────────────────────────────────────────────── */
+.lp-foot { border-top: 1px solid var(--border-subtle); padding: 34px 0 46px; }
+.lp-foot-in {
+  display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;
+  font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--text-tertiary);
+  letter-spacing: 0.02em;
+}
+
+/* ─── Révélation au scroll ───────────────────────────────────────── */
+.lp-rv { opacity: 0; transform: translateY(16px); transition: opacity 0.7s var(--ease), transform 0.7s var(--ease); }
+.lp-rv[data-in="1"] { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-rv, .lp-step, .lp-gate { opacity: 1 !important; transform: none !important; animation: none !important; transition: none !important; }
+  .lp-eyebrow::before, .lp-demo-live::before { animation: none !important; }
+}

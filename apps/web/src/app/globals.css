@@ -184,3 +184,23 @@ section { padding: 48px 0; }
   font-family: 'IBM Plex Mono', monospace;
   letter-spacing: 0.02em;
 }
+
+/* ─── Chat de l'agent d'accueil ─── */
+.chat-bubble {
+  max-width: 80%; padding: 10px 14px; border-radius: 14px;
+  font-size: 14px; line-height: 1.5; margin-bottom: 10px;
+  white-space: pre-wrap;
+}
+.chat-bubble--assistant { background: var(--glass); border: 1px solid var(--border-subtle); color: var(--text-primary); }
+.chat-bubble--user { background: #fff; color: #0a0a0b; margin-left: auto; }
+.chat-bubble--pending { color: var(--text-tertiary); }
+
+.chat-input-row {
+  display: flex; gap: 10px; padding: 16px 20px;
+  border-top: 1px solid var(--border-subtle);
+}
+.chat-input-row input {
+  flex: 1; padding: 10px 14px; border-radius: 8px;
+  background: var(--bg-elevated); border: 1px solid var(--border-default);
+  color: var(--text-primary); font-family: inherit; font-size: 13.5px;
+}

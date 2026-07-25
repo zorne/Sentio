@@ -4,7 +4,13 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { launchSalesRun } from "@/lib/agent-actions";
 
-export function LaunchRunButton() {
+export function LaunchRunButton({
+  tenantId,
+  agentInstanceId,
+}: {
+  tenantId: string;
+  agentInstanceId: string;
+}) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -18,7 +24,7 @@ export function LaunchRunButton() {
           setError(null);
           startTransition(async () => {
             try {
-              const { taskId } = await launchSalesRun();
+              const { taskId } = await launchSalesRun(tenantId, agentInstanceId);
               router.push(`/tasks/${taskId}`);
             } catch (e) {
               setError(e instanceof Error ? e.message : String(e));

@@ -27,6 +27,8 @@ import { createSendMailTool } from "./tools/impl/mail-send.js";
 import type { MailTransport, OutgoingEmail } from "./tools/impl/mail-send.js";
 import { reflect } from "./memory/index.js";
 import type { MemoryStore, MemoryFact } from "./memory/index.js";
+import { createProvisionTenantTool } from "./tools/impl/platform-create-tenant.js";
+import type { TenantProvisioner } from "./tools/impl/platform-create-tenant.js";
 
 export const DEMO_TENANT_ID = "00000000-0000-0000-0000-000000000001"; // migration 0003
 export const DEMO_AGENT_INSTANCE_ID = "00000000-0000-0000-0000-000000000002"; // migration 0005
@@ -296,4 +298,82 @@ export async function reflectAndRemember(
     console.warn(`⚠️  Réflexion post-run ignorée (tâche déjà terminée): ${e.message.slice(0, 120)}`);
     return [];
   }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Agent d'accueil — un agent DIFFÉRENT des agents clients : son travail
+// est d'interviewer un visiteur et de créer son tenant + son premier
+// Employé IA. Pas de tenant existant à ce stade (poule et œuf), donc pas
+// de Task/journal ici — un simple aller-retour de conversation, pas une
+// exécution autonome en arrière-plan (archi §3a s'applique aux agents
+// CLIENTS ; l'agent d'accueil est un outil de la plateforme elle-même).
+// ════════════════════════════════════════════════════════════════════
+
+export const ONBOARDING_SYSTEM_PROMPT = [
+  "Tu es l'assistant d'accueil de la plateforme Employés IA.",
+  "Ton rôle : interviewer un visiteur pour comprendre son entreprise, puis créer",
+  "pour lui un premier Employé IA Commercial personnalisé.",
+  "Pose des questions courtes, une à la fois, jusqu'à avoir : le nom de l'entreprise,",
+  "un email de contact, le secteur d'activité, à quoi ressemble un bon prospect pour",
+  "lui, le ton de communication souhaité, et son niveau d'autonomie préféré",
+  "(cautious = prudent, balanced = équilibré, autonomous = autonome).",
+  "Une fois TOUTES ces informations recueillies, appelle l'outil",
+  "platform.create_tenant_agent — une seule fois, jamais avant d'avoir tout.",
+].join(" ");
+
+/** Provisionnement Postgres réel : crée le tenant + son agent Sales. */
+class PgTenantProvisioner implements TenantProvisioner {
+  constructor(private readonly db: Client) {}
+
+  async createTenantWithSalesAgent(params: {
+    companyName: string;
+    contactEmail: string;
+    systemPrompt: string;
+    autonomy: Record<string, string>;
+  }): Promise<{ tenantId: string; agentInstanceId: string }> {
+    const tenantRes = await this.db.query(
+      `insert into tenant (name) values ($1) returning id`,
+      [params.companyName]
+    );
+    const tenantId: string = tenantRes.rows[0].id;
+
+    const defRes = await this.db.query(`select id from agent_definition where key = 'sales'`);
+    const definitionId: string = defRes.rows[0].id;
+
+    const instanceRes = await this.db.query(
+      `insert into agent_instance (tenant_id, definition_id, name, config, autonomy)
+       values ($1, $2, $3, $4, $5) returning id`,
+      [
+        tenantId,
+        definitionId,
+        `Employé IA · Commercial (${params.companyName})`,
+        JSON.stringify({ systemPrompt: params.systemPrompt, contactEmail: params.contactEmail }),
+        JSON.stringify(params.autonomy),
+      ]
+    );
+    return { tenantId, agentInstanceId: instanceRes.rows[0].id };
+  }
+}
+
+export interface OnboardingDeps {
+  gateway: ModelGateway;
+  tools: Array<ReturnType<typeof createProvisionTenantTool>>;
+}
+
+/**
+ * Câblage de l'agent d'accueil. Volontairement SANS Groq : contrairement
+ * à la démo (données de test), une interview réelle contient de vraies
+ * informations d'un vrai prospect (nom d'entreprise, email) — la règle
+ * d'or (ADR-004) exige un provider no-train. On ne branche que Gemini,
+ * jamais de repli vers un tier gratuit qui pourrait entraîner dessus.
+ */
+export function buildOnboardingDeps(db: Client): OnboardingDeps {
+  const onboardingCredentialResolver: CredentialResolver = {
+    async resolve(): Promise<TenantCredential[]> {
+      return [{ provider: "gemini", dataPolicy: "no_train", apiKey: requireEnv("GEMINI_API_KEY") }];
+    },
+  };
+  const gateway = new ModelGateway(onboardingCredentialResolver).register(new GeminiProvider());
+  const tools = [createProvisionTenantTool(new PgTenantProvisioner(db))];
+  return { gateway, tools };
 }

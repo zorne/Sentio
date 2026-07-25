@@ -49,7 +49,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
     <>
       <nav className="nav">
         <div className="container nav-inner">
-          <Link href="/" className="brand">
+          <Link href="/dashboard" className="brand">
             <Logomark />
             Employés IA
           </Link>
