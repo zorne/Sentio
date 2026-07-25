@@ -3,9 +3,10 @@
 // Elles réutilisent EXACTEMENT le même câblage que demo-real.ts / approve-real.ts
 // (wiring.ts partagé). Aucune duplication de logique métier ici (archi ADR-017).
 //
-// La sécurité multi-tenant vient de deux couches :
-//   1. RLS Supabase — l'utilisateur ne voit que les données de ses tenants
-//   2. Cet endpoint vérifie que la task appartient bien au tenant demandé
+// ADR-018 : auth différée. Pas de vérification de session/appartenance
+// ici pour l'instant — un seul tenant démo existe, aucune vraie donnée
+// client. À réintroduire (comme avant ce commit, voir historique git)
+// dès qu'un vrai flux d'onboarding/connexion est construit.
 // ════════════════════════════════════════════════════════════════════
 
 "use server";
@@ -22,29 +23,10 @@ import {
   buildDemoRuntimeDeps,
   reflectAndRemember,
 } from "@employes-ia/core/wiring";
-import { createSupabaseServerClient } from "./supabase-server";
-
-/** Vérifie que l'utilisateur est bien connecté ET membre du tenant demandé
- *  (RLS le confirme aussi, mais on veut échouer tôt et avec un message clair). */
-async function requireMembership(tenantId: string): Promise<{ userId: string }> {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Non authentifié.");
-  const { data, error } = await supabase
-    .from("tenant_member")
-    .select("tenant_id")
-    .eq("tenant_id", tenantId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-  if (error || !data) throw new Error("Accès refusé à ce tenant.");
-  return { userId: user.id };
-}
 
 /** Lance un nouveau run du Sales Agent sur le tenant démo — équivalent
  *  du CLI `node dist/demo-real.js`, mais déclenchable depuis un bouton. */
 export async function launchSalesRun(): Promise<{ taskId: string }> {
-  await requireMembership(DEMO_TENANT_ID);
-
   // Connexion directe côté serveur (pas via l'API Supabase) : la
   // Server Action tourne dans un environnement de confiance, elle a
   // besoin d'écrire dans execution_event via le noyau, pas via l'API cliente.
@@ -97,8 +79,6 @@ export async function decideOnTask(
   action: "approve" | "reject",
   trustFuture = false
 ): Promise<void> {
-  await requireMembership(DEMO_TENANT_ID);
-
   const db = new Client({ connectionString: process.env.SUPABASE_DB_URL! });
   await db.connect();
   try {

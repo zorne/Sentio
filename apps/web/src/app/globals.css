@@ -40,7 +40,11 @@ body {
   backdrop-filter: blur(14px);
 }
 .nav-inner { display: flex; align-items: center; justify-content: space-between; }
-.brand { font-size: 15px; font-weight: 600; color: var(--text-primary); text-decoration: none; }
+.brand {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 500; letter-spacing: -0.01em;
+  color: var(--text-primary); text-decoration: none;
+}
 .user-chip { font-size: 12.5px; color: var(--text-tertiary); }
 
 h1 { font-size: 28px; font-weight: 500; letter-spacing: -0.02em; margin-bottom: 24px; }
@@ -118,3 +122,13 @@ section { padding: 48px 0; }
 
 .approve-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .trust-checkbox { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-tertiary); }
+
+.footer {
+  border-top: 1px solid var(--border-subtle);
+  padding: 20px 0 40px;
+  margin-top: 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 11px; color: var(--text-tertiary);
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 0.02em;
+}

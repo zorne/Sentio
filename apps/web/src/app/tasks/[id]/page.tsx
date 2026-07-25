@@ -1,13 +1,18 @@
 // ════════════════════════════════════════════════════════════════════
 // Page détail d'une tâche — trace complète + boutons Approuver/Refuser
 // quand la tâche attend une validation humaine.
+//
+// ADR-018 : auth différée, lecture via pool Postgres direct (pas de RLS
+// côté Server Component). Le temps réel (TaskLive, navigateur) passe lui
+// par une policy RLS publique bornée au tenant démo — voir migration 0008.
 // ════════════════════════════════════════════════════════════════════
 
 import Link from "next/link";
-import { redirect, notFound } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { notFound } from "next/navigation";
+import { pool } from "@/lib/db";
 import { TaskLive } from "@/components/TaskLive";
 import { ApproveControls } from "@/components/ApproveControls";
+import { Logomark } from "@/components/Logomark";
 
 export const dynamic = "force-dynamic";
 
@@ -21,29 +26,29 @@ interface EventRow {
 
 export default async function TaskPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: taskId } = await params;
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
 
-  const { data: task } = await supabase
-    .from("task")
-    .select("id, title, status, created_at")
-    .eq("id", taskId)
-    .maybeSingle();
+  const { rows: taskRows } = await pool.query(
+    `select id, title, status, created_at from task where id = $1`,
+    [taskId]
+  );
+  const task = taskRows[0];
   if (!task) notFound();
 
-  const { data: events } = await supabase
-    .from("execution_event")
-    .select("id, seq, kind, payload, created_at")
-    .eq("task_id", taskId)
-    .order("seq", { ascending: true });
+  const { rows: events } = await pool.query<EventRow>(
+    `select id, seq, kind, payload, created_at from execution_event
+     where task_id = $1 order by seq asc`,
+    [taskId]
+  );
 
   return (
     <>
       <nav className="nav">
         <div className="container nav-inner">
-          <Link href="/" className="brand">← Employés IA · Dashboard</Link>
-          <span className="user-chip">{user.email}</span>
+          <Link href="/" className="brand">
+            <Logomark />
+            Employés IA
+          </Link>
+          <span className="user-chip">Mode démo — sans connexion</span>
         </div>
       </nav>
 
@@ -66,7 +71,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
           )}
 
           <h2>Trace d'exécution</h2>
-          <TaskLive taskId={taskId} initialEvents={(events ?? []) as EventRow[]} />
+          <TaskLive taskId={taskId} initialEvents={events} />
         </div>
       </section>
     </>

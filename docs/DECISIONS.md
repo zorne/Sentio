@@ -131,3 +131,13 @@ Journal des décisions structurantes. On n'en revient pas sans une nouvelle entr
 **Pourquoi Next.js et pas SvelteKit ou HTML pur :** (1) même langage que le back → types partagés end-to-end (ADR-001). (2) Server Components + Server Actions donnent le server-side sans construire d'API dédiée maintenant. (3) Écosystème le plus dense pour recruter demain. (4) Vercel free tier généreux, déploiement automatique depuis GitHub.
 **Frontière stricte :** l'app web n'appelle JAMAIS le `AgentRuntime` directement — elle passe par des Server Actions ou routes API qui, elles, utilisent le noyau. La landing statique existante (`apps/landing/index.html`) peut être migrée telle quelle en `page.tsx` de la racine plus tard, sans urgence.
 **€0 confirmé :** Vercel Hobby (déploiement + preview branches), Supabase Auth (inclus dans le free tier déjà utilisé). Aucune nouvelle dépense.
+
+## ADR-018 — Authentification différée (décision explicite du fondateur)
+**Date :** 2026-07-25
+**Décision fondateur :** pas de page de connexion pour l'instant — priorité aux agents, à la landing et au dashboard. L'auth (déjà codée : magic link, callback anti-scanner Apple Mail) sera branchée à la fin, une fois le reste terminé.
+**Ce qui change :**
+- Les Server Components (`page.tsx`, `tasks/[id]/page.tsx`) lisent directement via un pool Postgres de confiance (`apps/web/src/lib/db.ts`), scopé en dur au `DEMO_TENANT_ID` — plus de dépendance à la session Supabase Auth.
+- Les Server Actions (`agent-actions.ts`) n'ont plus de vérification d'appartenance — un seul tenant existe, aucune vraie donnée client encore.
+- Le temps réel (Supabase Realtime, `TaskLive.tsx`, clé anon côté navigateur) a besoin d'une policy RLS explicite puisqu'aucune session n'authentifie l'abonné : migration 0008 ouvre une lecture publique sur `execution_event`, strictement bornée à `tenant_id = DEMO_TENANT_ID`. Aucune autre table, aucun autre tenant.
+**Ce qui reste en place, prêt à rebrancher :** `/login`, `/auth/callback` (avec la protection anti-prefetch Apple Mail), `supabase-server.ts`. Rien n'est supprimé, juste débranché du chemin critique.
+**Obligation avant un vrai second client :** réintroduire la vérification de session dans `agent-actions.ts` et `page.tsx`/`tasks/[id]/page.tsx`, et supprimer la policy `demo_anon_read` (migration 0008). Le code d'avant cette décision est dans l'historique git (`requireMembership`), à restaurer plutôt qu'à réécrire.

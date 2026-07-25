@@ -1,13 +1,17 @@
 // ════════════════════════════════════════════════════════════════════
 // Dashboard racine — liste des tâches + bouton "Lancer une tâche".
-// Server Component : lit directement Supabase avec la session utilisateur,
-// RLS filtre automatiquement à ses tenants.
+//
+// ADR-018 : auth différée. Pas de login pour l'instant (décision du
+// fondateur : finir agents + landing + dashboard d'abord). Lecture
+// directe via le pool Postgres, scopée au tenant démo — PAS de RLS/session
+// ici. À restaurer avant tout onboarding d'un vrai second client.
 // ════════════════════════════════════════════════════════════════════
 
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { pool } from "@/lib/db";
+import { DEMO_TENANT_ID } from "@employes-ia/core/wiring";
 import { LaunchRunButton } from "@/components/LaunchRunButton";
+import { Logomark } from "@/components/Logomark";
 
 export const dynamic = "force-dynamic"; // pas de cache : chaque visite recharge les tâches
 
@@ -19,22 +23,21 @@ interface TaskRow {
 }
 
 export default async function Home() {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: tasks } = await supabase
-    .from("task")
-    .select("id, title, status, created_at")
-    .order("created_at", { ascending: false })
-    .limit(50);
+  const { rows: tasks } = await pool.query<TaskRow>(
+    `select id, title, status, created_at from task
+     where tenant_id = $1 order by created_at desc limit 50`,
+    [DEMO_TENANT_ID]
+  );
 
   return (
     <>
       <nav className="nav">
         <div className="container nav-inner">
-          <Link href="/" className="brand">Employés IA · Dashboard</Link>
-          <span className="user-chip">{user.email}</span>
+          <Link href="/" className="brand">
+            <Logomark />
+            Employés IA
+          </Link>
+          <span className="user-chip">Mode démo — sans connexion</span>
         </div>
       </nav>
 
@@ -65,6 +68,11 @@ export default async function Home() {
                 Aucune tâche pour le moment. Cliquez sur « Lancer une tâche » pour démarrer votre premier Employé IA.
               </div>
             )}
+          </div>
+
+          <div className="footer">
+            <span>employés ia · sales agent v0.1</span>
+            <span>{tasks?.length ?? 0} tâche{(tasks?.length ?? 0) > 1 ? "s" : ""}</span>
           </div>
         </div>
       </section>
