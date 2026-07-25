@@ -47,7 +47,7 @@ export default async function Home({
         <div className="container nav-inner">
           <Link href="/dashboard" className="brand">
             <Logomark />
-            Employés IA
+            SENTIA
           </Link>
           <span className="user-chip">
             {tenantId === DEMO_TENANT_ID ? "Mode démo — sans connexion" : agentInstance?.name}
@@ -91,7 +91,7 @@ export default async function Home({
           </div>
 
           <div className="footer">
-            <span>employés ia · sales agent v0.1</span>
+            <span>sentia · sales agent v0.1</span>
             <span>{tasks?.length ?? 0} tâche{(tasks?.length ?? 0) > 1 ? "s" : ""}</span>
           </div>
         </div>

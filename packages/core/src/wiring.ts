@@ -254,7 +254,7 @@ export function buildDemoRuntimeDeps(db: Client): DemoRuntimeDeps {
  *  premier run et toute reprise après validation. */
 export const SALES_AGENT_TASK = {
   identity: {
-    name: "Employé IA · Commercial",
+    name: "Employé Commercial",
     role: "Prospection & qualification",
     systemPrompt:
       "Tu relances les prospects. Consulte les leads, choisis le plus " +
@@ -310,7 +310,7 @@ export async function reflectAndRemember(
 // ════════════════════════════════════════════════════════════════════
 
 export const ONBOARDING_SYSTEM_PROMPT = [
-  "Tu es l'assistant d'accueil de la plateforme Employés IA.",
+  "Tu es l'assistant d'accueil de la plateforme SENTIA.",
   "Ton rôle : interviewer un visiteur pour comprendre son entreprise, puis créer",
   "pour lui un premier Employé IA Commercial personnalisé.",
   "Pose des questions courtes, une à la fois, jusqu'à avoir : le nom de l'entreprise,",
@@ -346,7 +346,7 @@ class PgTenantProvisioner implements TenantProvisioner {
       [
         tenantId,
         definitionId,
-        `Employé IA · Commercial (${params.companyName})`,
+        `Employé Commercial (${params.companyName})`,
         JSON.stringify({ systemPrompt: params.systemPrompt, contactEmail: params.contactEmail }),
         JSON.stringify(params.autonomy),
       ]

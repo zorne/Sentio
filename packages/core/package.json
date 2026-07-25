@@ -21,6 +21,7 @@
     "./runtime": "./src/runtime/index.ts",
     "./policy": "./src/policy/index.ts",
     "./memory": "./src/memory/index.ts",
+    "./advisor": "./src/advisor/index.ts",
     "./wiring": "./src/wiring.ts"
   }
 }

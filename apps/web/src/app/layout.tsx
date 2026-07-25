@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata = {
-  title: "Employés IA — Dashboard",
-  description: "Console de pilotage des Employés IA (agents autonomes)",
+  title: "SENTIA — Dashboard",
+  description: "Console de pilotage SENTIA",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

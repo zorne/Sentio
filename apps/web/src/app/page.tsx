@@ -23,14 +23,15 @@ import { CoreStage } from "@/components/landing/CoreStage";
 import { Mission } from "@/components/landing/Mission";
 import { Threshold } from "@/components/landing/Threshold";
 import { Reveal } from "@/components/landing/Reveal";
+import { Advisor } from "@/components/landing/Advisor";
 import "./landing.css";
 
 export const metadata: Metadata = {
-  title: "Employés IA — Il travaille seul. Il vous demande avant ce qui compte.",
+  title: "SENTIA — Il travaille seul. Il vous demande avant ce qui compte.",
   description:
     "Un employé numérique qui consulte vos données, arbitre et agit. Vous voyez chaque étape. Rien d'irréversible ne part sans votre accord.",
   openGraph: {
-    title: "Employés IA",
+    title: "SENTIA",
     description: "Il travaille seul. Il vous demande avant ce qui compte.",
     locale: "fr_FR",
     type: "website",
@@ -45,11 +46,6 @@ const ROLES = [
   { name: "Ressources humaines", desc: "Trie les candidatures, organise les entretiens.", live: false },
 ];
 
-const MEMORY = [
-  { day: "Jour 1", fact: "Il découvre vos prospects et vous demande pour chaque envoi." },
-  { day: "Jour 8", fact: "Il sait que <b>Marc a déjà été relancé</b> et ne recommence pas." },
-  { day: "Jour 30", fact: "Il connaît votre ton, vos priorités, et vous ne validez plus que l'exceptionnel." },
-];
 
 export default function LandingPage() {
   return (
@@ -91,28 +87,23 @@ export default function LandingPage() {
       {/* ── III. SEUIL ──────────────────────────────────────────── */}
       <Threshold />
 
-      {/* ── IV. APRÈS ───────────────────────────────────────────── */}
-      <section className="lp-sec" id="memoire">
+      {/* ── IV. LE CONSEILLER ───────────────────────────────────────
+          Remplace les paragraphes explicatifs : plutôt que d'imposer au
+          visiteur ce qu'on a décidé de lui raconter, on le laisse
+          demander ce qui l'intéresse lui. ────────────────────────────*/}
+      <section className="lp-sec" id="conseiller">
         <div className="lp-shell">
           <Reveal className="lp-sec-head">
-            <span className="lp-mono">Ce qui change avec le temps</span>
-            <h2>Il apprend, donc vous validez de moins en moins.</h2>
+            <span className="lp-mono">Le conseiller</span>
+            <h2>Demandez-lui plutôt que de nous lire.</h2>
             <p>
-              Chaque mission laisse une trace dans sa mémoire. Ce n&apos;est pas un outil
-              qu&apos;on configure une fois : c&apos;est un collaborateur qui vous connaît
-              un peu mieux chaque semaine.
+              Un conseiller SENTIA répond sur le produit, son fonctionnement, ses limites
+              et ses tarifs. Il ne sort jamais de ce périmètre.
             </p>
           </Reveal>
 
           <Reveal>
-            <div className="lp-memo">
-              {MEMORY.map((m) => (
-                <div className="lp-memo-cell" key={m.day}>
-                  <div className="lp-memo-day">{m.day}</div>
-                  <p className="lp-memo-fact" dangerouslySetInnerHTML={{ __html: m.fact }} />
-                </div>
-              ))}
-            </div>
+            <Advisor />
           </Reveal>
         </div>
       </section>
@@ -122,10 +113,6 @@ export default function LandingPage() {
           <Reveal className="lp-sec-head">
             <span className="lp-mono">L&apos;équipe</span>
             <h2>Un seul moteur. Autant de métiers.</h2>
-            <p>
-              Même autonomie réglable, même traçabilité, même mémoire. Seul le métier
-              change — et il s&apos;écrit en configuration, pas en code.
-            </p>
           </Reveal>
 
           <Reveal>
@@ -216,7 +203,7 @@ export default function LandingPage() {
 
       <footer className="lp-foot">
         <div className="lp-shell lp-foot-in">
-          <span>© 2026 employés ia</span>
+          <span>© 2026 sentia</span>
           <span>hébergement européen · journal permanent · rgpd</span>
         </div>
       </footer>

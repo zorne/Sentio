@@ -97,6 +97,82 @@ export class GroqProvider implements ModelProvider {
     );
   }
 
+  /**
+   * Flux SSE. Ne tente qu'un seul modèle : en streaming, la latence du
+   * premier octet est ce qui compte, et enchaîner des replis annulerait
+   * ce bénéfice. Un échec remonte au gateway, qui basculera de provider.
+   */
+  async *generateStream(req: GenerateRequest, cred: TenantCredential): AsyncIterable<string> {
+    const model = this.modelChain[0]!;
+    const controller = new AbortController();
+    // Filet de sécurité : une connexion qui reste ouverte sans rien
+    // envoyer immobiliserait la requête côté serveur.
+    const timeout = setTimeout(() => controller.abort(), 25_000);
+
+    try {
+      const res = await fetch(BASE_URL, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${cred.apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          stream: true,
+          max_tokens: req.maxTokens ?? 700,
+          temperature: 0.3,
+          messages: [
+            { role: "system", content: req.system },
+            ...req.messages.flatMap((m) =>
+              m.kind === "text"
+                ? [{ role: m.role === "model" ? "assistant" : "user", content: m.content }]
+                : []
+            ),
+          ],
+        }),
+        signal: controller.signal,
+      });
+
+      if (!res.ok || !res.body) {
+        const detail = await res.text().catch(() => "");
+        throw new GatewayError(`Groq ${res.status}: ${detail.slice(0, 300)}`);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        // Le découpage réseau ne respecte pas les frontières de lignes :
+        // on ne traite que les lignes complètes et on garde le reste.
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data:")) continue;
+          const payload = line.slice(5).trim();
+          if (!payload || payload === "[DONE]") continue;
+          try {
+            const json = JSON.parse(payload) as {
+              choices?: Array<{ delta?: { content?: string } }>;
+            };
+            const piece = json.choices?.[0]?.delta?.content;
+            if (piece) yield piece;
+          } catch {
+            // Fragment JSON invalide : on l'ignore plutôt que d'interrompre
+            // un flux par ailleurs valide.
+          }
+        }
+      }
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
   private async callModel(
     model: string,
     req: GenerateRequest,

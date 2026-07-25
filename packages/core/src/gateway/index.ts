@@ -58,10 +58,14 @@ export interface GenerateResult {
   usage: { inputTokens: number; outputTokens: number; provider: ProviderName; model?: string };
 }
 
-/** Un provider concret (Gemini, Anthropic, …) implémente ça. */
+/** Un provider concret (Gemini, Anthropic, …) implémente ça.
+ *  `generateStream` est OPTIONNEL : un provider qui ne le fournit pas
+ *  reste parfaitement utilisable, il ne sera simplement pas éligible aux
+ *  usages qui exigent du streaming (le conseiller, typiquement). */
 export interface ModelProvider {
   readonly name: ProviderName;
   generate(req: GenerateRequest, cred: TenantCredential): Promise<GenerateResult>;
+  generateStream?(req: GenerateRequest, cred: TenantCredential): AsyncIterable<string>;
 }
 
 /** Résout les clés BYOK d'un tenant (déchiffrées depuis
@@ -140,6 +144,41 @@ export class ModelGateway {
 
     throw new GatewayError(
       `Tous les providers ont échoué pour le tenant ${req.tenantId}:\n  - ${errors.join("\n  - ")}`
+    );
+  }
+
+  /**
+   * Variante en flux — mêmes garanties que `generate` (BYOK, règle d'or,
+   * bascule sur le provider suivant), mais restreinte aux providers qui
+   * savent streamer. Utilisée par le conseiller : le premier mot doit
+   * apparaître en quelques centaines de millisecondes, pas après la
+   * réponse complète.
+   */
+  async *stream(req: GenerateRequest): AsyncIterable<string> {
+    const creds = await this.credentials.resolve(req.tenantId);
+    const errors: string[] = [];
+
+    for (const cred of creds) {
+      if (req.dataClass === "real" && cred.dataPolicy === "free") {
+        errors.push(`${cred.provider}: sauté (free/train incompatible avec données réelles)`);
+        continue;
+      }
+      const provider = this.providers.get(cred.provider);
+      if (!provider?.generateStream) {
+        errors.push(`${cred.provider}: ne gère pas le streaming`);
+        continue;
+      }
+      try {
+        yield* provider.generateStream(req, cred);
+        return;
+      } catch (err) {
+        const e = err instanceof Error ? err : new Error(String(err));
+        errors.push(`${cred.provider}: ${e.message.slice(0, 200)}`);
+      }
+    }
+
+    throw new GatewayError(
+      `Aucun provider en flux disponible pour ${req.tenantId}:\n  - ${errors.join("\n  - ")}`
     );
   }
 }

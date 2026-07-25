@@ -396,3 +396,100 @@ html { scroll-behavior: smooth; }
   .lp-say:not(.is-on) { display: none; }
   .lp-hero-tag::before, .lp-th-mark span, .lp-scroll-line::after, .lp-state-halt::before { animation: none !important; }
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   LE CONSEILLER — surface de dialogue intégrée, pas une bulle flottante.
+   Corps de conversation en sans-serif (la lisibilité prime sur la règle
+   typographique), étiquettes en mono pour rester dans le système.
+   ════════════════════════════════════════════════════════════════════ */
+.adv {
+  border: 1px solid var(--line); border-radius: 18px;
+  background: rgba(244, 245, 246, 0.02);
+  overflow: hidden; display: flex; flex-direction: column;
+}
+.adv-log {
+  padding: 26px 26px 8px; min-height: 190px; max-height: 380px;
+  overflow-y: auto; scroll-behavior: smooth;
+}
+.adv-log.is-started { padding-bottom: 18px; }
+.adv-idle { font-size: 15px; line-height: 1.6; color: var(--ink-3); max-width: 44ch; }
+
+.adv-msg { margin-bottom: 20px; }
+.adv-msg:last-child { margin-bottom: 0; }
+.adv-msg p { font-size: 15px; line-height: 1.65; margin: 0; white-space: pre-wrap; }
+.adv-msg--user p {
+  color: var(--ink); font-family: var(--serif); font-size: 21px; line-height: 1.28;
+  letter-spacing: -0.015em;
+}
+.adv-msg--assistant p { color: var(--ink-2); }
+.adv-who {
+  display: block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--mint); margin-bottom: 7px;
+}
+
+.adv-caret {
+  display: inline-block; width: 7px; height: 15px; margin-left: 3px;
+  background: var(--mint); vertical-align: text-bottom;
+  animation: adv-blink 1s steps(2) infinite;
+}
+@keyframes adv-blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+
+.adv-think { display: flex; gap: 5px; align-items: center; height: 22px; }
+.adv-think i {
+  width: 5px; height: 5px; border-radius: 50%; background: var(--ink-3);
+  animation: adv-bounce 1.2s ease-in-out infinite;
+}
+.adv-think i:nth-child(2) { animation-delay: 0.15s; }
+.adv-think i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes adv-bounce { 0%, 60%, 100% { opacity: 0.25; } 30% { opacity: 1; } }
+
+.adv-error {
+  margin: 0 26px 12px; font-size: 13px; color: #f8a5a5;
+}
+
+.adv-chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 26px 18px; }
+.adv-chip {
+  font-family: inherit; font-size: 13px; color: var(--ink-2);
+  background: transparent; border: 1px solid var(--line-2); border-radius: 100px;
+  padding: 8px 15px; cursor: pointer;
+  transition: border-color 0.25s var(--ease), color 0.25s var(--ease), transform 0.25s var(--ease);
+}
+.adv-chip:hover:not(:disabled) { border-color: var(--mint-line); color: var(--ink); transform: translateY(-1px); }
+.adv-chip:disabled { opacity: 0.4; cursor: default; }
+
+.adv-form {
+  display: flex; gap: 10px; align-items: center;
+  padding: 16px 20px 16px 26px; border-top: 1px solid var(--line);
+  background: rgba(3, 3, 3, 0.4);
+}
+.adv-form input {
+  flex: 1; background: transparent; border: none; outline: none;
+  color: var(--ink); font-family: inherit; font-size: 15px;
+}
+.adv-form input::placeholder { color: var(--ink-3); }
+.adv-form input:disabled { opacity: 0.5; }
+.adv-send {
+  flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%;
+  border: 1px solid var(--line-2); background: transparent; color: var(--ink-2);
+  font-size: 16px; cursor: pointer;
+  transition: all 0.25s var(--ease);
+}
+.adv-send:hover:not(:disabled) { background: var(--ink); color: #060707; border-color: var(--ink); }
+.adv-send:disabled { opacity: 0.35; cursor: default; }
+
+.adv-sr {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+@media (max-width: 640px) {
+  .adv-log { padding: 20px 18px 8px; max-height: 320px; }
+  .adv-chips { padding: 4px 18px 16px; }
+  .adv-form { padding: 14px 14px 14px 18px; }
+  .adv-msg--user p { font-size: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adv-caret, .adv-think i { animation: none !important; }
+  .adv-log { scroll-behavior: auto; }
+}

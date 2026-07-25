@@ -9,7 +9,7 @@ export default function OnboardingPage() {
         <div className="container nav-inner">
           <Link href="/dashboard" className="brand">
             <Logomark />
-            Employés IA
+            SENTIA
           </Link>
         </div>
       </nav>

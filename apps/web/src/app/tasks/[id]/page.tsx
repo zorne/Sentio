@@ -51,7 +51,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         <div className="container nav-inner">
           <Link href="/dashboard" className="brand">
             <Logomark />
-            Employés IA
+            SENTIA
           </Link>
           <span className="user-chip">Mode démo — sans connexion</span>
         </div>

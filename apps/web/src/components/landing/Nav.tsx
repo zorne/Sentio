@@ -32,7 +32,7 @@ export function Nav() {
       <div className="lp-shell lp-nav-in">
         <Link href="/" className="lp-brand">
           <Logomark size={18} />
-          Employés IA
+          SENTIA
         </Link>
         <Link href="/onboarding" className="lp-btn lp-btn--ghost lp-btn--sm">
           Recruter
