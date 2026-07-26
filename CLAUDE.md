@@ -14,31 +14,40 @@ Fondateur solo, budget €0, mode caveman actif (réponses terses demandées).
 - Groq = conseiller IA public landing (dataClass="test" only, jamais de vraies
   données). Gemini = agents clients réels (no-train EEA).
 
-## Conflit git résolu (26/07/2026)
-Décision utilisateur : garder l'approche remote/GitHub (déployée sur Vercel).
-`main` reset sur `origin/main` (ancien commit local sauvegardé dans la branche
-`backup/onboarding-reveal-local`). `/agent` a ensuite reçu Tester/Recruter
-(voir section suivante).
+## Historique récent (tout commité/poussé sauf mention contraire)
+- Conflit git remote/local résolu : gardé l'approche GitHub/Vercel (backup de
+  l'ancien commit local dans la branche `backup/onboarding-reveal-local`).
+- `/onboarding` = page vitrine : hologramme buste filaire central
+  (`AgentHologram3D.tsx`, maillage triangulé tête/cou/épaules, lumière stable
+  sans scintillement, pas de rotation pilotée par le client), cartes de
+  compétences autour (`AgentSkillCards.tsx`) qui s'allument selon le texte
+  tapé, chat repositionné en petit sur le côté (jamais plus gros que
+  l'hologramme). Transition en fondu sur tous les CTA "Recruter"
+  (`RecruitLink.tsx`).
+- Sélecteur de métier : 5 rôles cliquables sous "Un seul moteur..." sur la
+  landing → `/onboarding?agent=<slug>` (`lib/agent-roles.ts` centralise texte
+  de chat + compétences par métier). Seul **Commercial** a un vrai backend
+  (`OnboardingChat.tsx`, Gemini, tenant réel). Les 4 autres passent par
+  `RoleAwaitingChat.tsx` (chat simulé, aucun appel serveur) et terminent sur
+  `ComingSoonActions.tsx` — message honnête "pas encore actif", jamais un faux
+  test qui ferait tourner la démo Commercial sous une autre étiquette.
+- Accent couleur : mint (#6ee7a8) → cyan (#2ee6f5) partout (landing, hero
+  Core3D inchangé structurellement, dashboard, hologramme).
 
-## Refonte /onboarding — hologramme + compétences (26/07/2026)
-`/onboarding` est maintenant la page "vitrine" : hologramme central
-(`AgentHologram3D.tsx`, silhouette en anneaux + balayage + socle émetteur +
-étoiles en orbite ; lumière volontairement stable, pas de scintillement, pas
-de rotation pilotée par le client), des cartes de compétences autour
-(`AgentSkillCards.tsx`) qui s'allument selon ce que le visiteur tape dans le
-chat, et le chat d'onboarding repositionné en petit sur le côté (jamais plus
-gros que l'hologramme).
-- `lib/agent-skills.ts` : règles front-end pures (mots-clés → compétences),
-  volontairement découplées du chat — ajouter une compétence n'y touche pas.
-- `OnboardingChat.tsx` : n'a plus de logique de redirection ; émet
-  `onUserMessage(text)` et `onComplete(tenantId, agentInstanceId)`, c'est la
-  page parente qui décide quoi en faire.
-- `AgentActions.tsx` (nouveau, `components/`) : boutons Tester/Recruter +
-  `launchSalesRun`, extrait pour être partagé entre `/onboarding` (une fois
-  l'agent créé) et `/agent` (lien direct/aperçu depuis la landing, inchangé).
-- Pas de nouvelle route : les 3 CTA "Recruter mon employé" de la landing
-  pointent déjà vers `/onboarding`, rien à changer côté liens.
-Non commité.
+## Tarifs & paiement (27/07/2026) — NON COMMITÉ
+Bouton "Recruter — voir le tableau de bord" remplacé par **"Recruter mon
+agent"** (`AgentActions.tsx`) → `/plans?tenant=&agent=` (3 formules) →
+`/checkout?plan=` (récap + paiement). Grille tarifaire (`lib/plans.ts`,
+officielle, ne pas modifier les prix/fonctionnalités sans redemander) :
+Standard 499€, Professionnel 1999€ (mis en avant), Entreprise 9999€/mois.
+Même grille remplace aussi les tarifs de la landing (`PlanCard.tsx` partagé).
+**Aucun compte Stripe connecté** (utilisateur confirmé) : le bouton "Procéder
+au paiement" (`CheckoutAction.tsx`) affiche un état honnête "pas encore actif"
+au lieu de simuler un vrai encaissement. Prochaine étape quand Stripe sera
+prêt : remplacer ce composant par un appel à une route API qui crée une vraie
+session Stripe Checkout.
+Dashboard (`/dashboard`) non supprimé — juste retiré de ce bouton précis,
+toujours utilisé ailleurs (tasks, agent aperçu).
 
 ## Décisions validées (ADR dans `docs/DECISIONS.md`, 19 entrées)
 - Monolithe modulaire, pas microservices (ADR-002)
@@ -66,10 +75,11 @@ faire relire par juriste avant clients réels. Registre RGPD art.30 dans
 `docs/RGPD-REGISTRE.md`.
 
 ## À faire (priorité)
-1. Commit + push de la refonte /onboarding (hologramme + compétences)
-2. Immatriculer l'entreprise → remplacer placeholders mentions légales
-3. Signer DPA avec Supabase/Vercel/Google/Groq
-4. AIPD (analyse d'impact RGPD) — obligatoire, traitement décisionnel auto
+1. Commit + push de /plans + /checkout (voir section Tarifs & paiement)
+2. Ouvrir un compte Stripe et brancher /checkout pour un vrai encaissement
+3. Immatriculer l'entreprise → remplacer placeholders mentions légales
+4. Signer DPA avec Supabase/Vercel/Google/Groq
+5. AIPD (analyse d'impact RGPD) — obligatoire, traitement décisionnel auto
 
 ## Skill installé
 `~/.claude/skills/runtime-optimizer` — mémoire projet compacte, extraction

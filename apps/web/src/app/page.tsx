@@ -20,6 +20,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Nav } from "@/components/landing/Nav";
 import { RecruitLink } from "@/components/landing/RecruitLink";
+import { PlanCard } from "@/components/landing/PlanCard";
+import { PLAN_ORDER, PLANS } from "@/lib/plans";
 import { CoreStage } from "@/components/landing/CoreStage";
 import { Mission } from "@/components/landing/Mission";
 import { Threshold } from "@/components/landing/Threshold";
@@ -134,49 +136,19 @@ export default function LandingPage() {
         <div className="lp-shell">
           <Reveal className="lp-sec-head">
             <span className="lp-mono">Tarifs</span>
-            <h2>Commencez gratuitement. Payez quand il travaille vraiment.</h2>
+            <h2>Choisissez la génération de votre équipe.</h2>
+            <p>
+              Trois paliers, pas trois quotas différents — chacun change ce que vos employés IA
+              sont capables de faire seuls.
+            </p>
           </Reveal>
 
           <div className="lp-plans">
-            <Reveal>
-              <div className="lp-plan">
-                <div className="lp-plan-tag">Essai</div>
-                <div className="lp-plan-amt">
-                  Gratuit
-                </div>
-                <p className="lp-plan-note">Le temps de vérifier qu&apos;il tient ses promesses.</p>
-                <ul>
-                  <li>Un employé actif</li>
-                  <li>Cent missions par mois</li>
-                  <li>Journal complet et validations</li>
-                </ul>
-                <RecruitLink href="/onboarding" className="lp-btn lp-btn--ghost">
-                  Commencer
-                </RecruitLink>
-              </div>
-            </Reveal>
-
-            <Reveal delay={90}>
-              <div className="lp-plan lp-plan--hot">
-                <div className="lp-plan-tag">Business</div>
-                <div className="lp-plan-amt">
-                  790 € <i>/ mois</i>
-                </div>
-                <p className="lp-plan-note">
-                  Environ quatre fois moins qu&apos;un poste équivalent, sans délai de
-                  recrutement.
-                </p>
-                <ul>
-                  <li>Employés et missions illimités</li>
-                  <li>Autonomie réglable par type d&apos;action</li>
-                  <li>Connexion à vos outils existants</li>
-                  <li>Hébergement européen</li>
-                </ul>
-                <RecruitLink href="/onboarding" className="lp-btn lp-btn--primary">
-                  Recruter
-                </RecruitLink>
-              </div>
-            </Reveal>
+            {PLAN_ORDER.map((id, i) => (
+              <Reveal key={id} delay={i * 90}>
+                <PlanCard plan={PLANS[id]} ctaHref={`/checkout?plan=${id}`} ctaLabel={`Choisir ${PLANS[id].name}`} />
+              </Reveal>
+            ))}
           </div>
         </div>
       </section>

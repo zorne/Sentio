@@ -1,9 +1,10 @@
 "use client";
 
 // Les deux CTA d'un agent déjà configuré — Tester (lance une vraie
-// mission) et Recruter (dashboard). Extrait de /agent pour être réutilisé
-// tel quel dans la nouvelle page d'onboarding : la logique de lancement
-// ne doit exister qu'à un seul endroit.
+// mission) et Recruter mon agent (choix de formule → paiement, /plans).
+// Extrait de /agent pour être réutilisé tel quel dans la nouvelle page
+// d'onboarding : la logique de lancement ne doit exister qu'à un seul
+// endroit.
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
@@ -33,8 +34,8 @@ export function AgentActions({ tenant, agentInstanceId }: { tenant: string; agen
         <button className="lp-btn lp-btn--primary" onClick={test} disabled={pending}>
           {pending ? "Il travaille…" : "Tester maintenant"}
         </button>
-        <Link href={`/dashboard?tenant=${tenant}`} className="lp-btn lp-btn--ghost">
-          Recruter — voir le tableau de bord
+        <Link href={`/plans?tenant=${tenant}&agent=${agentInstanceId}`} className="lp-btn lp-btn--ghost">
+          Recruter mon agent
         </Link>
       </div>
       {error && <p className="agt-err">{error}</p>}
