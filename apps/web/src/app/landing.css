@@ -22,9 +22,9 @@
   --void: #030303;
   --line: rgba(244, 245, 246, 0.09);
   --line-2: rgba(244, 245, 246, 0.16);
-  --mint: #6ee7a8;
-  --mint-dim: rgba(110, 231, 168, 0.12);
-  --mint-line: rgba(110, 231, 168, 0.32);
+  --mint: #2ee6f5;
+  --mint-dim: rgba(46, 230, 245, 0.12);
+  --mint-line: rgba(46, 230, 245, 0.32);
   --amber: #f5c451;
   --serif: 'Instrument Serif', Georgia, serif;
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
@@ -95,7 +95,7 @@ html { scroll-behavior: smooth; }
 .lp-btn--yes {
   background: var(--mint-dim); color: var(--mint); border-color: var(--mint-line);
 }
-.lp-btn--yes:hover { background: rgba(110, 231, 168, 0.2); transform: translateY(-2px); box-shadow: 0 10px 36px rgba(110, 231, 168, 0.16); }
+.lp-btn--yes:hover { background: rgba(46, 230, 245, 0.2); transform: translateY(-2px); box-shadow: 0 10px 36px rgba(46, 230, 245, 0.16); }
 .lp-btn--no { border-color: var(--line-2); color: var(--ink-3); background: transparent; }
 .lp-btn--no:hover { color: var(--ink-2); border-color: var(--ink-3); }
 .lp-btn:active { transform: translateY(0); }
@@ -126,7 +126,7 @@ html { scroll-behavior: smooth; }
 /* Repli quand la 3D est indisponible : la composition reste tenue. */
 .lp-core-fallback {
   position: absolute; inset: 0; z-index: -1;
-  background: radial-gradient(circle at 50% 44%, rgba(110, 231, 168, 0.09), transparent 52%);
+  background: radial-gradient(circle at 50% 44%, rgba(46, 230, 245, 0.09), transparent 52%);
 }
 
 .lp-hero-in { position: relative; z-index: 2; text-align: center; }
@@ -359,7 +359,7 @@ html { scroll-behavior: smooth; }
 .lp-plans { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
 @media (max-width: 800px) { .lp-plans { grid-template-columns: 1fr; } }
 .lp-plan { border: 1px solid var(--line); border-radius: 16px; padding: 34px 30px; display: flex; flex-direction: column; }
-.lp-plan--hot { border-color: var(--mint-line); background: linear-gradient(180deg, rgba(110, 231, 168, 0.045), transparent 60%); }
+.lp-plan--hot { border-color: var(--mint-line); background: linear-gradient(180deg, rgba(46, 230, 245, 0.045), transparent 60%); }
 .lp-plan-tag { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 16px; }
 .lp-plan-amt { font-family: var(--serif); font-size: 46px; letter-spacing: -0.03em; line-height: 1; margin-bottom: 10px; }
 .lp-plan-amt i { font-family: var(--sans, inherit); font-size: 14px; font-style: normal; color: var(--ink-3); letter-spacing: 0; }

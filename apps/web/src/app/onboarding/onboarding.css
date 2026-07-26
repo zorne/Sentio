@@ -1,0 +1,94 @@
+/* ════════════════════════════════════════════════════════════════════
+   /onboarding — l'hologramme est la pièce maîtresse, les compétences
+   s'allument autour selon ce que le visiteur raconte, le chat reste un
+   compagnon discret sur le côté. Même système que landing.css (--ink,
+   --mint, --serif, --mono, .lp-btn) : un seul vocabulaire visuel pour
+   tout ce qui n'est pas le dashboard.
+   ════════════════════════════════════════════════════════════════════ */
+
+.rec-page { min-height: calc(100svh - 70px); }
+
+.rec-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 48px;
+  padding: 48px clamp(20px, 4vw, 64px) 64px;
+  max-width: 1320px;
+  margin: 0 auto;
+}
+
+.rec-frame {
+  position: relative;
+  width: min(52vh, 440px);
+  height: min(78vh, 620px);
+  margin: 3vh auto 0;
+  flex: 1 1 auto;
+}
+.rec-frame .agt-stage {
+  position: absolute; inset: 0;
+  top: auto; left: auto; transform: none;
+  width: 100%; height: 100%;
+}
+
+.skc-field { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+.skc-card {
+  position: absolute;
+  width: 172px;
+  padding: 13px 15px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(244, 245, 246, 0.025);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  opacity: 0.26;
+  transform: scale(0.92);
+  transition: opacity 0.55s var(--ease), transform 0.55s var(--ease),
+    border-color 0.55s var(--ease), background 0.55s var(--ease), box-shadow 0.55s var(--ease);
+}
+.skc-card.is-on {
+  opacity: 1;
+  transform: scale(1);
+  border-color: var(--mint-line);
+  background: rgba(46, 230, 245, 0.055);
+  box-shadow: 0 10px 32px rgba(46, 230, 245, 0.1);
+}
+.skc-label {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--ink);
+}
+.skc-desc { font-size: 12px; line-height: 1.4; color: var(--ink-3); }
+
+.rec-side {
+  flex: 0 0 380px;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding-top: 2vh;
+}
+.rec-side-head span { display: block; margin-bottom: 10px; }
+.rec-title {
+  font-family: var(--serif); font-weight: 400;
+  font-size: clamp(22px, 2.6vw, 30px); line-height: 1.12; letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+@media (max-width: 980px) {
+  .rec-wrap { flex-direction: column; align-items: stretch; gap: 32px; }
+  .rec-side { flex: none; max-width: 100%; }
+  .rec-frame { width: min(80vw, 380px); height: min(60vh, 480px); }
+}
+
+@media (max-width: 560px) {
+  .rec-frame { width: 94vw; height: 56vh; }
+  .skc-card { width: 132px; padding: 9px 11px; }
+  .skc-label { font-size: 9.5px; }
+  .skc-desc { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skc-card { transition: none; }
+}

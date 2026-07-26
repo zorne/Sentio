@@ -15,18 +15,30 @@ Fondateur solo, budget €0, mode caveman actif (réponses terses demandées).
   données). Gemini = agents clients réels (no-train EEA).
 
 ## Conflit git résolu (26/07/2026)
-Décision utilisateur : garder l'approche remote/GitHub (déployée sur Vercel),
-pas la version locale. `main` reset sur `origin/main` (ancien commit local
-`cfe2f70` sauvegardé dans la branche `backup/onboarding-reveal-local`, pas
-supprimé). Le remote ne posait que "Parler à / Retour à l'équipe" sur `/agent`
-— pas de Recruter/Tester. Ajouté par-dessus :
-- `onboarding-actions.ts` : `onboardingChat` retourne aussi `agentInstanceId`
-- `OnboardingChat.tsx` : redirige vers `/agent?tenant=&agent=&role=&name=`
-- `app/agent/page.tsx` : si `tenant`+`agent` présents (sortie d'onboarding) →
-  boutons **Tester maintenant** (`launchSalesRun` → `/tasks/[id]`) et
-  **Recruter** (→ `/dashboard`). Sinon (lien vitrine direct depuis la landing,
-  sans tenant réel) → fallback sur les boutons d'origine "Parler à/Retour".
-Non commité — à valider avant `git add`/commit/push.
+Décision utilisateur : garder l'approche remote/GitHub (déployée sur Vercel).
+`main` reset sur `origin/main` (ancien commit local sauvegardé dans la branche
+`backup/onboarding-reveal-local`). `/agent` a ensuite reçu Tester/Recruter
+(voir section suivante).
+
+## Refonte /onboarding — hologramme + compétences (26/07/2026)
+`/onboarding` est maintenant la page "vitrine" : hologramme central
+(`AgentHologram3D.tsx`, silhouette en anneaux + balayage + socle émetteur +
+étoiles en orbite ; lumière volontairement stable, pas de scintillement, pas
+de rotation pilotée par le client), des cartes de compétences autour
+(`AgentSkillCards.tsx`) qui s'allument selon ce que le visiteur tape dans le
+chat, et le chat d'onboarding repositionné en petit sur le côté (jamais plus
+gros que l'hologramme).
+- `lib/agent-skills.ts` : règles front-end pures (mots-clés → compétences),
+  volontairement découplées du chat — ajouter une compétence n'y touche pas.
+- `OnboardingChat.tsx` : n'a plus de logique de redirection ; émet
+  `onUserMessage(text)` et `onComplete(tenantId, agentInstanceId)`, c'est la
+  page parente qui décide quoi en faire.
+- `AgentActions.tsx` (nouveau, `components/`) : boutons Tester/Recruter +
+  `launchSalesRun`, extrait pour être partagé entre `/onboarding` (une fois
+  l'agent créé) et `/agent` (lien direct/aperçu depuis la landing, inchangé).
+- Pas de nouvelle route : les 3 CTA "Recruter mon employé" de la landing
+  pointent déjà vers `/onboarding`, rien à changer côté liens.
+Non commité.
 
 ## Décisions validées (ADR dans `docs/DECISIONS.md`, 19 entrées)
 - Monolithe modulaire, pas microservices (ADR-002)
@@ -54,7 +66,7 @@ faire relire par juriste avant clients réels. Registre RGPD art.30 dans
 `docs/RGPD-REGISTRE.md`.
 
 ## À faire (priorité)
-1. Commit + push du fix Recruter/Tester sur `/agent` (voir section conflit git)
+1. Commit + push de la refonte /onboarding (hologramme + compétences)
 2. Immatriculer l'entreprise → remplacer placeholders mentions légales
 3. Signer DPA avec Supabase/Vercel/Google/Groq
 4. AIPD (analyse d'impact RGPD) — obligatoire, traitement décisionnel auto

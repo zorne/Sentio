@@ -16,7 +16,7 @@
   --border-strong: rgba(255,255,255,0.22);
   --glass: rgba(255,255,255,0.03);
   --glass-hover: rgba(255,255,255,0.055);
-  --green: #6ee7a8;
+  --green: #2ee6f5;
   --amber: #fbbf24;
   --red: #f87171;
 }
@@ -77,7 +77,7 @@ section { padding: 48px 0; }
   font-size: 11.5px; padding: 4px 10px; border-radius: 999px;
   background: var(--bg-elevated); border: 1px solid var(--border-default);
 }
-.status-chip.done { color: var(--green); border-color: rgba(110,231,168,0.3); }
+.status-chip.done { color: var(--green); border-color: rgba(46,230,245,0.3); }
 .status-chip.waiting { color: var(--amber); border-color: rgba(251,191,36,0.3); }
 .status-chip.running { color: var(--text-secondary); }
 .status-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
@@ -97,8 +97,8 @@ section { padding: 48px 0; }
 .btn-primary:disabled { opacity: 0.5; cursor: wait; transform: none; box-shadow: none; }
 .btn-secondary { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-default); }
 .btn-secondary:hover { background: var(--glass-hover); color: var(--text-primary); }
-.btn-approve { background: rgba(110,231,168,0.12); color: var(--green); border: 1px solid rgba(110,231,168,0.3); }
-.btn-approve:hover { background: rgba(110,231,168,0.2); }
+.btn-approve { background: rgba(46,230,245,0.12); color: var(--green); border: 1px solid rgba(46,230,245,0.3); }
+.btn-approve:hover { background: rgba(46,230,245,0.2); }
 .btn-reject { background: rgba(248,113,113,0.08); color: var(--red); border: 1px solid rgba(248,113,113,0.25); }
 .btn-reject:hover { background: rgba(248,113,113,0.15); }
 
@@ -109,7 +109,7 @@ section { padding: 48px 0; }
   border-bottom: 1px solid var(--border-subtle);
 }
 .step-row:last-child { border-bottom: none; }
-.step-row--summary { background: rgba(110,231,168,0.04); }
+.step-row--summary { background: rgba(46,230,245,0.04); }
 
 .step-icon {
   flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%;
@@ -126,7 +126,7 @@ section { padding: 48px 0; }
 .step-icon--write::after { background: #93c5fd; }
 .step-icon--mail::after { background: var(--amber); }
 .step-icon--error::after { background: var(--red); }
-.step-icon--done { border-color: rgba(110,231,168,0.4); }
+.step-icon--done { border-color: rgba(46,230,245,0.4); }
 .step-icon--done::after { background: var(--green); border-radius: 50%; }
 
 .step-title { font-size: 14px; color: var(--text-primary); font-weight: 500; }

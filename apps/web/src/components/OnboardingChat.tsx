@@ -1,6 +1,5 @@
 "use client";
 import { useState, useTransition, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { onboardingChat, type ChatMessage } from "@/lib/onboarding-actions";
 
 const FIRST_MESSAGE =
@@ -12,14 +11,23 @@ const FIRST_MESSAGE =
 // doit pas finir dans le bundle client.
 const DEMO_TENANT_ID = "00000000-0000-0000-0000-000000000001";
 const DEMO_AGENT_INSTANCE_ID = "00000000-0000-0000-0000-000000000002";
-const SKIP_HREF = `/agent?tenant=${DEMO_TENANT_ID}&agent=${DEMO_AGENT_INSTANCE_ID}&role=commercial&name=${encodeURIComponent("Employé commercial")}`;
 
-export function OnboardingChat() {
+export function OnboardingChat({
+  onUserMessage,
+  onComplete,
+}: {
+  /** Émis à chaque message envoyé — le texte brut, rien d'autre. Ce que le
+   *  destinataire en fait (matcher des compétences, logger…) ne regarde
+   *  pas ce composant. */
+  onUserMessage?: (text: string) => void;
+  /** Émis une fois quand l'agent est réellement créé (ou simulé via
+   *  "Passer"). */
+  onComplete?: (tenantId: string, agentInstanceId: string) => void;
+}) {
   const [messages, setMessages] = useState<ChatMessage[]>([{ role: "assistant", content: FIRST_MESSAGE }]);
   const [input, setInput] = useState("");
   const [pending, startTransition] = useTransition();
   const [done, setDone] = useState(false);
-  const router = useRouter();
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -32,23 +40,20 @@ export function OnboardingChat() {
     const next: ChatMessage[] = [...messages, { role: "user", content: text }];
     setMessages(next);
     setInput("");
+    onUserMessage?.(text);
     startTransition(async () => {
       const { reply, tenantId, agentInstanceId } = await onboardingChat(next);
       setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
       if (tenantId && agentInstanceId) {
         setDone(true);
-        // Laisse le dernier message le temps de s'afficher, puis bascule
-        // vers la page de révélation dédiée (même rendu 3D que le hero).
-        // role="commercial" en dur : seul métier "en service" pour l'instant
-        // (voir la landing). Adapter si un jour plusieurs métiers sont
-        // proposés dès l'onboarding.
-        setTimeout(() => {
-          router.push(
-            `/agent?tenant=${tenantId}&agent=${agentInstanceId}&role=commercial&name=${encodeURIComponent("Employé commercial")}`
-          );
-        }, 900);
+        onComplete?.(tenantId, agentInstanceId);
       }
     });
+  }
+
+  function skip() {
+    setDone(true);
+    onComplete?.(DEMO_TENANT_ID, DEMO_AGENT_INSTANCE_ID);
   }
 
   return (
@@ -77,12 +82,20 @@ export function OnboardingChat() {
             </button>
           </div>
           <div style={{ textAlign: "center", padding: "0 20px 16px" }}>
-            <a
-              href={SKIP_HREF}
-              style={{ fontSize: 13, color: "var(--text-tertiary)", textDecoration: "underline" }}
+            <button
+              onClick={skip}
+              style={{
+                fontSize: 13,
+                color: "var(--text-tertiary)",
+                textDecoration: "underline",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                font: "inherit",
+              }}
             >
               Passer voir un exemple d&apos;agent
-            </a>
+            </button>
           </div>
         </>
       )}

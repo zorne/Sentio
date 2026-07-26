@@ -20,7 +20,7 @@ import { useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
-const MINT = new THREE.Color("#6ee7a8");
+const MINT = new THREE.Color("#2ee6f5");
 const PALE = new THREE.Color("#c8d2dc");
 
 /** Texture de point douce, générée une fois — évite un aller-retour réseau
@@ -86,9 +86,9 @@ function Nucleus() {
   });
 
   const layers: Array<{ scale: number; color: string; opacity: number }> = [
-    { scale: 3.9, color: "#3ba876", opacity: 0.5 },
-    { scale: 2.1, color: "#6ee7a8", opacity: 0.62 },
-    { scale: 1.05, color: "#eafff4", opacity: 0.95 },
+    { scale: 3.9, color: "#1f8a95", opacity: 0.5 },
+    { scale: 2.1, color: "#2ee6f5", opacity: 0.62 },
+    { scale: 1.05, color: "#eafeff", opacity: 0.95 },
     { scale: 0.42, color: "#ffffff", opacity: 1 },
   ];
 
@@ -207,14 +207,14 @@ function Orbit({
   return (
     <group rotation={tilt}>
       <primitive object={new THREE.Line(ringGeo, new THREE.LineBasicMaterial({
-        color: active ? "#6ee7a8" : "#ffffff",
+        color: active ? "#2ee6f5" : "#ffffff",
         transparent: true,
         opacity: active ? 0.2 : 0.07,
       }))} />
       <mesh ref={sat}>
         <sphereGeometry args={[active ? 0.028 : 0.016, 12, 12]} />
         <meshBasicMaterial
-          color={active ? "#6ee7a8" : "#9aa6b2"}
+          color={active ? "#2ee6f5" : "#9aa6b2"}
           transparent
           opacity={active ? 1 : 0.62}
         />
@@ -223,7 +223,7 @@ function Orbit({
           <sprite scale={[0.34, 0.34, 0.34]}>
             <spriteMaterial
               map={dot}
-              color="#6ee7a8"
+              color="#2ee6f5"
               transparent
               opacity={0.55}
               blending={THREE.AdditiveBlending}
@@ -260,7 +260,7 @@ export default function Core3D() {
   return (
     <Canvas
       camera={{ position: [0, 0, 4.6], fov: 42 }}
-      dpr={[1, 1.5]}
+      dpr={[1, 2]}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       style={{ pointerEvents: "none" }}
     >
