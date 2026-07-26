@@ -11,12 +11,13 @@ export const metadata: Metadata = {
   title: "SENTIA — Récapitulatif de commande",
 };
 
-export default function CheckoutPage({
+export default async function CheckoutPage({
   searchParams,
 }: {
-  searchParams: { plan?: string; tenant?: string; agent?: string };
+  searchParams: Promise<{ plan?: string; tenant?: string; agent?: string }>;
 }) {
-  const plan = getPlan(searchParams.plan);
+  const { plan: planId } = await searchParams;
+  const plan = getPlan(planId);
   if (!plan) notFound();
 
   return (

@@ -14,12 +14,12 @@ export const metadata: Metadata = {
 // on le reporte sur /checkout pour que le paiement sache pour quel agent
 // il s'engage. Un accès direct (depuis la landing) n'a simplement pas ce
 // contexte, /checkout reste utilisable sans.
-export default function PlansPage({
+export default async function PlansPage({
   searchParams,
 }: {
-  searchParams: { tenant?: string; agent?: string };
+  searchParams: Promise<{ tenant?: string; agent?: string }>;
 }) {
-  const { tenant, agent } = searchParams;
+  const { tenant, agent } = await searchParams;
   const extra = tenant && agent ? `&tenant=${tenant}&agent=${agent}` : "";
 
   return (
