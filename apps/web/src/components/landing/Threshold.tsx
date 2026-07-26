@@ -15,6 +15,7 @@
 // ════════════════════════════════════════════════════════════════════
 
 import { useState } from "react";
+import { RecruitLink } from "./RecruitLink";
 
 type Verdict = null | "sent" | "held";
 
@@ -96,9 +97,9 @@ export function Threshold() {
               demandera jamais.
             </p>
             <div className="lp-th-act">
-              <a href="/onboarding" className="lp-btn lp-btn--primary">
+              <RecruitLink href="/onboarding" className="lp-btn lp-btn--primary">
                 Recruter mon employé
-              </a>
+              </RecruitLink>
               <button className="lp-btn lp-btn--ghost" onClick={() => setVerdict(null)}>
                 Revoir la décision
               </button>

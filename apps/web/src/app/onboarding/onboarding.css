@@ -6,23 +6,25 @@
    tout ce qui n'est pas le dashboard.
    ════════════════════════════════════════════════════════════════════ */
 
-.rec-page { min-height: calc(100svh - 70px); }
+.rec-page {
+  min-height: calc(100svh - 70px);
+  display: flex;
+  animation: rec-arrive 0.5s var(--ease);
+}
+@keyframes rec-arrive { from { opacity: 0; } to { opacity: 1; } }
 
 .rec-wrap {
+  flex: 1;
   display: flex;
-  align-items: flex-start;
-  gap: 48px;
-  padding: 48px clamp(20px, 4vw, 64px) 64px;
-  max-width: 1320px;
-  margin: 0 auto;
+  align-items: stretch;
+  gap: 40px;
+  padding: 36px clamp(20px, 3vw, 56px);
+  width: 100%;
 }
 
 .rec-frame {
   position: relative;
-  width: min(52vh, 440px);
-  height: min(78vh, 620px);
-  margin: 3vh auto 0;
-  flex: 1 1 auto;
+  flex: 1 1 60%;
 }
 .rec-frame .agt-stage {
   position: absolute; inset: 0;
@@ -62,13 +64,15 @@
 .skc-desc { font-size: 12px; line-height: 1.4; color: var(--ink-3); }
 
 .rec-side {
-  flex: 0 0 380px;
-  max-width: 380px;
+  flex: 1 1 40%;
+  max-width: 620px;
+  min-width: 320px;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  padding-top: 2vh;
+  gap: 20px;
 }
+.rec-side-head { flex: 0 0 auto; }
 .rec-side-head span { display: block; margin-bottom: 10px; }
 .rec-title {
   font-family: var(--serif); font-weight: 400;
@@ -76,14 +80,18 @@
   color: var(--ink);
 }
 
+.rec-chat { flex: 1 1 auto; min-height: 0; display: flex; }
+.rec-chat .card { height: 100% !important; }
+
 @media (max-width: 980px) {
   .rec-wrap { flex-direction: column; align-items: stretch; gap: 32px; }
-  .rec-side { flex: none; max-width: 100%; }
-  .rec-frame { width: min(80vw, 380px); height: min(60vh, 480px); }
+  .rec-side { flex: 1 1 auto; max-width: 100%; min-width: 0; }
+  .rec-frame { flex: 0 0 min(60vh, 520px); }
+  .rec-chat .card { height: 480px !important; }
 }
 
 @media (max-width: 560px) {
-  .rec-frame { width: 94vw; height: 56vh; }
+  .rec-frame { flex-basis: min(52vh, 420px); }
   .skc-card { width: 132px; padding: 9px 11px; }
   .skc-label { font-size: 9.5px; }
   .skc-desc { display: none; }

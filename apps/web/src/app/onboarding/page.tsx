@@ -13,7 +13,7 @@
 // ════════════════════════════════════════════════════════════════════
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Logomark } from "@/components/Logomark";
 import { OnboardingChat } from "@/components/OnboardingChat";
 import { AgentHologramStage } from "@/components/landing/AgentHologramStage";
@@ -28,6 +28,13 @@ export default function OnboardingPage() {
   const [userTexts, setUserTexts] = useState<string[]>([]);
   const [ready, setReady] = useState<{ tenant: string; agentInstanceId: string } | null>(null);
   const skills = useMemo(() => matchSkills(userTexts), [userTexts]);
+
+  // La navigation client (router.push) ne recrée jamais <body> : la classe
+  // posée par RecruitLink avant de quitter la page précédente doit être
+  // retirée ici, sinon la page reste invisible (opacity: 0 pour toujours).
+  useEffect(() => {
+    document.body.classList.remove("rt-leaving");
+  }, []);
 
   return (
     <>
@@ -56,10 +63,12 @@ export default function OnboardingPage() {
               <h1 className="rec-title">Il s&apos;équipe pendant que vous répondez.</h1>
             </div>
 
-            <OnboardingChat
-              onUserMessage={(text) => setUserTexts((prev) => [...prev, text])}
-              onComplete={(tenant, agentInstanceId) => setReady({ tenant, agentInstanceId })}
-            />
+            <div className="rec-chat">
+              <OnboardingChat
+                onUserMessage={(text) => setUserTexts((prev) => [...prev, text])}
+                onComplete={(tenant, agentInstanceId) => setReady({ tenant, agentInstanceId })}
+              />
+            </div>
 
             {ready && <AgentActions tenant={ready.tenant} agentInstanceId={ready.agentInstanceId} />}
           </aside>

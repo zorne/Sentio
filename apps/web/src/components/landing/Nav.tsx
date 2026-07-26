@@ -6,6 +6,7 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { Logomark } from "@/components/Logomark";
+import { RecruitLink } from "./RecruitLink";
 
 export function Nav() {
   const ref = useRef<HTMLElement>(null);
@@ -34,9 +35,9 @@ export function Nav() {
           <Logomark size={18} />
           SENTIA
         </Link>
-        <Link href="/onboarding" className="lp-btn lp-btn--ghost lp-btn--sm">
+        <RecruitLink href="/onboarding" className="lp-btn lp-btn--ghost lp-btn--sm">
           Recruter
-        </Link>
+        </RecruitLink>
       </div>
     </nav>
   );

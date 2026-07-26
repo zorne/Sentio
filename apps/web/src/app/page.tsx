@@ -19,6 +19,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Nav } from "@/components/landing/Nav";
+import { RecruitLink } from "@/components/landing/RecruitLink";
 import { CoreStage } from "@/components/landing/CoreStage";
 import { Mission } from "@/components/landing/Mission";
 import { Threshold } from "@/components/landing/Threshold";
@@ -68,9 +69,9 @@ export default function LandingPage() {
             décision. Rien d&apos;irréversible ne part sans vous.
           </p>
           <div className="lp-hero-act">
-            <Link href="/onboarding" className="lp-btn lp-btn--primary">
+            <RecruitLink href="/onboarding" className="lp-btn lp-btn--primary">
               Recruter mon employé
-            </Link>
+            </RecruitLink>
           </div>
         </div>
 
@@ -148,9 +149,9 @@ export default function LandingPage() {
                   <li>Cent missions par mois</li>
                   <li>Journal complet et validations</li>
                 </ul>
-                <Link href="/onboarding" className="lp-btn lp-btn--ghost">
+                <RecruitLink href="/onboarding" className="lp-btn lp-btn--ghost">
                   Commencer
-                </Link>
+                </RecruitLink>
               </div>
             </Reveal>
 
@@ -170,9 +171,9 @@ export default function LandingPage() {
                   <li>Connexion à vos outils existants</li>
                   <li>Hébergement européen</li>
                 </ul>
-                <Link href="/onboarding" className="lp-btn lp-btn--primary">
+                <RecruitLink href="/onboarding" className="lp-btn lp-btn--primary">
                   Recruter
-                </Link>
+                </RecruitLink>
               </div>
             </Reveal>
           </div>
@@ -185,9 +186,9 @@ export default function LandingPage() {
             <h2>Il peut commencer aujourd&apos;hui.</h2>
             <p>Deux minutes de conversation, et il se met au travail.</p>
             <div className="lp-th-act">
-              <Link href="/onboarding" className="lp-btn lp-btn--primary">
+              <RecruitLink href="/onboarding" className="lp-btn lp-btn--primary">
                 Recruter mon employé
-              </Link>
+              </RecruitLink>
             </div>
           </Reveal>
         </div>
