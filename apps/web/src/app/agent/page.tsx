@@ -49,41 +49,131 @@ function AgentPageContent() {
   const role = params.get("role") ?? DEFAULT_ROLE;
 
   return (
-    <main className="relative min-h-screen w-full overflow-hidden bg-[#0b0f0d] text-white">
+    <main
+      style={{
+        position: "relative",
+        minHeight: "100vh",
+        width: "100%",
+        overflow: "hidden",
+        background: "#0b0f0d",
+        color: "#ffffff",
+        fontFamily: "inherit",
+      }}
+    >
       {/* Champ 3D en fond, jamais interactif au clic : le pointeur ne sert
           qu'à la parallaxe, gérée directement dans le canvas. */}
-      <div className="pointer-events-none absolute inset-0 flex items-start justify-center pt-[14vh]">
-        <div className="h-[46vh] w-[46vh] max-w-[560px] max-h-[560px] min-w-[280px] min-h-[280px]">
+      <div
+        style={{
+          pointerEvents: "none",
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "center",
+          paddingTop: "14vh",
+        }}
+      >
+        <div
+          style={{
+            height: "46vh",
+            width: "46vh",
+            maxWidth: 560,
+            maxHeight: 560,
+            minWidth: 280,
+            minHeight: 280,
+          }}
+        >
           <AgentHero3D accent={ACCENT} base={BASE} />
         </div>
       </div>
 
       {/* Contenu, posé au-dessus du noyau plutôt qu'au milieu de celui-ci. */}
-      <div className="relative z-10 flex min-h-screen flex-col items-center px-6 pb-12 pt-[54vh] text-center">
-        <p className="text-xs uppercase tracking-[0.28em] text-white/45">
+      <div
+        style={{
+          position: "relative",
+          zIndex: 10,
+          display: "flex",
+          minHeight: "100vh",
+          flexDirection: "column",
+          alignItems: "center",
+          padding: "0 24px 48px",
+          paddingTop: "54vh",
+          textAlign: "center",
+        }}
+      >
+        <p
+          style={{
+            fontSize: 12,
+            textTransform: "uppercase",
+            letterSpacing: "0.28em",
+            color: "rgba(255,255,255,0.45)",
+            margin: 0,
+          }}
+        >
           Employé recruté
         </p>
-        <h1 className="mt-3 font-serif text-4xl tracking-tight sm:text-5xl">
+        <h1
+          style={{
+            marginTop: 12,
+            fontSize: 40,
+            fontWeight: 600,
+            letterSpacing: "-0.01em",
+          }}
+        >
           {name}
         </h1>
-        <p className="mt-2 text-base text-white/60 sm:text-lg">{role}</p>
+        <p style={{ marginTop: 8, fontSize: 17, color: "rgba(255,255,255,0.6)" }}>
+          {role}
+        </p>
 
-        <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+        <div
+          style={{
+            marginTop: 40,
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+          }}
+        >
           <a
             href={`/chat${tenant ? `?tenant=${tenant}` : ""}`}
-            className="rounded-full bg-[#6ee7a8] px-7 py-3 text-sm font-medium text-[#0b0f0d] transition hover:bg-[#7ff0b5] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6ee7a8]"
+            style={{
+              borderRadius: 999,
+              background: "#6ee7a8",
+              padding: "12px 28px",
+              fontSize: 14,
+              fontWeight: 500,
+              color: "#0b0f0d",
+              textDecoration: "none",
+              display: "inline-block",
+            }}
           >
             Parler à {name}
           </a>
           <a
             href="/"
-            className="rounded-full border border-white/15 px-7 py-3 text-sm font-medium text-white/80 transition hover:border-white/30 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+            style={{
+              borderRadius: 999,
+              border: "1px solid rgba(255,255,255,0.15)",
+              padding: "12px 28px",
+              fontSize: 14,
+              fontWeight: 500,
+              color: "rgba(255,255,255,0.8)",
+              textDecoration: "none",
+              display: "inline-block",
+            }}
           >
             Retour à l'équipe
           </a>
         </div>
 
-        <p className="mt-8 max-w-md text-sm text-white/40">
+        <p
+          style={{
+            marginTop: 32,
+            maxWidth: 420,
+            fontSize: 14,
+            color: "rgba(255,255,255,0.4)",
+          }}
+        >
           {name} écoute en continu pendant que vous rédigez — pas besoin
           d'attendre la fin pour qu'il commence à comprendre.
         </p>
