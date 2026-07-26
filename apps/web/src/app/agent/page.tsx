@@ -15,6 +15,7 @@
 // ════════════════════════════════════════════════════════════════════
 
 import dynamic from "next/dynamic";
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 const AgentHero3D = dynamic(() => import("@/components/landing/AgentHero3D"), {
@@ -29,7 +30,18 @@ const BASE = "#c8d2dc";
 const DEFAULT_NAME = "Léo";
 const DEFAULT_ROLE = "Assistant conversationnel";
 
+// Next.js exige que tout composant lisant useSearchParams() soit enveloppé
+// dans un Suspense quand la page est pré-rendue : sans ce boundary, le
+// build échoue à l'étape "Generating static pages".
 export default function AgentPage() {
+  return (
+    <Suspense fallback={null}>
+      <AgentPageContent />
+    </Suspense>
+  );
+}
+
+function AgentPageContent() {
   const params = useSearchParams();
 
   const tenant = params.get("tenant");
