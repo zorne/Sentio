@@ -21,6 +21,7 @@ export interface ChatMessage {
 export interface OnboardingResult {
   reply: string;
   tenantId?: string;
+  agentInstanceId?: string;
 }
 
 export async function onboardingChat(history: ChatMessage[]): Promise<OnboardingResult> {
@@ -57,6 +58,7 @@ export async function onboardingChat(history: ChatMessage[]): Promise<Onboarding
           "C'est fait ! Votre Employé IA Commercial est prêt et personnalisé selon vos réponses. " +
           "Vous pouvez maintenant voir son tableau de bord.",
         tenantId: output.tenantId,
+        agentInstanceId: output.agentInstanceId,
       };
     }
 

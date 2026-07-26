@@ -15,8 +15,9 @@
 // ════════════════════════════════════════════════════════════════════
 
 import dynamic from "next/dynamic";
-import { Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { launchSalesRun } from "@/lib/agent-actions";
 
 const AgentHero3D = dynamic(() => import("@/components/landing/AgentHero3D"), {
   ssr: false,
@@ -43,10 +44,33 @@ export default function AgentPage() {
 
 function AgentPageContent() {
   const params = useSearchParams();
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
   const tenant = params.get("tenant");
+  const agentInstanceId = params.get("agent");
   const name = params.get("name") ?? DEFAULT_NAME;
   const role = params.get("role") ?? DEFAULT_ROLE;
+
+  // Juste après l'onboarding, on a un vrai (tenant, agentInstanceId) : on
+  // propose de recruter ou de tester tout de suite. Un lien direct depuis
+  // la landing (sans ces deux ids) reste une simple vitrine — pas de tenant
+  // réel à qui rattacher une tâche.
+  const justCreated = Boolean(tenant && agentInstanceId);
+
+  function test() {
+    if (!tenant || !agentInstanceId) return;
+    setError(null);
+    startTransition(async () => {
+      try {
+        const { taskId } = await launchSalesRun(tenant, agentInstanceId);
+        router.push(`/tasks/${taskId}`);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    });
+  }
 
   return (
     <main
@@ -134,36 +158,78 @@ function AgentPageContent() {
             gap: 12,
           }}
         >
-          <a
-            href={`/chat${tenant ? `?tenant=${tenant}` : ""}`}
-            style={{
-              borderRadius: 999,
-              background: "#6ee7a8",
-              padding: "12px 28px",
-              fontSize: 14,
-              fontWeight: 500,
-              color: "#0b0f0d",
-              textDecoration: "none",
-              display: "inline-block",
-            }}
-          >
-            Parler à {name}
-          </a>
-          <a
-            href="/"
-            style={{
-              borderRadius: 999,
-              border: "1px solid rgba(255,255,255,0.15)",
-              padding: "12px 28px",
-              fontSize: 14,
-              fontWeight: 500,
-              color: "rgba(255,255,255,0.8)",
-              textDecoration: "none",
-              display: "inline-block",
-            }}
-          >
-            Retour à l'équipe
-          </a>
+          {justCreated ? (
+            <>
+              <button
+                onClick={test}
+                disabled={pending}
+                style={{
+                  borderRadius: 999,
+                  background: "#6ee7a8",
+                  padding: "12px 28px",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color: "#0b0f0d",
+                  border: "none",
+                  cursor: pending ? "default" : "pointer",
+                  opacity: pending ? 0.7 : 1,
+                }}
+              >
+                {pending ? "Il travaille…" : "Tester maintenant"}
+              </button>
+              <a
+                href={`/dashboard?tenant=${tenant}`}
+                style={{
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  padding: "12px 28px",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color: "rgba(255,255,255,0.8)",
+                  textDecoration: "none",
+                  display: "inline-block",
+                }}
+              >
+                Recruter — voir le tableau de bord
+              </a>
+              {error && (
+                <p style={{ color: "#f0a", fontSize: 13, marginTop: 4 }}>{error}</p>
+              )}
+            </>
+          ) : (
+            <>
+              <a
+                href={`/chat${tenant ? `?tenant=${tenant}` : ""}`}
+                style={{
+                  borderRadius: 999,
+                  background: "#6ee7a8",
+                  padding: "12px 28px",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color: "#0b0f0d",
+                  textDecoration: "none",
+                  display: "inline-block",
+                }}
+              >
+                Parler à {name}
+              </a>
+              <a
+                href="/"
+                style={{
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  padding: "12px 28px",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color: "rgba(255,255,255,0.8)",
+                  textDecoration: "none",
+                  display: "inline-block",
+                }}
+              >
+                Retour à l'équipe
+              </a>
+            </>
+          )}
         </div>
 
         <p
