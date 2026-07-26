@@ -49,11 +49,14 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
     <>
       <nav className="nav">
         <div className="container nav-inner">
-          <Link href="/dashboard" className="brand">
+          <Link href="/" className="brand">
             <Logomark />
             SENTIA
           </Link>
-          <span className="user-chip">Mode démo — sans connexion</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <span className="user-chip">Mode démo — sans connexion</span>
+            <Link href="/dashboard" className="nav-back" aria-label="Retour au dashboard">← Dashboard</Link>
+          </div>
         </div>
       </nav>
 

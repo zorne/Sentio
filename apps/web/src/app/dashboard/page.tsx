@@ -45,13 +45,16 @@ export default async function Home({
     <>
       <nav className="nav">
         <div className="container nav-inner">
-          <Link href="/dashboard" className="brand">
+          <Link href="/" className="brand">
             <Logomark />
             SENTIA
           </Link>
-          <span className="user-chip">
-            {tenantId === DEMO_TENANT_ID ? "Mode démo — sans connexion" : agentInstance?.name}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <span className="user-chip">
+              {tenantId === DEMO_TENANT_ID ? "Mode démo — sans connexion" : agentInstance?.name}
+            </span>
+            <Link href="/" className="nav-back" aria-label="Retour à l'accueil">← Retour</Link>
+          </div>
         </div>
       </nav>
 

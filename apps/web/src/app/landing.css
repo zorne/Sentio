@@ -501,3 +501,34 @@ html { scroll-behavior: smooth; }
   transition: color 0.2s var(--ease);
 }
 .lp-foot-links a:hover { color: var(--ink-2); }
+
+/* ─── ScrollNav — indicateur de progression latéral ─── */
+.lp-scrollnav {
+  position: fixed; left: 24px; top: 50%; transform: translateY(-50%);
+  z-index: 90; pointer-events: none;
+}
+.lp-scrollnav ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 14px; }
+.lp-scrollnav a {
+  display: inline-flex; align-items: center; gap: 12px;
+  text-decoration: none; color: var(--ink-3);
+  pointer-events: auto; padding: 4px 0;
+  transition: color 0.3s var(--ease);
+}
+.lp-sn-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--ink-3); opacity: 0.4;
+  transition: all 0.3s var(--ease);
+}
+.lp-sn-lbl {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0; transform: translateX(-4px);
+  transition: opacity 0.3s var(--ease), transform 0.3s var(--ease);
+}
+.lp-scrollnav:hover .lp-sn-lbl,
+.lp-scrollnav a.is-on .lp-sn-lbl { opacity: 1; transform: none; }
+.lp-scrollnav a.is-on { color: var(--ink); }
+.lp-scrollnav a.is-on .lp-sn-dot { background: var(--mint); opacity: 1; box-shadow: 0 0 10px var(--mint-line); }
+.lp-scrollnav a:hover .lp-sn-dot { opacity: 1; }
+@media (max-width: 900px) { .lp-scrollnav { display: none; } }
+@media (prefers-reduced-motion: reduce) { .lp-sn-lbl { opacity: 1 !important; transform: none !important; } }

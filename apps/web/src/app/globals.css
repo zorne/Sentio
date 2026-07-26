@@ -204,3 +204,13 @@ section { padding: 48px 0; }
   background: var(--bg-elevated); border: 1px solid var(--border-default);
   color: var(--text-primary); font-family: inherit; font-size: 13.5px;
 }
+
+/* Bouton retour de nav — cohérent avec les boutons ghost du dashboard */
+.nav-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: 8px; font-size: 12.5px;
+  color: var(--text-secondary); text-decoration: none;
+  border: 1px solid var(--border-default);
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.nav-back:hover { color: var(--text-primary); border-color: var(--border-strong); background: var(--glass); }

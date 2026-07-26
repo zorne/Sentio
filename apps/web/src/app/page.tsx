@@ -24,6 +24,7 @@ import { Mission } from "@/components/landing/Mission";
 import { Threshold } from "@/components/landing/Threshold";
 import { Reveal } from "@/components/landing/Reveal";
 import { Advisor } from "@/components/landing/Advisor";
+import { ScrollNav } from "@/components/landing/ScrollNav";
 import "./landing.css";
 
 export const metadata: Metadata = {
@@ -51,9 +52,10 @@ export default function LandingPage() {
   return (
     <div className="lp">
       <Nav />
+      <ScrollNav />
 
       {/* ── I. PRÉSENCE ─────────────────────────────────────────── */}
-      <header className="lp-hero">
+      <header className="lp-hero" id="hero">
         <CoreStage />
         <div className="lp-shell lp-hero-in">
           <span className="lp-hero-tag">Employé commercial · en service</span>
@@ -72,10 +74,6 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div className="lp-scroll-hint">
-          <span className="lp-scroll-line" />
-          une mission, en direct
-        </div>
       </header>
 
       {/* ── II. MISSION ─────────────────────────────────────────── */}

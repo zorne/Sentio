@@ -103,7 +103,7 @@ export function Mission() {
   const current = BEATS[beat]!;
 
   return (
-    <div className="lp-mission" ref={wrapRef}>
+    <div className="lp-mission" id="mission" ref={wrapRef}>
       <div className="lp-mission-stage">
         <div className="lp-shell lp-mission-grid">
           {/* Fil de progression — guide, pas décor : il dit où l'on en est */}

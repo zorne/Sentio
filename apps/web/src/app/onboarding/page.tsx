@@ -7,10 +7,11 @@ export default function OnboardingPage() {
     <>
       <nav className="nav">
         <div className="container nav-inner">
-          <Link href="/dashboard" className="brand">
+          <Link href="/" className="brand">
             <Logomark />
             SENTIA
           </Link>
+          <Link href="/" className="nav-back" aria-label="Retour à l'accueil">← Retour</Link>
         </div>
       </nav>
 
