@@ -6,7 +6,7 @@ import { onboardingChat, type ChatMessage } from "@/lib/onboarding-actions";
 
 // Chargé côté client uniquement (Canvas/WebGL n'existe pas en SSR),
 // comme c'est probablement déjà fait pour Core3D ailleurs sur le site.
-const AgentCore3D = dynamic(() => import("./AgentCore3D"), { ssr: false });
+const AgentCore3D = dynamic(() => import("./landing/AgentCore3D"), { ssr: false });
 
 const FIRST_MESSAGE =
   "Bonjour ! Je vais configurer votre premier Employé IA. Pour commencer, quel est le nom de votre entreprise, et une adresse email de contact ?";
