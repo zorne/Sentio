@@ -347,6 +347,7 @@ html { scroll-behavior: smooth; }
   display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: baseline;
   padding: 24px 4px; border-bottom: 1px solid var(--line);
   transition: padding-left 0.4s var(--ease), background 0.4s var(--ease);
+  text-decoration: none; color: inherit; cursor: pointer;
 }
 .lp-role:hover { padding-left: 14px; background: rgba(244, 245, 246, 0.014); }
 .lp-role-l { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }

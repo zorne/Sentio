@@ -41,11 +41,11 @@ export const metadata: Metadata = {
 };
 
 const ROLES = [
-  { name: "Commercial", desc: "Relance vos prospects, prépare vos rendez-vous.", live: true },
-  { name: "Support", desc: "Traite les demandes, documente les réponses.", live: false },
-  { name: "Comptabilité", desc: "Émet les factures, relance les impayés.", live: false },
-  { name: "Marketing", desc: "Rédige et planifie vos campagnes.", live: false },
-  { name: "Ressources humaines", desc: "Trie les candidatures, organise les entretiens.", live: false },
+  { slug: "commercial", name: "Commercial", desc: "Relance vos prospects, prépare vos rendez-vous.", live: true },
+  { slug: "support", name: "Support", desc: "Traite les demandes, documente les réponses.", live: false },
+  { slug: "comptabilite", name: "Comptabilité", desc: "Émet les factures, relance les impayés.", live: false },
+  { slug: "marketing", name: "Marketing", desc: "Rédige et planifie vos campagnes.", live: false },
+  { slug: "rh", name: "Ressources humaines", desc: "Trie les candidatures, organise les entretiens.", live: false },
 ];
 
 
@@ -109,12 +109,13 @@ export default function LandingPage() {
           <Reveal className="lp-sec-head">
             <span className="lp-mono">L&apos;équipe</span>
             <h2>Un seul moteur. Autant de métiers.</h2>
+            <p>Choisissez votre agent — il vous accompagne dès l&apos;interview.</p>
           </Reveal>
 
           <Reveal>
             <div className="lp-roles">
               {ROLES.map((r) => (
-                <div className="lp-role" key={r.name}>
+                <RecruitLink href={`/onboarding?agent=${r.slug}`} className="lp-role" key={r.slug}>
                   <div className="lp-role-l">
                     <span className="lp-role-name">{r.name}</span>
                     <span className="lp-role-desc">{r.desc}</span>
@@ -122,7 +123,7 @@ export default function LandingPage() {
                   <span className={`lp-role-state${r.live ? " is-live" : ""}`}>
                     {r.live ? "en service" : "bientôt"}
                   </span>
-                </div>
+                </RecruitLink>
               ))}
             </div>
           </Reveal>

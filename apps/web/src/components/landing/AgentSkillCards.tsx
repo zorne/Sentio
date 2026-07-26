@@ -5,9 +5,13 @@
 // l'hologramme. Chaque compétence a un emplacement fixe (pas de
 // réorganisation qui ferait sauter la mise en page) : elle s'allume ou
 // s'éteint selon `active`, en fondu — jamais un montage/démontage brutal.
+//
+// Le catalogue vient de l'appelant (un par métier — voir lib/agent-roles)
+// : ce composant ne connaît qu'une forme générique { label, desc }, pas
+// les métiers eux-mêmes.
 // ════════════════════════════════════════════════════════════════════
 
-import { SKILL_CATALOG, type SkillId } from "@/lib/agent-skills";
+import type { SkillDef } from "@/lib/agent-roles";
 
 // Emplacements en pourcentage autour du centre (l'hologramme). L'ordre
 // suit celui du catalogue : une compétence occupe toujours la même case.
@@ -22,8 +26,14 @@ const SLOTS: Slot[] = [
   { top: "80%", left: "98%", transform: "translateX(-100%)" },
 ];
 
-export function AgentSkillCards({ active }: { active: SkillId[] }) {
-  const ids = Object.keys(SKILL_CATALOG) as SkillId[];
+export function AgentSkillCards({
+  catalog,
+  active,
+}: {
+  catalog: Record<string, SkillDef>;
+  active: string[];
+}) {
+  const ids = Object.keys(catalog);
   const activeSet = new Set(active);
 
   return (
@@ -31,7 +41,7 @@ export function AgentSkillCards({ active }: { active: SkillId[] }) {
       {ids.map((id, i) => {
         const slot = SLOTS[i % SLOTS.length]!;
         const isOn = activeSet.has(id);
-        const skill = SKILL_CATALOG[id];
+        const skill = catalog[id]!;
         return (
           <div
             key={id}
