@@ -1,0 +1,115 @@
+# 13 — Vérification : critères d'acceptation
+
+> À lire si tu travailles sur : les tests, une revue, ou avant d'annoncer qu'un lot est fini.
+
+Chaque critère est **testable**. Un lot n'est pas terminé tant que ses critères ne passent pas.
+
+---
+
+## Isolation entre entreprises *(lot 0)*
+
+Depuis la session de l'entreprise A, aucune donnée de l'entreprise B n'est accessible :
+- ni par l'interface,
+- ni par un appel direct au serveur,
+- ni par un identifiant deviné dans une adresse,
+- ni par un abonnement temps réel.
+
+**Comment le tester :** créer deux entreprises, tenter chaque accès depuis la mauvaise session.
+À automatiser — c'est le test qui doit tourner à chaque modification du schéma.
+
+---
+
+## Verrou de métier *(lot 2)*
+
+Le client demande explicitement à son employé commercial de faire de la comptabilité.
+
+**Attendu :** refus, dans le vocabulaire du métier, **et trace du refus dans le journal**.
+L'employé ne doit pas « essayer quand même » ni improviser une réponse comptable.
+
+---
+
+## Verrou d'apprentissage *(lot 7, à vérifier dès le lot 2)*
+
+Après plusieurs dizaines de runs : `employee_definition` est **identique bit pour bit**.
+Seuls `learned_fact`, `company_profile` et le journal ont changé.
+
+**Comment le tester :** empreinte de la table avant/après une campagne de runs.
+
+---
+
+## Classe de données *(lot 1)*
+
+Une requête portant des données réelles ne part **jamais** vers un fournisseur non
+contractuellement « sans entraînement ».
+
+**Comment le tester :** journal des appels de modèle — vérifier que le fournisseur de
+démonstration n'apparaît sur aucune requête marquée réelle. Tester aussi le cas où le
+fournisseur conforme est indisponible : le comportement attendu est **l'échec ou le report**,
+jamais le repli vers un fournisseur non conforme.
+
+---
+
+## Idempotence *(lot 3)*
+
+Rejouer deux fois le même pas d'un run n'envoie pas deux emails, ne crée pas deux prospects,
+ne facture pas deux fois.
+
+**Comment le tester :** interrompre un run juste après l'action et avant l'écriture d'état,
+puis relancer.
+
+---
+
+## Reprise *(lot 3)*
+
+Un run interrompu au milieu reprend au pas suivant après redémarrage complet du système, sans
+état conservé en mémoire.
+
+Une tâche suspendue en attente d'accord humain reprend correctement après approbation, et se
+termine proprement après refus.
+
+---
+
+## Quotas *(lot 0 + lot 1)*
+
+Une entreprise Start atteignant son plafond :
+- voit ses tâches **reportées avec un message clair**,
+- ne subit **aucune dégradation silencieuse** (pas de bascule discrète vers un modèle inférieur),
+- **n'affecte aucune autre entreprise**.
+
+---
+
+## Honnêteté des chiffres *(lot 6)*
+
+- Chaque chiffre du dashboard est traçable jusqu'à une ligne en base.
+- Un dashboard sans activité affiche un état vide soigné, **jamais un chiffre**.
+- Aucune notification « Évolution » n'est émise sans ligne `strategy_change` correspondante.
+
+**Comment le tester :** créer une entreprise vierge, ouvrir le dashboard, chercher un seul
+chiffre non justifié. Il ne doit pas y en avoir.
+
+---
+
+## Ouverture d'une formule *(lot 0)*
+
+Activer Growth se fait par une **modification de données**, sans déploiement, sans
+redémarrage, sans modification de code.
+
+**Comment le tester :** basculer le drapeau, vérifier que la formule devient achetable et que
+ses quotas s'appliquent.
+
+---
+
+## Vocabulaire *(transverse)*
+
+Aucun texte visible par un client ne contient « IA », « bot », « agent », « assistant »,
+« GPT », « automation ». **À vérifier automatiquement en intégration continue**, pas à l'œil.
+
+---
+
+## Non-régression du diagnostic *(lot 4)*
+
+Un jeu de conversations de référence est rejoué à chaque modification de prompt : pour chaque
+conversation, le frein détecté et le métier recommandé doivent rester conformes à l'attendu.
+
+C'est le seul garde-fou contre une régression invisible : une modification de prompt ne casse
+rien de façon détectable par un test classique.

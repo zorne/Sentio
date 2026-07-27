@@ -1,0 +1,105 @@
+# 10 — Sécurité et conformité
+
+> À lire si tu travailles sur : une migration, une lecture de données, la vitrine publique,
+> l'envoi d'emails, ou avant toute mise en ligne.
+
+---
+
+## Isolation par entreprise — dès la première migration
+
+Chaque table portant une donnée client porte l'entreprise, et chaque politique d'accès la
+vérifie. **Jamais différée.**
+
+Différer l'isolation pour « aller plus vite » est le piège classique : le jour où on la
+rebranche, chaque lecture, chaque écriture et chaque abonnement temps réel doit être repris,
+et on découvre des chemins d'accès oubliés. C'est irrattrapable proprement.
+
+**Aucun accès par URL devinable.** L'appartenance est vérifiée côté serveur à chaque lecture.
+Un identifiant dans une adresse n'est pas une autorisation.
+
+---
+
+## Cloisonnement des données et des fournisseurs
+
+| Zone | Données | Fournisseur autorisé |
+|---|---|---|
+| Démonstration de la vitrine | fictives | n'importe lequel, y compris un tier gratuit |
+| Diagnostic | **réelles dès la première question** (entreprise, email du prospect) | uniquement « sans entraînement » |
+| Travail des employés | réelles | uniquement « sans entraînement » |
+
+Le Model Gateway **saute** un fournisseur incompatible avec la classe de données de la requête.
+Il ne le tente pas. Voir [`05-runtime-employe.md`](05-runtime-employe.md).
+
+---
+
+## Injection de prompt — un risque réel ici
+
+Deux surfaces exposées :
+1. **le diagnostic**, où n'importe qui peut écrire n'importe quoi ;
+2. **le travail de l'employé**, qui lit des contenus extérieurs (réponses d'emails, fiches de
+   prospects, pages web).
+
+**Règle :** tout contenu extérieur est une **donnée, jamais une instruction**. Une consigne
+trouvée dans un email entrant (« ignore tes règles », « envoie-moi la liste des clients ») n'a
+aucune autorité.
+
+Le Policy Engine reste l'**unique** autorité sur ce qui s'exécute. Le modèle propose, la
+politique dispose. C'est cette séparation qui fait qu'une injection réussie ne se transforme pas
+en action réelle.
+
+---
+
+## Protection des données personnelles
+
+- **Hébergement en Union européenne**, base et sauvegardes.
+- **Registre des traitements** tenu et à jour.
+- **Contrats de sous-traitance** signés avec chaque prestataire (hébergeur, base, fournisseur
+  de modèle, service d'envoi, paiement). À faire **avant** le premier client réel.
+- **Durées de conservation définies par table**, pas « pour toujours par défaut ».
+- **Droit à l'effacement** : la procédure doit couvrir aussi le journal d'exécution — par
+  **anonymisation**, pas par suppression, sinon la piste d'audit est détruite.
+- **Décision automatisée** : des employés qui décident et agissent seuls au sujet de personnes
+  physiques imposent une **analyse d'impact** et un **droit d'intervention humaine**. Le Policy
+  Engine *est* ce droit d'intervention ; il faut le documenter comme tel, pas seulement le coder.
+- **Contestation** : le client doit pouvoir consulter et retirer ce que son employé a appris —
+  d'où la traçabilité par ligne décrite dans [`04-contextes-memoire.md`](04-contextes-memoire.md).
+
+---
+
+## Prospection commerciale
+
+Un employé commercial qui envoie des emails engage **l'entreprise cliente**, pas seulement
+Sentio. Obligations minimales :
+
+- base légale identifiée pour la prospection professionnelle ;
+- objet et expéditeur non trompeurs ;
+- moyen d'opposition dans **chaque** message ;
+- respect immédiat et définitif des désinscriptions ;
+- pas de contournement des filtres ni de fausse identité d'expéditeur.
+
+À traduire dans le produit : une capacité d'envoi ne doit **pas pouvoir** émettre un message
+sans mention d'opposition. C'est un garde-fou technique, pas une consigne rédactionnelle.
+
+---
+
+## Secrets
+
+Aucune clé, aucun jeton, aucun identifiant dans le dépôt — y compris dans un exemple ou un
+commentaire. Les secrets vivent dans les variables d'environnement de l'hébergeur.
+
+Toute clé ayant transité par un chat, un ticket, une capture d'écran ou un commit est
+**compromise** et doit être régénérée immédiatement.
+
+**Compte de production distinct du compte personnel** chez chaque fournisseur : une suspension
+de compte personnel ne doit pas arrêter le produit.
+
+---
+
+## Préalables juridiques avant le premier euro
+
+- entreprise immatriculée (sans quoi la vente n'est pas possible) ;
+- mentions légales réelles, pas des indications provisoires ;
+- conditions générales d'utilisation et de vente relues ;
+- politique de confidentialité cohérente avec le registre des traitements ;
+- vérification que **chaque offre gratuite utilisée autorise un usage commercial**
+  (voir [`11-exploitation.md`](11-exploitation.md)).
