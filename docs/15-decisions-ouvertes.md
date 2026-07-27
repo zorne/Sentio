@@ -55,15 +55,6 @@ impose une configuration technique à l'inscription — friction réelle à arbi
 
 ---
 
-## D12 — Canal d'entrée du métier Support
-
-Le Support suppose un flux de demandes entrantes (email dédié, formulaire, boîte partagée) —
-la vision ne le précise pas. Sans canal défini, l'employé Support n'a rien à lire.
-**Recommandation :** email dédié fourni par le client à l'onboarding (même logique que D6,
-zéro nouvelle dépendance). **Bloque :** lot 2 (Support).
-
----
-
 ## D7 — Niveau d'autonomie par défaut à la vente
 
 **Recommandation :** `confirmer une fois` sur l'irréversible. **Bloque :** lot 3.
@@ -103,6 +94,15 @@ premier client servi à la main. Voir [`12-roadmap.md`](12-roadmap.md).
 
 **Recommandation :** un seul nom. Deux marques pour un fondateur seul divisent l'attention
 pour zéro bénéfice.
+
+---
+
+## D12 — Canal d'entrée du métier Support
+
+Le Support suppose un flux de demandes entrantes (email dédié, formulaire, boîte partagée) —
+la vision ne le précise pas. Sans canal défini, l'employé Support n'a rien à lire.
+**Recommandation :** email dédié fourni par le client à l'onboarding (même logique que D6,
+zéro nouvelle dépendance). **Bloque :** lot 2 (Support).
 
 ---
 
