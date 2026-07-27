@@ -7,20 +7,10 @@
 
 ---
 
-## ⚠️ D1 — Périmètre métier de la V1 (bloque tout)
+## ✅ D1 — Périmètre métier de la V1 — TRANCHÉE
 
-**Question :** combien de métiers réels au lancement ?
-
-| Option | Conséquence |
-|---|---|
-| **1 métier : Commercial** *(recommandé)* | prospection, relance, suivi — autonome et mesurable. Le diagnostic reste honnête : hors périmètre → liste d'attente. |
-| 2 métiers : Commercial + Support | vraie recommandation différenciée, prépare la collaboration. Double le travail d'outils et de mesures. |
-| 4 métiers | risque élevé : quatre métiers superficiels valent moins qu'un seul qui produit du chiffre d'affaires. |
-
-**Recommandation : un seul, Commercial.** Le registre de métiers étant en données, en ajouter
-un plus tard est une donnée plus un jeu d'outils — jamais une refonte.
-
-**Bloque :** le lot 2, donc tout ce qui suit.
+**Décision : deux métiers réels au lancement — Commercial et Support.**
+Détail et compromis assumé : [`adr/0007-perimetre-v1-commercial-support.md`](adr/0007-perimetre-v1-commercial-support.md).
 
 ---
 
@@ -48,19 +38,29 @@ prospection. Détermine aussi le discours (« Carter travaille chaque jour »).
 
 ---
 
-## D5 — Source des prospects pour le métier commercial
+## D5 — Source des prospects pour le métier Commercial
 
 Donnée fournie par le client / enrichissement externe / mixte ?
 **Recommandation :** démarrer sur la donnée fournie par le client — zéro coût, zéro
-dépendance, zéro risque juridique. **Bloque :** lot 2.
+dépendance, zéro risque juridique. **Bloque :** lot 2 (Commercial).
 
 ---
 
 ## D6 — Emails envoyés depuis le domaine du client, ou depuis Sentio
 
+Concerne les deux métiers : prospection (Commercial) et réponses (Support).
 **Recommandation :** depuis le domaine du client (délivrabilité et légitimité), mais cela
 impose une configuration technique à l'inscription — friction réelle à arbitrer.
 **Bloque :** lot 2.
+
+---
+
+## D12 — Canal d'entrée du métier Support
+
+Le Support suppose un flux de demandes entrantes (email dédié, formulaire, boîte partagée) —
+la vision ne le précise pas. Sans canal défini, l'employé Support n'a rien à lire.
+**Recommandation :** email dédié fourni par le client à l'onboarding (même logique que D6,
+zéro nouvelle dépendance). **Bloque :** lot 2 (Support).
 
 ---
 

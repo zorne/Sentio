@@ -13,7 +13,7 @@
 | Coût de l'inférence | **Clés de la plateforme** (tiers gratuits), pas de clé fournie par le client | le client ne voit jamais un modèle — mais le quota est partagé |
 | Budget | **€0 strict** | pas de worker permanent, pas de file managée, pas de sauvegarde fine |
 | Mémoire | **Deux contextes** dans Supabase | → [`04-contextes-memoire.md`](04-contextes-memoire.md) |
-| Périmètre métier V1 | ⚠️ **non tranché** | → [`15-decisions-ouvertes.md`](15-decisions-ouvertes.md), D1 |
+| Périmètre métier V1 | **Deux métiers : Commercial + Support** | → [`adr/0007-perimetre-v1-commercial-support.md`](adr/0007-perimetre-v1-commercial-support.md) |
 
 ---
 

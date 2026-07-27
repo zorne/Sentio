@@ -33,15 +33,18 @@ partir chez un fournisseur non conforme.
 
 ---
 
-## Lot 2 — Le premier métier réel
-⚠️ **Bloqué par la décision D1** ([`15`](15-decisions-ouvertes.md)).
+## Lot 2 — Les deux premiers métiers réels
 
-- ADN version 1 du métier retenu
-- Ses capacités, leurs moteurs, leurs garde-fous
-- Réservoir d'identités alimenté
+**Décidé : Commercial + Support** ([`adr/0007`](adr/0007-perimetre-v1-commercial-support.md)).
 
-**Sortie :** c'est le lot qui prouve que le produit existe. Tout ce qui précède est de la
-plomberie.
+- ADN version 1 de chaque métier, écrits comme deux définitions indépendantes dans
+  `employee_definition` — jamais une seule définition avec des variantes internes
+- Leurs capacités respectives, leurs moteurs, leurs garde-fous
+  (voir D5 pour la source des prospects du Commercial, D12 pour le canal d'entrée du Support)
+- Réservoir d'identités alimenté pour les deux métiers
+
+**Sortie :** c'est le lot qui prouve que le produit existe, **et** que la recommandation entre
+deux métiers est réellement différenciée — pas un théâtre à un seul choix possible.
 
 ---
 

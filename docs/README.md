@@ -29,7 +29,7 @@ Tout est en français ; seuls les noms de tables et de modules sont en anglais.
 13. [`12-roadmap.md`](12-roadmap.md) — les 9 lots de construction
 14. [`13-verification.md`](13-verification.md) — critères d'acceptation testables
 15. [`14-recommandations.md`](14-recommandations.md)
-16. [`15-decisions-ouvertes.md`](15-decisions-ouvertes.md) — ⚠️ **D1 bloque tout le reste**
+16. [`15-decisions-ouvertes.md`](15-decisions-ouvertes.md) — décisions restantes (D2, D9 bloquent respectivement les lots 5/6 et 0)
 17. [`16-compromis.md`](16-compromis.md) — ce qu'on sacrifie, et pourquoi
 18. [`17-lexique.md`](17-lexique.md) — vocabulaire imposé
 

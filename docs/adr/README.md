@@ -47,6 +47,7 @@ pas compris ce que la décision coûte — cherche encore.
 | [0004](0004-run-machine-a-etats.md) | Un run est une machine à états persistée | acceptée |
 | [0005](0005-cles-plateforme-classe-de-donnees.md) | Clés de la plateforme + routage par classe de données | acceptée |
 | [0006](0006-capacite-vs-outil.md) | Capacité (contrat) ≠ outil (moteur) | acceptée |
+| [0007](0007-perimetre-v1-commercial-support.md) | Périmètre V1 : deux métiers, Commercial + Support | acceptée |
 
 ---
 
