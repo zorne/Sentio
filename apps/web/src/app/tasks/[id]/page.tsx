@@ -2,14 +2,14 @@
 // Page détail d'une tâche — trace complète + boutons Approuver/Refuser
 // quand la tâche attend une validation humaine.
 //
-// ADR-018 : auth différée, lecture via pool Postgres direct (pas de RLS
-// côté Server Component). Le temps réel (TaskLive, navigateur) passe lui
-// par une policy RLS publique bornée au tenant démo — voir migration 0008.
+// Accès vérifié via tenant-access.ts : le tenant démo reste public, tout
+// autre tenant exige d'être membre (session Supabase + tenant_member).
 // ════════════════════════════════════════════════════════════════════
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { pool } from "@/lib/db";
+import { requireTenantAccess } from "@/lib/tenant-access";
 import { TaskLive } from "@/components/TaskLive";
 import { ApproveControls } from "@/components/ApproveControls";
 import { Logomark } from "@/components/Logomark";
@@ -30,11 +30,12 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
   const { id: taskId } = await params;
 
   const { rows: taskRows } = await pool.query(
-    `select id, title, status, created_at from task where id = $1`,
+    `select id, tenant_id, title, status, created_at from task where id = $1`,
     [taskId]
   );
   const task = taskRows[0];
   if (!task) notFound();
+  await requireTenantAccess(task.tenant_id);
 
   const { rows: events } = await pool.query<EventRow>(
     `select id, seq, kind, payload, created_at from execution_event

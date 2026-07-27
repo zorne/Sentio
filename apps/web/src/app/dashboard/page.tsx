@@ -1,16 +1,20 @@
 // ════════════════════════════════════════════════════════════════════
-// Dashboard racine — liste des tâches + bouton "Lancer une tâche".
+// Dashboard racine — liste des tâches, prospects, bouton "Lancer une tâche".
 //
-// ADR-018 : auth différée. Pas de login pour l'instant (décision du
-// fondateur : finir agents + landing + dashboard d'abord). Lecture
-// directe via le pool Postgres, scopée au tenant démo — PAS de RLS/session
-// ici. À restaurer avant tout onboarding d'un vrai second client.
+// Le tenant démo reste public par construction (aucune vraie donnée
+// client dedans). Pour tout autre tenant, l'accès exige une session
+// Supabase + appartenance réelle (tenant_member) — voir tenant-access.ts.
+// Sans `?tenant=`, on retrouve automatiquement le tenant du compte
+// connecté (utile juste après la connexion par lien magique).
 // ════════════════════════════════════════════════════════════════════
 
 import Link from "next/link";
 import { pool } from "@/lib/db";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requireTenantAccess } from "@/lib/tenant-access";
 import { DEMO_TENANT_ID } from "@employes-ia/core/wiring";
 import { LaunchRunButton } from "@/components/LaunchRunButton";
+import { AddLeadForm } from "@/components/AddLeadForm";
 import { Logomark } from "@/components/Logomark";
 
 export const dynamic = "force-dynamic"; // pas de cache : chaque visite recharge les tâches
@@ -22,13 +26,37 @@ interface TaskRow {
   created_at: string;
 }
 
+interface LeadRow {
+  id: string;
+  name: string;
+  company: string;
+  email: string;
+  notes: string;
+}
+
 export default async function Home({
   searchParams,
 }: {
   searchParams: Promise<{ tenant?: string }>;
 }) {
   const { tenant } = await searchParams;
-  const tenantId = tenant || DEMO_TENANT_ID;
+  let tenantId = tenant || DEMO_TENANT_ID;
+
+  if (!tenant) {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      const { rows } = await pool.query<{ tenant_id: string }>(
+        `select tenant_id from tenant_member where user_id = $1 limit 1`,
+        [user.id]
+      );
+      if (rows[0]) tenantId = rows[0].tenant_id;
+    }
+  }
+
+  await requireTenantAccess(tenantId);
 
   const { rows: tasks } = await pool.query<TaskRow>(
     `select id, title, status, created_at from task
@@ -37,6 +65,11 @@ export default async function Home({
   );
   const { rows: agentRows } = await pool.query<{ id: string; name: string }>(
     `select id, name from agent_instance where tenant_id = $1 limit 1`,
+    [tenantId]
+  );
+  const { rows: leads } = await pool.query<LeadRow>(
+    `select id, name, company, email, notes from lead
+     where tenant_id = $1 order by created_at desc limit 50`,
     [tenantId]
   );
   const agentInstance = agentRows[0];
@@ -72,7 +105,7 @@ export default async function Home({
             )}
           </div>
 
-          <div className="card" style={{ padding: 0 }}>
+          <div className="card" style={{ padding: 0, marginBottom: 40 }}>
             {tasks && tasks.length > 0 ? (
               tasks.map((t: TaskRow) => (
                 <Link key={t.id} href={`/tasks/${t.id}`} className="task-row">
@@ -89,6 +122,37 @@ export default async function Home({
             ) : (
               <div className="empty">
                 Aucune tâche pour le moment. Cliquez sur « Lancer une tâche » pour démarrer votre premier Employé IA.
+              </div>
+            )}
+          </div>
+
+          <h1>Vos prospects</h1>
+          <p style={{ color: "var(--text-tertiary)", fontSize: 13.5, marginBottom: 16 }}>
+            C'est ici que votre employé va chercher qui relancer.
+          </p>
+
+          <div style={{ marginBottom: 16 }}>
+            <AddLeadForm tenantId={tenantId} />
+          </div>
+
+          <div className="card" style={{ padding: 0, marginBottom: 32 }}>
+            {leads && leads.length > 0 ? (
+              leads.map((l) => (
+                <div
+                  key={l.id}
+                  className="task-row"
+                  style={{ gridTemplateColumns: "1fr 1fr auto", cursor: "default" }}
+                >
+                  <span>{l.name} · {l.company}</span>
+                  <span style={{ fontSize: 13, color: "var(--text-tertiary)" }}>{l.email}</span>
+                  <span style={{ fontSize: 12, color: "var(--text-tertiary)", textAlign: "right" }}>
+                    {l.notes || "—"}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <div className="empty">
+                Aucun prospect pour le moment. Ajoutez-en un pour que votre employé ait de quoi travailler.
               </div>
             )}
           </div>

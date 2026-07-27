@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Logomark } from "@/components/Logomark";
 import { CheckoutAction } from "@/components/CheckoutAction";
 import { getPlan } from "@/lib/plans";
+import { pool } from "@/lib/db";
 import "@/app/landing.css";
 import "./checkout.css";
 
@@ -16,9 +17,20 @@ export default async function CheckoutPage({
 }: {
   searchParams: Promise<{ plan?: string; tenant?: string; agent?: string }>;
 }) {
-  const { plan: planId } = await searchParams;
+  const { plan: planId, agent: agentInstanceId } = await searchParams;
   const plan = getPlan(planId);
   if (!plan) notFound();
+
+  // Préremplit l'email avec celui déjà donné pendant l'onboarding — le
+  // client ne devrait pas avoir à le retaper pour recevoir son agent.
+  let defaultEmail: string | undefined;
+  if (agentInstanceId) {
+    const { rows } = await pool.query<{ email: string | null }>(
+      `select config->>'contactEmail' as email from agent_instance where id = $1`,
+      [agentInstanceId]
+    );
+    defaultEmail = rows[0]?.email ?? undefined;
+  }
 
   return (
     <>
@@ -57,7 +69,7 @@ export default async function CheckoutPage({
               Facturation mensuelle, résiliable à tout moment. Hébergement européen, aucune
               donnée de carte ne transite par nos serveurs.
             </p>
-            <CheckoutAction plan={plan} />
+            <CheckoutAction plan={plan} defaultEmail={defaultEmail} />
           </div>
         </div>
       </div>

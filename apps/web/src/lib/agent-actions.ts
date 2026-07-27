@@ -3,10 +3,9 @@
 // Elles réutilisent EXACTEMENT le même câblage que demo-real.ts / approve-real.ts
 // (wiring.ts partagé). Aucune duplication de logique métier ici (archi ADR-017).
 //
-// ADR-018 : auth différée. Pas de vérification de session/appartenance
-// ici pour l'instant. Chaque tenant reste isolé par construction : on ne
-// travaille jamais que sur le (tenantId, agentInstanceId) explicitement
-// fourni ou retrouvé depuis la task elle-même.
+// Vérification d'appartenance via tenant-access.ts (isAuthorizedForTenant)
+// avant toute lecture/écriture — le tenant démo reste public, tout autre
+// tenant exige une session + appartenance réelle.
 // ════════════════════════════════════════════════════════════════════
 
 "use server";
@@ -17,6 +16,7 @@ import { ContextAssembler } from "@employes-ia/core/context";
 import type { AgentIdentity } from "@employes-ia/core/context";
 import { RunJournal } from "@employes-ia/core/execution";
 import { AgentRuntime } from "@employes-ia/core/runtime";
+import { isAuthorizedForTenant } from "./tenant-access";
 import {
   DEMO_TENANT_ID,
   SALES_AGENT_TASK,
@@ -42,6 +42,7 @@ export async function launchSalesRun(
   tenantId: string,
   agentInstanceId: string
 ): Promise<{ taskId: string }> {
+  if (!(await isAuthorizedForTenant(tenantId))) throw new Error("Non autorisé.");
   const db = new Client({ connectionString: process.env.SUPABASE_DB_URL! });
   await db.connect();
   try {
@@ -109,6 +110,7 @@ export async function decideOnTask(
     if (!taskRow) throw new Error("Tâche introuvable.");
     const tenantId: string = taskRow.tenant_id;
     const agentInstanceId: string = taskRow.agent_instance_id;
+    if (!(await isAuthorizedForTenant(tenantId))) throw new Error("Non autorisé.");
 
     const deps = buildDemoRuntimeDeps(db);
     const journal = await RunJournal.resume(deps.store, tenantId, taskId);

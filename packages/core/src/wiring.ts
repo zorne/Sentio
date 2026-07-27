@@ -29,6 +29,13 @@ import { reflect } from "./memory/index.js";
 import type { MemoryStore, MemoryFact } from "./memory/index.js";
 import { createProvisionTenantTool } from "./tools/impl/platform-create-tenant.js";
 import type { TenantProvisioner } from "./tools/impl/platform-create-tenant.js";
+import { createFindLeadsTool } from "./tools/impl/prospecting-find-leads.js";
+import type {
+  LeadWriter,
+  ProspectCandidate,
+  ProspectingSearchInput,
+  ProspectSearchProvider,
+} from "./tools/impl/prospecting-find-leads.js";
 
 export const DEMO_TENANT_ID = "00000000-0000-0000-0000-000000000001"; // migration 0003
 export const DEMO_AGENT_INSTANCE_ID = "00000000-0000-0000-0000-000000000002"; // migration 0005
@@ -39,7 +46,7 @@ export function requireEnv(name: string): string {
   return v;
 }
 
-class PgLeadRepository implements LeadRepository, LeadWriteRepository {
+class PgLeadRepository implements LeadRepository, LeadWriteRepository, LeadWriter {
   constructor(private readonly db: Client) {}
 
   async listForTenant(tenantId: string): Promise<LeadRow[]> {
@@ -64,6 +71,30 @@ class PgLeadRepository implements LeadRepository, LeadWriteRepository {
     );
     return (res.rowCount ?? 0) > 0;
   }
+
+  /** Ecrit les prospects trouvés par prospecting.find_leads. Ignore les
+   *  doublons (même email pour le même tenant) plutôt que d'échouer sur
+   *  une contrainte — la prospection réelle retombe souvent sur des
+   *  profils déjà connus. */
+  async insertMany(
+    tenantId: string,
+    leads: Array<{ name: string; company: string; email: string; notes: string }>
+  ): Promise<number> {
+    let added = 0;
+    for (const lead of leads) {
+      const exists = await this.db.query(`select 1 from lead where tenant_id = $1 and email = $2`, [
+        tenantId,
+        lead.email,
+      ]);
+      if ((exists.rowCount ?? 0) > 0) continue;
+      await this.db.query(
+        `insert into lead (tenant_id, name, company, email, notes) values ($1, $2, $3, $4, $5)`,
+        [tenantId, lead.name, lead.company, lead.email, lead.notes]
+      );
+      added++;
+    }
+    return added;
+  }
 }
 
 /** Transport mail RÉEL non branché : en attendant un vrai fournisseur
@@ -73,6 +104,43 @@ class NoopMailTransport implements MailTransport {
   async send(email: OutgoingEmail): Promise<{ messageId: string }> {
     console.log(`  [mail SIMULÉ — aucun envoi réel] → ${email.to} : "${email.subject}"`);
     return { messageId: "simulated-no-send" };
+  }
+}
+
+/** Recherche B2B RÉELLE via Apollo.io — People Search API. Retourne les
+ *  meilleurs candidats ; l'outil (prospecting-find-leads.ts) filtre ceux
+ *  sans email connu avant de les ajouter au CRM. */
+class ApolloSearchProvider implements ProspectSearchProvider {
+  constructor(private readonly apiKey: string) {}
+
+  async search(input: ProspectingSearchInput): Promise<ProspectCandidate[]> {
+    const res = await fetch("https://api.apollo.io/v1/mixed_people/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Api-Key": this.apiKey },
+      body: JSON.stringify({
+        person_titles: input.jobTitles,
+        q_keywords: input.keywords,
+        per_page: input.limit ?? 10,
+      }),
+    });
+    if (!res.ok) {
+      throw new Error(`Apollo API a répondu ${res.status} — vérifiez APOLLO_API_KEY.`);
+    }
+    const data = (await res.json()) as {
+      people?: Array<{
+        first_name?: string;
+        last_name?: string;
+        title?: string;
+        email?: string;
+        organization?: { name?: string };
+      }>;
+    };
+    return (data.people ?? []).map((p) => ({
+      name: `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || "Inconnu",
+      title: p.title,
+      company: p.organization?.name,
+      email: p.email,
+    }));
   }
 }
 
@@ -241,6 +309,13 @@ export function buildDemoRuntimeDeps(db: Client): DemoRuntimeDeps {
     .register(createUpdateLeadNotesTool(repo))
     .register(createSendMailTool(new NoopMailTransport()));
 
+  // APOLLO_API_KEY optionnel — dégradation propre (comme GROQ_API_KEY) :
+  // si absent, l'outil n'est simplement pas enregistré, pas de crash.
+  const apolloKey = process.env.APOLLO_API_KEY;
+  if (apolloKey) {
+    registry.register(createFindLeadsTool(new ApolloSearchProvider(apolloKey), repo));
+  }
+
   const approvals = new PgStandingApprovalStore(db);
   const policy = new AutonomyPolicyEngine(new PgAutonomyResolver(db), approvals);
   const executor = new ToolExecutor(policy, consoleAudit);
@@ -257,13 +332,14 @@ export const SALES_AGENT_TASK = {
     name: "Employé Commercial",
     role: "Prospection & qualification",
     systemPrompt:
-      "Tu relances les prospects. Consulte les leads, choisis le plus " +
-      "pertinent à relancer, consigne ton analyse dans ses notes " +
-      "(crm.update_lead_notes), puis envoie-lui un email de relance " +
-      "(mail.send).",
+      "Tu relances les prospects. S'il y a peu ou pas de leads pertinents " +
+      "(crm.read_leads), cherche-en de nouveaux avec prospecting.find_leads " +
+      "avant de continuer. Consulte les leads, choisis le plus pertinent à " +
+      "relancer, consigne ton analyse dans ses notes (crm.update_lead_notes), " +
+      "puis envoie-lui un email de relance (mail.send).",
   },
   task: { title: "Relancer le prospect le plus pertinent", input: {} },
-  toolKeys: ["crm.read_leads", "crm.update_lead_notes", "mail.send"] as const,
+  toolKeys: ["crm.read_leads", "crm.update_lead_notes", "mail.send", "prospecting.find_leads"] as const,
 };
 
 /** Réflexion post-run (archi §8), factorisée entre demo-real.ts et

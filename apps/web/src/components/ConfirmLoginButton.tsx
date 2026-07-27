@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { confirmMagicLink } from "@/lib/auth-actions";
+import { claimTenantsForCurrentUser, confirmMagicLink } from "@/lib/auth-actions";
 
 export function ConfirmLoginButton({ code }: { code: string }) {
   const [pending, startTransition] = useTransition();
@@ -21,7 +21,8 @@ export function ConfirmLoginButton({ code }: { code: string }) {
             if (error) {
               setError(error);
             } else {
-              router.push("/");
+              await claimTenantsForCurrentUser();
+              router.push("/dashboard");
               router.refresh();
             }
           });
