@@ -9,8 +9,10 @@
 
 ## ✅ D1 — Périmètre métier de la V1 — TRANCHÉE
 
-**Décision : deux métiers réels au lancement — Commercial et Support.**
-Détail et compromis assumé : [`adr/0007-perimetre-v1-commercial-support.md`](adr/0007-perimetre-v1-commercial-support.md).
+**Décision finale : un seul métier réel au lancement — Commercial.**
+(Un revirement bref vers deux métiers, Commercial + Support, a été acté puis annulé le même
+jour — voir [`adr/0007`](adr/0007-perimetre-v1-commercial-support.md) et
+[`adr/0008`](adr/0008-perimetre-v1-commercial-seul.md) pour l'historique complet.)
 
 ---
 
@@ -38,19 +40,18 @@ prospection. Détermine aussi le discours (« Carter travaille chaque jour »).
 
 ---
 
-## D5 — Source des prospects pour le métier Commercial
+## D5 — Source des prospects pour le métier commercial
 
 Donnée fournie par le client / enrichissement externe / mixte ?
 **Recommandation :** démarrer sur la donnée fournie par le client — zéro coût, zéro
-dépendance, zéro risque juridique. **Bloque :** lot 2 (Commercial).
+dépendance, zéro risque juridique. **Bloque :** lot 2.
 
 ---
 
-## D6 — Emails envoyés depuis le domaine du client, ou depuis Sentio
+## D6 — Envoi des emails : depuis le domaine du client ou depuis Sentio
 
-Concerne les deux métiers : prospection (Commercial) et réponses (Support).
 **Recommandation :** depuis le domaine du client (délivrabilité et légitimité), mais cela
-impose une configuration technique à l'inscription — friction réelle à arbitrer.
+impose une configuration technique à l'onboarding — friction réelle à arbitrer.
 **Bloque :** lot 2.
 
 ---
@@ -94,15 +95,6 @@ premier client servi à la main. Voir [`12-roadmap.md`](12-roadmap.md).
 
 **Recommandation :** un seul nom. Deux marques pour un fondateur seul divisent l'attention
 pour zéro bénéfice.
-
----
-
-## D12 — Canal d'entrée du métier Support
-
-Le Support suppose un flux de demandes entrantes (email dédié, formulaire, boîte partagée) —
-la vision ne le précise pas. Sans canal défini, l'employé Support n'a rien à lire.
-**Recommandation :** email dédié fourni par le client à l'onboarding (même logique que D6,
-zéro nouvelle dépendance). **Bloque :** lot 2 (Support).
 
 ---
 

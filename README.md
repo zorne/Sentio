@@ -41,8 +41,9 @@ sur le *quoi*, la documentation gagne sur le *comment*.
    → [`docs/09-metriques-roi.md`](docs/09-metriques-roi.md)
 4. **Le vocabulaire est une contrainte technique.** « employé », « recrutement », « équipe ».
    Jamais « IA », « bot », « agent », « assistant ». → [`docs/17-lexique.md`](docs/17-lexique.md)
-5. **Deux métiers au lancement, jamais un seul.** Commercial et Support, chacun avec son ADN
-   propre. → [`docs/adr/0007-perimetre-v1-commercial-support.md`](docs/adr/0007-perimetre-v1-commercial-support.md)
+5. **Un seul métier au lancement : Commercial.** Le diagnostic reste honnête si le besoin
+   détecté sort de ce périmètre — jamais de vente d'un employé incapable de faire le travail.
+   → [`docs/adr/0008-perimetre-v1-commercial-seul.md`](docs/adr/0008-perimetre-v1-commercial-seul.md)
 
 ---
 

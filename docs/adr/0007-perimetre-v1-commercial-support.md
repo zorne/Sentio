@@ -1,7 +1,7 @@
 # ADR-0007 — Périmètre métier de la V1 : Commercial + Support
 
 **Date :** 2026-07-27
-**Statut :** acceptée — tranche la décision D1
+**Statut :** remplacée par [ADR-0008](0008-perimetre-v1-commercial-seul.md) — le fondateur est revenu sur ce choix le jour même
 
 ## Contexte
 
