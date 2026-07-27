@@ -17,6 +17,7 @@ import type { AgentIdentity } from "@employes-ia/core/context";
 import { RunJournal } from "@employes-ia/core/execution";
 import { AgentRuntime } from "@employes-ia/core/runtime";
 import { isAuthorizedForTenant } from "./tenant-access";
+import { notifyWaitingHuman } from "./notify";
 import {
   DEMO_TENANT_ID,
   SALES_AGENT_TASK,
@@ -26,14 +27,77 @@ import {
 
 /** Charge l'identité réelle de l'instance — surchargée par l'interview
  *  d'accueil (agent_instance.config.systemPrompt) si elle existe, sinon
- *  le prompt par défaut de la démo (archi §2 principe 3 : un agent =
- *  données, pas code — la personnalisation vit en config, pas en dur). */
+ *  par les critères de prospection configurés par le client (archi §2
+ *  principe 3 : un agent = données, pas code — la personnalisation vit
+ *  en config, pas en dur), sinon le prompt par défaut de la démo. */
 async function loadIdentity(db: Client, agentInstanceId: string): Promise<AgentIdentity> {
   const res = await db.query(`select config from agent_instance where id = $1`, [agentInstanceId]);
-  const customPrompt = res.rows[0]?.config?.systemPrompt as string | undefined;
-  return customPrompt
-    ? { ...SALES_AGENT_TASK.identity, systemPrompt: customPrompt }
-    : SALES_AGENT_TASK.identity;
+  const cfg = res.rows[0]?.config ?? {};
+  if (cfg.systemPrompt) {
+    return { ...SALES_AGENT_TASK.identity, systemPrompt: cfg.systemPrompt as string };
+  }
+  if (cfg.prospectingCriteria || cfg.prospectingOffer) {
+    const prompt =
+      SALES_AGENT_TASK.identity.systemPrompt +
+      `\n\nCe client considère un lead qualifié si : ${cfg.prospectingCriteria ?? "non précisé"}.` +
+      `\nOffre(s) à mettre en avant : ${cfg.prospectingOffer ?? "non précisé"}.`;
+    return { ...SALES_AGENT_TASK.identity, systemPrompt: prompt };
+  }
+  return SALES_AGENT_TASK.identity;
+}
+
+/** Corps partagé d'un run du Sales Agent — pris par un `db` déjà connecté
+ *  pour être réutilisé sans dupliquer le câblage AgentRuntime, depuis :
+ *  le bouton dashboard (launchSalesRun), le démarrage de la prospection
+ *  (prospecting-actions.ts) et la route cron (api/cron/prospect). */
+export async function launchSalesRunInternal(
+  db: Client,
+  tenantId: string,
+  agentInstanceId: string
+): Promise<{ taskId: string }> {
+  const taskRes = await db.query(
+    `insert into task (tenant_id, agent_instance_id, title, input, status)
+     values ($1, $2, $3, '{}'::jsonb, 'running') returning id`,
+    [tenantId, agentInstanceId, SALES_AGENT_TASK.task.title]
+  );
+  const taskId: string = taskRes.rows[0].id;
+
+  const deps = buildDemoRuntimeDeps(db);
+  const journal = new RunJournal(deps.store, tenantId, taskId);
+  const runtime = new AgentRuntime(deps.gateway, new ContextAssembler(), deps.executor, journal);
+  const memoryFacts = (await deps.memory.list(agentInstanceId)).map((f) => f.fact);
+  const identity = await loadIdentity(db, agentInstanceId);
+
+  // Les vrais tenants (issus de l'interview) traitent de vraies infos
+  // client ; le tenant démo reste des données de test (ADR-003).
+  const dataClass = tenantId === DEMO_TENANT_ID ? "test" : "real";
+
+  const outcome = await runtime.run({
+    tenantId,
+    taskId,
+    agentInstanceId,
+    identity,
+    task: SALES_AGENT_TASK.task,
+    tools: deps.registry.forAgent([...SALES_AGENT_TASK.toolKeys]),
+    dataClass,
+    memoryFacts,
+  });
+
+  await db.query(`update task set status = $1, updated_at = now() where id = $2`, [
+    outcome.status === "done" ? "done" : "waiting_human",
+    taskId,
+  ]);
+
+  if (outcome.status === "done") {
+    const events = await deps.store.read(taskId);
+    await reflectAndRemember(deps, { taskId, finalText: outcome.text, events });
+  } else {
+    await notifyWaitingHuman(db, { tenantId, taskId, agentInstanceId });
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/decisions");
+  return { taskId };
 }
 
 /** Lance un nouveau run du Sales Agent pour un tenant donné — équivalent
@@ -46,46 +110,7 @@ export async function launchSalesRun(
   const db = new Client({ connectionString: process.env.SUPABASE_DB_URL! });
   await db.connect();
   try {
-    const taskRes = await db.query(
-      `insert into task (tenant_id, agent_instance_id, title, input, status)
-       values ($1, $2, $3, '{}'::jsonb, 'running') returning id`,
-      [tenantId, agentInstanceId, SALES_AGENT_TASK.task.title]
-    );
-    const taskId: string = taskRes.rows[0].id;
-
-    const deps = buildDemoRuntimeDeps(db);
-    const journal = new RunJournal(deps.store, tenantId, taskId);
-    const runtime = new AgentRuntime(deps.gateway, new ContextAssembler(), deps.executor, journal);
-    const memoryFacts = (await deps.memory.list(agentInstanceId)).map((f) => f.fact);
-    const identity = await loadIdentity(db, agentInstanceId);
-
-    // Les vrais tenants (issus de l'interview) traitent de vraies infos
-    // client ; le tenant démo reste des données de test (ADR-003).
-    const dataClass = tenantId === DEMO_TENANT_ID ? "test" : "real";
-
-    const outcome = await runtime.run({
-      tenantId,
-      taskId,
-      agentInstanceId,
-      identity,
-      task: SALES_AGENT_TASK.task,
-      tools: deps.registry.forAgent([...SALES_AGENT_TASK.toolKeys]),
-      dataClass,
-      memoryFacts,
-    });
-
-    await db.query(`update task set status = $1, updated_at = now() where id = $2`, [
-      outcome.status === "done" ? "done" : "waiting_human",
-      taskId,
-    ]);
-
-    if (outcome.status === "done") {
-      const events = await deps.store.read(taskId);
-      await reflectAndRemember(deps, { taskId, finalText: outcome.text, events });
-    }
-
-    revalidatePath("/dashboard");
-    return { taskId };
+    return await launchSalesRunInternal(db, tenantId, agentInstanceId);
   } finally {
     await db.end();
   }
@@ -142,10 +167,13 @@ export async function decideOnTask(
     if (outcome.status === "done") {
       const events = await deps.store.read(taskId);
       await reflectAndRemember(deps, { taskId, finalText: outcome.text, events });
+    } else {
+      await notifyWaitingHuman(db, { tenantId, taskId, agentInstanceId });
     }
 
     revalidatePath(`/tasks/${taskId}`);
     revalidatePath("/dashboard");
+    revalidatePath("/decisions");
   } finally {
     await db.end();
   }

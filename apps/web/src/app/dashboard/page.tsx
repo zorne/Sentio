@@ -15,6 +15,7 @@ import { requireTenantAccess } from "@/lib/tenant-access";
 import { DEMO_TENANT_ID } from "@employes-ia/core/wiring";
 import { LaunchRunButton } from "@/components/LaunchRunButton";
 import { AddLeadForm } from "@/components/AddLeadForm";
+import { ProspectingConfig } from "@/components/ProspectingConfig";
 import { Logomark } from "@/components/Logomark";
 
 export const dynamic = "force-dynamic"; // pas de cache : chaque visite recharge les tâches
@@ -60,11 +61,18 @@ export default async function Home({
 
   const { rows: tasks } = await pool.query<TaskRow>(
     `select id, title, status, created_at from task
-     where tenant_id = $1 order by created_at desc limit 50`,
+     where tenant_id = $1
+       and (status in ('running','waiting_human') or created_at > now() - interval '1 day')
+     order by created_at desc limit 50`,
     [tenantId]
   );
-  const { rows: agentRows } = await pool.query<{ id: string; name: string }>(
-    `select id, name from agent_instance where tenant_id = $1 limit 1`,
+  const { rows: agentRows } = await pool.query<{
+    id: string;
+    name: string;
+    is_active: boolean;
+    config: { prospectingCriteria?: string; prospectingOffer?: string };
+  }>(
+    `select id, name, is_active, config from agent_instance where tenant_id = $1 limit 1`,
     [tenantId]
   );
   const { rows: leads } = await pool.query<LeadRow>(
@@ -72,7 +80,15 @@ export default async function Home({
      where tenant_id = $1 order by created_at desc limit 50`,
     [tenantId]
   );
+  const { rows: unreadRows } = await pool.query<{ count: string }>(
+    `select count(*) from notification where tenant_id = $1 and read_at is null`,
+    [tenantId]
+  );
+  const unreadDecisions = Number(unreadRows[0]?.count ?? 0);
   const agentInstance = agentRows[0];
+  const hasProspectingConfig = Boolean(
+    agentInstance?.config?.prospectingCriteria || agentInstance?.config?.prospectingOffer
+  );
 
   return (
     <>
@@ -86,6 +102,9 @@ export default async function Home({
             <span className="user-chip">
               {tenantId === DEMO_TENANT_ID ? "Mode démo — sans connexion" : agentInstance?.name}
             </span>
+            <Link href={`/decisions${tenant ? `?tenant=${tenant}` : ""}`} className="nav-back">
+              Décisions{unreadDecisions > 0 ? ` (${unreadDecisions})` : ""}
+            </Link>
             <Link href="/" className="nav-back" aria-label="Retour à l'accueil">← Retour</Link>
           </div>
         </div>
@@ -95,15 +114,25 @@ export default async function Home({
         <div className="container">
           <h1>Vos tâches</h1>
 
-          <div style={{ marginBottom: 32 }}>
-            {agentInstance ? (
-              <LaunchRunButton tenantId={tenantId} agentInstanceId={agentInstance.id} />
-            ) : (
-              <p style={{ color: "var(--text-tertiary)", fontSize: 13.5 }}>
-                Aucun Employé IA pour ce compte. <Link href="/onboarding">Recrutez-en un</Link>.
-              </p>
-            )}
-          </div>
+          {agentInstance ? (
+            <>
+              <ProspectingConfig
+                tenantId={tenantId}
+                agentInstanceId={agentInstance.id}
+                isActive={agentInstance.is_active}
+                hasConfig={hasProspectingConfig}
+                initialCriteria={agentInstance.config?.prospectingCriteria ?? ""}
+                initialOffer={agentInstance.config?.prospectingOffer ?? ""}
+              />
+              <div style={{ marginBottom: 32 }}>
+                <LaunchRunButton tenantId={tenantId} agentInstanceId={agentInstance.id} />
+              </div>
+            </>
+          ) : (
+            <p style={{ color: "var(--text-tertiary)", fontSize: 13.5, marginBottom: 32 }}>
+              Aucun Employé IA pour ce compte. <Link href="/onboarding">Recrutez-en un</Link>.
+            </p>
+          )}
 
           <div className="card" style={{ padding: 0, marginBottom: 40 }}>
             {tasks && tasks.length > 0 ? (
@@ -126,36 +155,37 @@ export default async function Home({
             )}
           </div>
 
-          <h1>Vos prospects</h1>
-          <p style={{ color: "var(--text-tertiary)", fontSize: 13.5, marginBottom: 16 }}>
-            C'est ici que votre employé va chercher qui relancer.
-          </p>
+          <details style={{ marginBottom: 32 }}>
+            <summary style={{ cursor: "pointer", fontSize: 13.5, color: "var(--text-tertiary)", marginBottom: 12 }}>
+              Vos prospects ({leads?.length ?? 0}) — votre employé les trouve désormais lui-même, ajout manuel toujours possible
+            </summary>
 
-          <div style={{ marginBottom: 16 }}>
-            <AddLeadForm tenantId={tenantId} />
-          </div>
+            <div style={{ margin: "16px 0" }}>
+              <AddLeadForm tenantId={tenantId} />
+            </div>
 
-          <div className="card" style={{ padding: 0, marginBottom: 32 }}>
-            {leads && leads.length > 0 ? (
-              leads.map((l) => (
-                <div
-                  key={l.id}
-                  className="task-row"
-                  style={{ gridTemplateColumns: "1fr 1fr auto", cursor: "default" }}
-                >
-                  <span>{l.name} · {l.company}</span>
-                  <span style={{ fontSize: 13, color: "var(--text-tertiary)" }}>{l.email}</span>
-                  <span style={{ fontSize: 12, color: "var(--text-tertiary)", textAlign: "right" }}>
-                    {l.notes || "—"}
-                  </span>
+            <div className="card" style={{ padding: 0 }}>
+              {leads && leads.length > 0 ? (
+                leads.map((l) => (
+                  <div
+                    key={l.id}
+                    className="task-row"
+                    style={{ gridTemplateColumns: "1fr 1fr auto", cursor: "default" }}
+                  >
+                    <span>{l.name} · {l.company}</span>
+                    <span style={{ fontSize: 13, color: "var(--text-tertiary)" }}>{l.email}</span>
+                    <span style={{ fontSize: 12, color: "var(--text-tertiary)", textAlign: "right" }}>
+                      {l.notes || "—"}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="empty">
+                  Aucun prospect pour le moment — votre employé en cherchera automatiquement une fois lancé.
                 </div>
-              ))
-            ) : (
-              <div className="empty">
-                Aucun prospect pour le moment. Ajoutez-en un pour que votre employé ait de quoi travailler.
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          </details>
 
           <div className="footer">
             <span>sentia · sales agent v0.1</span>
