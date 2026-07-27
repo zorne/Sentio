@@ -18,9 +18,13 @@ type Step = "idle" | "email" | "sent";
 export function CheckoutAction({
   plan,
   defaultEmail,
+  paymentLink,
+  agentInstanceId,
 }: {
   plan: Plan;
   defaultEmail?: string | undefined;
+  paymentLink?: string | null;
+  agentInstanceId?: string | undefined;
 }) {
   const [step, setStep] = useState<Step>("idle");
   const [email, setEmail] = useState(defaultEmail ?? "");
@@ -88,6 +92,17 @@ export function CheckoutAction({
         </form>
         {error && <p style={{ color: "var(--red)", fontSize: 12.5 }}>{error}</p>}
       </div>
+    );
+  }
+
+  if (paymentLink) {
+    const url = new URL(paymentLink);
+    if (agentInstanceId) url.searchParams.set("client_reference_id", agentInstanceId);
+    if (defaultEmail) url.searchParams.set("prefilled_email", defaultEmail);
+    return (
+      <a className="lp-btn lp-btn--primary cko-pay" href={url.toString()}>
+        Procéder au paiement
+      </a>
     );
   }
 

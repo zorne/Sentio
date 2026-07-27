@@ -5,6 +5,7 @@ import { Logomark } from "@/components/Logomark";
 import { CheckoutAction } from "@/components/CheckoutAction";
 import { getPlan } from "@/lib/plans";
 import { pool } from "@/lib/db";
+import { getPaymentLink } from "@/lib/stripe";
 import "@/app/landing.css";
 import "./checkout.css";
 
@@ -31,6 +32,8 @@ export default async function CheckoutPage({
     );
     defaultEmail = rows[0]?.email ?? undefined;
   }
+
+  const paymentLink = getPaymentLink(plan.id);
 
   return (
     <>
@@ -69,7 +72,12 @@ export default async function CheckoutPage({
               Facturation mensuelle, résiliable à tout moment. Hébergement européen, aucune
               donnée de carte ne transite par nos serveurs.
             </p>
-            <CheckoutAction plan={plan} defaultEmail={defaultEmail} />
+            <CheckoutAction
+              plan={plan}
+              defaultEmail={defaultEmail}
+              paymentLink={paymentLink}
+              agentInstanceId={agentInstanceId}
+            />
           </div>
         </div>
       </div>
