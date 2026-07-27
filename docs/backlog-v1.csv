@@ -1,0 +1,164 @@
+ID;Nom de la tâche;Catégorie;Temps de réalisation (IA);Priorité
+FOND-01;Initialiser le monorepo (pnpm workspaces, tsconfig de base, structure des packages);Fondations (Lot 0);30 min;P0
+FOND-02;Configurer l'intégration continue (lint, typecheck, tests);Fondations (Lot 0);45 min;P0
+FOND-03;Créer le projet Supabase et connecter les variables d'environnement;Fondations (Lot 0);20 min;P0
+FOND-04;Migration : table tenant;Fondations (Lot 0);15 min;P0
+FOND-05;Migration : table tenant_member + politique d'isolation;Fondations (Lot 0);20 min;P0
+FOND-06;Migration : table plan (Start/Growth/Scale + quotas en données, drapeau commercialisable);Fondations (Lot 0);20 min;P0
+FOND-07;Migration : table subscription;Fondations (Lot 0);15 min;P0
+FOND-08;Migration : table usage_counter;Fondations (Lot 0);15 min;P0
+FOND-09;Migration : table employee_definition (versionnée);Fondations (Lot 0);20 min;P0
+FOND-10;Migration : table identity (réservoir);Fondations (Lot 0);15 min;P0
+FOND-11;Migration : table employee;Fondations (Lot 0);15 min;P0
+FOND-12;Migration : table employee_capability;Fondations (Lot 0);15 min;P0
+FOND-13;Migration : table company_profile + traçabilité (auteur/date/tâche source/statut);Fondations (Lot 0);20 min;P0
+FOND-14;Migration : table learned_fact + traçabilité;Fondations (Lot 0);20 min;P0
+FOND-15;Migration : table objective;Fondations (Lot 0);15 min;P0
+FOND-16;Migration : table task;Fondations (Lot 0);15 min;P0
+FOND-17;Migration : table job (file d'exécution, priorité, tentatives, verrou);Fondations (Lot 0);25 min;P0
+FOND-18;Migration : table execution_event (journal append-only);Fondations (Lot 0);20 min;P0
+FOND-19;Migration : table approval;Fondations (Lot 0);15 min;P0
+FOND-20;Migration : table outcome;Fondations (Lot 0);15 min;P0
+FOND-21;Migration : table notification;Fondations (Lot 0);15 min;P0
+FOND-22;Migration : table strategy_change;Fondations (Lot 0);15 min;P0
+FOND-23;Migration : table capability;Fondations (Lot 0);15 min;P0
+FOND-24;Migration : table capability_binding;Fondations (Lot 0);15 min;P0
+FOND-25;Migration : table provider_credential;Fondations (Lot 0);15 min;P0
+FOND-26;Migration : table provider_quota;Fondations (Lot 0);15 min;P0
+FOND-27;Migration : table diagnostic_session;Fondations (Lot 0);15 min;P0
+FOND-28;Migration : table recommendation;Fondations (Lot 0);15 min;P0
+FOND-29;Migration : table standing_approval (confirmer une fois, révocable);Fondations (Lot 0);15 min;P0
+FOND-30;Activer et vérifier les politiques d'isolation par entreprise sur toutes les tables;Fondations (Lot 0);45 min;P0
+FOND-31;Écrire le repository générique dans packages/db;Fondations (Lot 0);45 min;P0
+FOND-32;Écrire les repositories spécifiques par table dans packages/db;Fondations (Lot 0);1h30;P0
+FOND-33;Seed initial : les trois formules (Start/Growth/Scale) en données;Fondations (Lot 0);20 min;P0
+FOND-34;Seed initial : réservoir d'identités du métier Commercial (300+ entrées);Fondations (Lot 0);45 min;P1
+FOND-35;Écrire packages/config (quotas, seuils, drapeaux de fonctionnalité, lexique);Fondations (Lot 0);45 min;P0
+FOND-36;Écrire les types partagés dans packages/domain (aucune entrée/sortie);Fondations (Lot 0);1h;P0
+FOND-37;Champ et politique de rétention du journal (12 mois puis anonymisation);Fondations (Lot 0);30 min;P1
+NOYAU-01;Model Gateway : interface ModelProvider générique;Noyau (Lot 1);30 min;P0
+NOYAU-02;Model Gateway : implémentation du fournisseur principal (payant, sans entraînement);Noyau (Lot 1);1h;P0
+NOYAU-03;Model Gateway : implémentation du fournisseur de secours/démo (tier gratuit);Noyau (Lot 1);45 min;P1
+NOYAU-04;Model Gateway : routage par classe de données (saut du fournisseur non conforme);Noyau (Lot 1);1h;P0
+NOYAU-05;Model Gateway : chaîne de repli sur quota/panne passagère uniquement;Noyau (Lot 1);1h;P0
+NOYAU-06;Model Gateway : comptage par entreprise et par fournisseur;Noyau (Lot 1);45 min;P0
+NOYAU-07;Model Gateway : plafonds durs par entreprise et par jour, report de tâche au dépassement;Noyau (Lot 1);45 min;P0
+NOYAU-08;Model Gateway : trois enveloppes séparées (clients/vitrine/interne);Noyau (Lot 1);1h;P0
+NOYAU-09;Policy Engine : classification des actions par classe d'effet;Noyau (Lot 1);45 min;P0
+NOYAU-10;Policy Engine : les quatre niveaux d'autonomie (auto/notifier/confirmer/confirmer une fois);Noyau (Lot 1);1h;P0
+NOYAU-11;Policy Engine : règle "irréversible jamais auto par défaut";Noyau (Lot 1);30 min;P0
+NOYAU-12;Policy Engine : gestion de standing_approval (confirmer une fois, révocation);Noyau (Lot 1);1h;P0
+NOYAU-13;Assemblage de contexte : injection de la couche 1 ADN (position non négociable);Noyau (Lot 1);30 min;P0
+NOYAU-14;Assemblage de contexte : injection de la couche 2 profil entreprise + faits appris triés/bornés;Noyau (Lot 1);1h;P0
+NOYAU-15;Assemblage de contexte : injection de la couche 3 contexte de tâche éphémère;Noyau (Lot 1);30 min;P0
+NOYAU-16;Assemblage de contexte : filtre anti-contradiction (fait appris vs limite ADN);Noyau (Lot 1);45 min;P0
+NOYAU-17;Registre de capacités : contrat Capability (interface stable);Noyau (Lot 1);30 min;P0
+NOYAU-18;Registre de capacités : résolution capability_binding → moteur, par formule;Noyau (Lot 1);45 min;P0
+NOYAU-19;Journal d'exécution : fonction d'écriture append-only;Noyau (Lot 1);30 min;P0
+NOYAU-20;Journal d'exécution : reconstruction de trace depuis execution_event;Noyau (Lot 1);45 min;P0
+NOYAU-21;Clé d'idempotence : génération et vérification sur toute action à effet extérieur;Noyau (Lot 1);45 min;P0
+NOYAU-22;Format ConversationTurn structuré (text/tool_call/tool_result) pour les échanges multi-tours;Noyau (Lot 1);45 min;P0
+METIER-01;Rédiger l'ADN v1 du métier Commercial (rôle, limites, règles, comportement, sécurité);Métier Commercial (Lot 2);1h30;P0
+METIER-02;Écrire employee_definition v1 Commercial en base;Métier Commercial (Lot 2);30 min;P0
+METIER-03;Migration : table lead (CRM interne minimal, isolé par entreprise);Métier Commercial (Lot 2);20 min;P0
+METIER-04;Capacité "trouver des prospects" : contrat;Métier Commercial (Lot 2);20 min;P0
+METIER-05;Capacité "trouver des prospects" : moteur v1 (donnée fournie par le client);Métier Commercial (Lot 2);1h;P0
+METIER-06;Capacité "qualifier un prospect" : contrat;Métier Commercial (Lot 2);20 min;P1
+METIER-07;Capacité "qualifier un prospect" : moteur;Métier Commercial (Lot 2);45 min;P1
+METIER-08;Capacité "envoyer un message de prospection" : contrat;Métier Commercial (Lot 2);20 min;P0
+METIER-09;Capacité "envoyer un message de prospection" : moteur (service d'envoi);Métier Commercial (Lot 2);1h30;P0
+METIER-10;Garde-fou : mention d'opposition obligatoire dans chaque message envoyé;Métier Commercial (Lot 2);30 min;P0
+METIER-11;Garde-fou : respect immédiat des désinscriptions;Métier Commercial (Lot 2);45 min;P0
+METIER-12;Capacité "relancer un prospect" : contrat + moteur;Métier Commercial (Lot 2);45 min;P1
+METIER-13;Capacité "mettre à jour une fiche CRM" : contrat + moteur;Métier Commercial (Lot 2);1h;P0
+METIER-14;Réflexion post-run spécifique au Commercial (0 à 3 faits par run);Métier Commercial (Lot 2);45 min;P1
+METIER-15;Variantes de stratégie du Commercial (angles d'accroche, moments de relance);Métier Commercial (Lot 2);1h;P1
+EXEC-01;Point d'entrée signé déclenché par un battement planifié;Exécution autonome (Lot 3);45 min;P0
+EXEC-02;Runtime : charger l'état persisté d'un run;Exécution autonome (Lot 3);30 min;P0
+EXEC-03;Runtime : appeler l'assemblage de contexte pour le pas courant;Exécution autonome (Lot 3);20 min;P0
+EXEC-04;Runtime : demander la prochaine action au Model Gateway;Exécution autonome (Lot 3);30 min;P0
+EXEC-05;Runtime : soumettre l'action au Policy Engine;Exécution autonome (Lot 3);30 min;P0
+EXEC-06;Runtime : exécuter l'action ou suspendre selon la décision de politique;Exécution autonome (Lot 3);45 min;P0
+EXEC-07;Runtime : écrire l'événement d'exécution au journal;Exécution autonome (Lot 3);20 min;P0
+EXEC-08;Runtime : replanifier le pas suivant ou terminer le run;Exécution autonome (Lot 3);30 min;P0
+EXEC-09;Reprise après interruption (reconstruction d'état depuis le journal);Exécution autonome (Lot 3);1h30;P0
+EXEC-10;Suspension d'un run en attente d'accord humain;Exécution autonome (Lot 3);1h;P0
+EXEC-11;Reprise après validation humaine (approve/reject/trustFuture);Exécution autonome (Lot 3);1h;P0
+EXEC-12;Verrouillage par ligne de la file job + saut des lignes verrouillées;Exécution autonome (Lot 3);45 min;P0
+EXEC-13;Priorité d'exécution pilotée par la formule du client;Exécution autonome (Lot 3);30 min;P1
+EXEC-14;Notifications de travail émises depuis les outcomes journalisés;Exécution autonome (Lot 3);45 min;P0
+EXEC-15;Réflexion après run, tolérante aux erreurs (jamais bloquante);Exécution autonome (Lot 3);1h;P1
+ACQUIS-01;Layout de la vitrine + navigation;Acquisition (Lot 4);1h;P0
+ACQUIS-02;Section Hero de la vitrine;Acquisition (Lot 4);45 min;P1
+ACQUIS-03;Section Mission de la vitrine;Acquisition (Lot 4);45 min;P1
+ACQUIS-04;Section démonstration scriptée (données fixes, présentée comme démonstration);Acquisition (Lot 4);2h;P0
+ACQUIS-05;Section "comment ça marche";Acquisition (Lot 4);45 min;P2
+ACQUIS-06;Section tarifs (Start affichée comme achetable, Growth/Scale visibles non actives);Acquisition (Lot 4);1h;P0
+ACQUIS-07;Page légale : mentions légales (contenu provisoire signalé);Acquisition (Lot 4);30 min;P0
+ACQUIS-08;Page légale : conditions générales d'utilisation/vente;Acquisition (Lot 4);45 min;P0
+ACQUIS-09;Page légale : politique de confidentialité;Acquisition (Lot 4);45 min;P0
+ACQUIS-10;Page légale : politique de cookies;Acquisition (Lot 4);30 min;P1
+ACQUIS-11;Page légale : formulaire de demande RGPD (accès/effacement/contestation);Acquisition (Lot 4);1h;P0
+ACQUIS-12;Composant de conversation de diagnostic (aller-retour direct au Model Gateway);Acquisition (Lot 4);1h30;P0
+ACQUIS-13;Extraction de profil structuré depuis la conversation de diagnostic;Acquisition (Lot 4);1h30;P0
+ACQUIS-14;Moteur de règles déterministe (frein détecté → métier recommandé);Acquisition (Lot 4);1h;P0
+ACQUIS-15;Génération de la justification de recommandation par le modèle;Acquisition (Lot 4);45 min;P0
+ACQUIS-16;Cas "besoin hors périmètre détecté" : message honnête + liste d'attente;Acquisition (Lot 4);45 min;P0
+ACQUIS-17;Limitation par visiteur et par adresse sur le diagnostic public;Acquisition (Lot 4);1h;P0
+ACQUIS-18;Enveloppe d'inférence dédiée au diagnostic public (plafond appliqué);Acquisition (Lot 4);30 min;P0
+ACQUIS-19;Jeu de conversations de référence pour le diagnostic;Acquisition (Lot 4);1h30;P1
+ACQUIS-20;Test de non-régression rejouant le jeu de référence à chaque modification de prompt;Acquisition (Lot 4);1h;P1
+RECRUT-01;Intégration du prestataire de paiement (paiement hébergé);Recrutement & Paiement (Lot 5);1h30;P0
+RECRUT-02;Point d'entrée de confirmation serveur du paiement (jamais la redirection navigateur);Recrutement & Paiement (Lot 5);1h;P0
+RECRUT-03;Réservation atomique d'une identité dans le réservoir;Recrutement & Paiement (Lot 5);45 min;P0
+RECRUT-04;Création de l'employé sur une version figée d'ADN;Recrutement & Paiement (Lot 5);45 min;P0
+RECRUT-05;Initialisation du Contexte Entreprise depuis le profil du diagnostic;Recrutement & Paiement (Lot 5);1h;P0
+RECRUT-06;Notification de recrutement ("Bienvenue, X rejoint votre entreprise");Recrutement & Paiement (Lot 5);30 min;P0
+RECRUT-07;Page de succès de paiement + ouverture de l'accès à l'espace privé;Recrutement & Paiement (Lot 5);45 min;P0
+RECRUT-08;Authentification par lien magique (connexion);Recrutement & Paiement (Lot 5);1h30;P0
+RECRUT-09;Protection anti-scanner du lien de connexion (callback);Recrutement & Paiement (Lot 5);45 min;P1
+RECRUT-10;Rattachement automatique de l'utilisateur au tenant créé pendant le diagnostic;Recrutement & Paiement (Lot 5);1h;P0
+DASH-01;Layout de l'espace privé (dashboard);Dashboard (Lot 6);1h;P0
+DASH-02;Fiche employé : mission, objectif, périmètre;Dashboard (Lot 6);1h;P0
+DASH-03;Fiche employé : performances et progression;Dashboard (Lot 6);1h;P0
+DASH-04;Fiche employé : compétences / capacités actives;Dashboard (Lot 6);45 min;P1
+DASH-05;Vue "progression vers l'objectif" (CA attribué / objectif déclaré);Dashboard (Lot 6);1h;P0
+DASH-06;Déclaration de vente par le client (confirmation d'attribution);Dashboard (Lot 6);1h;P0
+DASH-07;Calcul du CA généré (fenêtre d'attribution annoncée);Dashboard (Lot 6);1h;P0
+DASH-08;Calcul du temps économisé (estimation documentée et affichée comme telle);Dashboard (Lot 6);45 min;P1
+DASH-09;Calcul du ROI dérivé (CA attribué − prix / prix);Dashboard (Lot 6);30 min;P1
+DASH-10;État vide soigné du dashboard (montée en puissance lisible);Dashboard (Lot 6);1h;P0
+DASH-11;Liste des notifications (Recrutement/Travail/Évolution);Dashboard (Lot 6);45 min;P0
+DASH-12;Guide de première connexion (bulles, affiché une seule fois);Dashboard (Lot 6);1h;P1
+DASH-13;Gestion de l'abonnement (visualisation, statut);Dashboard (Lot 6);1h;P1
+DASH-14;Section CRM minimal côté client ("vos prospects");Dashboard (Lot 6);1h;P1
+DASH-15;Contrôles de validation humaine (approuver/refuser une action suspendue);Dashboard (Lot 6);1h;P0
+DASH-16;Réglage du niveau d'autonomie par le client;Dashboard (Lot 6);45 min;P1
+DASH-17;Vue temps réel d'exécution d'une tâche (abonnement live);Dashboard (Lot 6);1h30;P2
+EVOL-01;Écriture des faits appris (learned_fact) depuis la réflexion post-run;Évolution (Lot 7);1h;P1
+EVOL-02;Application des modifications proposées au profil entreprise par l'apprentissage;Évolution (Lot 7);1h;P2
+EVOL-03;Notification client sur modification du profil entreprise par l'apprentissage;Évolution (Lot 7);30 min;P2
+EVOL-04;Sélection de la variante gagnante à partir des outcomes mesurés;Évolution (Lot 7);1h30;P2
+EVOL-05;Écriture de strategy_change à chaque évolution réelle;Évolution (Lot 7);30 min;P1
+EVOL-06;Notification d'évolution adossée strictement à strategy_change;Évolution (Lot 7);30 min;P1
+EVOL-07;Interface client : consulter les faits appris;Évolution (Lot 7);45 min;P1
+EVOL-08;Interface client : corriger ou retirer un fait appris;Évolution (Lot 7);45 min;P1
+CONF-01;Rédaction des mentions légales définitives (post-immatriculation);Conformité & Lancement (Lot 8);1h;P0
+CONF-02;Rédaction des CGU/CGV définitives;Conformité & Lancement (Lot 8);1h30;P0
+CONF-03;Rédaction du registre des traitements RGPD;Conformité & Lancement (Lot 8);1h30;P0
+CONF-04;Rédaction de l'analyse d'impact (AIPD, décision automatisée);Conformité & Lancement (Lot 8);2h;P0
+CONF-05;Implémentation de la procédure d'effacement (anonymisation du journal);Conformité & Lancement (Lot 8);1h;P0
+CONF-06;Script de sauvegarde exportée hors plateforme;Conformité & Lancement (Lot 8);1h;P0
+CONF-07;Surveillance minimale : alerte email sur quota/échecs/taille base/tâches bloquées;Conformité & Lancement (Lot 8);1h30;P0
+CONF-08;Contrôle automatique du lexique interdit en intégration continue;Conformité & Lancement (Lot 8);1h;P1
+CONF-09;Checklist de vérification des conditions d'usage commercial des offres gratuites (préparation, décision humaine finale);Conformité & Lancement (Lot 8);30 min;P0
+CONF-10;Modèle de contrat de sous-traitance par prestataire (préparation, signature humaine);Conformité & Lancement (Lot 8);1h;P0
+TEST-01;Test automatisé : isolation entre entreprises (accès croisé refusé);Vérification (transverse);1h;P0
+TEST-02;Test automatisé : verrou de métier (refus + trace au journal);Vérification (transverse);45 min;P0
+TEST-03;Test automatisé : verrou d'apprentissage (ADN inchangé bit à bit après N runs);Vérification (transverse);1h;P0
+TEST-04;Test automatisé : classe de données (aucune donnée réelle vers fournisseur non conforme);Vérification (transverse);1h;P0
+TEST-05;Test automatisé : idempotence (rejeu ne duplique pas l'effet);Vérification (transverse);45 min;P0
+TEST-06;Test automatisé : reprise après interruption;Vérification (transverse);1h;P0
+TEST-07;Test automatisé : quotas (report propre, pas de dégradation silencieuse, pas d'impact cross-tenant);Vérification (transverse);1h;P0
+TEST-08;Test automatisé : honnêteté des chiffres (aucun chiffre sans ligne en base);Vérification (transverse);45 min;P1
+TEST-09;Test automatisé : ouverture de formule par simple modification de donnée;Vérification (transverse);30 min;P1
