@@ -35,9 +35,14 @@ export function Nav() {
           <Logomark size={18} />
           SENTIA
         </Link>
-        <RecruitLink href="/onboarding" className="lp-btn lp-btn--ghost lp-btn--sm">
-          Recruter
-        </RecruitLink>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Link href="/dashboard" className="lp-btn lp-btn--ghost lp-btn--sm">
+            Dashboard (test)
+          </Link>
+          <RecruitLink href="/onboarding" className="lp-btn lp-btn--ghost lp-btn--sm">
+            Recruter
+          </RecruitLink>
+        </div>
       </div>
     </nav>
   );
