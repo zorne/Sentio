@@ -23,6 +23,7 @@ import { createUpdateLeadNotesTool } from "./tools/impl/crm-update-lead.js";
 import type { LeadWriteRepository } from "./tools/impl/crm-update-lead.js";
 import { AutonomyPolicyEngine, DEFAULT_AUTONOMY } from "./policy/index.js";
 import type { AutonomyResolver, AutonomyConfig, StandingApprovalStore, EffectClass } from "./policy/index.js";
+import { Resend } from "resend";
 import { createSendMailTool } from "./tools/impl/mail-send.js";
 import type { MailTransport, OutgoingEmail } from "./tools/impl/mail-send.js";
 import { reflect } from "./memory/index.js";
@@ -104,6 +105,34 @@ class NoopMailTransport implements MailTransport {
   async send(email: OutgoingEmail): Promise<{ messageId: string }> {
     console.log(`  [mail SIMULÉ — aucun envoi réel] → ${email.to} : "${email.subject}"`);
     return { messageId: "simulated-no-send" };
+  }
+}
+
+/** Transport mail RÉEL via Resend. L'effet reste "irreversible" côté
+ *  policy (mail-send.ts) : même branché ici, l'agent ne peut envoyer
+ *  qu'après validation humaine explicite (confirm) — ce transport ne
+ *  change que ce qui se passe APRÈS l'accord, jamais le fait qu'un
+ *  accord soit requis. */
+class ResendMailTransport implements MailTransport {
+  private readonly client: Resend;
+  constructor(apiKey: string) {
+    this.client = new Resend(apiKey);
+  }
+  async send(email: OutgoingEmail, tenantId: string): Promise<{ messageId: string }> {
+    // Le tenant démo contient des prospects fictifs (marc@zenith.fr...) —
+    // jamais de vrai envoi vers ces adresses, même avec Resend configuré.
+    if (tenantId === DEMO_TENANT_ID) {
+      console.log(`  [mail SIMULÉ — tenant démo, jamais de vrai envoi] → ${email.to} : "${email.subject}"`);
+      return { messageId: "simulated-demo-tenant" };
+    }
+    const { data, error } = await this.client.emails.send({
+      from: process.env.RESEND_FROM_EMAIL ?? "SENTIA <onboarding@resend.dev>",
+      to: email.to,
+      subject: email.subject,
+      text: email.body,
+    });
+    if (error) throw new Error(`Échec envoi Resend : ${error.message}`);
+    return { messageId: data?.id ?? "unknown" };
   }
 }
 
@@ -304,10 +333,16 @@ export function buildDemoRuntimeDeps(db: Client): DemoRuntimeDeps {
   const gateway = new ModelGateway(credentialResolver)
     .register(new GeminiProvider())
     .register(new GroqProvider());
+  // RESEND_API_KEY optionnel — dégradation propre (comme APOLLO_API_KEY/
+  // GROQ_API_KEY) : sans clé, l'envoi reste simulé, jamais de crash.
+  const mailTransport = process.env.RESEND_API_KEY
+    ? new ResendMailTransport(process.env.RESEND_API_KEY)
+    : new NoopMailTransport();
+
   const registry = new ToolRegistry()
     .register(createReadLeadsTool(repo))
     .register(createUpdateLeadNotesTool(repo))
-    .register(createSendMailTool(new NoopMailTransport()));
+    .register(createSendMailTool(mailTransport));
 
   // APOLLO_API_KEY optionnel — dégradation propre (comme GROQ_API_KEY) :
   // si absent, l'outil n'est simplement pas enregistré, pas de crash.
