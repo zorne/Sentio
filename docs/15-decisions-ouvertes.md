@@ -55,6 +55,13 @@ dépendance, zéro risque juridique. **Bloque :** lot 2.
 
 **Recommandation :** depuis le domaine du client (délivrabilité et légitimité), mais cela
 impose une configuration technique à l'onboarding — friction réelle à arbitrer.
+
+> ⚠️ **Élément apparu depuis** ([`21-concurrence.md`](21-concurrence.md)) : envoyer depuis le domaine
+> du client signifie qu'un employé mal réglé brûle **la réputation d'envoi du client**, pas celle de
+> Sentio. C'est le risque le plus lourd de cette décision, il se répare en mois, et il pèse
+> désormais autant que la délivrabilité dans l'arbitrage. Si ce domaine est retenu, les garde-fous
+> `METIER-18` à `METIER-21` deviennent des préalables absolus.
+
 **Bloque :** lot 2.
 
 ---
@@ -91,6 +98,27 @@ preuve réglementaire. **Bloque :** lot 0 (le schéma doit prévoir le champ de 
 Détermine l'ordre des lots : automatisation complète d'abord, ou vendable d'abord avec un
 premier client servi à la main. Voir [`12-roadmap.md`](12-roadmap.md).
 **Bloque :** l'ordonnancement, pas un lot précis.
+
+---
+
+## D14 — Montrer au client pourquoi ce prospect, pourquoi ce message
+
+Sentio interdit d'exposer la mécanique au client — jamais les modèles, jamais les outils, jamais les
+workflows ([`07-parcours-produit.md`](07-parcours-produit.md)). Or les acheteurs de ce marché citent
+**l'absence de visibilité sur la logique de ciblage comme motif d'arrêt**
+([`21-concurrence.md`](21-concurrence.md)).
+
+La contradiction n'est qu'apparente : *« Carter a contacté cette entreprise parce qu'elle recrute
+dans votre secteur »* est un **raisonnement métier**, compréhensible par un dirigeant et conforme au
+lexique ; nommer un modèle ou un outil est de la **mécanique**, interdite.
+
+| Option | Conséquence |
+|---|---|
+| **Montrer le raisonnement métier, jamais la mécanique** *(recommandé)* | répond à la demande sans casser la promesse ; devient un différenciateur là où les concurrents sont opaques |
+| Ne rien montrer | conforme à la lettre du parcours produit, mais reproduit le motif d'arrêt n°1 des concurrents |
+
+Le motif est de toute façon journalisé (`METIER-22`) : la décision porte sur son **affichage**
+(`DASH-19`), pas sur sa production. **Bloque :** lot 6, et le contenu de l'ADN commercial au lot 2.
 
 ---
 

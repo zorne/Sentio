@@ -135,3 +135,21 @@ produit, les compromis assumés et la fragilité du modèle €0.
 Aucun secret n'y figure, donc **aucun risque technique** — mais un concurrent ou un prospect
 peut tout lire. Passer le dépôt en privé est gratuit et prend dix secondes ; à faire si ce
 n'est pas voulu.
+
+---
+
+## C13 — Le volume d'envoi est délibérément bas
+
+Un employé Sentio enverra beaucoup moins de messages que les produits concurrents. Deux causes : le
+quota d'inférence à €0 (C1) et les plafonds de délivrabilité, qui limitent à quelques dizaines de
+messages par boîte et par jour ([`10-securite-rgpd.md`](10-securite-rgpd.md)).
+
+**C'est un compromis qui se défend, et les données le confirment** : à volume élevé, le taux de
+réponse s'effondre, et une configuration entièrement automatique produisant plus de rendez-vous a
+généré **moins de revenu** qu'une configuration mixte plus sélective
+([`21-concurrence.md`](21-concurrence.md)). Ce qui compte est le revenu par rendez-vous, pas leur
+nombre.
+
+**Limite à ne pas franchir :** ne jamais présenter le volume comme un argument de vente, et ne pas
+chercher à « rattraper » le volume le jour où le budget d'inférence le permettra. La contrainte a
+imposé la bonne stratégie ; la lever ne doit pas faire perdre la stratégie.

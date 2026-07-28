@@ -92,10 +92,35 @@ Sentio. Obligations minimales :
 - objet et expéditeur non trompeurs ;
 - moyen d'opposition dans **chaque** message ;
 - respect immédiat et définitif des désinscriptions ;
+- **listes d'exclusion respectées avant l'envoi**, pas après : clients existants, concurrents,
+  comptes sensibles. La désinscription est réactive, l'exclusion est préventive — les deux sont
+  nécessaires (`METIER-16/17`) ;
 - pas de contournement des filtres ni de fausse identité d'expéditeur.
 
 À traduire dans le produit : une capacité d'envoi ne doit **pas pouvoir** émettre un message
 sans mention d'opposition. C'est un garde-fou technique, pas une consigne rédactionnelle.
+
+## Obligations d'expéditeur — la réputation du client est en jeu
+
+Les grandes messageries imposent des seuils que le non-respect fait basculer en indésirable, puis
+rejeter. Ils s'appliquent à Sentio dès le premier message envoyé :
+
+| Exigence | Seuil |
+|---|---|
+| Taux de plainte | **sous 0,3 %** |
+| Taux de rebond | **sous 2 %** |
+| Authentification | SPF, DKIM **et** DMARC alignés |
+| Désabonnement | en un clic, conforme à la norme |
+| Volume par boîte | **25 à 50 par jour**, après montée progressive sur 3 à 4 semaines |
+
+> ⚠️ **Ce risque ne porte pas sur Sentio, il porte sur le client.** D6 recommande d'envoyer depuis
+> le domaine du client : un employé mal réglé brûle donc la réputation d'envoi **de son client**,
+> c'est-à-dire son outil de travail. La dégradation se répare en mois, pas en jours.
+
+Conséquence : la capacité d'envoi ne doit **pas pouvoir** émettre sans domaine authentifié, au-delà
+du plafond quotidien, ou pendant une suspension déclenchée par un taux de rebond ou de plainte
+excessif (`METIER-18` à `METIER-21`). Comme la mention d'opposition, ce sont des garde-fous
+techniques. Contexte et sources : [`21-concurrence.md`](21-concurrence.md).
 
 ---
 

@@ -57,7 +57,7 @@ fichier non lu.**
 | Sécurité, RGPD | `docs/10-securite-rgpd.md` |
 | Hébergement, seuils où le €0 casse | `docs/11-exploitation.md` |
 | Roadmap — les 9 lots ordonnés | `docs/12-roadmap.md` |
-| Backlog — 163 tâches | `docs/18-backlog.md`, `docs/backlog-v1.csv` |
+| Backlog — 173 tâches | `docs/18-backlog.md`, `docs/backlog-v1.csv` |
 | ⭐ **Quoi faire ensuite** — plan ordonné jusqu'au premier client | `docs/20-plan-action.md` |
 | Critères d'acceptation testables | `docs/13-verification.md` |
 | Recommandations | `docs/14-recommandations.md` |
@@ -65,6 +65,7 @@ fichier non lu.**
 | Compromis assumés | `docs/16-compromis.md` |
 | Vocabulaire imposé — **source unique** | `docs/17-lexique.md` |
 | Fournisseurs d'inférence, modèles, quotas chiffrés | `docs/19-fournisseurs-modeles.md` |
+| Concurrence, leurs échecs, délivrabilité, repères de performance | `docs/21-concurrence.md` |
 | Vision brute du fondateur (fait foi sur le *quoi*) | `projet.md` |
 
 **Décisions déjà tranchées** — `docs/adr/` : `0001-repartir-de-zero` ·

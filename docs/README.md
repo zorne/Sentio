@@ -32,7 +32,7 @@ Tout est en français ; seuls les noms de tables et de modules sont en anglais.
 
 **Pour piloter**
 13. [`12-roadmap.md`](12-roadmap.md) — les 9 lots de construction
-    → [`18-backlog.md`](18-backlog.md) — les 163 tâches axiomes qui les composent
+    → [`18-backlog.md`](18-backlog.md) — les 173 tâches axiomes qui les composent
 14. [`13-verification.md`](13-verification.md) — critères d'acceptation testables
 15. [`14-recommandations.md`](14-recommandations.md)
 16. [`15-decisions-ouvertes.md`](15-decisions-ouvertes.md) — décisions restantes (D2, D9 bloquent respectivement les lots 5/6 et 0)
@@ -41,6 +41,8 @@ Tout est en français ; seuls les noms de tables et de modules sont en anglais.
     interdits
 19. [`20-plan-action.md`](20-plan-action.md) — ⭐ **l'ordre d'exécution de bout en bout**, du premier
     jour au premier client payant : décisions, lots, mise en ligne, vente
+20. [`21-concurrence.md`](21-concurrence.md) — pourquoi les concurrents échouent, ce que Sentio
+    neutralise déjà, ce qu'il lui manquait **(document interne — daté)**
 
 **Journal des décisions** : [`adr/`](adr/) — une entrée par décision structurante.
 

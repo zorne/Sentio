@@ -164,10 +164,22 @@ moteur à chaque fois** : trouver des prospects, qualifier, envoyer un message, 
 une fiche. Plus les deux garde-fous : mention d'opposition obligatoire dans chaque message
 (`METIER-10`) et respect immédiat des désinscriptions (`METIER-11`).
 
-> **Le marché dit de remonter la qualification en priorité.** La première cause d'échec des outils
-> concurrents est une donnée sale transformée en mauvais messages à grande échelle — exactement le
-> risque de D5. `METIER-06/07` (qualifier un prospect) est classé P1 dans le backlog : **le traiter
-> comme P0.** Voir « Ce que dit le marché » en fin de document.
+**Prérequis ajouté depuis l'étude concurrentielle** ([`21-concurrence.md`](21-concurrence.md)) :
+sept tâches de plus dans ce lot, toutes P0, et aucune n'est facultative.
+
+- **Délivrabilité** — `METIER-18` authentification du domaine (SPF, DKIM, DMARC), `METIER-19` montée
+  en charge progressive, `METIER-20` plafond de volume par employé et par jour, `METIER-21`
+  surveillance des rebonds et des plaintes avec suspension automatique. **Aucune ligne de
+  `METIER-09` ne doit être écrite avant ces quatre-là :** avec D6, un employé mal réglé brûle la
+  réputation d'envoi *du client*.
+- **Exclusions** — `METIER-16` table des exclusions, `METIER-17` vérification bloquante avant envoi.
+  La désinscription est réactive, l'exclusion est préventive.
+- **Traçabilité du ciblage** — `METIER-22` journalisation du motif de sélection d'un prospect.
+  L'affichage relève de D14, la production du motif non.
+
+> **La qualification passe de P1 à P0.** La première cause d'échec des produits concurrents est une
+> donnée sale transformée en mauvais messages à grande échelle — exactement le risque de D5.
+> `METIER-06/07` est reclassé dans le backlog.
 
 **Terminé quand :** `TEST-02` passe — le client demande de la comptabilité à son commercial, l'employé
 refuse dans le vocabulaire du métier **et** le refus est tracé au journal. Prendre au passage
@@ -281,7 +293,7 @@ recommandation et payer — et tu reçois une alerte email si quoi que ce soit d
 
 # Phase 10 — Acquisition du premier client
 
-> **Cette phase n'existe dans aucune tâche du backlog.** Les 163 tâches sont techniques. Or
+> **Cette phase n'existe dans aucune tâche du backlog.** Les 173 tâches sont techniques. Or
 > [`adr/0001`](adr/0001-repartir-de-zero.md) le dit lui-même : *« le risque réel du projet n'est pas
 > technique, il est commercial. »* Un produit fini sans personne à qui le vendre est l'échec le plus
 > probable de ce projet.
@@ -361,9 +373,10 @@ identique bit pour bit ; seuls les faits appris, le profil et le journal ont cha
 | Phase | Décisions |
 |---|---|
 | 0 | **D9** rétention · **D13** transparence AI Act · **D12** hébergeur · **D11** marque |
-| 3 | **D5** source des prospects · **D6** domaine d'envoi |
+| 3 | **D5** source des prospects · **D6** domaine d'envoi *(risque de réputation du client)* |
 | 4 | **D4** périodicité · **D7** autonomie par défaut |
 | 6 | **D2** prix de Start · **D3** achat immédiat ou essai |
+| 7 | **D14** montrer le motif de sélection d'un prospect |
 | 12 | **D8** apprentissage sur le profil entreprise |
 
 D1 est tranchée (Commercial seul), D10 est tranchée par ce document (ordre canonique).

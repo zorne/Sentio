@@ -4,7 +4,7 @@
 > toute la documentation précédente ([`12-roadmap.md`](12-roadmap.md) donne les lots,
 > ce fichier donne les tâches à l'intérieur de chaque lot).
 
-Fichier source : [`backlog-v1.csv`](backlog-v1.csv) — 163 tâches, colonnes `ID ; Nom de la
+Fichier source : [`backlog-v1.csv`](backlog-v1.csv) — 173 tâches, colonnes `ID ; Nom de la
 tâche ; Catégorie ; Temps de réalisation (IA) ; Priorité`.
 
 ---
@@ -28,18 +28,23 @@ journaliser, replanifier.
 |---|---|---|---|
 | Fondations | 37 | Lot 0 | [`03-modele-de-donnees.md`](03-modele-de-donnees.md) |
 | Noyau | 22 | Lot 1 | [`05-runtime-employe.md`](05-runtime-employe.md) |
-| Métier Commercial | 15 | Lot 2 | [`04-contextes-memoire.md`](04-contextes-memoire.md), [`adr/0008`](adr/0008-perimetre-v1-commercial-seul.md) |
+| Métier Commercial | 22 | Lot 2 | [`04-contextes-memoire.md`](04-contextes-memoire.md), [`adr/0008`](adr/0008-perimetre-v1-commercial-seul.md), [`21-concurrence.md`](21-concurrence.md) |
 | Exécution autonome | 15 | Lot 3 | [`05-runtime-employe.md`](05-runtime-employe.md) |
 | Acquisition | 20 | Lot 4 | [`07-parcours-produit.md`](07-parcours-produit.md) |
 | Recrutement & Paiement | 10 | Lot 5 | [`07-parcours-produit.md`](07-parcours-produit.md) |
-| Dashboard | 17 | Lot 6 | [`09-metriques-roi.md`](09-metriques-roi.md) |
+| Dashboard | 20 | Lot 6 | [`09-metriques-roi.md`](09-metriques-roi.md), [`21-concurrence.md`](21-concurrence.md) |
 | Évolution | 8 | Lot 7 | [`08-evolution-apprentissage.md`](08-evolution-apprentissage.md) |
 | Conformité & Lancement | 10 | Lot 8 | [`10-securite-rgpd.md`](10-securite-rgpd.md), [`11-exploitation.md`](11-exploitation.md) |
 | Vérification (transverse) | 9 | — | [`13-verification.md`](13-verification.md), une tâche par critère d'acceptation |
 
-**Priorité :** P0 = 127 tâches (chemin critique de la V1, rien après ne peut sauter ça),
+**Priorité :** P0 = 137 tâches (chemin critique de la V1, rien après ne peut sauter ça),
 P1 = 31 (nécessaire avant le lancement mais pas bloquant en interne), P2 = 5 (améliore
 l'expérience, peut glisser après le premier client).
+
+> **Révision du 2026-07-28** — l'étude [`21-concurrence.md`](21-concurrence.md) a fait apparaître
+> dix tâches manquantes (délivrabilité, exclusions, plafond de volume, repères de performance,
+> motif de sélection) et a fait passer la qualification d'un prospect de P1 à P0 : c'est la
+> première cause d'échec des produits concurrents.
 
 ---
 

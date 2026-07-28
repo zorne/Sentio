@@ -63,8 +63,8 @@ METIER-02;Écrire employee_definition v1 Commercial en base;Métier Commercial (
 METIER-03;Migration : table lead (CRM interne minimal, isolé par entreprise);Métier Commercial (Lot 2);20 min;P0
 METIER-04;Capacité "trouver des prospects" : contrat;Métier Commercial (Lot 2);20 min;P0
 METIER-05;Capacité "trouver des prospects" : moteur v1 (donnée fournie par le client);Métier Commercial (Lot 2);1h;P0
-METIER-06;Capacité "qualifier un prospect" : contrat;Métier Commercial (Lot 2);20 min;P1
-METIER-07;Capacité "qualifier un prospect" : moteur;Métier Commercial (Lot 2);45 min;P1
+METIER-06;Capacité "qualifier un prospect" : contrat;Métier Commercial (Lot 2);20 min;P0
+METIER-07;Capacité "qualifier un prospect" : moteur;Métier Commercial (Lot 2);45 min;P0
 METIER-08;Capacité "envoyer un message de prospection" : contrat;Métier Commercial (Lot 2);20 min;P0
 METIER-09;Capacité "envoyer un message de prospection" : moteur (service d'envoi);Métier Commercial (Lot 2);1h30;P0
 METIER-10;Garde-fou : mention d'opposition obligatoire dans chaque message envoyé;Métier Commercial (Lot 2);30 min;P0
@@ -73,6 +73,13 @@ METIER-12;Capacité "relancer un prospect" : contrat + moteur;Métier Commercial
 METIER-13;Capacité "mettre à jour une fiche CRM" : contrat + moteur;Métier Commercial (Lot 2);1h;P0
 METIER-14;Réflexion post-run spécifique au Commercial (0 à 3 faits par run);Métier Commercial (Lot 2);45 min;P1
 METIER-15;Variantes de stratégie du Commercial (angles d'accroche, moments de relance);Métier Commercial (Lot 2);1h;P1
+METIER-16;Migration : table suppression_entry (exclusions par entreprise - clients, concurrents, comptes sensibles);Métier Commercial (Lot 2);30 min;P0
+METIER-17;Garde-fou : vérification des exclusions avant tout envoi (bloquant, pas consultatif);Métier Commercial (Lot 2);45 min;P0
+METIER-18;Vérification de l'authentification du domaine d'envoi (SPF, DKIM, DMARC) à l'onboarding;Métier Commercial (Lot 2);1h;P0
+METIER-19;Montée en charge progressive du volume d'envoi sur un domaine neuf;Métier Commercial (Lot 2);1h;P0
+METIER-20;Plafond dur de volume d'envoi par employé et par jour;Métier Commercial (Lot 2);45 min;P0
+METIER-21;Surveillance des taux de rebond et de plainte, avec suspension automatique au seuil;Métier Commercial (Lot 2);1h30;P0
+METIER-22;Journalisation du motif de sélection d'un prospect (raisonnement métier, pas mécanique);Métier Commercial (Lot 2);45 min;P0
 EXEC-01;Point d'entrée signé déclenché par un battement planifié;Exécution autonome (Lot 3);45 min;P0
 EXEC-02;Runtime : charger l'état persisté d'un run;Exécution autonome (Lot 3);30 min;P0
 EXEC-03;Runtime : appeler l'assemblage de contexte pour le pas courant;Exécution autonome (Lot 3);20 min;P0
@@ -135,6 +142,9 @@ DASH-14;Section CRM minimal côté client ("vos prospects");Dashboard (Lot 6);1h
 DASH-15;Contrôles de validation humaine (approuver/refuser une action suspendue);Dashboard (Lot 6);1h;P0
 DASH-16;Réglage du niveau d'autonomie par le client;Dashboard (Lot 6);45 min;P1
 DASH-17;Vue temps réel d'exécution d'une tâche (abonnement live);Dashboard (Lot 6);1h30;P2
+DASH-18;Affichage des repères de performance réalistes à côté des résultats mesurés;Dashboard (Lot 6);45 min;P0
+DASH-19;Affichage du motif de sélection d'un prospect ("pourquoi cette entreprise");Dashboard (Lot 6);45 min;P1
+DASH-20;Gestion des exclusions par le client (ajouter, retirer un compte exclu);Dashboard (Lot 6);45 min;P1
 EVOL-01;Écriture des faits appris (learned_fact) depuis la réflexion post-run;Évolution (Lot 7);1h;P1
 EVOL-02;Application des modifications proposées au profil entreprise par l'apprentissage;Évolution (Lot 7);1h;P2
 EVOL-03;Notification client sur modification du profil entreprise par l'apprentissage;Évolution (Lot 7);30 min;P2

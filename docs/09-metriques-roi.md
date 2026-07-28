@@ -78,6 +78,28 @@ graphique vide, ou un ROI affiché à −100 %.
 
 ---
 
+## Donner les repères plutôt que les cacher
+
+Un client qui ignore ce qu'est un résultat normal lit ses propres chiffres comme un échec. C'est le
+mode de résiliation dominant du marché : il part au troisième mois en croyant que ça ne marche pas,
+alors que les chiffres sont conformes. **Afficher l'ordre de grandeur à côté de la mesure** coûte une
+ligne et retient un client.
+
+| Indicateur | Repère réaliste (vérifié le 2026-07-28) |
+|---|---|
+| Taux de réponse à froid | **3 à 5 %** — au-delà de 5 % c'est bon, 8 % excellent |
+| Prospects convertis en rendez-vous | 2 à 5 % |
+| Rendez-vous qualifiés par mois | 12 à 20 pour un commercial rodé |
+
+Ces repères sont des **données de configuration**, pas des constantes de code, et ils portent leur
+date. Ils ne remplacent jamais une mesure : ils la situent. Voir `DASH-18` et
+[`21-concurrence.md`](21-concurrence.md).
+
+**Ce que ça n'autorise pas :** afficher un repère à la place d'un chiffre absent. Un dashboard sans
+activité affiche un état vide, pas une moyenne de marché.
+
+---
+
 ## Provenance
 
 Chaque valeur affichée doit pouvoir répondre à « d'où vient ce chiffre ? ». En pratique :
