@@ -101,26 +101,11 @@ premier client servi à la main. Voir [`12-roadmap.md`](12-roadmap.md).
 
 ---
 
-## D15 — Quelle niche pour le métier Commercial
+## ✅ D15 — Niche de Sentio — TRANCHÉE
 
-**La décision la plus structurante encore ouverte.** Elle commande le contenu de l'ADN, la liste des
-prospects, le discours, et la cible de la phase 10 du plan.
-
-Les données sont sans appel ([`22-niche-et-verticalisation.md`](22-niche-et-verticalisation.md)) : un
-produit vertical retient 3 à 5 fois mieux qu'un produit horizontal, et
-[`adr/0008`](adr/0008-perimetre-v1-commercial-seul.md) a retenu « Commercial », qui est horizontal
-par nature. Restreindre à une niche ne change ni l'architecture, ni les capacités, ni le schéma —
-seulement le contenu de `METIER-01`.
-
-**Six critères éliminatoires, tous requis** — détaillés dans le document : accès réel aux premiers
-clients, blocage de nature commerciale, clients listables, capacité à payer, vocabulaire spécifique,
-absence d'acteur financé.
-
-> Le critère d'accès prime sur la taille du marché. Une niche parfaite où tu ne connais personne vaut
-> moins qu'une niche moyenne où tu peux décrocher trois rendez-vous cette semaine.
-
-**Bloque :** lot 2 (`METIER-01`, l'ADN) et la phase 10 (la prospection). Ne bloque **pas** les lots 0
-et 1, qui peuvent être construits pendant que la décision mûrit.
+**Décision finale : Sentio n'a pas de niche.** Il accepte tous les secteurs ; la spécialisation se
+fait **par client**, au calibrage, via des profils sectoriels rédigés par Sentio.
+→ [`adr/0011`](adr/0011-generaliste-profils-sectoriels.md)
 
 ---
 

@@ -110,7 +110,7 @@ prouvé, le fournisseur est **non conforme** et aucune donnée réelle ne doit y
 
 ---
 
-# Phase 1 — Lot 0 : Fondations (~15 h, 37 tâches `FOND-01`→`FOND-37`)
+# Phase 1 — Lot 0 : Fondations (~15 h, 38 tâches `FOND-01`→`FOND-38`)
 
 > *Aucune fonctionnalité visible. C'est normal.* C'est ici que se jouent les erreurs qu'on ne rattrape
 > jamais.
@@ -156,14 +156,13 @@ reportées avec un message clair, sans dégradation silencieuse, sans effet sur 
 
 > *C'est le lot qui prouve que le produit existe. Tout ce qui précède est de la plomberie.*
 
-**Prérequis :** trancher **D15 (la niche)**, **D5** (source des prospects — recommandation : la
-donnée fournie par le client) et **D6** (domaine d'envoi — recommandation : celui du client).
+**Prérequis :** trancher **D5** (source des prospects — recommandation : la donnée fournie par le
+client) et **D6** (domaine d'envoi — recommandation : celui du client).
 
-> **D15 commande le contenu de ce lot.** L'ADN d'un commercial de niche n'est pas celui d'un
-> commercial générique, et les données donnent 3 à 5× de rétention au vertical
-> ([`22-niche-et-verticalisation.md`](22-niche-et-verticalisation.md)). Cette décision ne bloque ni
-> la phase 1 ni la phase 2 : elle peut mûrir pendant que le socle se construit, mais elle doit être
-> prise avant d'écrire `METIER-01`.
+> **Sentio reste généraliste** ([`adr/0011`](adr/0011-generaliste-profils-sectoriels.md)) : l'ADN est
+> commun, et la spécialisation passe par les **profils sectoriels** (`METIER-23/24`), rédigés par
+> Sentio et jamais dérivés des données d'un client. Choisir par quel secteur commencer — pas s'y
+> restreindre — grille dans [`22-niche-et-verticalisation.md`](22-niche-et-verticalisation.md).
 
 ADN v1 du Commercial rédigé puis mis en base, table `lead`, puis **cinq capacités, contrat avant
 moteur à chaque fois** : trouver des prospects, qualifier, envoyer un message, relancer, mettre à jour
@@ -299,7 +298,7 @@ recommandation et payer — et tu reçois une alerte email si quoi que ce soit d
 
 # Phase 10 — Acquisition du premier client
 
-> **Cette phase n'existe dans aucune tâche du backlog.** Les 176 tâches sont techniques. Or
+> **Cette phase n'existe dans aucune tâche du backlog.** Les 181 tâches sont techniques. Or
 > [`adr/0001`](adr/0001-repartir-de-zero.md) le dit lui-même : *« le risque réel du projet n'est pas
 > technique, il est commercial. »* Un produit fini sans personne à qui le vendre est l'échec le plus
 > probable de ce projet.
@@ -379,7 +378,6 @@ identique bit pour bit ; seuls les faits appris, le profil et le journal ont cha
 | Phase | Décisions |
 |---|---|
 | 0 | **D9** rétention · **D13** transparence AI Act · **D12** hébergeur · **D11** marque |
-| 0 → 3 | **D15** choix de la niche — à mûrir dès maintenant, bloquant à la phase 3 |
 | 3 | **D5** source des prospects · **D6** domaine d'envoi *(risque de réputation du client)* |
 | 4 | **D4** périodicité · **D7** autonomie par défaut |
 | 6 | **D2** prix de Start · **D3** achat immédiat ou essai |

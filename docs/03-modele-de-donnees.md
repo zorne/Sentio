@@ -28,6 +28,7 @@ l'entreprise et être protégées par une politique d'isolation, **dès la premi
 | Table | Contenu | Notes |
 |---|---|---|
 | `employee_definition` | **Contexte Général / ADN** d'un métier, **versionné** | commun à toutes les entreprises, jamais modifié en place |
+| `sector_profile` | connaissance d'un **secteur** : vocabulaire, interlocuteurs, cycle d'achat, objections, angles | commun à toutes les entreprises, versionné, **rédigé par Sentio — jamais dérivé des données d'un client** → [`adr/0011`](adr/0011-generaliste-profils-sectoriels.md) |
 | `identity` | réservoir d'identités (prénom, nom, portrait) | unicité **globale**, réservation atomique |
 | `employee` | l'employé recruté par une entreprise | pointe vers une **version figée** d'ADN + une identité |
 | `employee_capability` | capacités réellement ouvertes à cet employé | intersection ADN × formule × configuration |

@@ -34,20 +34,36 @@ exactement le profil accessible à un fondateur seul sans budget.
 
 ---
 
-## Ce que ça dit du périmètre actuel
+## La décision prise : la niche est celle du client
 
-[`adr/0008`](adr/0008-perimetre-v1-commercial-seul.md) retient un métier : **Commercial**. Or la
-prospection commerciale est le même travail pour tout le monde — **c'est la définition d'un produit
-horizontal**, celui que les données placent à 90-95 % de revenu net et 32 % d'utilité à six mois.
-C'est aussi le terrain où Sentio affronte des acteurs financés.
+Deux façons de capter cet avantage. **Sentio a retenu la seconde**
+([`adr/0011`](adr/0011-generaliste-profils-sectoriels.md)) :
 
-**Ce n'est pas une raison d'abandonner le métier Commercial.** C'en est une de le restreindre : non
-pas « un commercial », mais **« un commercial pour telle niche »** — qui connaît le vocabulaire du
-secteur, ses cycles d'achat, ses objections types et ses interlocuteurs réels.
+| Approche | Ce que ça donne | Ce que ça coûte |
+|---|---|---|
+| **Sentio se restreint à une niche** | avantage vertical plein, canal de distribution évident (fédération, salon, liste) | renonce à tous les autres secteurs, pari sur une niche unique |
+| **Sentio reste généraliste, la niche est celle du client** *(retenu)* | vision d'origine préservée, aucun client refusé, avantage sectoriel construit progressivement | avantage vertical partiel au départ, **et aucun canal de distribution évident** |
 
-Concrètement, la niche ne change ni l'architecture, ni les capacités, ni le modèle de données. Elle
-change **le contenu de l'ADN** (`METIER-01`), la liste des prospects pertinents, et le discours.
-C'est le changement le moins coûteux techniquement et le plus rentable commercialement.
+La spécialisation se fait donc **par client, au calibrage** : le diagnostic identifie le secteur, le
+moteur déterministe sélectionne le profil sectoriel correspondant, et celui-ci est injecté au
+recrutement.
+
+**Le mécanisme qui rend cela possible.** L'apprentissage inter-entreprises est une ligne rouge
+([`08-evolution-apprentissage.md`](08-evolution-apprentissage.md)) : sans mécanisme, le dixième client
+d'un secteur repartirait de zéro comme le premier, et la connaissance sectorielle ne s'accumulerait
+jamais. La table `sector_profile` résout ça : une connaissance sectorielle **rédigée par Sentio**, à
+partir de sources publiques et de son propre travail de terrain — **jamais dérivée des données d'un
+client pour en servir un autre**. La ligne rouge tient.
+
+**Ce que ça implique en pratique :** Sentio est moyen partout avant d'être bon quelque part.
+Chaque profil sectoriel écrit améliore le produit pour tous les futurs clients de ce secteur. Mieux
+vaut trois profils solides que douze approximatifs, et **quand aucun profil ne correspond, il faut le
+dire au client** plutôt que d'improviser — un profil sectoriel bâclé fait parler l'employé avec
+assurance dans un vocabulaire qu'il maîtrise mal, ce qui est une panne silencieuse.
+
+> **Le coût réel de ce choix est commercial, pas technique.** Une niche unique donne un canal de
+> distribution. Un produit généraliste n'en a pas, et la phase 10 du plan d'action en devient plus
+> difficile — c'est là qu'il faudra compenser.
 
 ---
 
@@ -66,22 +82,23 @@ d'assurance indépendants.
 d'être.* Un marché de 5 à 50 K$ de revenu mensuel est invisible pour un éditeur levé — et
 parfaitement viable pour une personne seule.
 
-### Grille de sélection
+### Dans quel ordre écrire les profils sectoriels
 
-Une niche doit satisfaire **les six**, pas quatre :
+Sentio n'a pas à choisir **un** secteur, mais il doit choisir **par lequel commencer** — la charge
+éditoriale est réelle et une personne seule ne couvre pas douze secteurs. Grille de priorité :
 
-| Critère | Pourquoi il est éliminatoire |
+| Critère | Pourquoi il compte |
 |---|---|
-| **Tu peux atteindre les premiers clients** | sans réseau ni accès, la phase 10 du plan n'aboutit pas — c'est le critère n°1 pour un fondateur seul |
-| Le blocage est commercial | Sentio vend un commercial : si le blocage est ailleurs, le produit ne sert à rien |
-| Les clients sont identifiables et listables | sinon la capacité « trouver des prospects » n'a rien à traiter |
-| Ils ont les moyens de payer un abonnement | une marge trop faible rend le prix impossible |
-| Le vocabulaire est spécifique | c'est ce qui crée l'avantage défendable |
-| Aucun acteur financé n'y est déjà | sinon la course est perdue d'avance |
+| **Tu peux y atteindre des clients** | le premier profil doit servir une vente réelle, pas un exercice |
+| Le blocage y est commercial | Sentio vend un commercial : ailleurs, le produit ne sert à rien |
+| Les prospects y sont listables | sinon la capacité « trouver des prospects » n'a rien à traiter |
+| Ils peuvent payer un abonnement | une marge trop faible rend le prix impossible |
+| Le vocabulaire y est spécifique | c'est ce qui rend le profil utile plutôt que décoratif |
+| Aucun acteur financé n'y est déjà | inutile d'écrire un profil pour un terrain perdu d'avance |
 
-> ⚠️ **Le critère d'accès prime sur la taille du marché.** Une niche parfaite sur le papier mais dont
-> tu ne connais personne vaut moins qu'une niche moyenne où tu peux décrocher trois rendez-vous
-> cette semaine. Le choix reste ouvert : **décision D15**.
+> **Écrire un profil sectoriel n'engage à rien.** C'est un document versionné, pas une orientation
+> d'entreprise : si le secteur ne donne rien, le profil dort en base sans coût. C'est ce qui rend
+> cette approche moins risquée qu'un pari sur une niche unique — et c'est son principal mérite.
 
 ---
 

@@ -9,6 +9,7 @@ FOND-07;Migration : table subscription;Fondations (Lot 0);15 min;P0
 FOND-08;Migration : table usage_counter;Fondations (Lot 0);15 min;P0
 FOND-09;Migration : table employee_definition (versionnée);Fondations (Lot 0);20 min;P0
 FOND-10;Migration : table identity (réservoir);Fondations (Lot 0);15 min;P0
+FOND-38;Migration : table sector_profile (versionnée, globale, rédigée par Sentio);Fondations (Lot 0);20 min;P0
 FOND-11;Migration : table employee;Fondations (Lot 0);15 min;P0
 FOND-12;Migration : table employee_capability;Fondations (Lot 0);15 min;P0
 FOND-13;Migration : table company_profile + traçabilité (auteur/date/tâche source/statut);Fondations (Lot 0);20 min;P0
@@ -60,6 +61,8 @@ NOYAU-21;Clé d'idempotence : génération et vérification sur toute action à 
 NOYAU-22;Format ConversationTurn structuré (text/tool_call/tool_result) pour les échanges multi-tours;Noyau (Lot 1);45 min;P0
 METIER-01;Rédiger l'ADN v1 du métier Commercial spécialisé sur la niche retenue (rôle, limites, règles, comportement, sécurité, vocabulaire du secteur);Métier Commercial (Lot 2);2h;P0
 METIER-02;Écrire employee_definition v1 Commercial en base;Métier Commercial (Lot 2);30 min;P0
+METIER-23;Rédiger le premier profil sectoriel (vocabulaire, interlocuteurs, cycle, objections, angles);Métier Commercial (Lot 2);2h;P0
+METIER-24;Écrire les profils sectoriels en base et prévoir leur versionnage;Métier Commercial (Lot 2);30 min;P0
 METIER-03;Migration : table lead (CRM interne minimal, isolé par entreprise);Métier Commercial (Lot 2);20 min;P0
 METIER-04;Capacité "trouver des prospects" : contrat;Métier Commercial (Lot 2);20 min;P0
 METIER-05;Capacité "trouver des prospects" : moteur v1 (donnée fournie par le client);Métier Commercial (Lot 2);1h;P0
@@ -112,6 +115,8 @@ ACQUIS-14;Moteur de règles déterministe (frein + situation → calibrage de l'
 ACQUIS-15;Génération de la justification de recommandation par le modèle;Acquisition (Lot 4);45 min;P0
 ACQUIS-21;Questions de calibrage du diagnostic, bornées à ce que les capacités savent faire;Acquisition (Lot 4);1h;P0
 ACQUIS-22;Écriture du calibrage dans le profil entreprise et les capacités actives (jamais l'ADN);Acquisition (Lot 4);1h;P0
+ACQUIS-23;Identification du secteur du client pendant le diagnostic;Acquisition (Lot 4);45 min;P0
+ACQUIS-24;Sélection du profil sectoriel par le moteur déterministe, message honnête si aucun ne correspond;Acquisition (Lot 4);45 min;P0
 ACQUIS-16;Cas "besoin hors périmètre détecté" : message honnête + liste d'attente;Acquisition (Lot 4);45 min;P0
 ACQUIS-17;Limitation par visiteur et par adresse sur le diagnostic public;Acquisition (Lot 4);1h;P0
 ACQUIS-18;Enveloppe d'inférence dédiée au diagnostic public (plafond appliqué);Acquisition (Lot 4);30 min;P0
@@ -121,7 +126,7 @@ RECRUT-01;Intégration du prestataire de paiement (paiement hébergé);Recruteme
 RECRUT-02;Point d'entrée de confirmation serveur du paiement (jamais la redirection navigateur);Recrutement & Paiement (Lot 5);1h;P0
 RECRUT-03;Réservation atomique d'une identité dans le réservoir;Recrutement & Paiement (Lot 5);45 min;P0
 RECRUT-04;Création de l'employé sur une version figée d'ADN;Recrutement & Paiement (Lot 5);45 min;P0
-RECRUT-05;Initialisation du Contexte Entreprise depuis le profil du diagnostic;Recrutement & Paiement (Lot 5);1h;P0
+RECRUT-05;Initialisation du Contexte Entreprise depuis le profil du diagnostic et le profil sectoriel;Recrutement & Paiement (Lot 5);1h;P0
 RECRUT-06;Notification de recrutement ("Bienvenue, X rejoint votre entreprise");Recrutement & Paiement (Lot 5);30 min;P0
 RECRUT-07;Page de succès de paiement + ouverture de l'accès à l'espace privé;Recrutement & Paiement (Lot 5);45 min;P0
 RECRUT-08;Authentification par lien magique (connexion);Recrutement & Paiement (Lot 5);1h30;P0

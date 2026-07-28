@@ -94,3 +94,9 @@ optimisations mesurées arrivent avec le volume.
 | Base vectorielle / recherche sémantique | les faits structurés couvrent l'essentiel du besoin ; à reconsidérer si un vrai besoin de non-structuré apparaît |
 | Ré-entraînement, ajustement fin | coût, irréversibilité, aucun gain face à une bonne mémoire |
 | Apprentissage inter-entreprises | une entreprise ne doit jamais bénéficier des données d'une autre — c'est une ligne rouge de confidentialité, pas une optimisation à discuter |
+
+> **Ce que `sector_profile` n'est pas.** La connaissance sectorielle injectée au calibrage
+> ([`adr/0011`](adr/0011-generaliste-profils-sectoriels.md)) est **rédigée par Sentio**, à partir de
+> connaissances publiques et de son propre travail. Elle n'est jamais dérivée des données d'un client
+> pour en servir un autre. La ligne rouge ci-dessus reste entière : de la connaissance métier
+> éditoriale n'est pas de l'apprentissage inter-entreprises.
