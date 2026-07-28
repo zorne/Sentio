@@ -1,6 +1,6 @@
 # Contexte compact — carte du projet Sentio pour une IA
 
-Ce fichier est injecté au premier message de chaque agent de Sentio Dev. Il ne répète pas les
+Ce fichier est injecté au premier message de chaque agent IA. Il ne répète pas les
 invariants ni les règles de travail (déjà présents en permanence dans le prompt des agents) :
 il sert à **savoir quoi aller lire**. Les sources font foi : [`AGENTS.md`](AGENTS.md) et
 [`docs/README.md`](docs/README.md).
