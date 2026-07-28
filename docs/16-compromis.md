@@ -9,25 +9,36 @@
 
 ## C1 — Le €0 plafonne le nombre de clients
 
-Les tiers gratuits imposent un quota d'inférence journalier **partagé par tous les clients**.
-Un run d'employé consomme plusieurs appels de modèle. L'ordre de grandeur réaliste est de
-**quelques dizaines de runs par jour, tous clients confondus** — soit quelques clients actifs,
-pas quelques dizaines.
+Le tier gratuit impose un quota d'inférence **partagé par tous les clients**. Un run d'employé
+consomme plusieurs appels de modèle. Le plafond réaliste reste de l'ordre de **quelques dizaines
+de runs par jour, tous clients confondus** — soit quelques clients actifs, pas quelques dizaines.
 
-Ce n'est pas un défaut d'architecture, c'est le plafond du €0.
+**Le facteur limitant n'est pas celui qu'on croyait.** Le fournisseur retenu offre un volume
+mensuel très large mais un **débit par minute** bas. Ce n'est donc pas le nombre de tokens qui
+plafonne Sentio, c'est la cadence. Conséquence : la file doit lisser les appels dans le temps
+plutôt que les grouper, et un pic de diagnostics sur la vitrine reste le vrai danger.
 
-> **Meilleur endroit où rompre le €0 :** une clé d'inférence payante plafonnée coûte quelques
-> euros par mois et multiplie la capacité par un ordre de grandeur.
+Ce n'est pas un défaut d'architecture, c'est le plafond du €0. Chiffres :
+[`19-fournisseurs-modeles.md`](19-fournisseurs-modeles.md).
+
+> **Meilleur endroit où rompre le €0 :** une clé d'inférence payante plafonnée chez un
+> fournisseur européen, qui lève la limite de débit d'un coup.
 
 ---
 
-## C2 — Le fournisseur de secours gratuit ne verra jamais un client réel
-
-Sa politique de données n'est pas contractuellement « sans entraînement ». Il ne sert donc
-qu'à la démonstration et aux tests.
+## C2 — Le fournisseur de secours ne verra jamais un client réel
 
 **La capacité réelle de Sentio est celle du seul fournisseur conforme.** Le filet de secours
 n'en est pas un pour les clients payants — il ne faut pas se rassurer avec.
+
+Son usage est même plus étroit qu'il n'y paraît : la démonstration de la vitrine est scriptée
+(C6) et ne consomme aucun appel de modèle, et le diagnostic manipule de la donnée réelle dès la
+première question. **Il ne reste que les tests internes et le développement.**
+
+S'y ajoute une fragilité propre au fournisseur principal : son non-entraînement repose sur un
+**opt-out en console, révocable**, pas sur une clause contractuelle. Tant qu'il n'est pas activé
+et prouvé, le fournisseur est non conforme et aucune donnée réelle ne doit y transiter. Voir
+[`adr/0009`](adr/0009-fournisseur-inference-ue.md).
 
 ---
 

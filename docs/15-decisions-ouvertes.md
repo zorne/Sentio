@@ -4,6 +4,9 @@
 > **demande au fondateur, ne choisis pas à sa place.**
 >
 > Quand une décision est tranchée : la retirer d'ici et créer une entrée dans [`adr/`](adr/).
+>
+> Le **choix du fournisseur d'inférence**, qui manquait à cette liste alors qu'il bloquait le
+> lot 0, est tranché par [`adr/0009`](adr/0009-fournisseur-inference-ue.md).
 
 ---
 
@@ -88,6 +91,16 @@ preuve réglementaire. **Bloque :** lot 0 (le schéma doit prévoir le champ de 
 Détermine l'ordre des lots : automatisation complète d'abord, ou vendable d'abord avec un
 premier client servi à la main. Voir [`12-roadmap.md`](12-roadmap.md).
 **Bloque :** l'ordonnancement, pas un lot précis.
+
+---
+
+## D12 — Hébergeur de l'interface
+
+Jamais tranché : [`02-architecture.md`](02-architecture.md) laisse le choix ouvert et impose
+seulement de rester **indépendant de l'hébergeur** (aucune interface propriétaire). La décision
+n'était pas suivie ici, alors qu'elle conditionne une migration probable dès le premier client
+payant. Critère dominant, comme pour l'inférence : l'offre gratuite doit autoriser l'usage
+commercial (C3). **Bloque :** la mise en ligne, pas un lot précis.
 
 ---
 

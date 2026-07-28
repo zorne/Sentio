@@ -49,6 +49,7 @@ pas compris ce que la décision coûte — cherche encore.
 | [0006](0006-capacite-vs-outil.md) | Capacité (contrat) ≠ outil (moteur) | acceptée |
 | [0007](0007-perimetre-v1-commercial-support.md) | Périmètre V1 : deux métiers, Commercial + Support | remplacée par 0008 |
 | [0008](0008-perimetre-v1-commercial-seul.md) | Périmètre V1 : Commercial seul | acceptée |
+| [0009](0009-fournisseur-inference-ue.md) | Fournisseur d'inférence européen, avant la qualité de modèle | acceptée |
 
 ---
 

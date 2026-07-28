@@ -90,10 +90,16 @@ Voir [`10-securite-rgpd.md`](10-securite-rgpd.md).
 2. **Chaîne de repli** ordonnée entre fournisseurs — déclenchée **uniquement** sur un
    dépassement de quota ou une panne passagère. Jamais sur une erreur logique, qui doit
    remonter immédiatement : sinon un vrai bug se cache derrière des tentatives silencieuses.
+   La chaîne ne franchit jamais la frontière de classe de données : sur une requête portant de
+   la donnée réelle, si le fournisseur conforme est épuisé, **la tâche est reportée, jamais
+   routée vers le secours**. L'ordre des fournisseurs est en configuration, pas dans le code
+   → [`19-fournisseurs-modeles.md`](19-fournisseurs-modeles.md).
 3. **Comptage.** Chaque appel incrémente le compteur de l'entreprise et le compteur global du
    fournisseur. C'est ce comptage qui rend les quotas de formule réels et non décoratifs.
 4. **Plafond dur** par entreprise et par jour. Au-delà, la tâche est **reportée avec un message
-   clair**, jamais dégradée en silence.
+   clair**, jamais dégradée en silence. Le plafond porte aussi sur le **débit par minute**, qui
+   est le facteur limitant réel : le Gateway lisse les appels dans le temps au lieu de les
+   grouper.
 
 ---
 

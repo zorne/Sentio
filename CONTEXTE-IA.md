@@ -62,11 +62,15 @@ fichier non lu.**
 | Recommandations | `docs/14-recommandations.md` |
 | Décisions ouvertes (D2, D9 bloquantes) | `docs/15-decisions-ouvertes.md` |
 | Compromis assumés | `docs/16-compromis.md` |
-| Vocabulaire imposé | `docs/17-lexique.md` |
+| Vocabulaire imposé — **source unique** | `docs/17-lexique.md` |
+| Fournisseurs d'inférence, modèles, quotas chiffrés | `docs/19-fournisseurs-modeles.md` |
 | Vision brute du fondateur (fait foi sur le *quoi*) | `projet.md` |
 
 **Décisions déjà tranchées** — `docs/adr/` : `0001-repartir-de-zero` ·
 `0002-monolithe-modulaire` · `0003-deux-contextes` · `0004-run-machine-a-etats` ·
 `0005-cles-plateforme-classe-de-donnees` · `0006-capacite-vs-outil` ·
-`0007-perimetre-v1-commercial-support` · `0008-perimetre-v1-commercial-seul`.
+`0008-perimetre-v1-commercial-seul` · `0009-fournisseur-inference-ue`.
 Ne pas les rouvrir sans raison explicite.
+
+⚠️ `0007-perimetre-v1-commercial-support` est **remplacée par `0008`** : le fondateur est revenu
+sur ce choix le jour même. **Le métier Support ne fait pas partie de la V1.**

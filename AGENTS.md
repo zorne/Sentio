@@ -31,14 +31,17 @@ Ces règles ne sont pas des préférences de style. Chacune protège un client p
 4. **Aucun chiffre affiché sans une ligne en base qui le justifie.** Pas de valeur de
    démonstration dans une interface client, pas de métrique estimée présentée comme mesurée.
 5. **Une donnée réelle de client ne part jamais vers un fournisseur de modèle qui n'est pas
-   contractuellement « sans entraînement ».** Le Model Gateway saute ce fournisseur, il ne le
-   tente pas.
+   « sans entraînement »** — par clause contractuelle, ou par opt-out documenté, vérifié et daté.
+   Le Model Gateway saute ce fournisseur, il ne le tente pas. Tant que l'opt-out n'est pas prouvé,
+   le fournisseur est **non conforme**. Voir [`docs/adr/0009`](docs/adr/0009-fournisseur-inference-ue.md),
+   qui assouplit cet invariant et en explique le coût.
 6. **L'irréversible n'est jamais automatique par défaut**, quel que soit le niveau d'autonomie
    choisi par le client.
 7. **Aucun secret dans le dépôt.** Ni clé, ni jeton, ni identifiant, ni dans un exemple.
-8. **Le vocabulaire produit est imposé** : voir [`docs/17-lexique.md`](docs/17-lexique.md).
-   Les mots « IA », « bot », « agent », « assistant », « GPT », « automation » ne doivent
-   apparaître dans aucun texte visible par un client.
+8. **Le vocabulaire produit est imposé.** [`docs/17-lexique.md`](docs/17-lexique.md) est la
+   **source unique** de la liste des mots interdits dans un texte visible par un client — « IA »,
+   « bot », « agent », « assistant », « GPT », « automation » et d'autres. Ne pas recopier la
+   liste ailleurs : trois copies divergentes valent zéro règle.
 
 Si une demande t'oblige à violer un invariant : **ne le fais pas silencieusement**. Dis-le,
 explique le coût, propose l'alternative, et laisse le fondateur trancher.

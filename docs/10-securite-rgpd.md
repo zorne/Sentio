@@ -23,12 +23,18 @@ Un identifiant dans une adresse n'est pas une autorisation.
 
 | Zone | Données | Fournisseur autorisé |
 |---|---|---|
-| Démonstration de la vitrine | fictives | n'importe lequel, y compris un tier gratuit |
+| Démonstration de la vitrine | fictives | n'importe lequel — mais la démonstration est scriptée et n'appelle aucun modèle |
 | Diagnostic | **réelles dès la première question** (entreprise, email du prospect) | uniquement « sans entraînement » |
 | Travail des employés | réelles | uniquement « sans entraînement » |
+| Tests et développement | fictives | fournisseur de secours |
 
 Le Model Gateway **saute** un fournisseur incompatible avec la classe de données de la requête.
 Il ne le tente pas. Voir [`05-runtime-employe.md`](05-runtime-employe.md).
+
+« Sans entraînement » s'entend par clause contractuelle **ou** par opt-out documenté, vérifié et
+daté. Un opt-out non prouvé rend le fournisseur non conforme : c'est un préalable de mise en
+service, pas une formalité. Fournisseurs retenus et leurs statuts :
+[`19-fournisseurs-modeles.md`](19-fournisseurs-modeles.md).
 
 ---
 
@@ -54,7 +60,9 @@ en action réelle.
 - **Hébergement en Union européenne**, base et sauvegardes.
 - **Registre des traitements** tenu et à jour.
 - **Contrats de sous-traitance** signés avec chaque prestataire (hébergeur, base, fournisseur
-  de modèle, service d'envoi, paiement). À faire **avant** le premier client réel.
+  de modèle, service d'envoi, paiement). À faire **avant** le premier client réel. Le fournisseur
+  d'inférence retenu est européen précisément pour éviter d'instruire en plus un transfert hors
+  UE → [`19-fournisseurs-modeles.md`](19-fournisseurs-modeles.md).
 - **Durées de conservation définies par table**, pas « pour toujours par défaut ».
 - **Droit à l'effacement** : la procédure doit couvrir aussi le journal d'exécution — par
   **anonymisation**, pas par suppression, sinon la piste d'audit est détruite.

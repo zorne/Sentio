@@ -40,7 +40,8 @@ sur le *quoi*, la documentation gagne sur le *comment*.
 3. **Aucun chiffre affiché sans une ligne en base derrière.** Jamais de métrique décorative.
    → [`docs/09-metriques-roi.md`](docs/09-metriques-roi.md)
 4. **Le vocabulaire est une contrainte technique.** « employé », « recrutement », « équipe ».
-   Jamais « IA », « bot », « agent », « assistant ». → [`docs/17-lexique.md`](docs/17-lexique.md)
+   Jamais « IA », « bot », « agent », « assistant », et quelques autres — la liste complète et
+   faisant foi est dans [`docs/17-lexique.md`](docs/17-lexique.md), à ne recopier nulle part.
 5. **Un seul métier au lancement : Commercial.** Le diagnostic reste honnête si le besoin
    détecté sort de ce périmètre — jamais de vente d'un employé incapable de faire le travail.
    → [`docs/adr/0008-perimetre-v1-commercial-seul.md`](docs/adr/0008-perimetre-v1-commercial-seul.md)

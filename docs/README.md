@@ -24,6 +24,8 @@ Tout est en français ; seuls les noms de tables et de modules sont en anglais.
 **Avant de mettre en ligne**
 11. [`10-securite-rgpd.md`](10-securite-rgpd.md)
 12. [`11-exploitation.md`](11-exploitation.md) — où tourne quoi, et quand le €0 casse
+    → [`19-fournisseurs-modeles.md`](19-fournisseurs-modeles.md) — quels fournisseurs, quels
+    modèles, quels quotas chiffrés **(daté — à re-vérifier)**
 
 **Pour piloter**
 13. [`12-roadmap.md`](12-roadmap.md) — les 9 lots de construction
@@ -32,7 +34,8 @@ Tout est en français ; seuls les noms de tables et de modules sont en anglais.
 15. [`14-recommandations.md`](14-recommandations.md)
 16. [`15-decisions-ouvertes.md`](15-decisions-ouvertes.md) — décisions restantes (D2, D9 bloquent respectivement les lots 5/6 et 0)
 17. [`16-compromis.md`](16-compromis.md) — ce qu'on sacrifie, et pourquoi
-18. [`17-lexique.md`](17-lexique.md) — vocabulaire imposé
+18. [`17-lexique.md`](17-lexique.md) — vocabulaire imposé, **source unique** de la liste des mots
+    interdits
 
 **Journal des décisions** : [`adr/`](adr/) — une entrée par décision structurante.
 
