@@ -66,13 +66,13 @@ Ne pas les trancher, c'est se condamner à refaire des migrations. Écrire une e
 
 | Décision | Sujet | Recommandation déjà écrite | Bloque |
 |---|---|---|---|
-| **D9** | Rétention du journal | 12 mois puis anonymisation | le schéma du lot 0 (`FOND-37`) |
+| ✅ **D9** | Rétention du journal | Tranchée : 30 jours ([`adr/0012`](adr/0012-retention-journal-30-jours.md)) | le schéma du lot 0 (`FOND-37`) |
 | **D13** | Transparence AI Act *(voir ci-dessous)* | — | vitrine et ADN commercial |
 | **D12** | Hébergeur de l'interface | critère dominant : l'offre gratuite doit autoriser l'usage commercial | la mise en ligne |
 | **D11** | Marque unique | un seul nom | le nom de domaine |
 
-**Terminé quand :** quatre entrées existent dans `adr/`, et les décisions sont retirées de
-[`15-decisions-ouvertes.md`](15-decisions-ouvertes.md).
+**Terminé quand :** quatre entrées existent dans `adr/` (une l'est déjà — D9), et les décisions
+sont retirées de [`15-decisions-ouvertes.md`](15-decisions-ouvertes.md).
 
 ### 0.3 — Trancher D13 : la transparence exigée par l'AI Act
 
@@ -115,7 +115,7 @@ prouvé, le fournisseur est **non conforme** et aucune donnée réelle ne doit y
 > *Aucune fonctionnalité visible. C'est normal.* C'est ici que se jouent les erreurs qu'on ne rattrape
 > jamais.
 
-**Prérequis :** D9 tranchée.
+**Prérequis :** D9 tranchée ✅ (30 jours, [`adr/0012`](adr/0012-retention-journal-30-jours.md)).
 
 **Ordre :**
 1. `FOND-01` monorepo, `FOND-02` intégration continue, `FOND-03` projet de base de données.
@@ -382,7 +382,7 @@ identique bit pour bit ; seuls les faits appris, le profil et le journal ont cha
 
 | Phase | Décisions |
 |---|---|
-| 0 | **D9** rétention · **D13** transparence AI Act · **D12** hébergeur · **D11** marque |
+| 0 | ✅ D9 rétention (tranchée) · **D13** transparence AI Act · **D12** hébergeur · **D11** marque |
 | 3 | **D5** source des prospects · **D6** domaine d'envoi *(risque de réputation du client)* |
 | 4 | **D4** périodicité · **D7** autonomie par défaut |
 | 6 | **D2** prix de Start · **D3** achat immédiat ou essai |

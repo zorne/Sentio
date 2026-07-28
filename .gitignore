@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Secrets — aucun ne doit entrer dans le dépôt (AGENTS.md, invariant 7).
+.env
+.env.*
+!.env.example

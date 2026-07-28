@@ -86,10 +86,10 @@ des deux tables de mémoire. Ne concerne **jamais** l'ADN.
 
 ---
 
-## D9 — Rétention du journal d'exécution
+## ✅ D9 — Rétention du journal d'exécution — TRANCHÉE
 
-**Recommandation :** 12 mois puis anonymisation — arbitrage entre volume de base gratuit et
-preuve réglementaire. **Bloque :** lot 0 (le schéma doit prévoir le champ de rétention).
+**Décision finale : 30 jours en stockage principal**, archivage différé pour plus tard (non
+tranché ici). → [`adr/0012`](adr/0012-retention-journal-30-jours.md)
 
 ---
 

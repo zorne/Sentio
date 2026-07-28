@@ -63,7 +63,7 @@ fichier non lu.**
 | ⭐ **Quoi faire ensuite** — plan ordonné jusqu'au premier client | `docs/20-plan-action.md` |
 | Critères d'acceptation testables | `docs/13-verification.md` |
 | Recommandations | `docs/14-recommandations.md` |
-| Décisions ouvertes (D2, D9 bloquantes) | `docs/15-decisions-ouvertes.md` |
+| Décisions ouvertes (D2 bloquante) | `docs/15-decisions-ouvertes.md` |
 | Compromis assumés | `docs/16-compromis.md` |
 | Vocabulaire imposé — **source unique** | `docs/17-lexique.md` |
 | Fournisseurs d'inférence, modèles, quotas chiffrés | `docs/19-fournisseurs-modeles.md` |

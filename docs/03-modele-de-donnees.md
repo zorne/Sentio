@@ -107,6 +107,6 @@ toucher à aucun employé existant — exigence §21 de la vision.
 3. **Migrations en quatre temps : étendre → remplir → basculer → retirer.** Cela donne un
    déploiement sans interruption, et évite les « quelques heures de maintenance » que la
    vision s'autorise pourtant.
-4. **Rétention du journal** : à trancher (décision D9), recommandation 12 mois puis
-   anonymisation — arbitrage entre volume de base gratuit et preuve réglementaire.
+4. **Rétention du journal** : 30 jours en stockage principal, tranchée en
+   [`adr/0012`](adr/0012-retention-journal-30-jours.md).
 5. **Clé d'idempotence** sur toute table enregistrant une action à effet extérieur.

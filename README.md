@@ -10,9 +10,10 @@ et toute la vie du client se déroule ensuite dans son espace privé.
 > Il doit avoir l'impression de recruter un collaborateur, de suivre ses performances,
 > et de voir son équipe grandir.
 
-**État du projet : architecture définie, code non commencé.**
-Ce dépôt ne contient aujourd'hui que la documentation. C'est volontaire : l'architecture
-est écrite avant la première ligne de code.
+**État du projet : lot 0 (Fondations) en cours.**
+L'architecture a été écrite avant la première ligne de code. Le monorepo existe désormais
+(`packages/domain`, `core`, `capabilities`, `db`, `config` · `apps/web`, `worker`) ; les
+migrations restent à écrire. Étape suivante : [`docs/20-plan-action.md`](docs/20-plan-action.md).
 
 ---
 
