@@ -58,6 +58,7 @@ fichier non lu.**
 | Hébergement, seuils où le €0 casse | `docs/11-exploitation.md` |
 | Roadmap — les 9 lots ordonnés | `docs/12-roadmap.md` |
 | Backlog — 163 tâches | `docs/18-backlog.md`, `docs/backlog-v1.csv` |
+| ⭐ **Quoi faire ensuite** — plan ordonné jusqu'au premier client | `docs/20-plan-action.md` |
 | Critères d'acceptation testables | `docs/13-verification.md` |
 | Recommandations | `docs/14-recommandations.md` |
 | Décisions ouvertes (D2, D9 bloquantes) | `docs/15-decisions-ouvertes.md` |

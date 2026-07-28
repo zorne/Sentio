@@ -1,0 +1,406 @@
+# 20 — Plan d'action : de zéro au premier client payant
+
+> À lire si tu travailles sur : **n'importe quoi**. C'est le document qui dit quoi faire ensuite.
+>
+> [`12-roadmap.md`](12-roadmap.md) donne les lots, [`18-backlog.md`](18-backlog.md) les tâches.
+> **Ce fichier donne l'ordre**, et ajoute tout ce que le backlog ne contient pas : les démarches
+> administratives, les décisions à trancher, la mise en ligne et la vente.
+>
+> Établi le 2026-07-28. Ordre retenu : **canonique** (`0→1→2→3→4→5→6→7→8`) — l'automatisation
+> complète avant la première vente (décision D10).
+
+---
+
+## Format de chaque étape
+
+Chaque étape porte : **ce qu'on fait**, **pourquoi maintenant**, **ce qu'il faut avoir avant**, et
+surtout **« terminé quand »** — un critère vérifiable, jamais une impression d'avancement.
+
+Règle d'or : une étape dont le critère de sortie ne passe pas n'est **pas** terminée. Un lot aval
+construit sur un lot amont incomplet produit du travail à refaire ([`12-roadmap.md`](12-roadmap.md)).
+
+---
+
+## Tableau de bord — où j'en suis
+
+| Phase | Objet | Charge | État |
+|---|---|---|---|
+| 0 | Lancer ce qui a un délai | ~4 h + délais | ☐ |
+| 1 | Lot 0 — Fondations | ~15 h | ☐ |
+| 2 | Lot 1 — Noyau | ~17 h | ☐ |
+| 3 | Lot 2 — Métier Commercial | ~11 h | ☐ |
+| 4 | Lot 3 — Exécution autonome | ~11 h | ☐ |
+| 5 | Lot 4 — Acquisition | ~19 h | ☐ |
+| 6 | Lot 5 — Recrutement et paiement | ~9,5 h | ☐ |
+| 7 | Lot 6 — Dashboard | ~16 h | ☐ |
+| 8 | Lot 8 — Conformité et lancement | ~12 h | ☐ |
+| 9 | Mise en ligne | ~3 h | ☐ |
+| 10 | **Acquisition du premier client** | continu | ☐ |
+| 11 | Au premier euro encaissé | ~2 h | ☐ |
+| 12 | Lot 7 — Évolution (décalable) | ~6,5 h | ☐ |
+
+**~125 h d'implémentation**, dont ~118 h avant le premier encaissement si le lot 7 est décalé.
+Ce sont des estimations de temps d'implémentation assistée, pas des jours de calendrier : le délai
+réel est commandé par l'immatriculation et par la vente, pas par le code.
+
+---
+
+# Phase 0 — Lancer maintenant ce qui a un délai
+
+> Rien ici ne demande de savoir coder. Tout est bloquant plus tard. **À faire dès aujourd'hui**,
+> pendant que le reste se construit.
+
+### 0.1 — Immatriculer l'entreprise
+
+**Pourquoi maintenant :** c'est le préalable absolu à tout encaissement
+([`10-securite-rgpd.md`](10-securite-rgpd.md)) et le délai le plus long du projet. Aucune vente n'est
+possible sans. Le délai administratif court pendant que tu développes — chaque jour d'attente ici est
+un jour perdu à la fin, pas au début.
+**Terminé quand :** tu as un numéro d'immatriculation et une adresse d'établissement utilisables dans
+des mentions légales.
+
+### 0.2 — Trancher les décisions qui bloquent le schéma
+
+Ne pas les trancher, c'est se condamner à refaire des migrations. Écrire une entrée dans
+[`adr/`](adr/) pour chacune, **avec le compromis assumé** — c'est la règle R22.
+
+| Décision | Sujet | Recommandation déjà écrite | Bloque |
+|---|---|---|---|
+| **D9** | Rétention du journal | 12 mois puis anonymisation | le schéma du lot 0 (`FOND-37`) |
+| **D13** | Transparence AI Act *(voir ci-dessous)* | — | vitrine et ADN commercial |
+| **D12** | Hébergeur de l'interface | critère dominant : l'offre gratuite doit autoriser l'usage commercial | la mise en ligne |
+| **D11** | Marque unique | un seul nom | le nom de domaine |
+
+**Terminé quand :** quatre entrées existent dans `adr/`, et les décisions sont retirées de
+[`15-decisions-ouvertes.md`](15-decisions-ouvertes.md).
+
+### 0.3 — Trancher D13 : la transparence exigée par l'AI Act
+
+**Le sujet le plus important de cette phase, et le plus inconfortable.**
+
+Depuis le **2 août 2026**, l'article 50 du règlement européen sur l'IA impose d'informer une personne
+qu'elle interagit avec un système d'IA, de signaler les contenus générés, de tracer les décisions
+automatisées et de documenter le système. Un employé numérique commercial relève du **risque limité** :
+obligations légères, mais réelles. Les manquements à l'article 50 sont sanctionnables.
+
+**Cela heurte de front la promesse fondatrice** — « le client ne doit jamais avoir l'impression
+d'utiliser une IA » — et le lexique qui interdit le mot dans tout texte visible
+([`17-lexique.md`](17-lexique.md)). Deux surfaces sont concernées :
+
+- **le diagnostic de la vitrine**, où un visiteur converse réellement avec un système d'IA ;
+- **les messages de prospection** signés d'une identité fictive, envoyés à des tiers.
+
+Une lecture tient debout : informer n'oblige ni à employer le mot interdit dans l'interface, ni à
+casser l'ambiance — une mention sobre suffit, et les pages légales sont **déjà** exemptées du lexique.
+Mais l'arbitrage appartient au fondateur, et il touche le cœur du produit.
+**Terminé quand :** une ADR tranche où, quand et avec quels mots l'information est donnée.
+
+### 0.4 — Créer les comptes fournisseurs, séparés du personnel
+
+Comptes de production **distincts des comptes personnels**, chez chaque prestataire (R16). Aucune clé
+ne doit transiter par un chat, un ticket ou une capture : une clé qui a transité est compromise.
+**Terminé quand :** les comptes existent et les clés vivent uniquement en variables d'environnement.
+
+### 0.5 — Activer et prouver l'opt-out d'entraînement
+
+**Préalable de mise en service, pas une bonne pratique.** Tant que l'opt-out n'est pas activé et
+prouvé, le fournisseur est **non conforme** et aucune donnée réelle ne doit y transiter
+([`19-fournisseurs-modeles.md`](19-fournisseurs-modeles.md), [`adr/0009`](adr/0009-fournisseur-inference-ue.md)).
+**Terminé quand :** une capture datée de l'opt-out est archivée avec le registre des traitements.
+
+---
+
+# Phase 1 — Lot 0 : Fondations (~15 h, 37 tâches `FOND-01`→`FOND-37`)
+
+> *Aucune fonctionnalité visible. C'est normal.* C'est ici que se jouent les erreurs qu'on ne rattrape
+> jamais.
+
+**Prérequis :** D9 tranchée.
+
+**Ordre :**
+1. `FOND-01` monorepo, `FOND-02` intégration continue, `FOND-03` projet de base de données.
+2. Les **26 migrations**, dans l'ordre des dépendances de clés étrangères : `tenant` → `tenant_member`
+   → `plan` → `subscription` → `usage_counter` → `employee_definition` → `identity` → `employee` →
+   mémoire → travail → journal → capacités → fournisseurs → acquisition.
+3. `FOND-30` — **activer et vérifier l'isolation par entreprise sur toutes les tables**.
+4. `FOND-31/32` repositories, `FOND-33` seed des trois formules, `FOND-34` réservoir de 300+ identités,
+   `FOND-35` configuration, `FOND-36` types du domaine, `FOND-37` rétention du journal.
+
+> ⚠️ **Incohérence d'ordre repérée dans le backlog :** `FOND-12` crée `employee_capability` avant
+> `FOND-23` qui crée `capability`. Si la première référence la seconde, déplacer `capability` et
+> `capability_binding` avant. À vérifier au moment d'écrire les migrations.
+
+**Terminé quand :** `TEST-01` passe (deux entreprises créées, tout accès croisé refusé : interface,
+appel direct, identifiant deviné, abonnement temps réel) **et** `TEST-09` passe (activer Growth par
+modification de données, sans déploiement ni redémarrage).
+
+---
+
+# Phase 2 — Lot 1 : Noyau (~17 h, 22 tâches `NOYAU-01`→`NOYAU-22`)
+
+**Prérequis :** phase 1 terminée, opt-out prouvé (0.5).
+
+Model Gateway (interface fournisseur, routage par classe de données, chaîne de repli, comptage,
+plafonds durs, trois enveloppes), Policy Engine (classes d'effet, quatre niveaux d'autonomie,
+`standing_approval`), assemblage de contexte à trois couches, registre de capacités, journal en ajout
+seul, idempotence, format de tour de conversation.
+
+**Terminé quand :** `TEST-04` passe — le fournisseur de secours n'apparaît sur **aucune** requête
+marquée réelle, **et** quand le fournisseur conforme est indisponible le comportement observé est
+**l'échec ou le report, jamais le repli** ; `TEST-07` passe — une entreprise au plafond voit ses tâches
+reportées avec un message clair, sans dégradation silencieuse, sans effet sur les autres entreprises.
+
+---
+
+# Phase 3 — Lot 2 : Métier Commercial (~11 h, 15 tâches `METIER-01`→`METIER-15`)
+
+> *C'est le lot qui prouve que le produit existe. Tout ce qui précède est de la plomberie.*
+
+**Prérequis :** trancher **D5** (source des prospects — recommandation : la donnée fournie par le
+client) et **D6** (domaine d'envoi — recommandation : celui du client).
+
+ADN v1 du Commercial rédigé puis mis en base, table `lead`, puis **cinq capacités, contrat avant
+moteur à chaque fois** : trouver des prospects, qualifier, envoyer un message, relancer, mettre à jour
+une fiche. Plus les deux garde-fous : mention d'opposition obligatoire dans chaque message
+(`METIER-10`) et respect immédiat des désinscriptions (`METIER-11`).
+
+> **Le marché dit de remonter la qualification en priorité.** La première cause d'échec des outils
+> concurrents est une donnée sale transformée en mauvais messages à grande échelle — exactement le
+> risque de D5. `METIER-06/07` (qualifier un prospect) est classé P1 dans le backlog : **le traiter
+> comme P0.** Voir « Ce que dit le marché » en fin de document.
+
+**Terminé quand :** `TEST-02` passe — le client demande de la comptabilité à son commercial, l'employé
+refuse dans le vocabulaire du métier **et** le refus est tracé au journal. Prendre au passage
+l'empreinte de `employee_definition` pour `TEST-03`.
+
+---
+
+# Phase 4 — Lot 3 : Exécution autonome (~11 h, 15 tâches `EXEC-01`→`EXEC-15`)
+
+**Prérequis :** trancher **D4** (périodicité — recommandation : quotidien) et **D7** (autonomie par
+défaut — recommandation : `confirmer une fois` sur l'irréversible).
+
+Battement planifié et point d'entrée signé, les sept pas du run, reprise après interruption depuis le
+journal, suspension et reprise après accord humain, verrouillage de la file, priorité par formule,
+notifications de travail émises depuis des résultats journalisés.
+
+**Terminé quand :** `TEST-05` passe — rejouer deux fois le même pas n'envoie pas deux emails, ne crée
+pas deux prospects, ne facture pas deux fois ; `TEST-06` passe — un run interrompu reprend au pas
+suivant **après redémarrage complet**, et une tâche refusée se termine proprement.
+
+---
+
+# Phase 5 — Lot 4 : Acquisition (~19 h, 20 tâches `ACQUIS-01`→`ACQUIS-20`)
+
+**Prérequis :** D13 tranchée (la mention de transparence se pose ici).
+
+Vitrine et navigation, sections Hero et Mission, **démonstration scriptée présentée comme telle**,
+section tarifs (Start achetable, Growth et Scale visibles mais non actives), **cinq pages légales en
+version provisoire signalée**, diagnostic conversationnel, extraction de profil structuré,
+**moteur de règles déterministe** frein → métier, justification rédigée par le modèle, cas hors
+périmètre avec liste d'attente, limitation par visiteur et par adresse, enveloppe d'inférence dédiée,
+jeu de conversations de référence et test de non-régression.
+
+Deux règles à ne pas relâcher : **le modèle ne choisit jamais le métier** (il rédige la justification),
+et la démonstration ne doit jamais passer pour une analyse en direct du visiteur.
+
+**Terminé quand :** le jeu de conversations de référence est rejoué et, pour chaque conversation, le
+frein détecté et le métier recommandé restent conformes à l'attendu.
+
+---
+
+# Phase 6 — Lot 5 : Recrutement et paiement (~9,5 h, 10 tâches `RECRUT-01`→`RECRUT-10`)
+
+**Prérequis :** trancher **D2 (prix de Start)** et **D3** (achat immédiat ou essai). D2 bloque aussi le
+calcul du retour sur investissement en phase 7. Repère de marché : 100 à 800 €/mois observés, et une
+PME peut s'outiller sous 200 €/mois avec des briques existantes — **fixer le prix reste ton arbitrage**.
+
+Paiement hébergé (aucune donnée bancaire ne touche Sentio), **ouverture d'accès par confirmation
+serveur uniquement — jamais par la redirection du navigateur**, puis la transaction de recrutement en
+quatre temps : réservation atomique d'identité → création de l'employé sur ADN figé → initialisation du
+contexte entreprise depuis le diagnostic → notification de bienvenue. Enfin lien magique, protection
+anti-scanner, rattachement au tenant créé pendant le diagnostic.
+
+**Terminé quand :** un paiement de test ouvre l'accès **uniquement** via la confirmation serveur, et
+l'employé créé porte une identité réservée, un ADN figé et un contexte entreprise initialisé.
+
+---
+
+# Phase 7 — Lot 6 : Dashboard (~16 h, 17 tâches `DASH-01`→`DASH-17`)
+
+**Prérequis :** D2 tranchée (le retour sur investissement s'écrit *(CA attribué − prix) ÷ prix*).
+
+Fiche employé, mesures réelles, progression vers l'objectif, **déclaration de vente par le client**,
+calcul du chiffre d'affaires avec fenêtre d'attribution annoncée, temps économisé affiché comme
+estimation avec sa base de calcul, **états vides soignés**, notifications, guide de première connexion,
+gestion de l'abonnement, CRM minimal, contrôles de validation humaine.
+
+> **C'est ici que se joue la rétention.** Le marché résilie ces outils à 50-70 % par an. Le modèle
+> d'attribution — une vente déclarée par le client, rattachée à un prospect touché — est le meilleur
+> atout de Sentio : c'est ce qui rend la valeur prouvable au lieu d'être affirmée.
+
+**Terminé quand :** `TEST-08` passe — sur une entreprise vierge, le dashboard n'affiche **aucun** chiffre
+non justifié par une ligne en base, et aucune notification « Évolution » n'existe sans `strategy_change`.
+
+---
+
+# Phase 8 — Lot 8 : Conformité et lancement (~12 h, 10 tâches `CONF-01`→`CONF-10`)
+
+> **Ce lot bloque l'encaissement.** Rien ne peut être facturé avant.
+
+**Prérequis :** immatriculation reçue (0.1).
+
+Mentions légales **définitives** (post-immatriculation), CGU et CGV, registre des traitements, analyse
+d'impact sur les décisions automatisées, procédure d'effacement par anonymisation du journal, script de
+sauvegarde exportée hors plateforme, surveillance par alerte email, **contrôle automatique du lexique
+en intégration continue**, vérification de l'usage commercial de chaque offre gratuite, contrats de
+sous-traitance signés avec chaque prestataire.
+
+**À ajouter au regard de l'AI Act** (absent du backlog, qui ne couvre que le RGPD) : la mention de
+transparence décidée en D13, la documentation du système et la traçabilité des décisions automatisées —
+cette dernière est déjà satisfaite par le journal en ajout seul, il suffit de la documenter.
+
+**Terminé quand :** aucun texte visible ne contient un mot interdit (vérifié automatiquement), chaque
+offre gratuite utilisée autorise l'usage commercial par écrit, et tous les contrats de sous-traitance
+sont signés.
+
+---
+
+# Phase 9 — Mise en ligne (~3 h)
+
+**Prérequis :** D11 (marque) et D12 (hébergeur) tranchées.
+
+Nom de domaine, déploiement, secrets en variables d'environnement, sauvegarde exportée hors plateforme
+dès maintenant, quatre alertes de surveillance actives : débit d'inférence en requêtes/minute
+glissantes, runs en échec, taille de la base, tâches en attente d'accord humain depuis trop longtemps.
+
+**Terminé quand :** un inconnu peut arriver sur le domaine, faire un diagnostic, recevoir une
+recommandation et payer — et tu reçois une alerte email si quoi que ce soit dérape.
+
+---
+
+# Phase 10 — Acquisition du premier client
+
+> **Cette phase n'existe dans aucune tâche du backlog.** Les 163 tâches sont techniques. Or
+> [`adr/0001`](adr/0001-repartir-de-zero.md) le dit lui-même : *« le risque réel du projet n'est pas
+> technique, il est commercial. »* Un produit fini sans personne à qui le vendre est l'échec le plus
+> probable de ce projet.
+
+**À commencer bien avant la phase 9** — idéalement dès la phase 5, quand la vitrine existe.
+
+### 10.1 — Définir la cible précisément
+Pas « les PME ». Un secteur, une taille, un rôle, un blocage identifiable. Le marché montre que les
+déploiements échouent d'abord sur des cibles trop hétérogènes.
+
+### 10.2 — Construire une liste de 50 entreprises correspondant à la cible
+À la main. C'est aussi le meilleur test de la capacité « trouver des prospects » que tu viens de
+construire.
+
+### 10.3 — Écrire le message et le tester
+Objet et expéditeur non trompeurs, moyen d'opposition dans chaque message — les mêmes règles que celles
+imposées aux employés numériques s'appliquent à toi.
+
+### 10.4 — Contacter, mesurer, ajuster
+Objectif chiffré à te fixer d'avance : nombre de contacts, nombre de conversations, nombre de
+diagnostics complétés. Un diagnostic complété est le vrai signal d'intérêt, pas une visite.
+
+### 10.5 — Servir le premier client de très près
+Le premier client ne doit pas découvrir Sentio seul. Un accompagnement manuel n'est pas un aveu de
+faiblesse : c'est ce qui te dira ce que le produit doit devenir.
+
+**Terminé quand :** un euro est encaissé, et le client a un employé numérique qui travaille.
+
+---
+
+# Phase 11 — Au premier euro encaissé
+
+Le €0 n'est pas un état stable, c'est une phase. À cet instant précis, quatre choses changent : l'usage
+commercial des offres gratuites devient un sujet juridique et non théorique, la perte de données devient
+irréversible pour quelqu'un d'autre que toi, le quota partagé devient un risque de rupture de service, et
+la disponibilité devient une promesse implicite.
+
+**Ordre de dépense** ([`11-exploitation.md`](11-exploitation.md)) : clé d'inférence payante plafonnée
+chez un fournisseur européen → offre payante de la base → hébergement commercial → domaine et envoi
+d'emails. Seuils de rupture détaillés dans le même fichier.
+
+**À faire le jour même :** vérifier que chaque offre gratuite autorise l'usage commercial, activer une
+sauvegarde restaurable, exporter une sauvegarde hors plateforme.
+
+---
+
+# Phase 12 — Lot 7 : Évolution (~6,5 h, 8 tâches `EVOL-01`→`EVOL-08`)
+
+**Le seul lot décalable après le premier client** — aucune de ses tâches n'est P0.
+**Prérequis :** trancher **D8** (l'apprentissage modifiant le profil entreprise s'applique-t-il seul ?
+recommandation : auto + notification).
+
+**Terminé quand :** `TEST-03` passe — après plusieurs dizaines de runs, `employee_definition` est
+identique bit pour bit ; seuls les faits appris, le profil et le journal ont changé.
+
+---
+
+# Les huit points qu'on ne rattrape jamais
+
+À vérifier avant de déclarer un lot terminé. Chacun se paie par une réécriture s'il est différé.
+
+| # | Point | Où |
+|---|---|---|
+| 1 | Isolation par entreprise dès la première migration | phase 1 |
+| 2 | Clé d'idempotence sur toute action à effet extérieur | phases 2 et 4 |
+| 3 | ADN versionné, chaque employé figé sur sa version | phases 1 et 3 |
+| 4 | Les deux contextes de mémoire, avec l'auteur tracé par ligne | phase 1 |
+| 5 | Capacité (contrat) ≠ moteur (remplaçable), dès le premier outil | phase 3 |
+| 6 | Aucune condition en dur sur la formule — uniquement des lectures de quota | phase 1 |
+| 7 | Journal en ajout seul comme source de vérité | phase 1 |
+| 8 | Migrations en étendre → remplir → basculer → retirer | phase 1 |
+
+---
+
+# Les décisions à trancher, dans l'ordre où elles bloquent
+
+| Phase | Décisions |
+|---|---|
+| 0 | **D9** rétention · **D13** transparence AI Act · **D12** hébergeur · **D11** marque |
+| 3 | **D5** source des prospects · **D6** domaine d'envoi |
+| 4 | **D4** périodicité · **D7** autonomie par défaut |
+| 6 | **D2** prix de Start · **D3** achat immédiat ou essai |
+| 12 | **D8** apprentissage sur le profil entreprise |
+
+D1 est tranchée (Commercial seul), D10 est tranchée par ce document (ordre canonique).
+Chaque décision tranchée : une entrée dans [`adr/`](adr/), retirée de
+[`15-decisions-ouvertes.md`](15-decisions-ouvertes.md), **avec son compromis assumé**.
+
+---
+
+# Ce que dit le marché
+
+Vérifié le 2026-07-28. Ces chiffres bougent vite — les re-vérifier avant de fixer un prix.
+
+**La demande existe, et elle croît.** 47 % des PME françaises ont lancé au moins un projet d'IA et 42 %
+ont déployé en production ; 34 % des PME sont équipées, soit +18 points en deux ans. Gartner prévoit que
+40 % des PME auront au moins un employé numérique déployé fin 2026, et 22 % des équipes commerciales ont
+déjà remplacé une partie de leurs commerciaux humains. Le marché pèse une quinzaine de milliards de
+dollars et croît d'environ 30 % par an. **La réponse à « est-ce que des PME achèteraient ça ? » est oui.**
+
+**Mais trois signaux doivent changer la façon de construire.**
+
+1. **La rétention est mauvaise : 50 à 70 % de résiliation annuelle**, environ le double du
+   renouvellement d'un commercial humain. Vendre est une chose, garder en est une autre.
+2. **Les déploiements échouent d'abord sur la qualité des données.** Sur 412 déploiements arrêtés, les
+   causes dominantes sont une donnée client sale transformée en mauvais messages à grande échelle, des
+   cibles trop hétérogènes, et une conversion rendez-vous → opportunité faible (~15 % contre ~25 % en
+   humain) qui annule l'avantage de volume. **C'est exactement le risque de D5.**
+3. **La pression tarifaire est brutale.** Le marché bascule du prix par siège au paiement au résultat ;
+   un acteur majeur a divisé ses prix par deux en avril 2026. Fourchette observée : 100 à 800 €/mois,
+   et une PME peut s'outiller sous 200 €/mois avec des briques existantes.
+
+**Trois conséquences directes sur ce plan :**
+
+- Remonter la **qualification des prospects** (`METIER-06/07`) de P1 à P0 en phase 3.
+- Traiter le **modèle d'attribution du dashboard** comme l'arme de rétention principale, pas comme un
+  affichage : c'est ce qui rend la valeur prouvable à l'échéance où les autres se font résilier.
+- **Définir une cible étroite** en phase 10 plutôt qu'un marché large.
+
+Ce que Sentio a que les autres n'ont pas : le client n'installe rien, ne choisit rien, ne configure
+rien, et ne voit jamais la mécanique. Sur un marché où la première cause d'échec est la mise en œuvre,
+c'est un angle défendable — à condition que la qualification tienne.

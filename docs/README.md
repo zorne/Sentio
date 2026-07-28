@@ -5,6 +5,9 @@ Tout est en français ; seuls les noms de tables et de modules sont en anglais.
 
 ---
 
+> **Tu ne sais pas quoi faire ensuite ?** → [`20-plan-action.md`](20-plan-action.md), le plan ordonné
+> de bout en bout jusqu'au premier client payant.
+
 ## Ordre de lecture conseillé
 
 **Pour comprendre le produit (15 minutes)**
@@ -36,6 +39,8 @@ Tout est en français ; seuls les noms de tables et de modules sont en anglais.
 17. [`16-compromis.md`](16-compromis.md) — ce qu'on sacrifie, et pourquoi
 18. [`17-lexique.md`](17-lexique.md) — vocabulaire imposé, **source unique** de la liste des mots
     interdits
+19. [`20-plan-action.md`](20-plan-action.md) — ⭐ **l'ordre d'exécution de bout en bout**, du premier
+    jour au premier client payant : décisions, lots, mise en ligne, vente
 
 **Journal des décisions** : [`adr/`](adr/) — une entrée par décision structurante.
 

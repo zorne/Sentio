@@ -72,6 +72,15 @@ en action réelle.
 - **Contestation** : le client doit pouvoir consulter et retirer ce que son employé a appris —
   d'où la traçabilité par ligne décrite dans [`04-contextes-memoire.md`](04-contextes-memoire.md).
 
+## Règlement européen sur l'IA — applicable depuis le 2 août 2026
+
+Le RGPD n'est pas la seule obligation. L'**article 50** impose, pour un système à risque limité —
+ce qu'est un employé numérique commercial — d'informer la personne qu'elle interagit avec un système
+d'IA, de signaler les contenus générés, de tracer les décisions automatisées et de documenter le
+système. La traçabilité est déjà acquise par le journal en ajout seul ; **l'information ne l'est pas**,
+et elle heurte le lexique produit. Arbitrage en cours : décision **D13**
+([`15-decisions-ouvertes.md`](15-decisions-ouvertes.md)).
+
 ---
 
 ## Prospection commerciale
