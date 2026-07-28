@@ -47,6 +47,8 @@ Tout est en français ; seuls les noms de tables et de modules sont en anglais.
     généraliste et comment les profils sectoriels portent la spécialisation **(document interne)**
 22. [`23-proposition-de-valeur.md`](23-proposition-de-valeur.md) — ⭐ **ce qui crée la valeur**, les
     six promesses et ce qui les prouve
+23. [`24-strategie-business.md`](24-strategie-business.md) — positionnement, modèle économique,
+    lancement, objectifs **(document interne — contient des prix)**
 
 **Journal des décisions** : [`adr/`](adr/) — une entrée par décision structurante.
 

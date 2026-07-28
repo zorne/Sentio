@@ -70,6 +70,7 @@ fichier non lu.**
 | Concurrence, leurs échecs, délivrabilité, repères de performance | `docs/21-concurrence.md` |
 | Niche, vertical vs horizontal, profils sectoriels | `docs/22-niche-et-verticalisation.md` |
 | ⭐ **Ce qui crée la valeur** — les six promesses et leurs preuves | `docs/23-proposition-de-valeur.md` |
+| Stratégie business — positionnement, lancement, objectifs | `docs/24-strategie-business.md` |
 | Vision brute du fondateur (fait foi sur le *quoi*) | `projet.md` |
 
 **Décisions déjà tranchées** — `docs/adr/` : `0001-repartir-de-zero` ·
