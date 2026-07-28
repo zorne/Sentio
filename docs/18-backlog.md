@@ -37,8 +37,8 @@ journaliser, replanifier.
 | Conformité & Lancement | 10 | Lot 8 | [`10-securite-rgpd.md`](10-securite-rgpd.md), [`11-exploitation.md`](11-exploitation.md) |
 | Vérification (transverse) | 9 | — | [`13-verification.md`](13-verification.md), une tâche par critère d'acceptation |
 
-**Priorité :** P0 = 144 tâches (chemin critique de la V1, rien après ne peut sauter ça),
-P1 = 32 (nécessaire avant le lancement mais pas bloquant en interne), P2 = 5 (améliore
+**Priorité :** P0 = 147 tâches (chemin critique de la V1, rien après ne peut sauter ça),
+P1 = 29 (nécessaire avant le lancement mais pas bloquant en interne), P2 = 5 (améliore
 l'expérience, peut glisser après le premier client).
 
 > **Révision du 2026-07-28** — l'étude [`21-concurrence.md`](21-concurrence.md) a fait apparaître

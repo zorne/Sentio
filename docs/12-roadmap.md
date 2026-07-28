@@ -93,7 +93,13 @@ ne produit ni perte ni doublon.
 ---
 
 ## Lot 7 — Boucle d'évolution
-*Le seul lot qu'on peut décaler après le premier client.*
+*Le lot le plus décalable — mais **plus entièrement**.*
+
+> **Révision du 2026-07-28.** Trois tâches sont passées P0 : `EVOL-01` (écriture des faits appris),
+> `EVOL-05` (journal des évolutions) et `EVOL-06` (notification adossée à un changement enregistré).
+> L'amélioration automatique et la mémoire qui s'enrichit sont des promesses de vente
+> ([`23-proposition-de-valeur.md`](23-proposition-de-valeur.md)) : les décaler reviendrait à vendre
+> ce que le produit ne tient pas. Le reste du lot demeure décalable.
 
 - Réflexion après run → faits appris
 - Variantes de stratégie et sélection par la mesure

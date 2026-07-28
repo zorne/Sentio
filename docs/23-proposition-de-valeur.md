@@ -75,24 +75,25 @@ délivrabilité · motif de sélection journalisé (`METIER-22`).
 
 ---
 
-## Le calendrier contredit deux promesses
+## Le calendrier a été aligné sur les promesses
 
-**À regarder en face avant de vendre.** Les promesses 4 et 5 — l'amélioration automatique et la
-mémoire qui s'enrichit — vivent dans le **lot 7**, le seul lot qui ne contient **aucune tâche P0** et
-que [`12-roadmap.md`](12-roadmap.md) qualifie de « seul lot qu'on peut décaler après le premier
-client ».
+Les promesses 4 et 5 — l'amélioration automatique et la mémoire qui s'enrichit — vivaient dans le
+**lot 7**, seul lot sans aucune tâche P0 et explicitement décalable après le premier client. Deux des
+six promesses n'auraient donc pas été tenues au lancement.
 
-Autrement dit : deux des six promesses les plus distinctives ne seront pas tenues au lancement si le
-plan est suivi tel quel. Trois issues, à trancher :
+**Corrigé le 2026-07-28** : trois tâches sont passées **P0** et doivent être faites **avant la
+vente** —
 
-| Option | Conséquence |
+| Tâche | Ce qu'elle rend vrai |
 |---|---|
-| **Remonter le cœur du lot 7 avant la vente** | `EVOL-01` (faits appris) et `EVOL-05/06` (journal des évolutions et notification adossée) passent P0. Coût : quelques heures, et le premier client voit l'employé progresser |
-| Vendre sans ces promesses, les ajouter ensuite | le discours de lancement ne parle ni d'évolution ni de mémoire enrichie. Honnête, mais on perd deux différenciateurs |
-| Les promettre en les décalant | **interdit** — c'est exactement le mensonge que `AGENTS.md` proscrit et que C8 identifie comme « le plus facile à commettre dans ce produit » |
+| `EVOL-01` | l'employé écrit ce qu'il apprend : la mémoire s'enrichit réellement |
+| `EVOL-05` | chaque évolution réelle laisse une ligne `strategy_change` |
+| `EVOL-06` | aucune notification d'évolution sans cette ligne |
 
-**Recommandation :** remonter `EVOL-01`, `EVOL-05` et `EVOL-06`. Ce sont les trois tâches qui rendent
-les promesses 4 et 5 vraies, et elles représentent peu de travail au regard de ce qu'elles portent.
+Le reste du lot 7 demeure décalable. La règle qui a présidé à cet arbitrage vaut pour toute promesse
+future : **vendre une promesse que le produit ne tient pas encore est exactement le mensonge que
+[`AGENTS.md`](../AGENTS.md) proscrit** et que C8 identifie comme « le plus facile à commettre dans ce
+produit ». Une promesse retirée du discours coûte moins cher qu'une promesse non tenue.
 
 ---
 

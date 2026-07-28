@@ -59,7 +59,7 @@ NOYAU-19;Journal d'exécution : fonction d'écriture append-only;Noyau (Lot 1);3
 NOYAU-20;Journal d'exécution : reconstruction de trace depuis execution_event;Noyau (Lot 1);45 min;P0
 NOYAU-21;Clé d'idempotence : génération et vérification sur toute action à effet extérieur;Noyau (Lot 1);45 min;P0
 NOYAU-22;Format ConversationTurn structuré (text/tool_call/tool_result) pour les échanges multi-tours;Noyau (Lot 1);45 min;P0
-METIER-01;Rédiger l'ADN v1 du métier Commercial spécialisé sur la niche retenue (rôle, limites, règles, comportement, sécurité, vocabulaire du secteur);Métier Commercial (Lot 2);2h;P0
+METIER-01;Rédiger l'ADN v1 du métier Commercial, commun à tous les secteurs (rôle, limites, règles, comportement, sécurité);Métier Commercial (Lot 2);1h30;P0
 METIER-02;Écrire employee_definition v1 Commercial en base;Métier Commercial (Lot 2);30 min;P0
 METIER-23;Rédiger le premier profil sectoriel (vocabulaire, interlocuteurs, cycle, objections, angles);Métier Commercial (Lot 2);2h;P0
 METIER-24;Écrire les profils sectoriels en base et prévoir leur versionnage;Métier Commercial (Lot 2);30 min;P0
@@ -153,12 +153,12 @@ DASH-18;Affichage des repères de performance réalistes à côté des résultat
 DASH-19;Affichage du motif de sélection d'un prospect ("pourquoi cette entreprise");Dashboard (Lot 6);45 min;P1
 DASH-20;Gestion des exclusions par le client (ajouter, retirer un compte exclu);Dashboard (Lot 6);45 min;P1
 DASH-21;Correction du calibrage par le client (cible, ton, objectif) depuis le profil entreprise;Dashboard (Lot 6);1h;P1
-EVOL-01;Écriture des faits appris (learned_fact) depuis la réflexion post-run;Évolution (Lot 7);1h;P1
+EVOL-01;Écriture des faits appris (learned_fact) depuis la réflexion post-run;Évolution (Lot 7);1h;P0
 EVOL-02;Application des modifications proposées au profil entreprise par l'apprentissage;Évolution (Lot 7);1h;P2
 EVOL-03;Notification client sur modification du profil entreprise par l'apprentissage;Évolution (Lot 7);30 min;P2
 EVOL-04;Sélection de la variante gagnante à partir des outcomes mesurés;Évolution (Lot 7);1h30;P2
-EVOL-05;Écriture de strategy_change à chaque évolution réelle;Évolution (Lot 7);30 min;P1
-EVOL-06;Notification d'évolution adossée strictement à strategy_change;Évolution (Lot 7);30 min;P1
+EVOL-05;Écriture de strategy_change à chaque évolution réelle;Évolution (Lot 7);30 min;P0
+EVOL-06;Notification d'évolution adossée strictement à strategy_change;Évolution (Lot 7);30 min;P0
 EVOL-07;Interface client : consulter les faits appris;Évolution (Lot 7);45 min;P1
 EVOL-08;Interface client : corriger ou retirer un fait appris;Évolution (Lot 7);45 min;P1
 CONF-01;Rédaction des mentions légales définitives (post-immatriculation);Conformité & Lancement (Lot 8);1h;P0

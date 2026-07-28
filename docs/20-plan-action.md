@@ -37,9 +37,9 @@ construit sur un lot amont incomplet produit du travail à refaire ([`12-roadmap
 | 9 | Mise en ligne | ~3 h | ☐ |
 | 10 | **Acquisition du premier client** | continu | ☐ |
 | 11 | Au premier euro encaissé | ~2 h | ☐ |
-| 12 | Lot 7 — Évolution (décalable) | ~6,5 h | ☐ |
+| 12 | Lot 7 — Évolution (**3 tâches P0 avant la vente**, reste décalable) | ~6,5 h | ☐ |
 
-**~125 h d'implémentation**, dont ~118 h avant le premier encaissement si le lot 7 est décalé.
+**~125 h d'implémentation**, dont ~120 h avant le premier encaissement, le reste du lot 7 étant décalé.
 Ce sont des estimations de temps d'implémentation assistée, pas des jours de calendrier : le délai
 réel est commandé par l'immatriculation et par la vente, pas par le code.
 
@@ -347,7 +347,12 @@ sauvegarde restaurable, exporter une sauvegarde hors plateforme.
 
 # Phase 12 — Lot 7 : Évolution (~6,5 h, 8 tâches `EVOL-01`→`EVOL-08`)
 
-**Le seul lot décalable après le premier client** — aucune de ses tâches n'est P0.
+**Le lot le plus décalable — mais plus entièrement.** Trois de ses tâches sont désormais P0 et
+doivent être faites **avant la vente** : `EVOL-01` (faits appris), `EVOL-05` (journal des évolutions)
+et `EVOL-06` (notification adossée à un changement enregistré). Elles portent deux des six promesses
+de vente — l'amélioration automatique et la mémoire qui s'enrichit
+([`23-proposition-de-valeur.md`](23-proposition-de-valeur.md)). Les cinq autres tâches restent
+décalables après le premier client.
 **Prérequis :** trancher **D8** (l'apprentissage modifiant le profil entreprise s'applique-t-il seul ?
 recommandation : auto + notification).
 
