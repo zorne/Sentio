@@ -50,6 +50,7 @@ pas compris ce que la décision coûte — cherche encore.
 | [0007](0007-perimetre-v1-commercial-support.md) | Périmètre V1 : deux métiers, Commercial + Support | remplacée par 0008 |
 | [0008](0008-perimetre-v1-commercial-seul.md) | Périmètre V1 : Commercial seul | acceptée |
 | [0009](0009-fournisseur-inference-ue.md) | Fournisseur d'inférence européen, avant la qualité de modèle | acceptée |
+| [0010](0010-diagnostic-calibrage.md) | Le diagnostic calibre l'employé au lieu de recommander un métier | acceptée |
 
 ---
 

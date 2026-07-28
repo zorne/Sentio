@@ -10,9 +10,10 @@ il sert à **savoir quoi aller lire**. Les sources font foi : [`AGENTS.md`](AGEN
 ## Le produit
 
 Un dirigeant ne choisit jamais un agent : il décrit un objectif chiffré, Sentio diagnostique
-l'entreprise, recommande **un seul** employé numérique spécialisé, le recrute, et toute la suite
-se déroule dans son espace privé. **Périmètre V1 : un seul métier, Commercial.** Le diagnostic
-doit rester honnête si le besoin détecté sort de ce périmètre.
+l'entreprise, propose **un seul** employé numérique spécialisé et le **calibre** sur la situation
+du client, le recrute, et toute la suite se déroule dans son espace privé.
+**Périmètre V1 : un seul métier, Commercial**, à restreindre à une niche (D15). Le diagnostic doit
+rester honnête si le besoin détecté sort de ce périmètre.
 
 ```
    VITRINE PUBLIQUE                     ESPACE PRIVÉ
@@ -57,7 +58,7 @@ fichier non lu.**
 | Sécurité, RGPD | `docs/10-securite-rgpd.md` |
 | Hébergement, seuils où le €0 casse | `docs/11-exploitation.md` |
 | Roadmap — les 9 lots ordonnés | `docs/12-roadmap.md` |
-| Backlog — 173 tâches | `docs/18-backlog.md`, `docs/backlog-v1.csv` |
+| Backlog — 176 tâches | `docs/18-backlog.md`, `docs/backlog-v1.csv` |
 | ⭐ **Quoi faire ensuite** — plan ordonné jusqu'au premier client | `docs/20-plan-action.md` |
 | Critères d'acceptation testables | `docs/13-verification.md` |
 | Recommandations | `docs/14-recommandations.md` |
@@ -66,13 +67,14 @@ fichier non lu.**
 | Vocabulaire imposé — **source unique** | `docs/17-lexique.md` |
 | Fournisseurs d'inférence, modèles, quotas chiffrés | `docs/19-fournisseurs-modeles.md` |
 | Concurrence, leurs échecs, délivrabilité, repères de performance | `docs/21-concurrence.md` |
+| Niche, vertical vs horizontal, ce que le client peut demander | `docs/22-niche-et-verticalisation.md` |
 | Vision brute du fondateur (fait foi sur le *quoi*) | `projet.md` |
 
 **Décisions déjà tranchées** — `docs/adr/` : `0001-repartir-de-zero` ·
 `0002-monolithe-modulaire` · `0003-deux-contextes` · `0004-run-machine-a-etats` ·
 `0005-cles-plateforme-classe-de-donnees` · `0006-capacite-vs-outil` ·
-`0008-perimetre-v1-commercial-seul` · `0009-fournisseur-inference-ue`.
-Ne pas les rouvrir sans raison explicite.
+`0008-perimetre-v1-commercial-seul` · `0009-fournisseur-inference-ue` ·
+`0010-diagnostic-calibrage`. Ne pas les rouvrir sans raison explicite.
 
 ⚠️ `0007-perimetre-v1-commercial-support` est **remplacée par `0008`** : le fondateur est revenu
 sur ce choix le jour même. **Le métier Support ne fait pas partie de la V1.**

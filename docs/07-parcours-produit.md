@@ -62,23 +62,32 @@ principal détecté.
 
 ---
 
-## 4. Recommandation
+## 4. Recommandation et calibrage
 
 > Le client ne choisit jamais un employé. C'est Sentio qui recommande.
 
-**Le modèle ne choisit pas le métier.** Le choix est fait par un **moteur de règles
-déterministe** : frein détecté → métier. Auditable, reproductible, et **incapable de
-recommander un métier qui n'existe pas**.
+**Le modèle ne décide rien.** La décision est prise par un **moteur de règles déterministe**,
+auditable, reproductible, et **incapable de proposer ce qui n'existe pas**. Le modèle sert
+uniquement à rédiger la justification, en langage de dirigeant.
 
-Le modèle sert uniquement à rédiger la justification, en langage de dirigeant.
+Tant qu'un seul métier existe, ce moteur ne choisit pas *quel* employé — il détermine **comment
+cet employé est calibré** : objectif, capacités activées, cible visée, ton, angles d'accroche,
+exclusions. C'est une décision réelle, aux conséquences observables sur le travail produit.
+→ [`adr/0010`](adr/0010-diagnostic-calibrage.md)
+
+Le calibrage s'écrit dans `company_profile` et `employee_capability`. **Il ne touche jamais
+l'ADN**, commun à tous les clients et immuable.
 
 Une seule proposition est présentée. Jamais un catalogue, jamais un employé verrouillé, jamais
 un « bientôt disponible ».
 
 **Cas du besoin hors périmètre :** si le frein détecté sort de ce que Sentio sait faire
-aujourd'hui, **le dire** et proposer une mise en liste d'attente. Ne jamais vendre un employé
-incapable de faire le travail — c'est la seule chose qui rend le théâtre de la recommandation
-acceptable tant qu'un seul métier existe (compromis C7).
+aujourd'hui, **le dire** — au moment où le besoin est exprimé, pas après la vente — et proposer
+une mise en liste d'attente. Ne jamais vendre un employé incapable de faire le travail.
+
+> **Ce que le diagnostic recueille, l'employé devra le tenir.** Un diagnostic qui interroge large
+> et un employé qui livre étroit installe une déception. Borner le questionnement à ce que les
+> capacités savent faire.
 
 ---
 

@@ -76,13 +76,19 @@ une analyse en direct du visiteur.
 
 ---
 
-## C7 — « Le client ne choisit jamais » est théâtral tant qu'un seul métier existe
+## C7 — « Le client ne choisit jamais » — **résolu**
 
-Assumé — à une condition : que le diagnostic reste honnête quand le besoin détecté sort du
-périmètre disponible.
+Ce compromis portait sur le caractère théâtral de la recommandation tant qu'un seul métier
+existe. Il est **levé** par [`adr/0010`](adr/0010-diagnostic-calibrage.md) : le diagnostic ne
+recommande plus un métier, il **calibre** l'employé. La décision est devenue réelle.
 
-Le mensonge n'est pas dans la mise en scène. Il serait dans la vente d'un employé incapable de
-faire le travail.
+La condition d'origine reste entière : le diagnostic doit rester honnête quand le besoin détecté
+sort du périmètre disponible, et le dire au moment où le besoin est exprimé. Le mensonge n'a
+jamais été dans la mise en scène — il serait dans la vente d'un employé incapable de faire le
+travail.
+
+**Ce que le compromis devient :** chaque question posée crée une dette, puisque ce que le client
+exprime, l'employé devra le tenir.
 
 ---
 

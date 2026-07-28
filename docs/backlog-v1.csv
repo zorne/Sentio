@@ -58,7 +58,7 @@ NOYAU-19;Journal d'exécution : fonction d'écriture append-only;Noyau (Lot 1);3
 NOYAU-20;Journal d'exécution : reconstruction de trace depuis execution_event;Noyau (Lot 1);45 min;P0
 NOYAU-21;Clé d'idempotence : génération et vérification sur toute action à effet extérieur;Noyau (Lot 1);45 min;P0
 NOYAU-22;Format ConversationTurn structuré (text/tool_call/tool_result) pour les échanges multi-tours;Noyau (Lot 1);45 min;P0
-METIER-01;Rédiger l'ADN v1 du métier Commercial (rôle, limites, règles, comportement, sécurité);Métier Commercial (Lot 2);1h30;P0
+METIER-01;Rédiger l'ADN v1 du métier Commercial spécialisé sur la niche retenue (rôle, limites, règles, comportement, sécurité, vocabulaire du secteur);Métier Commercial (Lot 2);2h;P0
 METIER-02;Écrire employee_definition v1 Commercial en base;Métier Commercial (Lot 2);30 min;P0
 METIER-03;Migration : table lead (CRM interne minimal, isolé par entreprise);Métier Commercial (Lot 2);20 min;P0
 METIER-04;Capacité "trouver des prospects" : contrat;Métier Commercial (Lot 2);20 min;P0
@@ -108,8 +108,10 @@ ACQUIS-10;Page légale : politique de cookies;Acquisition (Lot 4);30 min;P1
 ACQUIS-11;Page légale : formulaire de demande RGPD (accès/effacement/contestation);Acquisition (Lot 4);1h;P0
 ACQUIS-12;Composant de conversation de diagnostic (aller-retour direct au Model Gateway);Acquisition (Lot 4);1h30;P0
 ACQUIS-13;Extraction de profil structuré depuis la conversation de diagnostic;Acquisition (Lot 4);1h30;P0
-ACQUIS-14;Moteur de règles déterministe (frein détecté → métier recommandé);Acquisition (Lot 4);1h;P0
+ACQUIS-14;Moteur de règles déterministe (frein + situation → calibrage de l'employé);Acquisition (Lot 4);1h;P0
 ACQUIS-15;Génération de la justification de recommandation par le modèle;Acquisition (Lot 4);45 min;P0
+ACQUIS-21;Questions de calibrage du diagnostic, bornées à ce que les capacités savent faire;Acquisition (Lot 4);1h;P0
+ACQUIS-22;Écriture du calibrage dans le profil entreprise et les capacités actives (jamais l'ADN);Acquisition (Lot 4);1h;P0
 ACQUIS-16;Cas "besoin hors périmètre détecté" : message honnête + liste d'attente;Acquisition (Lot 4);45 min;P0
 ACQUIS-17;Limitation par visiteur et par adresse sur le diagnostic public;Acquisition (Lot 4);1h;P0
 ACQUIS-18;Enveloppe d'inférence dédiée au diagnostic public (plafond appliqué);Acquisition (Lot 4);30 min;P0
@@ -145,6 +147,7 @@ DASH-17;Vue temps réel d'exécution d'une tâche (abonnement live);Dashboard (L
 DASH-18;Affichage des repères de performance réalistes à côté des résultats mesurés;Dashboard (Lot 6);45 min;P0
 DASH-19;Affichage du motif de sélection d'un prospect ("pourquoi cette entreprise");Dashboard (Lot 6);45 min;P1
 DASH-20;Gestion des exclusions par le client (ajouter, retirer un compte exclu);Dashboard (Lot 6);45 min;P1
+DASH-21;Correction du calibrage par le client (cible, ton, objectif) depuis le profil entreprise;Dashboard (Lot 6);1h;P1
 EVOL-01;Écriture des faits appris (learned_fact) depuis la réflexion post-run;Évolution (Lot 7);1h;P1
 EVOL-02;Application des modifications proposées au profil entreprise par l'apprentissage;Évolution (Lot 7);1h;P2
 EVOL-03;Notification client sur modification du profil entreprise par l'apprentissage;Évolution (Lot 7);30 min;P2
