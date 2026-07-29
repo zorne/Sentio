@@ -38,6 +38,11 @@ seul. Des frontières propres donnent le découpage futur sans en payer le prix 
 | `supabase/functions` | Adaptateurs d'entrée : tout ce qui touche une donnée personnelle, **en UE** | `domain`, `core`, `capabilities`, `db` |
 | `apps/worker` | Exécution en arrière-plan (en V1 : points d'entrée déclenchés par un battement) | `core`, `db` |
 
+Les fonctions n'importent `domain` et `config` que par une **recopie générée** (`pnpm run
+functions:sync`) : Deno ne connaît pas l'espace de travail pnpm
+([`adr/0023`](adr/0023-code-partage-vers-les-fonctions.md)). Le mécanisme disparaît le jour de la
+migration.
+
 Le **schéma** lui-même — migrations, politiques d'isolation, tests d'invariants — vit dans
 [`supabase/`](../supabase/), à l'emplacement où le CLI qui les applique les lit. Le détail et la
 raison de ce choix sont dans [`supabase/README.md`](../supabase/README.md).

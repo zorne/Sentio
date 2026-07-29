@@ -54,7 +54,52 @@ Elles appliquent les priorités 1, 3 et 6 ([`adr/0019`](../../docs/adr/0019-prio
 
 ---
 
+## Structure
+
+```
+apps/web/
+  svelte.config.js       la sortie du build — le seul fichier que la migration touchera
+  src/app.html           l'enveloppe HTML (lang="fr")
+  src/lib/labels.ts      TOUS les textes visibles, et la zone exemptée de lexique
+  src/lib/server-functions/
+                         l'unique porte vers les fonctions serveur — un composant n'y touche pas
+  src/routes/            les pages ; `+layout.ts` déclare le prérendu de la vitrine
+```
+
+**Deux endroits à ne pas contourner.** Un texte visible qui n'est pas dans `labels.ts` échappe au
+contrôle de lexique (`CONF-08`, [`17-lexique.md`](../../docs/17-lexique.md)) ; un appel réseau qui
+n'est pas dans `server-functions/` échappe à la règle 2.
+
+---
+
+## Commandes
+
+```bash
+cp .env.example .env     # l'adresse des fonctions serveur — publique, jamais un secret
+pnpm run dev             # développement
+pnpm run build           # sortie statique dans build/
+pnpm run typecheck       # svelte-check
+```
+
+`PUBLIC_SENTIO_FUNCTIONS_URL` est **obligatoire pour construire comme pour vérifier les types** —
+SvelteKit engendre les types de l'environnement. Une vitrine qui ne sait pas où parler ne doit pas se
+construire silencieusement. Ce n'est pas un secret : tout ce qui est livré au navigateur est public.
+
+---
+
 ## État
 
-Le cadre est tranché, le dossier n'est pas encore initialisé. Prochain pas du lot 4 : la vitrine
-prérendue, et la première fonction serveur avec sa validation d'entrée.
+Le squelette est en place, et vérifié : la vitrine se construit en **sortie statique**, la page
+d'accueil est **prérendue**, et le contrôle de types passe.
+
+Ce qui existe : l'enveloppe, le fichier de libellés (avec sa zone exemptée pour l'information de
+transparence exigée par l'article 50), et le client de la fonction `diagnostic`.
+
+Ce qui n'existe pas encore, et qui est la suite du lot 4 : les sections de la vitrine et les pages
+légales (`ACQUIS-01` → `ACQUIS-11`), la conversation de diagnostic (`ACQUIS-12`), l'espace privé.
+La page d'accueil est un squelette **assumé comme tel** — une ébauche de page de vente finit
+toujours par être prise pour la page de vente.
+
+Deux points de sécurité restent à traiter au niveau de l'hébergement, pas du code : les en-têtes de
+sécurité (politique de sécurité du contenu, HSTS) sont servis par l'hébergeur de la sortie statique,
+et ne sont pas encore posés.

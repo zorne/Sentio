@@ -86,7 +86,8 @@ fichier non lu.**
 `0016-source-des-prospects` · `0017-domaine-du-client-et-reputation` ·
 `0018-service-expedition-resend` · ⭐ `0019-priorites-ingenierie` ·
 `0020-ordre-des-lots-produit-complet` · `0021-execution-serveur-en-ue` ·
-`0022-interface-sveltekit`.
+`0022-interface-sveltekit` ·
+`0023-code-partage-vers-les-fonctions`.
 Ne pas les rouvrir sans raison explicite.
 
 ⚠️ `0007-perimetre-v1-commercial-support` est **remplacée par `0008`** : le fondateur est revenu

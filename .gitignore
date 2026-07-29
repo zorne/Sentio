@@ -6,3 +6,7 @@ dist/
 .env
 .env.*
 !.env.example
+
+# Interface : sortie de construction et fichiers générés par SvelteKit.
+.svelte-kit/
+build/

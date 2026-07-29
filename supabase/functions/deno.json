@@ -1,0 +1,11 @@
+{
+  "imports": {
+    "@sentio/domain": "./_generated/domain/index.ts",
+    "@sentio/config": "./_generated/config/index.ts"
+  },
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true
+  }
+}

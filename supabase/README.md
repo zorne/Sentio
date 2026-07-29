@@ -10,6 +10,7 @@ supabase/
   config.toml        configuration du CLI (versionnée)
   migrations/        le schéma, appliqué dans l'ordre alphabétique
   tests/             invariants vérifiés sur un Postgres nu
+  functions/         les adaptateurs d'entrée, en région UE — voir functions/README.md
   .temp/             cache du CLI — ignoré par git, contient l'URL du pooler
 ```
 

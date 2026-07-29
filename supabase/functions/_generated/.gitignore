@@ -1,0 +1,4 @@
+# Produit par `pnpm run functions:sync` — voir ../README.md.
+# Ne rien modifier ici : la source vit dans packages/.
+*
+!.gitignore
