@@ -1,14 +1,23 @@
 import { DataAccessError, type SqlClient } from "./client.js";
 import { quoteIdentifier } from "./identifiers.js";
+import { rowToDomain, toSnakeCase } from "./naming.js";
 import type { TenantScope } from "./tenant-scope.js";
 
-/** Conditions d'égalité simples. Tout le reste passe par un repository spécifique. */
+/**
+ * Conditions d'égalité simples, écrites dans la casse du domaine (`sourceTaskId`). La traduction
+ * vers la colonne réelle est faite ici. Tout le reste passe par un repository spécifique.
+ */
 export type Filter = Readonly<Record<string, unknown>>;
 
 export interface ListOptions {
   readonly orderBy?: string;
   readonly direction?: "asc" | "desc";
   readonly limit?: number;
+}
+
+/** Nom de colonne traduit puis validé — jamais l'un sans l'autre. */
+function column(name: string): string {
+  return quoteIdentifier(toSnakeCase(name));
 }
 
 /**
@@ -21,6 +30,9 @@ export interface ListOptions {
  * Pourquoi ce n'est pas redondant avec RLS : `apps/worker` tourne avec un rôle de service, qui
  * **contourne RLS** — un employé numérique travaille sans utilisateur connecté, donc sans jeton.
  * Sur ce chemin, le seul rempart est celui-ci.
+ *
+ * L'appelant écrit toujours dans la casse du domaine (`employeeDefinitionId`) ; la traduction
+ * vers `employee_definition_id` et retour appartient à ce repository (`naming.ts`).
  */
 export class TenantScopedRepository<Row> {
   private readonly table: string;
@@ -34,27 +46,28 @@ export class TenantScopedRepository<Row> {
   }
 
   async findById(id: string): Promise<Row | null> {
-    const rows = await this.sql.query<Row>(
+    const rows = await this.sql.query<Record<string, unknown>>(
       `select * from ${this.table} where "tenant_id" = $1 and "id" = $2 limit 1`,
       [this.scope.tenantId, id],
     );
-    return rows[0] ?? null;
+    const found = rows[0];
+    return found === undefined ? null : rowToDomain<Row>(found);
   }
 
   async list(filter: Filter = {}, options: ListOptions = {}): Promise<Row[]> {
     const params: unknown[] = [this.scope.tenantId];
     const conditions = ['"tenant_id" = $1'];
 
-    for (const [column, value] of Object.entries(filter)) {
+    for (const [field, value] of Object.entries(filter)) {
       params.push(value);
-      conditions.push(`${quoteIdentifier(column)} = $${params.length}`);
+      conditions.push(`${column(field)} = $${params.length}`);
     }
 
     let text = `select * from ${this.table} where ${conditions.join(" and ")}`;
 
     if (options.orderBy !== undefined) {
       const direction = options.direction === "desc" ? "desc" : "asc";
-      text += ` order by ${quoteIdentifier(options.orderBy)} ${direction}`;
+      text += ` order by ${column(options.orderBy)} ${direction}`;
     }
 
     if (options.limit !== undefined) {
@@ -65,33 +78,30 @@ export class TenantScopedRepository<Row> {
       text += ` limit $${params.length}`;
     }
 
-    return this.sql.query<Row>(text, params);
+    const rows = await this.sql.query<Record<string, unknown>>(text, params);
+    return rows.map((row) => rowToDomain<Row>(row));
   }
 
   /**
    * Insère une ligne en forçant l'entreprise.
    *
-   * Un `tenant_id` fourni par l'appelant est **refusé**, même s'il est correct : l'accepter
+   * Un `tenantId` fourni par l'appelant est **refusé**, même s'il est correct : l'accepter
    * ouvrirait un chemin pour écrire chez un autre client, et cette possibilité ne doit pas
    * exister. La portée fait foi, toujours.
    */
   async insert(values: Readonly<Record<string, unknown>>): Promise<Row> {
-    if ("tenant_id" in values) {
-      throw new DataAccessError(
-        "tenant_id ne se passe pas en argument : la portée du repository fait foi.",
-      );
-    }
+    assertNoTenantOverride(values, "la portée du repository fait foi");
 
     const columns = ['"tenant_id"'];
     const params: unknown[] = [this.scope.tenantId];
 
-    for (const [column, value] of Object.entries(values)) {
-      columns.push(quoteIdentifier(column));
+    for (const [field, value] of Object.entries(values)) {
+      columns.push(column(field));
       params.push(value);
     }
 
     const placeholders = params.map((_, index) => `$${index + 1}`).join(", ");
-    const rows = await this.sql.query<Row>(
+    const rows = await this.sql.query<Record<string, unknown>>(
       `insert into ${this.table} (${columns.join(", ")}) values (${placeholders}) returning *`,
       params,
     );
@@ -100,13 +110,11 @@ export class TenantScopedRepository<Row> {
     if (inserted === undefined) {
       throw new DataAccessError(`Insertion sans ligne retournée dans ${this.table}.`);
     }
-    return inserted;
+    return rowToDomain<Row>(inserted);
   }
 
   async update(id: string, values: Readonly<Record<string, unknown>>): Promise<Row | null> {
-    if ("tenant_id" in values) {
-      throw new DataAccessError("tenant_id n'est pas modifiable : une ligne ne change pas d'entreprise.");
-    }
+    assertNoTenantOverride(values, "une ligne ne change pas d'entreprise");
 
     const entries = Object.entries(values);
     if (entries.length === 0) {
@@ -114,17 +122,31 @@ export class TenantScopedRepository<Row> {
     }
 
     const params: unknown[] = [this.scope.tenantId, id];
-    const assignments = entries.map(([column, value]) => {
+    const assignments = entries.map(([field, value]) => {
       params.push(value);
-      return `${quoteIdentifier(column)} = $${params.length}`;
+      return `${column(field)} = $${params.length}`;
     });
 
-    const rows = await this.sql.query<Row>(
+    const rows = await this.sql.query<Record<string, unknown>>(
       `update ${this.table} set ${assignments.join(", ")} ` +
         `where "tenant_id" = $1 and "id" = $2 returning *`,
       params,
     );
-    return rows[0] ?? null;
+    const updated = rows[0];
+    return updated === undefined ? null : rowToDomain<Row>(updated);
+  }
+}
+
+/**
+ * Refuse toute tentative de désigner l'entreprise soi-même, dans l'une ou l'autre casse.
+ * N'accepter que `tenantId` laisserait passer `tenant_id`, et réciproquement — un garde qui
+ * ne couvre qu'une écriture sur deux n'est pas un garde.
+ */
+function assertNoTenantOverride(values: Readonly<Record<string, unknown>>, reason: string): void {
+  for (const field of Object.keys(values)) {
+    if (toSnakeCase(field) === "tenant_id") {
+      throw new DataAccessError(`tenant_id ne se passe pas en argument : ${reason}.`);
+    }
   }
 }
 
@@ -149,23 +171,28 @@ export class GlobalReadRepository<Row> {
   }
 
   async findById(id: string): Promise<Row | null> {
-    const rows = await this.sql.query<Row>(
+    const rows = await this.sql.query<Record<string, unknown>>(
       `select * from ${this.table} where "id" = $1 limit 1`,
       [id],
     );
-    return rows[0] ?? null;
+    const found = rows[0];
+    return found === undefined ? null : rowToDomain<Row>(found);
   }
 
   async list(filter: Filter = {}): Promise<Row[]> {
     const params: unknown[] = [];
     const conditions: string[] = [];
 
-    for (const [column, value] of Object.entries(filter)) {
+    for (const [field, value] of Object.entries(filter)) {
       params.push(value);
-      conditions.push(`${quoteIdentifier(column)} = $${params.length}`);
+      conditions.push(`${column(field)} = $${params.length}`);
     }
 
     const where = conditions.length > 0 ? ` where ${conditions.join(" and ")}` : "";
-    return this.sql.query<Row>(`select * from ${this.table}${where}`, params);
+    const rows = await this.sql.query<Record<string, unknown>>(
+      `select * from ${this.table}${where}`,
+      params,
+    );
+    return rows.map((row) => rowToDomain<Row>(row));
   }
 }

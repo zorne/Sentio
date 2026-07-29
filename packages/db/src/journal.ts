@@ -1,6 +1,7 @@
 import type { ExecutionEvent } from "@sentio/domain";
 
 import { DataAccessError, type SqlClient } from "./client.js";
+import { rowToDomain } from "./naming.js";
 import type { TenantScope } from "./tenant-scope.js";
 
 /**
@@ -40,7 +41,7 @@ export class ExecutionJournal {
       throw new DataAccessError("Un événement de journal sans nature n'est pas exploitable.");
     }
 
-    const rows = await this.sql.query<ExecutionEvent>(
+    const rows = await this.sql.query<Record<string, unknown>>(
       `insert into "execution_event"
          ("tenant_id", "task_id", "employee_id", "kind", "idempotency_key", "payload")
        values ($1, $2, $3, $4, $5, $6)
@@ -59,16 +60,17 @@ export class ExecutionJournal {
     if (appended === undefined) {
       throw new DataAccessError("Ajout au journal sans ligne retournée.");
     }
-    return appended;
+    return rowToDomain<ExecutionEvent>(appended);
   }
 
   /** Les événements d'une tâche, dans l'ordre où ils se sont produits. */
   async forTask(taskId: string): Promise<ExecutionEvent[]> {
-    return this.sql.query<ExecutionEvent>(
+    const rows = await this.sql.query<Record<string, unknown>>(
       `select * from "execution_event"
        where "tenant_id" = $1 and "task_id" = $2
        order by "created_at" asc`,
       [this.scope.tenantId, taskId],
     );
+    return rows.map((row) => rowToDomain<ExecutionEvent>(row));
   }
 }

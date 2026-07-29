@@ -32,6 +32,10 @@ jobs:
   # Le schéma porte des garanties que le code ne peut pas rattraper : ADN immuable, journal en
   # ajout seul, idempotence, isolation par entreprise. Elles se vérifient sur une vraie base,
   # pas par relecture.
+  #
+  # Ce job exécute aussi les tests d'intégration des repositories. Ils ne sont pas dans `verify`
+  # parce qu'ils exigent une base — et ils ne sont pas facultatifs pour autant : trois bugs réels
+  # ont vécu sous une suite verte qui ne tournait que contre un client factice.
   schema:
     runs-on: ubuntu-latest
     services:
@@ -50,7 +54,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
       - name: Migrations et invariants
         env:
           DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/sentio_test
         run: supabase/tests/run.sh
+
+      - name: Repositories contre une vraie base
+        env:
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/sentio_test
+        run: pnpm --filter @sentio/db test

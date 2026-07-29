@@ -1,4 +1,5 @@
 import type {
+  CapabilityId,
   EmployeeCapabilityId,
   EmployeeDefinitionId,
   EmployeeId,
@@ -32,7 +33,8 @@ export interface Identity {
   profession: Profession;
   firstName: string;
   lastName: string;
-  portraitUrl: string;
+  /** Nul tant que la fiche employé n'existe pas (lot 6) : l'hébergement d'images n'est pas tranché. */
+  portraitUrl: string | null;
   status: IdentityStatus;
   takenAt: Date | null;
 }
@@ -40,15 +42,22 @@ export interface Identity {
 export interface Employee {
   id: EmployeeId;
   tenantId: TenantId;
+  /**
+   * Désigne une ligne précise de `employee_definition`, laquelle porte déjà sa version et est
+   * immuable. La version n'est donc **pas** répétée ici : la dupliquer permettrait qu'elle
+   * diverge de l'ADN réellement pointé, et c'est exactement ce que le figeage interdit
+   * (`docs/06-scalabilite.md`).
+   */
   employeeDefinitionId: EmployeeDefinitionId;
-  employeeDefinitionVersion: number;
   identityId: IdentityId;
   recruitedAt: Date;
 }
 
 export interface EmployeeCapability {
   id: EmployeeCapabilityId;
+  tenantId: TenantId;
   employeeId: EmployeeId;
-  capabilityKey: string;
+  /** Référence le contrat de capacité, jamais son moteur (`docs/adr/0006`). */
+  capabilityId: CapabilityId;
   enabled: boolean;
 }

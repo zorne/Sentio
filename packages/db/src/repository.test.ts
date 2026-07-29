@@ -96,7 +96,12 @@ describe("TenantScopedRepository — la portée d'entreprise est toujours appliq
     const sql = new RecordingClient([{}]);
     const repo = new TenantScopedRepository(sql, "objective", scope);
 
-    await expect(repo.update("o-1", { tenant_id: TENANT_B })).rejects.toThrow(/pas modifiable/);
+    await expect(repo.update("o-1", { tenant_id: TENANT_B })).rejects.toThrow(
+      /ne change pas d'entreprise/,
+    );
+    // Le garde couvre les deux casses : refuser `tenant_id` en laissant passer `tenantId`
+    // n'aurait protégé qu'une écriture sur deux.
+    await expect(repo.update("o-1", { tenantId: TENANT_B })).rejects.toThrow(DataAccessError);
     expect(sql.calls).toHaveLength(0);
   });
 
