@@ -45,6 +45,7 @@ Plusieurs migrations ne créent aucune table :
 | `…033_cle_etrangere_par_entreprise.sql` | un lien ne traverse jamais deux entreprises : les clés étrangères portent `tenant_id` |
 | `…034_ligne_ne_change_pas_entreprise.sql` | verrou : `tenant_id` d'une ligne existante est immuable, pour tous les rôles |
 | `…035_provenance_memoire.sql` | l'auteur d'une ligne de mémoire est immuable ; le contenu d'autrui se retire, ne se réécrit pas |
+| `…036_effacement.sql` | `erase_tenant()` — droit à l'effacement exécutable : données supprimées, journal **dépouillé** et non détruit, compte-rendu rendu en preuve |
 
 Les trois dernières corrigent des failles que **seuls les parcours joués avec le rôle
 `authenticated` ont révélées** — les tests de schéma table par table les laissaient toutes

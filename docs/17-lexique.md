@@ -68,6 +68,27 @@ traverse la frontière.
 
 ---
 
+## Les zones exemptées — deux, et pas une de plus
+
+Le lexique cède devant la loi, exactement là où la loi l'exige.
+
+| Zone exemptée | Ce qu'on y écrit |
+|---|---|
+| **Pages légales** — mentions, CGU, CGV, politique de confidentialité | le vocabulaire juridique exact, sans euphémisme |
+| **Information de transparence du diagnostic** *(nouveau)* | que le visiteur échange avec un système d'IA — **en clair, sans périphrase** |
+
+La seconde vient de l'article 50 du règlement européen sur l'IA, applicable le **2 août 2026**
+([`adr/0015`](adr/0015-transparence-ai-act.md)). Elle est **obligatoire** : une formule qui
+laisse le visiteur dans le doute n'est pas une information, c'est une infraction habillée. Une
+phrase, sobre, avant la première question — puis le lexique reprend ses droits sur tout le reste
+du produit.
+
+**Le contrôle automatique de lexique** (`CONF-08`) doit donc connaître ces deux zones, et **ne
+pas les signaler**. Un contrôle qui ferait échouer l'intégration continue sur une mention légale
+obligatoire finirait par être désactivé — et c'est tout le contrôle qu'on perdrait.
+
+---
+
 ## Contrôle automatique
 
 Les textes visibles vivent dans **un seul endroit** (fichier de libellés), et une vérification

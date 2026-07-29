@@ -57,6 +57,8 @@ fichier non lu.**
 | Auto-apprentissage | `docs/08-evolution-apprentissage.md` |
 | Métriques et ROI affichés au client | `docs/09-metriques-roi.md` |
 | Sécurité, RGPD | `docs/10-securite-rgpd.md` |
+| ⭐ **Conformité légale** — RGPD, prospection, AI Act, ce qui bloque quoi | `docs/25-conformite-legale.md` |
+| Registre des traitements (art. 30) | `docs/26-registre-traitements.md` |
 | Hébergement, seuils où le €0 casse | `docs/11-exploitation.md` |
 | Roadmap — les 9 lots ordonnés | `docs/12-roadmap.md` |
 | Backlog — 181 tâches | `docs/18-backlog.md`, `docs/backlog-v1.csv` |
@@ -79,7 +81,7 @@ fichier non lu.**
 `0008-perimetre-v1-commercial-seul` · `0009-fournisseur-inference-ue` ·
 `0010-diagnostic-calibrage` · `0011-generaliste-profils-sectoriels` ·
 `0012-retention-journal-30-jours` · `0013-acces-donnees-portee-entreprise` ·
-`0014-etancheite-entre-entreprises`.
+`0014-etancheite-entre-entreprises` · `0015-transparence-ai-act`.
 Ne pas les rouvrir sans raison explicite.
 
 ⚠️ `0007-perimetre-v1-commercial-support` est **remplacée par `0008`** : le fondateur est revenu

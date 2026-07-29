@@ -2,6 +2,12 @@
 
 > À lire si tu travailles sur : une migration, une lecture de données, la vitrine publique,
 > l'envoi d'emails, ou avant toute mise en ligne.
+>
+> **Ce fichier donne les règles de conception.** L'instruction juridique complète — rôles
+> responsable/sous-traitant, bases légales, droits des personnes, prospection, AI Act,
+> obligations commerciales, et ce qui bloque quoi — vit dans
+> [`25-conformite-legale.md`](25-conformite-legale.md), avec le registre des traitements dans
+> [`26-registre-traitements.md`](26-registre-traitements.md).
 
 ---
 
@@ -63,23 +69,35 @@ en action réelle.
   de modèle, service d'envoi, paiement). À faire **avant** le premier client réel. Le fournisseur
   d'inférence retenu est européen précisément pour éviter d'instruire en plus un transfert hors
   UE → [`19-fournisseurs-modeles.md`](19-fournisseurs-modeles.md).
-- **Durées de conservation définies par table**, pas « pour toujours par défaut ».
-- **Droit à l'effacement** : la procédure doit couvrir aussi le journal d'exécution — par
-  **anonymisation**, pas par suppression, sinon la piste d'audit est détruite.
+- **Durées de conservation définies par table**, pas « pour toujours par défaut »
+  ([`25-conformite-legale.md`](25-conformite-legale.md) §2.9).
+- **Droit à l'effacement — exécutable, pas seulement écrit.** `erase_tenant()` supprime les
+  données du client, **anonymise** le journal au lieu de le détruire (sinon la piste d'audit
+  tombe, et avec elle l'obligation de rendre des comptes), conserve ce qui fonde une facture, et
+  rend un **compte-rendu ligne par ligne** — la preuve à remettre à la personne. Vérifié par les
+  tests d'invariants. Deux choses restent à faire en dehors de la base : supprimer le compte
+  d'authentification, et décider du sort des **sauvegardes**, par lesquelles une donnée effacée
+  peut revenir.
+- **Violation de données : 72 heures** pour notifier l'autorité de contrôle, et informer les
+  personnes si le risque est élevé (art. 33 et 34). Cela suppose une procédure **écrite
+  d'avance** : une procédure rédigée pendant l'incident n'existe pas.
 - **Décision automatisée** : des employés qui décident et agissent seuls au sujet de personnes
   physiques imposent une **analyse d'impact** et un **droit d'intervention humaine**. Le Policy
   Engine *est* ce droit d'intervention ; il faut le documenter comme tel, pas seulement le coder.
 - **Contestation** : le client doit pouvoir consulter et retirer ce que son employé a appris —
   d'où la traçabilité par ligne décrite dans [`04-contextes-memoire.md`](04-contextes-memoire.md).
 
-## Règlement européen sur l'IA — applicable depuis le 2 août 2026
+## Règlement européen sur l'IA — l'article 50 s'applique le 2 août 2026
 
 Le RGPD n'est pas la seule obligation. L'**article 50** impose, pour un système à risque limité —
 ce qu'est un employé numérique commercial — d'informer la personne qu'elle interagit avec un système
-d'IA, de signaler les contenus générés, de tracer les décisions automatisées et de documenter le
-système. La traçabilité est déjà acquise par le journal en ajout seul ; **l'information ne l'est pas**,
-et elle heurte le lexique produit. Arbitrage en cours : décision **D13**
-([`15-decisions-ouvertes.md`](15-decisions-ouvertes.md)).
+d'IA, de marquer les contenus générés, de tracer les décisions automatisées et de documenter le
+système. La traçabilité est déjà acquise par le journal en ajout seul.
+
+**D13 est tranchée** ([`adr/0015`](adr/0015-transparence-ai-act.md)) : le diagnostic informe en
+clair dès le premier écran, les contenus générés sont marqués de façon lisible par machine, et le
+lexique reçoit une zone exemptée pour cette information — comme les pages légales. Le « digital
+omnibus » de juin 2026 a repoussé les obligations du **haut risque**, pas celles-ci.
 
 ---
 
@@ -89,7 +107,13 @@ Un employé commercial qui envoie des emails engage **l'entreprise cliente**, pa
 Sentio. Obligations minimales :
 
 - base légale identifiée pour la prospection professionnelle ;
-- objet et expéditeur non trompeurs ;
+- **l'information de l'article 14 dans le premier message** — le prospect n'a jamais parlé ni au
+  client ni à Sentio : identité du responsable (l'entreprise cliente), finalité, **origine de la
+  donnée**, droits et moyen de les exercer. C'est plus que la mention d'opposition, et c'est dû
+  dès le premier contact ([`25-conformite-legale.md`](25-conformite-legale.md) §2.2 et §3) ;
+- objet et expéditeur non trompeurs ; **l'émetteur est l'entreprise cliente, nommée, avec des
+  coordonnées valables** — le prénom de l'employé est un nom d'affichage, jamais l'affirmation
+  qu'une personne physique existe ;
 - moyen d'opposition dans **chaque** message ;
 - respect immédiat et définitif des désinscriptions ;
 - **listes d'exclusion respectées avant l'envoi**, pas après : clients existants, concurrents,

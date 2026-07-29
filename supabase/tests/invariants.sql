@@ -794,6 +794,130 @@ end;
 $$;
 
 
+-- ── Droit à l'effacement — la procédure s'exécute vraiment ──────────────────────────────────
+-- RGPD art. 17, et art. 5.2 pour la preuve. Un droit qu'on ne sait pas exercer le jour où on le
+-- demande n'est pas un droit : on l'exerce donc ici, sur l'entreprise individuelle du parcours
+-- précédent, qui porte de vraies données — objectif, vente, mémoire, notification, journal.
+do $$
+declare
+  rapport jsonb;
+  reste integer;
+  contenu integer;
+begin
+  -- L'entreprise a bien quelque chose à effacer : sinon le test ne prouverait rien.
+  select count(*) into contenu from public.company_profile
+  where tenant_id = 'c0000000-0000-0000-0000-00000000000c';
+  if contenu = 0 then
+    raise exception 'ÉCHEC effacement : rien à effacer, le test ne prouve rien.';
+  end if;
+
+  insert into public.execution_event (tenant_id, task_id, employee_id, kind, payload, idempotency_key)
+  values ('c0000000-0000-0000-0000-00000000000c', '0c000000-0000-0000-0000-0000000000ca',
+          '0c000000-0000-0000-0000-0000000000ce', 'message_envoye',
+          '{"destinataire": "prenom.nom@exemple.fr"}'::jsonb, 'envoi-effacement-1');
+
+  select jsonb_object_agg(relation, lignes) into rapport
+  from public.erase_tenant('c0000000-0000-0000-0000-00000000000c');
+
+  -- Le compte-rendu est la preuve remise à la personne : il doit être renseigné.
+  if rapport is null or (rapport ->> 'company_profile')::int = 0 then
+    raise exception 'ÉCHEC effacement : compte-rendu vide (%).', rapport;
+  end if;
+
+  -- Plus rien de ce que le client a écrit ou reçu.
+  select count(*) into reste from (
+    select 1 from public.company_profile where tenant_id = 'c0000000-0000-0000-0000-00000000000c'
+    union all select 1 from public.learned_fact where tenant_id = 'c0000000-0000-0000-0000-00000000000c'
+    union all select 1 from public.objective where tenant_id = 'c0000000-0000-0000-0000-00000000000c'
+    union all select 1 from public.outcome where tenant_id = 'c0000000-0000-0000-0000-00000000000c'
+    union all select 1 from public.notification where tenant_id = 'c0000000-0000-0000-0000-00000000000c'
+    union all select 1 from public.tenant_member where tenant_id = 'c0000000-0000-0000-0000-00000000000c'
+  ) restant;
+  if reste <> 0 then
+    raise exception 'ÉCHEC effacement : % ligne(s) de données client ont survécu.', reste;
+  end if;
+
+  -- Le journal survit, dépouillé : on sait qu'il s'est passé quelque chose, plus quoi.
+  select count(*) into reste from public.execution_event
+  where tenant_id = 'c0000000-0000-0000-0000-00000000000c';
+  if reste = 0 then
+    raise exception 'ÉCHEC effacement : le journal a été détruit au lieu d''être anonymisé.';
+  end if;
+
+  select count(*) into reste from public.execution_event
+  where tenant_id = 'c0000000-0000-0000-0000-00000000000c'
+    and kind <> 'effacement'
+    and (payload <> '{}'::jsonb or idempotency_key is not null);
+  if reste <> 0 then
+    raise exception 'ÉCHEC effacement : % ligne(s) de journal portent encore un contenu.', reste;
+  end if;
+
+  -- La preuve de l'effacement existe, et elle n'a pas été dépouillée avec le reste (art. 5.2).
+  if not exists (
+    select 1 from public.execution_event
+    where tenant_id = 'c0000000-0000-0000-0000-00000000000c'
+      and kind = 'effacement' and payload ? 'journal_depouille') then
+    raise exception 'ÉCHEC effacement : aucune trace prouvant que l''effacement a eu lieu.';
+  end if;
+
+  -- Le nom de l'entreprise est une donnée : la ligne survit, le nom non.
+  if (select name from public.tenant where id = 'c0000000-0000-0000-0000-00000000000c')
+     not like 'Entreprise effacée%' then
+    raise exception 'ÉCHEC effacement : le nom de l''entreprise a survécu.';
+  end if;
+
+  -- Ce qui fonde une facture reste : l'obligation comptable prime (art. 17.3.b).
+  if (select count(*) from public.subscription
+      where tenant_id = 'c0000000-0000-0000-0000-00000000000c') <> 1 then
+    raise exception 'ÉCHEC effacement : l''abonnement a été effacé, la comptabilité ne tient plus.';
+  end if;
+
+  raise notice 'OK  effacement — données parties, journal dépouillé, preuve conservée';
+end;
+$$;
+
+
+-- ── Le verrou du journal reste un verrou ────────────────────────────────────────────────────
+-- L'effacement élargit le droit d'écrire sur le journal. C'est le geste risqué de la migration
+-- 0036 : on vérifie donc que la porte ne s'ouvre que dans un sens.
+do $$
+declare
+  passe boolean;
+begin
+  -- Sans le drapeau, aucune mise à jour, même vidante.
+  passe := false;
+  begin
+    update public.execution_event set payload = '{}'::jsonb, idempotency_key = null
+    where tenant_id = 'aaaaaaaa-0000-0000-0000-000000000001';
+    passe := true;
+  exception when raise_exception then
+    if position('ajout seul' in sqlerrm) = 0 then raise; end if;
+  end;
+  if passe then
+    raise exception 'ÉCHEC : le journal a été modifié sans passer par la procédure d''effacement.';
+  end if;
+
+  -- Avec le drapeau, on peut dépouiller — mais pas réécrire l'histoire.
+  passe := false;
+  begin
+    perform set_config('sentio.erasure', 'on', true);
+    update public.execution_event set payload = '{}'::jsonb, idempotency_key = null,
+                                      kind = 'autre chose'
+    where tenant_id = 'aaaaaaaa-0000-0000-0000-000000000001';
+    passe := true;
+  exception when raise_exception then
+    if position('ajout seul' in sqlerrm) = 0 then raise; end if;
+  end;
+  perform set_config('sentio.erasure', 'off', true);
+  if passe then
+    raise exception 'ÉCHEC : la nature d''un événement a pu être réécrite sous couvert d''effacement.';
+  end if;
+
+  raise notice 'OK  journal — dépouillable par l''effacement, réécrivable par personne';
+end;
+$$;
+
+
 -- ── Filets structurels, appliqués au schéma FINAL ───────────────────────────────────────────
 -- Les migrations 0033 et 0034 portent le même contrôle, mais chacune ne voit que les tables
 -- existant à son propre instant. Ici, on regarde le schéma tel qu'il est après TOUTES les

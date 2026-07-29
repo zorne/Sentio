@@ -55,6 +55,7 @@ pas compris ce que la décision coûte — cherche encore.
 | [0012](0012-retention-journal-30-jours.md) | Rétention du journal d'exécution : 30 jours | acceptée |
 | [0013](0013-acces-donnees-portee-entreprise.md) | La portée d'entreprise est obligatoire à l'accès aux données | acceptée |
 | [0014](0014-etancheite-entre-entreprises.md) | Aucune donnée d'un client n'atteint jamais un autre — aucune exception | acceptée |
+| [0015](0015-transparence-ai-act.md) | Transparence AI Act : informer en clair là où la loi l'exige (D13) | acceptée |
 
 ---
 

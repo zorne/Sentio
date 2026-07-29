@@ -67,33 +67,40 @@ Ne pas les trancher, c'est se condamner à refaire des migrations. Écrire une e
 | Décision | Sujet | Recommandation déjà écrite | Bloque |
 |---|---|---|---|
 | ✅ **D9** | Rétention du journal | Tranchée : 30 jours ([`adr/0012`](adr/0012-retention-journal-30-jours.md)) | le schéma du lot 0 (`FOND-37`) |
-| **D13** | Transparence AI Act *(voir ci-dessous)* | — | vitrine et ADN commercial |
+| ✅ **D13** | Transparence AI Act | Tranchée : informer en clair, marquer les contenus ([`adr/0015`](adr/0015-transparence-ai-act.md)) | vitrine et ADN commercial |
 | **D12** | Hébergeur de l'interface | critère dominant : l'offre gratuite doit autoriser l'usage commercial | la mise en ligne |
 | **D11** | Marque unique | un seul nom | le nom de domaine |
 
-**Terminé quand :** quatre entrées existent dans `adr/` (une l'est déjà — D9), et les décisions
-sont retirées de [`15-decisions-ouvertes.md`](15-decisions-ouvertes.md).
+**Terminé quand :** quatre entrées existent dans `adr/` (**deux le sont — D9 et D13**), et les
+décisions sont retirées de [`15-decisions-ouvertes.md`](15-decisions-ouvertes.md).
 
-### 0.3 — Trancher D13 : la transparence exigée par l'AI Act
+### 0.3 — ✅ D13 tranchée : la transparence exigée par l'AI Act
 
-**Le sujet le plus important de cette phase, et le plus inconfortable.**
+> **Tranchée le 2026-07-29** — [`adr/0015`](adr/0015-transparence-ai-act.md). Le diagnostic
+> informe en clair dès le premier écran, les contenus générés sont marqués de façon lisible par
+> machine, le lexique reçoit une zone exemptée pour cette information.
+> **L'article 50 s'applique le 2 août 2026** : le « digital omnibus » adopté en juin 2026 a
+> repoussé le haut risque (annexe III au 2 décembre 2027, annexe I au 2 août 2028), **pas**
+> l'article 50, ni l'article 4, ni les sanctions. Le sursis de marquage jusqu'au 2 décembre 2026
+> ne couvre que les systèmes déjà commercialisés avant le 2 août 2026 : Sentio n'en bénéficie
+> pas. Instruction complète : [`25-conformite-legale.md`](25-conformite-legale.md).
 
-Depuis le **2 août 2026**, l'article 50 du règlement européen sur l'IA impose d'informer une personne
-qu'elle interagit avec un système d'IA, de signaler les contenus générés, de tracer les décisions
-automatisées et de documenter le système. Un employé numérique commercial relève du **risque limité** :
-obligations légères, mais réelles. Les manquements à l'article 50 sont sanctionnables.
+C'était le sujet le plus inconfortable de cette phase : l'article 50 impose d'informer la personne
+qu'elle interagit avec un système d'IA, de marquer les contenus générés, de tracer les décisions
+automatisées et de documenter le système — ce qui heurte de front la promesse fondatrice et le
+lexique ([`17-lexique.md`](17-lexique.md)). Deux surfaces sont concernées : **le diagnostic de la
+vitrine**, où un visiteur converse réellement avec un système d'IA, et **les messages** écrits par
+les employés, envoyés à des tiers.
 
-**Cela heurte de front la promesse fondatrice** — « le client ne doit jamais avoir l'impression
-d'utiliser une IA » — et le lexique qui interdit le mot dans tout texte visible
-([`17-lexique.md`](17-lexique.md)). Deux surfaces sont concernées :
+**Ce qui a été tranché, et pourquoi la lecture confortable a été écartée :** on espérait qu'une
+mention sobre, sans le mot interdit, suffirait. Elle ne suffit pas — l'article exige une
+information *claire*, et une formule qui laisse le visiteur dans le doute n'informe pas. Le
+lexique reçoit donc une zone exemptée, comme les pages légales, et le mot y est **obligatoire**.
+Le reste du produit garde le lexique intégralement.
 
-- **le diagnostic de la vitrine**, où un visiteur converse réellement avec un système d'IA ;
-- **les messages de prospection** signés d'une identité fictive, envoyés à des tiers.
-
-Une lecture tient debout : informer n'oblige ni à employer le mot interdit dans l'interface, ni à
-casser l'ambiance — une mention sobre suffit, et les pages légales sont **déjà** exemptées du lexique.
-Mais l'arbitrage appartient au fondateur, et il touche le cœur du produit.
-**Terminé quand :** une ADR tranche où, quand et avec quels mots l'information est donnée.
+**Terminé** — [`adr/0015`](adr/0015-transparence-ai-act.md) dit où, quand et avec quels mots.
+Reste à écrire deux documents que personne ne code : la documentation du système et la note de
+compétence en matière d'IA (art. 4), tous deux dus au lot 8.
 
 ### 0.4 — Créer les comptes fournisseurs, séparés du personnel
 
@@ -225,7 +232,8 @@ suivant **après redémarrage complet**, et une tâche refusée se termine propr
 
 # Phase 5 — Lot 4 : Acquisition (~19 h, 20 tâches `ACQUIS-01`→`ACQUIS-20`)
 
-**Prérequis :** D13 tranchée (la mention de transparence se pose ici).
+**Prérequis :** ✅ D13 tranchée — la mention de transparence se pose ici, avant la première
+question du diagnostic ([`adr/0015`](adr/0015-transparence-ai-act.md)).
 
 Vitrine et navigation, sections Hero et Mission, **démonstration scriptée présentée comme telle**,
 section tarifs (Start achetable, Growth et Scale visibles mais non actives), **cinq pages légales en
@@ -290,12 +298,31 @@ en intégration continue**, vérification de l'usage commercial de chaque offre 
 sous-traitance signés avec chaque prestataire.
 
 **À ajouter au regard de l'AI Act** (absent du backlog, qui ne couvre que le RGPD) : la mention de
-transparence décidée en D13, la documentation du système et la traçabilité des décisions automatisées —
-cette dernière est déjà satisfaite par le journal en ajout seul, il suffit de la documenter.
+transparence décidée en D13, la documentation du système, la **compétence en matière d'IA** (art. 4,
+un document daté suffit) et la traçabilité des décisions automatisées — cette dernière est déjà
+satisfaite par le journal en ajout seul, il suffit de la documenter.
 
-**Terminé quand :** aucun texte visible ne contient un mot interdit (vérifié automatiquement), chaque
-offre gratuite utilisée autorise l'usage commercial par écrit, et tous les contrats de sous-traitance
-sont signés.
+**Six tâches manquaient au backlog, révélées par l'instruction juridique du 2026-07-29**
+([`25-conformite-legale.md`](25-conformite-legale.md)) — aucune n'est facultative :
+
+| # | Tâche | Bloque |
+|---|---|---|
+| `CONF-11` | **Contrat de sous-traitance fourni aux clients** (art. 28), avec la liste des sous-traitants ultérieurs — Sentio est **sous-traitant** de ses clients, pas seulement responsable | le premier client sérieux |
+| `CONF-12` | **Procédure de violation de données** écrite d'avance : qui alerte, qui notifie, sous 72 h, avec quelles coordonnées (art. 33-34) | la mise en ligne |
+| `CONF-13` | **Registre des traitements** complété et daté ([`26-registre-traitements.md`](26-registre-traitements.md)) | rien techniquement, tout juridiquement |
+| `CONF-14` | **AIPD de la prospection** — modèle fourni aux clients, qui en sont responsables | le premier envoi réel |
+| `CONF-15` | **Durée de conservation des sauvegardes**, rendue cohérente avec l'effacement : une donnée effacée ne doit pas revenir par une restauration | la mise en ligne |
+| `CONF-16` | **Export des données d'une entreprise** (droits d'accès et de portabilité, art. 15 et 20) | une demande d'un client |
+
+Deux tâches basculent au **lot 2**, parce qu'elles s'écrivent dans la capacité d'envoi et nulle part
+ailleurs : l'**information de l'article 14 dans le premier message** (identité du responsable,
+finalité, origine de la donnée, droits) et le **marquage lisible par machine** des contenus générés.
+La capacité d'envoi ne doit **pas pouvoir** émettre un message qui n'en porte pas.
+
+**Terminé quand :** aucun texte visible ne contient un mot interdit hors des deux zones exemptées
+(vérifié automatiquement), chaque offre gratuite utilisée autorise l'usage commercial par écrit,
+tous les contrats de sous-traitance sont signés **dans les deux sens**, et la procédure de violation
+de données est écrite avant d'en avoir besoin.
 
 ---
 
@@ -398,7 +425,7 @@ identique bit pour bit ; seuls les faits appris, le profil et le journal ont cha
 
 | Phase | Décisions |
 |---|---|
-| 0 | ✅ D9 rétention (tranchée) · **D13** transparence AI Act · **D12** hébergeur · **D11** marque |
+| 0 | ✅ D9 rétention · ✅ D13 transparence AI Act · **D12** hébergeur · **D11** marque |
 | 3 | **D5** source des prospects · **D6** domaine d'envoi *(risque de réputation du client)* |
 | 4 | **D4** périodicité · **D7** autonomie par défaut |
 | 6 | **D2** prix de Start · **D3** achat immédiat ou essai |

@@ -25,7 +25,12 @@ Tout est en français ; seuls les noms de tables et de modules sont en anglais.
 10. [`09-metriques-roi.md`](09-metriques-roi.md) — les chiffres affichés au client
 
 **Avant de mettre en ligne**
-11. [`10-securite-rgpd.md`](10-securite-rgpd.md)
+11. [`10-securite-rgpd.md`](10-securite-rgpd.md) — les règles de conception
+    → [`25-conformite-legale.md`](25-conformite-legale.md) — ⭐ **l'instruction juridique** : rôles
+    responsable/sous-traitant, bases légales, droits des personnes, prospection, AI Act, et ce qui
+    bloque quoi
+    → [`26-registre-traitements.md`](26-registre-traitements.md) — le registre de l'article 30,
+    **document juridique à tenir à jour**
 12. [`11-exploitation.md`](11-exploitation.md) — où tourne quoi, et quand le €0 casse
     → [`19-fournisseurs-modeles.md`](19-fournisseurs-modeles.md) — quels fournisseurs, quels
     modèles, quels quotas chiffrés **(daté — à re-vérifier)**

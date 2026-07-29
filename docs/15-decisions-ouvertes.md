@@ -130,28 +130,15 @@ Le motif est de toute façon journalisé (`METIER-22`) : la décision porte sur 
 
 ---
 
-## D13 — Transparence exigée par l'AI Act vs « jamais l'impression d'utiliser une IA »
+## ✅ D13 — Transparence exigée par l'AI Act — TRANCHÉE
 
-Depuis le **2 août 2026**, l'article 50 du règlement européen sur l'IA impose d'informer une personne
-qu'elle interagit avec un système d'IA, de signaler les contenus générés, de tracer les décisions
-automatisées et de documenter le système. Un employé numérique commercial relève du **risque limité** :
-obligations légères, mais réelles, et sanctionnables.
-
-Cela heurte de front la promesse fondatrice — « le client ne doit jamais avoir l'impression d'utiliser
-une IA » — et le lexique qui interdit le mot dans tout texte visible
-([`17-lexique.md`](17-lexique.md)). Deux surfaces sont concernées : le **diagnostic de la vitrine**, où
-un visiteur converse réellement avec un système d'IA, et les **messages de prospection** signés d'une
-identité fictive et envoyés à des tiers.
-
-| Option | Conséquence |
-|---|---|
-| **Mention sobre, hors du lexique** *(à instruire en premier)* | les pages légales sont **déjà** exemptées du lexique ; informer n'oblige ni à employer le mot interdit dans l'interface, ni à casser l'ambiance |
-| Mention explicite dans l'interface | conformité la plus sûre, mais abîme la promesse produit |
-| Ne rien faire | non conforme depuis le 2 août 2026 |
-
-Ne concerne **jamais** la question de savoir si le produit est honnête : la démonstration scriptée doit
-déjà être présentée comme telle (C6), et le diagnostic hors périmètre doit déjà le dire (R14).
-**Bloque :** la vitrine (lot 4) et l'ADN commercial (lot 2). → [`20-plan-action.md`](20-plan-action.md)
+**Décision : Sentio informe, sobrement, là où la loi l'exige — et nulle part ailleurs.**
+L'article 50 s'applique le **2 août 2026** ; le « digital omnibus » de juin 2026 a repoussé le
+haut risque, pas lui. Le diagnostic annonce en clair, dès le premier écran, qu'on échange avec un
+système d'IA ; les contenus générés sont marqués de façon lisible par machine ; le lexique reçoit
+une zone exemptée pour cette information, comme les pages légales.
+→ [`adr/0015`](adr/0015-transparence-ai-act.md), et
+[`25-conformite-legale.md`](25-conformite-legale.md) pour le reste des obligations.
 
 ---
 

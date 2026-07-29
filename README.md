@@ -30,6 +30,8 @@ touche du réel. Peuvent attendre que le SaaS soit fonctionnel, mais doivent êt
 |---|---|---|
 | **Opt-out d'entraînement Mistral activé et prouvé** (capture datée, archivée) | Tout appel de modèle sur une donnée réelle — le diagnostic en manipule dès la première question | [`docs/19-fournisseurs-modeles.md`](docs/19-fournisseurs-modeles.md), [`adr/0009`](docs/adr/0009-fournisseur-inference-ue.md) |
 | **Immatriculation de l'entreprise** | Le premier paiement réel, les mentions légales définitives, les contrats de sous-traitance | [`docs/20-plan-action.md`](docs/20-plan-action.md), phase 0.1 et phase 8 |
+| **Transparence AI Act** — article 50, applicable le **2 août 2026** | La mise en ligne de la vitrine : le diagnostic doit annoncer en clair qu'on échange avec un système d'IA, et les contenus générés être marqués | [`adr/0015`](docs/adr/0015-transparence-ai-act.md) |
+| **Contrat de sous-traitance fourni aux clients**, procédure de violation de données (72 h), registre des traitements | Le premier client réel — Sentio est **sous-traitant** de ses clients, pas seulement responsable | [`docs/25-conformite-legale.md`](docs/25-conformite-legale.md) |
 
 Tant que ces deux points ne sont pas réglés : le drapeau `inferenceOptOutProven`
 (`packages/config`) reste à `false`, et rien ne doit être facturé.
