@@ -365,4 +365,31 @@ begin
 end;
 $$;
 
+
+-- ── Une table ajoutée demain naît fermée ────────────────────────────────────────────────────
+-- Le stub reproduit le défaut permissif de Supabase (voir supabase-stub.sql) : sans la
+-- migration 030, la table créée ci-dessous serait immédiatement lisible par un visiteur.
+do $$
+declare
+  leaked text;
+begin
+  create table public.table_creee_apres_coup (id uuid primary key default gen_random_uuid());
+
+  select string_agg(distinct privilege_type, ', ' order by privilege_type)
+  into leaked
+  from information_schema.role_table_grants
+  where table_schema = 'public'
+    and table_name = 'table_creee_apres_coup'
+    and grantee in ('anon', 'authenticated');
+
+  if leaked is not null then
+    raise exception
+      'ÉCHEC : une table créée après les migrations reçoit des droits clients (%). Les droits par défaut ne sont pas neutralisés.',
+      leaked;
+  end if;
+
+  raise notice 'OK  droits par défaut — une table ajoutée après coup naît inaccessible';
+end;
+$$;
+
 rollback;

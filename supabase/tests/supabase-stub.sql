@@ -32,3 +32,14 @@ begin
   end if;
 end;
 $$;
+
+-- ⚠️ On reproduit ici le défaut PERMISSIF de la plateforme : Supabase accorde automatiquement
+-- des droits aux rôles clients sur toute table créée dans le schéma public.
+--
+-- Sans cette ligne, les migrations 028 et 030 passeraient les tests localement sans rien
+-- prouver : elles corrigent un danger qui n'existerait pas dans un Postgres nu. Un test qui ne
+-- reproduit pas la condition dangereuse ne teste rien — il rassure.
+grant usage on schema public to anon, authenticated;
+alter default privileges in schema public grant all on tables to anon, authenticated;
+alter default privileges in schema public grant all on sequences to anon, authenticated;
+alter default privileges in schema public grant all on functions to anon, authenticated;
