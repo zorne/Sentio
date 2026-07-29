@@ -82,7 +82,8 @@ fichier non lu.**
 `0010-diagnostic-calibrage` · `0011-generaliste-profils-sectoriels` ·
 `0012-retention-journal-30-jours` · `0013-acces-donnees-portee-entreprise` ·
 `0014-etancheite-entre-entreprises` · `0015-transparence-ai-act` ·
-`0016-source-des-prospects` · `0017-domaine-du-client-et-reputation`.
+`0016-source-des-prospects` · `0017-domaine-du-client-et-reputation` ·
+`0018-service-expedition-resend`.
 Ne pas les rouvrir sans raison explicite.
 
 ⚠️ `0007-perimetre-v1-commercial-support` est **remplacée par `0008`** : le fondateur est revenu

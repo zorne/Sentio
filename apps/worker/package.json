@@ -12,7 +12,8 @@
     "@sentio/core": "workspace:*",
     "@sentio/db": "workspace:*",
     "@sentio/config": "workspace:*",
-    "@sentio/domain": "workspace:*"
+    "@sentio/domain": "workspace:*",
+    "@sentio/capabilities": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.2",

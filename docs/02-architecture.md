@@ -27,6 +27,11 @@ seul. Des frontières propres donnent le découpage futur sans en payer le prix 
 | `packages/domain` | Types, contrats, règles métier pures (recrutement, quotas, attribution). **Aucune entrée/sortie.** | rien |
 | `packages/core` | Runtime d'employé, Model Gateway, Policy Engine, Mémoire, Registre de capacités | `domain`, `config` |
 | `packages/capabilities` | Adaptateurs concrets d'une capacité (prospection, envoi d'email, CRM…) | `domain` |
+
+> `capabilities` **n'importe pas** `core`, alors qu'il en implémente les contrats : TypeScript
+> vérifie la forme, pas la provenance. Un moteur satisfait `CapabilityEngine` sans le connaître —
+> ce qui garde la dépendance orientée dans un seul sens, et permettra d'extraire une capacité en
+> service séparé sans emporter le noyau avec elle.
 | `packages/db` | Repositories, accès typé à la base | `domain` |
 | `packages/config` | Formules, quotas, seuils, drapeaux de fonctionnalité, lexique | rien |
 | `apps/web` | Interface : vitrine publique + espace privé | tous |

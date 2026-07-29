@@ -147,7 +147,7 @@ le premier envoi réel**, portée par le client responsable, avec un modèle fou
 | Base de données et authentification | hébergement des données clients | UE (`eu-north-1`) | ☐ | sans objet |
 | Fournisseur d'inférence | exécution des modèles | UE | ☐ | ☐ **bloquant** |
 | Hébergeur de l'interface | vitrine et espace privé | ☐ (décision D12) | ☐ | sans objet |
-| Service d'envoi d'emails | messages des employés | ☐ | ☐ | sans objet |
+| **Resend** (service d'envoi) | messages des employés | expédition **UE (Irlande)**, mais journaux et métadonnées **aux États-Unis** — transfert à encadrer ([`adr/0018`](adr/0018-service-expedition-resend.md)) | ☐ | sans objet |
 | Prestataire de paiement | encaissement | ☐ | ☐ | sans objet |
 
 Aucune case cochée à ce jour. **Aucune ne bloque le développement ; toutes bloquent le premier

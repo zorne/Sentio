@@ -14,3 +14,4 @@
 export * from "./adapters/ledger.js";
 export * from "./adapters/approvals.js";
 export * from "./adapters/journal.js";
+export * from "./adapters/sending.js";

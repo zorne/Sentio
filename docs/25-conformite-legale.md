@@ -91,6 +91,12 @@ procédure retire le contenu et les clés d'action, conserve la date et la natur
 événement, et écrit sa propre trace. Elle rend un compte-rendu ligne par ligne : c'est la preuve
 à remettre à la personne, et à l'autorité si elle demande.
 
+> ⚠️ **Une exception au « aucun transfert hors UE », depuis le 2026-07-29** : le service
+> d'expédition retenu ([`adr/0018`](adr/0018-service-expedition-resend.md)) expédie depuis
+> l'Irlande mais **stocke ses journaux aux États-Unis**. Ces journaux contiennent les adresses des
+> prospects du client. Le mécanisme de transfert doit être vérifié et documenté **avant le premier
+> envoi réel**, et l'entrée du registre le dit.
+
 ### 2.4 Sous-traitance (art. 28) — dans les deux sens
 
 - **En aval** — un contrat avec chaque prestataire qui touche des données : hébergeur, base,

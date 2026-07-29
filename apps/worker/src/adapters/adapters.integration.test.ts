@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PostgresApprovalStore } from "./approvals.js";
 import { PostgresJournalWriter } from "./journal.js";
 import { PostgresUsageLedger, periodFor } from "./ledger.js";
+import { PostgresOutboundMessages, PostgresSendingGuard } from "./sending.js";
 
 /**
  * Le lot 1 branché sur une **vraie** base.
@@ -278,6 +279,68 @@ describeIfDatabase("Le noyau contre un vrai Postgres", () => {
       [tenantId, employeeId],
     );
     expect((await engine.decide(request)).outcome).toBe("suspend");
+  });
+
+  it("la garde d'envoi refuse tant que tout n'est pas réuni, puis autorise", async () => {
+    const [domain] = await sql.query<{ id: string }>(
+      "insert into sending_domain (tenant_id, domain) values ($1, 'client.fr') returning id",
+      [tenantId],
+    );
+    const [lead] = await sql.query<{ id: string }>(
+      `insert into lead (tenant_id, company_name, email, source, qualification)
+       values ($1, 'Prospect SARL', 'contact@prospect.fr', 'import_client', 'qualifie')
+       returning id`,
+      [tenantId],
+    );
+
+    const guard = new PostgresSendingGuard(sql, ledger);
+    const target = { tenantId, leadId: lead?.id as string, sendingDomainId: domain?.id as string };
+
+    // Domaine non authentifié : rien ne part, même avec un prospect qualifié.
+    expect(await guard.check(target)).toEqual({
+      allowed: false,
+      reason: "domaine_non_authentifie",
+    });
+
+    await sql.query(
+      `update sending_domain
+          set spf_verified_at = now(), dkim_verified_at = now(), dmarc_verified_at = now(),
+              warmup_started_on = current_date
+        where id = $1`,
+      [domain?.id],
+    );
+
+    const verdict = await guard.check(target);
+    expect(verdict).toMatchObject({ allowed: true });
+    // L'adresse vient de la base, pas de l'appelant.
+    expect(verdict.allowed && verdict.recipient.address).toBe("contact@prospect.fr");
+
+    // Réservation : la seconde tentative sur la même clé repart les mains vides.
+    const store = new PostgresOutboundMessages(sql);
+    const claim = {
+      tenantId,
+      leadId: lead?.id as string,
+      employeeId,
+      sendingDomainId: domain?.id as string,
+      subject: "Vos fenêtres",
+      idempotencyKey: "envoyer_un_message:integration",
+    };
+    expect(await store.claim(claim)).toBe(true);
+    expect(await store.claim(claim)).toBe(false);
+
+    // Et le plafond du jour s'applique : la formule Start autorise 30 messages par jour.
+    await sql.query(
+      `insert into outbound_message
+         (tenant_id, lead_id, employee_id, sending_domain_id, subject,
+          carried_optout, carried_notice, idempotency_key)
+       select $1, $2, $3, $4, 'remplissage', true, true, 'bourrage-' || g
+         from generate_series(1, 30) g`,
+      [tenantId, lead?.id, employeeId, domain?.id],
+    );
+    expect(await guard.check(target)).toEqual({
+      allowed: false,
+      reason: "plafond_du_jour_atteint",
+    });
   });
 
   it("journalise chaque décision de politique dans la bonne entreprise", async () => {
