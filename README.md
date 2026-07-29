@@ -10,10 +10,26 @@ et toute la vie du client se déroule ensuite dans son espace privé.
 > Il doit avoir l'impression de recruter un collaborateur, de suivre ses performances,
 > et de voir son équipe grandir.
 
-**État du projet : lot 0 (Fondations) en cours.**
-L'architecture a été écrite avant la première ligne de code. Le monorepo existe désormais
-(`packages/domain`, `core`, `capabilities`, `db`, `config` · `apps/web`, `worker`) ; les
-migrations restent à écrire. Étape suivante : [`docs/20-plan-action.md`](docs/20-plan-action.md).
+**État du projet : lot 0 (Fondations) terminé.** Schéma, isolation par entreprise et
+repositories vérifiés. Étape suivante : lot 1 (Noyau) — [`docs/20-plan-action.md`](docs/20-plan-action.md).
+
+---
+
+## ⚠️ Avant de faire transiter la moindre donnée réelle, ou d'encaisser
+
+Deux préalables ne bloquent **pas** le développement — ils bloquent le moment où le produit
+touche du réel. Peuvent attendre que le SaaS soit fonctionnel, mais doivent être réglés
+**avant** de les franchir :
+
+| Préalable | Bloque précisément | Détail |
+|---|---|---|
+| **Opt-out d'entraînement Mistral activé et prouvé** (capture datée, archivée) | Tout appel de modèle sur une donnée réelle — le diagnostic en manipule dès la première question | [`docs/19-fournisseurs-modeles.md`](docs/19-fournisseurs-modeles.md), [`adr/0009`](docs/adr/0009-fournisseur-inference-ue.md) |
+| **Immatriculation de l'entreprise** | Le premier paiement réel, les mentions légales définitives, les contrats de sous-traitance | [`docs/20-plan-action.md`](docs/20-plan-action.md), phase 0.1 et phase 8 |
+
+Tant que ces deux points ne sont pas réglés : le drapeau `inferenceOptOutProven`
+(`packages/config`) reste à `false`, et rien ne doit être facturé.
+Voir aussi [`docs/11-exploitation.md`](docs/11-exploitation.md), « Ce qui change quand le
+premier client payant arrive ».
 
 ---
 
