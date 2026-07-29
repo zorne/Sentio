@@ -30,6 +30,12 @@ Ces règles ne sont pas des préférences de style. Chacune protège un client p
    tables client porte toujours `tenant_id`**, sans quoi un lien peut relier deux entreprises.
    Ces deux règles sont tenues par la base (migrations `0033` et `0034`), donc valables aussi
    pour le rôle de service, qui ignore RLS.
+   **Et ce n'est pas qu'une règle technique : aucune donnée d'une entreprise n'atteint jamais une
+   autre entreprise — jamais partagée, jamais agrégée, jamais dérivée, même à la demande d'un
+   client, même anonymisée.** Décision du fondateur, non négociable :
+   [`docs/adr/0014`](docs/adr/0014-etancheite-entre-entreprises.md). Une fonctionnalité qui la
+   viole se refuse, elle ne se code pas — y compris un repère comparatif, une liste d'exclusion
+   mutualisée ou un apprentissage transversal.
 3. **Toute action à effet extérieur porte une clé d'idempotence.** Un rejeu ne doit jamais
    envoyer deux fois le même email.
 4. **Aucun chiffre affiché sans une ligne en base qui le justifie.** Pas de valeur de

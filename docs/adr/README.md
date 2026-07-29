@@ -54,6 +54,7 @@ pas compris ce que la décision coûte — cherche encore.
 | [0011](0011-generaliste-profils-sectoriels.md) | Sentio reste généraliste ; la niche est celle du client | acceptée |
 | [0012](0012-retention-journal-30-jours.md) | Rétention du journal d'exécution : 30 jours | acceptée |
 | [0013](0013-acces-donnees-portee-entreprise.md) | La portée d'entreprise est obligatoire à l'accès aux données | acceptée |
+| [0014](0014-etancheite-entre-entreprises.md) | Aucune donnée d'un client n'atteint jamais un autre — aucune exception | acceptée |
 
 ---
 
