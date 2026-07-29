@@ -27,7 +27,7 @@ construit sur un lot amont incomplet produit du travail à refaire ([`12-roadmap
 |---|---|---|---|
 | 0 | Lancer ce qui a un délai | ~4 h + délais | ☐ |
 | 1 | Lot 0 — Fondations | ~15 h | ✅ *(sauf temps réel — voir phase 1)* |
-| 2 | Lot 1 — Noyau | ~17 h | ☐ |
+| 2 | Lot 1 — Noyau | ~17 h | ✅ |
 | 3 | Lot 2 — Métier Commercial | ~11 h | ☐ |
 | 4 | Lot 3 — Exécution autonome | ~11 h | ☐ |
 | 5 | Lot 4 — Acquisition | ~19 h | ☐ |
@@ -172,6 +172,21 @@ seul, idempotence, format de tour de conversation.
 marquée réelle, **et** quand le fournisseur conforme est indisponible le comportement observé est
 **l'échec ou le report, jamais le repli** ; `TEST-07` passe — une entreprise au plafond voit ses tâches
 reportées avec un message clair, sans dégradation silencieuse, sans effet sur les autres entreprises.
+
+> **État au 2026-07-29 : fait.** `TEST-04` et `TEST-07` sont automatisés
+> (`packages/core/src/model/gateway.test.ts`), et `TEST-07` est rejoué contre un **vrai** Postgres,
+> plafonds lus dans `plan_quota` (`apps/worker/src/adapters/adapters.integration.test.ts`).
+>
+> **Sur le prérequis d'opt-out (0.5), non levé :** il ne bloquait pas l'écriture du noyau, il bloque
+> l'envoi d'une donnée réelle — et c'est désormais le code qui le tient. Tant que
+> `inferenceOptOutProven` est faux, le Gateway écarte le fournisseur **avant tout appel réseau** et
+> journalise un `routage_refuse`. Le drapeau est le garde global ; la preuve par fournisseur, elle,
+> vit en base (`provider_credential.opt_out_proven_at`, dont la contrainte interdit de se déclarer
+> « sans entraînement » sans preuve datée).
+>
+> Un plafond manquait : `inference_tokens_per_day`, ajouté **en données** (migration `0037`). Le quota
+> de période bornait le mois sans borner la journée — une entreprise pouvait consommer son mois en
+> quelques heures et bloquer les autres, le quota du fournisseur étant unique et partagé.
 
 ---
 

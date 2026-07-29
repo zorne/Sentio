@@ -31,6 +31,11 @@ aval construit sur un lot amont incomplet produit du travail à refaire.
 **Sortie :** un appel de modèle passe par un seul chemin, et une donnée réelle ne peut pas
 partir chez un fournisseur non conforme.
 
+> **Livré le 2026-07-29.** `packages/core` porte le Gateway, le Policy Engine, l'assemblage à
+> trois couches, le registre de capacités, la clé d'idempotence et le format de tour ;
+> `apps/worker/src/adapters/` branche les ports sur Postgres. `TEST-04` et `TEST-07` passent — le
+> second aussi contre une vraie base, plafonds lus dans `plan_quota`.
+
 ---
 
 ## Lot 2 — Le premier métier réel

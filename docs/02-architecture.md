@@ -25,7 +25,7 @@ seul. Des frontières propres donnent le découpage futur sans en payer le prix 
 | Module | Rôle | Peut dépendre de |
 |---|---|---|
 | `packages/domain` | Types, contrats, règles métier pures (recrutement, quotas, attribution). **Aucune entrée/sortie.** | rien |
-| `packages/core` | Runtime d'employé, Model Gateway, Policy Engine, Mémoire, Registre de capacités | `domain` |
+| `packages/core` | Runtime d'employé, Model Gateway, Policy Engine, Mémoire, Registre de capacités | `domain`, `config` |
 | `packages/capabilities` | Adaptateurs concrets d'une capacité (prospection, envoi d'email, CRM…) | `domain` |
 | `packages/db` | Repositories, accès typé à la base | `domain` |
 | `packages/config` | Formules, quotas, seuils, drapeaux de fonctionnalité, lexique | rien |
@@ -41,6 +41,13 @@ raison de ce choix sont dans [`supabase/README.md`](../supabase/README.md).
   Elle passe par le noyau.
 - `domain` ne connaît ni base ni réseau. C'est ce qui rend les règles métier testables sans
   infrastructure — et déplaçables plus tard.
+- `core` ne connaît ni base ni file : il **déclare des ports** (`packages/core/src/ports.ts`) que
+  `apps/worker` branche sur Postgres (`apps/worker/src/adapters/`). Il dépend de `config` parce
+  que les enveloppes, les seuils et les drapeaux sont de la configuration, pas des règles — et
+  `config` ne dépend de rien, donc la frontière reste orientée. Les appels sortants vers un
+  fournisseur de modèle sont, eux aussi, des adaptateurs isolés
+  (`packages/core/src/model/http/`) : le Gateway ne les importe jamais, c'est le câblage qui
+  choisit lesquels existent et dans quel ordre.
 - `apps/worker` ne communique avec `apps/web` que **par la base et la file**. Jamais par un
   appel direct. Le jour où l'exécution devient le goulot d'étranglement, ce module devient un
   service autonome sans rien réécrire.

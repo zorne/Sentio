@@ -66,6 +66,10 @@ Seuls `learned_fact`, `company_profile` et le journal ont changé.
 
 ## Classe de données *(lot 1)*
 
+> **Automatisé** — `packages/core/src/model/gateway.test.ts`. Le fournisseur de secours n'est pas
+> « appelé puis rejeté » : il n'est **jamais appelé**, et le test le vérifie en comptant ses appels.
+> Quand le conforme tombe, le comportement observé est le report — jamais le repli.
+
 Une requête portant des données réelles ne part **jamais** vers un fournisseur non
 contractuellement « sans entraînement ».
 
@@ -102,6 +106,15 @@ Une entreprise Start atteignant son plafond :
 - voit ses tâches **reportées avec un message clair**,
 - ne subit **aucune dégradation silencieuse** (pas de bascule discrète vers un modèle inférieur),
 - **n'affecte aucune autre entreprise**.
+
+> **Automatisé à deux niveaux** — la règle dans `packages/core/src/model/gateway.test.ts`, et le
+> même scénario contre un **vrai** Postgres, plafond lu dans `plan_quota`, dans
+> `apps/worker/src/adapters/adapters.integration.test.ts`. Le message de report est lui-même
+> repassé au vérificateur du lexique : c'est un texte que le client lit.
+>
+> Deux plafonds, pas un : celui de la **période** et celui de la **journée**
+> (`inference_tokens_per_day`, migration `0037`). Sans le second, une entreprise consomme son mois
+> en quelques heures et bloque les autres, le quota du fournisseur étant unique et partagé.
 
 ---
 

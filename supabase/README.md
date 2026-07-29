@@ -46,8 +46,9 @@ Plusieurs migrations ne créent aucune table :
 | `…034_ligne_ne_change_pas_entreprise.sql` | verrou : `tenant_id` d'une ligne existante est immuable, pour tous les rôles |
 | `…035_provenance_memoire.sql` | l'auteur d'une ligne de mémoire est immuable ; le contenu d'autrui se retire, ne se réécrit pas |
 | `…036_effacement.sql` | `erase_tenant()` — droit à l'effacement exécutable : données supprimées, journal **dépouillé** et non détruit, compte-rendu rendu en preuve |
+| `…037_quota_inference_journalier.sql` | plafond d'inférence **par jour et par formule**, en données — le quota de période ne borne pas la journée |
 
-Les trois dernières corrigent des failles que **seuls les parcours joués avec le rôle
+Les migrations `0033` à `0035` corrigent des failles que **seuls les parcours joués avec le rôle
 `authenticated` ont révélées** — les tests de schéma table par table les laissaient toutes
 passer. Chacune porte en tête ce qui était possible avant elle.
 

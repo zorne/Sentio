@@ -23,12 +23,18 @@ importers:
 
   apps/worker:
     dependencies:
+      '@sentio/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@sentio/core':
         specifier: workspace:*
         version: link:../../packages/core
       '@sentio/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@sentio/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
     devDependencies:
       typescript:
         specifier: ^5.7.2
@@ -64,6 +70,9 @@ importers:
 
   packages/core:
     dependencies:
+      '@sentio/config':
+        specifier: workspace:*
+        version: link:../config
       '@sentio/domain':
         specifier: workspace:*
         version: link:../domain

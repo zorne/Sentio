@@ -20,6 +20,15 @@ export const USAGE_METRICS = {
   outboundMessagesPerDay: "outbound_messages_per_day",
   /** Jetons d'inférence consommés sur la période. */
   inferenceTokensPerPeriod: "inference_tokens_per_period",
+  /**
+   * Jetons d'inférence consommés dans la journée — le **plafond dur** du Model Gateway.
+   *
+   * Le quota de période ne suffit pas : sans plafond journalier, une entreprise peut consommer un
+   * mois entier en une journée et bloquer les autres, puisque le quota du fournisseur est unique
+   * et partagé (`docs/11-exploitation.md`). Au-delà, la tâche est reportée avec un message clair,
+   * jamais dégradée en silence.
+   */
+  inferenceTokensPerDay: "inference_tokens_per_day",
 } as const;
 
 export type UsageMetric = (typeof USAGE_METRICS)[keyof typeof USAGE_METRICS];
