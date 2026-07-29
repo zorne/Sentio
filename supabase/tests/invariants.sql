@@ -30,8 +30,12 @@ insert into public.tenant_member (tenant_id, user_id, role) values
 -- s'appuient sur les données RÉELLES du produit, pas sur un jeu d'essai parallèle qui pourrait
 -- diverger sans qu'on s'en aperçoive.
 
+-- ADN d'essai, en version 99 : la v1 est l'ADN RÉEL du produit, publié par la migration 0039.
+-- Les tests ci-dessous tentent de le modifier et de le supprimer — on ne fait pas ça sur la
+-- version que les employés vendus porteront, et une version d'essai laisse le vrai ADN évoluer
+-- sans réécrire cette suite.
 insert into public.employee_definition (id, profession, version, dna) values
-  ('dddddddd-0000-0000-0000-000000000001', 'commercial', 1, '{"perimetre": ["prospection"]}'::jsonb);
+  ('dddddddd-0000-0000-0000-000000000001', 'commercial', 99, '{"perimetre": ["prospection"]}'::jsonb);
 
 -- Un employé recruté sur une identité prise dans le réservoir semé.
 insert into public.employee (id, tenant_id, employee_definition_id, identity_id)
@@ -914,6 +918,131 @@ begin
   end if;
 
   raise notice 'OK  journal — dépouillable par l''effacement, réécrivable par personne';
+end;
+$$;
+
+
+-- ── La garde d'envoi — sept conditions, aucune facultative ──────────────────────────────────
+-- `docs/adr/0017` : ne jamais délivrer un message qui pourrait brûler la réputation du client.
+-- La règle n'est tenue que si chaque condition refuse SEULE. On les éprouve donc une par une, en
+-- partant d'une situation qui échoue et en la réparant condition après condition — la dernière
+-- ligne doit être « ok », sinon le test ne prouverait rien de ce qu'il prétend.
+do $$
+declare
+  t constant uuid := 'e0000000-0000-0000-0000-00000000000e';
+  emp constant uuid := 'e0000000-0000-0000-0000-0000000000ee';
+  dom uuid;
+  prospect uuid;
+  verdict text;
+begin
+  insert into public.tenant (id, name) values (t, 'Entreprise prospection');
+  insert into public.employee (id, tenant_id, employee_definition_id, identity_id)
+  select emp, t, 'dddddddd-0000-0000-0000-000000000001', id
+  from public.reserve_identity('commercial');
+
+  insert into public.sending_domain (tenant_id, domain) values (t, 'client.fr') returning id into dom;
+  insert into public.lead (tenant_id, company_name, email, source)
+  values (t, 'Prospect SARL', 'contact@prospect.fr', 'import_client') returning id into prospect;
+
+  -- 1. Domaine non authentifié : rien ne part, quoi qu'il arrive par ailleurs.
+  verdict := public.peut_envoyer(t, prospect, dom, 0, 30);
+  if verdict <> 'domaine_non_authentifie' then
+    raise exception 'ÉCHEC garde : domaine non authentifié accepté (%).', verdict;
+  end if;
+
+  update public.sending_domain
+     set spf_verified_at = now(), dkim_verified_at = now(), dmarc_verified_at = now()
+   where id = dom;
+
+  -- 2. Montée en charge non commencée : authentifier ne suffit pas.
+  verdict := public.peut_envoyer(t, prospect, dom, 0, 30);
+  if verdict <> 'montee_en_charge_non_commencee' then
+    raise exception 'ÉCHEC garde : envoi autorisé sans montée en charge (%).', verdict;
+  end if;
+
+  update public.sending_domain set warmup_started_on = current_date where id = dom;
+
+  -- 3. Prospect non qualifié : une liste fournie n'est pas une liste propre (docs/adr/0016).
+  verdict := public.peut_envoyer(t, prospect, dom, 0, 30);
+  if verdict <> 'prospect_non_qualifie' then
+    raise exception 'ÉCHEC garde : prospect non qualifié accepté (%).', verdict;
+  end if;
+
+  update public.lead set qualification = 'qualifie' where id = prospect;
+
+  -- 4. Plafond du jour : le plus BAS des deux plafonds gagne. Le domaine a un jour d'âge, donc 5.
+  verdict := public.peut_envoyer(t, prospect, dom, 5, 30);
+  if verdict <> 'plafond_du_jour_atteint' then
+    raise exception 'ÉCHEC garde : le plafond de montée en charge a été ignoré (%).', verdict;
+  end if;
+  verdict := public.peut_envoyer(t, prospect, dom, 3, 3);
+  if verdict <> 'plafond_du_jour_atteint' then
+    raise exception 'ÉCHEC garde : le plafond de la formule a été ignoré (%).', verdict;
+  end if;
+
+  -- 5. Tout est réuni : et seulement maintenant, l'envoi devient possible.
+  verdict := public.peut_envoyer(t, prospect, dom, 0, 30);
+  if verdict <> 'ok' then
+    raise exception 'ÉCHEC garde : envoi refusé alors que tout est en règle (%).', verdict;
+  end if;
+
+  -- 6. Exclusion par domaine entier : préventive, vérifiée AVANT l'envoi.
+  insert into public.suppression (tenant_id, pattern, kind)
+  values (t, '@prospect.fr', 'exclusion');
+  verdict := public.peut_envoyer(t, prospect, dom, 0, 30);
+  if verdict <> 'destinataire_sur_liste_d_exclusion' then
+    raise exception 'ÉCHEC garde : une exclusion par domaine a été ignorée (%).', verdict;
+  end if;
+  delete from public.suppression where tenant_id = t;
+
+  -- 7. Suspension : elle prime sur tout le reste, même quand tout est en règle.
+  update public.sending_domain
+     set suspended_at = now(), suspension_reason = 'taux de rebond au-dessus de 2 %'
+   where id = dom;
+  verdict := public.peut_envoyer(t, prospect, dom, 0, 30);
+  if verdict <> 'domaine_suspendu' then
+    raise exception 'ÉCHEC garde : envoi autorisé sur un domaine suspendu (%).', verdict;
+  end if;
+
+  raise notice 'OK  garde d''envoi — sept conditions, chacune refuse seule';
+end;
+$$;
+
+
+-- ── Ce que la prospection rend impossible ───────────────────────────────────────────────────
+do $$
+declare
+  t constant uuid := 'e0000000-0000-0000-0000-00000000000e';
+begin
+  -- Un prospect sans origine : impossible. Donc rien à contacter sans savoir d'où vient la donnée.
+  begin
+    insert into public.lead (tenant_id, company_name, email, source)
+    values (t, 'Sans origine', 'x@exemple.fr', '   ');
+    raise exception 'ÉCHEC : un prospect sans origine a été accepté.';
+  exception when check_violation then null;
+  end;
+
+  -- Un message sans moyen d'opposition ni information due : impossible à enregistrer, donc
+  -- l'envoi ne peut pas être considéré comme fait.
+  begin
+    insert into public.outbound_message
+      (tenant_id, lead_id, employee_id, sending_domain_id, subject,
+       carried_optout, carried_notice, idempotency_key)
+    select t, l.id, 'e0000000-0000-0000-0000-0000000000ee', d.id, 'Bonjour', false, true, 'k1'
+    from public.lead l, public.sending_domain d
+    where l.tenant_id = t and d.tenant_id = t limit 1;
+    raise exception 'ÉCHEC : un message sans mention d''opposition a été enregistré.';
+  exception when check_violation then null;
+  end;
+
+  -- Une suspension muette : impossible. Une suspension sans raison ne se lève jamais bien.
+  begin
+    update public.sending_domain set suspension_reason = null where tenant_id = t;
+    raise exception 'ÉCHEC : une suspension sans raison a été acceptée.';
+  exception when check_violation then null;
+  end;
+
+  raise notice 'OK  prospection — origine obligatoire, message toujours porteur de ses obligations';
 end;
 $$;
 

@@ -56,6 +56,8 @@ pas compris ce que la décision coûte — cherche encore.
 | [0013](0013-acces-donnees-portee-entreprise.md) | La portée d'entreprise est obligatoire à l'accès aux données | acceptée |
 | [0014](0014-etancheite-entre-entreprises.md) | Aucune donnée d'un client n'atteint jamais un autre — aucune exception | acceptée |
 | [0015](0015-transparence-ai-act.md) | Transparence AI Act : informer en clair là où la loi l'exige (D13) | acceptée |
+| [0016](0016-source-des-prospects.md) | Les prospects viennent du client d'abord, de Sentio ensuite (D5) | acceptée |
+| [0017](0017-domaine-du-client-et-reputation.md) | Domaine du client, et aucun envoi qui puisse brûler sa réputation (D6) | acceptée |
 
 ---
 

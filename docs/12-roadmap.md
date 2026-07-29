@@ -49,6 +49,10 @@ partir chez un fournisseur non conforme.
 **Sortie :** c'est le lot qui prouve que le produit existe. Tout ce qui précède est de la
 plomberie.
 
+> **En cours depuis le 2026-07-29.** Socle posé : ADN v1 et capacités en données, tables de
+> prospection, et la garde d'envoi aux sept conditions — un message ne peut pas partir si une
+> seule manque ([`adr/0017`](adr/0017-domaine-du-client-et-reputation.md)). Restent les moteurs.
+
 ---
 
 ## Lot 3 — Exécution autonome

@@ -43,26 +43,24 @@ prospection. Détermine aussi le discours (« Carter travaille chaque jour »).
 
 ---
 
-## D5 — Source des prospects pour le métier commercial
+## ✅ D5 — Source des prospects — TRANCHÉE
 
-Donnée fournie par le client / enrichissement externe / mixte ?
-**Recommandation :** démarrer sur la donnée fournie par le client — zéro coût, zéro
-dépendance, zéro risque juridique. **Bloque :** lot 2.
+**Décision : le client fournit sa liste en V1 ; Sentio en trouvera en V2, une fois la
+qualification éprouvée.** L'origine de chaque prospect devient obligatoire **en base** : un
+prospect sans origine ne peut pas exister, donc ne peut pas être contacté.
+→ [`adr/0016`](adr/0016-source-des-prospects.md)
 
 ---
 
-## D6 — Envoi des emails : depuis le domaine du client ou depuis Sentio
+## ✅ D6 — Domaine d'envoi — TRANCHÉE
 
-**Recommandation :** depuis le domaine du client (délivrabilité et légitimité), mais cela
-impose une configuration technique à l'onboarding — friction réelle à arbitrer.
-
-> ⚠️ **Élément apparu depuis** ([`21-concurrence.md`](21-concurrence.md)) : envoyer depuis le domaine
-> du client signifie qu'un employé mal réglé brûle **la réputation d'envoi du client**, pas celle de
-> Sentio. C'est le risque le plus lourd de cette décision, il se répare en mois, et il pèse
-> désormais autant que la délivrabilité dans l'arbitrage. Si ce domaine est retenu, les garde-fous
-> `METIER-18` à `METIER-21` deviennent des préalables absolus.
-
-**Bloque :** lot 2.
+**Décision : depuis le domaine du client, sous une contrainte qui commande tout le lot 2 —
+*ne jamais délivrer un message qui pourrait brûler la réputation du client*.** Traduite en
+conception : la capacité d'envoi ne doit pas **pouvoir** émettre quand une seule des sept
+conditions manque (domaine authentifié, montée en charge, plafond du jour, aucune suspension,
+destinataire hors exclusions, prospect qualifié et sourcé, mention d'opposition).
+`METIER-18` à `METIER-21` ne sont donc pas des tâches du lot 2 : ce sont ses préalables.
+→ [`adr/0017`](adr/0017-domaine-du-client-et-reputation.md)
 
 ---
 

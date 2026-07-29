@@ -194,8 +194,17 @@ reportées avec un message clair, sans dégradation silencieuse, sans effet sur 
 
 > *C'est le lot qui prouve que le produit existe. Tout ce qui précède est de la plomberie.*
 
-**Prérequis :** trancher **D5** (source des prospects — recommandation : la donnée fournie par le
-client) et **D6** (domaine d'envoi — recommandation : celui du client).
+**Prérequis : ✅ tranchés le 2026-07-29.** **D5** — le client fournit sa liste en V1, Sentio en
+trouvera en V2 ([`adr/0016`](adr/0016-source-des-prospects.md)). **D6** — envoi depuis le domaine
+du client, sous la contrainte qui commande tout le lot : *ne jamais délivrer un message qui
+pourrait brûler la réputation du client* ([`adr/0017`](adr/0017-domaine-du-client-et-reputation.md)).
+
+> **Avancement au 2026-07-29 :** le socle du lot est posé et vérifié — tables `lead`,
+> `suppression`, `sending_domain`, `outbound_message` (migration `0038`), ADN v1 du Commercial et
+> ses cinq capacités **en données** (migration `0039`), et la garde `peut_envoyer()` dont les sept
+> conditions refusent chacune seule. Restent les **moteurs** : import de la liste du client,
+> qualification, et envoi réel — ce dernier attend le choix d'un service d'envoi, décision qui
+> n'était pas au catalogue et qui bloque `METIER-09`.
 
 > **Sentio reste généraliste** ([`adr/0011`](adr/0011-generaliste-profils-sectoriels.md)) : l'ADN est
 > commun, et la spécialisation passe par les **profils sectoriels** (`METIER-23/24`), rédigés par

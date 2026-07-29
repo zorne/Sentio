@@ -47,6 +47,8 @@ Plusieurs migrations ne créent aucune table :
 | `…035_provenance_memoire.sql` | l'auteur d'une ligne de mémoire est immuable ; le contenu d'autrui se retire, ne se réécrit pas |
 | `…036_effacement.sql` | `erase_tenant()` — droit à l'effacement exécutable : données supprimées, journal **dépouillé** et non détruit, compte-rendu rendu en preuve |
 | `…037_quota_inference_journalier.sql` | plafond d'inférence **par jour et par formule**, en données — le quota de période ne borne pas la journée |
+| `…038_prospection.sql` | prospects, exclusions, domaine d'envoi, messages — et `peut_envoyer()`, la garde aux sept conditions |
+| `…039_adn_commercial_v1.sql` | l'ADN v1 du Commercial et ses cinq capacités, **en données** |
 
 Les migrations `0033` à `0035` corrigent des failles que **seuls les parcours joués avec le rôle
 `authenticated` ont révélées** — les tests de schéma table par table les laissaient toutes
