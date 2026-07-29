@@ -56,8 +56,8 @@ Le script s'arrête si l'un d'eux se met à dépendre de quelque chose.
 
 ```bash
 pnpm run functions:sync
-deno check supabase/functions/diagnostic/index.ts
-deno test --allow-env supabase/functions/diagnostic/
+deno check --config supabase/functions/deno.json supabase/functions/diagnostic/index.ts
+deno test  --config supabase/functions/deno.json --allow-env supabase/functions/diagnostic/
 ```
 
 Les tests tournent **sous Deno**, comme la fonction : vérifier ce code dans un autre runtime que
