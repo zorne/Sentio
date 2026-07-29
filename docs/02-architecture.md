@@ -34,7 +34,8 @@ seul. Des frontières propres donnent le découpage futur sans en payer le prix 
 > service séparé sans emporter le noyau avec elle.
 | `packages/db` | Repositories, accès typé à la base | `domain` |
 | `packages/config` | Formules, quotas, seuils, drapeaux de fonctionnalité, lexique | rien |
-| `apps/web` | Interface : vitrine publique + espace privé | tous |
+| `apps/web` | Interface : vitrine publique + espace privé (**SvelteKit**, sortie statique) | tous |
+| `supabase/functions` | Adaptateurs d'entrée : tout ce qui touche une donnée personnelle, **en UE** | `domain`, `core`, `capabilities`, `db` |
 | `apps/worker` | Exécution en arrière-plan (en V1 : points d'entrée déclenchés par un battement) | `core`, `db` |
 
 Le **schéma** lui-même — migrations, politiques d'isolation, tests d'invariants — vit dans
@@ -117,9 +118,12 @@ Détail de chaque bloc : [`05-runtime-employe.md`](05-runtime-employe.md).
   ligne, et planification interne. Une seule dépendance pour quatre besoins. Le **mécanisme du
   battement** n'est pas tranché pour autant : planificateur interne à la base ou déclencheur
   externe signé, les deux restent ouverts (D4, [`11-exploitation.md`](11-exploitation.md)).
-- **Hébergement de l'interface** : non tranché (D12). À choisir en gardant l'application
-  **indépendante de l'hébergeur** — aucune interface propriétaire, car une migration est probable
-  dès le premier client payant (voir [`11-exploitation.md`](11-exploitation.md)).
+- **Hébergement de l'interface** : tranché ([`adr/0021`](adr/0021-execution-serveur-en-ue.md)).
+  Le code serveur qui touche une donnée personnelle s'exécute dans les **fonctions Supabase, en
+  région UE** ; la vitrine est **prérendue** et ne porte aucune donnée. Le critère dominant n'était
+  pas l'offre gratuite mais **où le code s'exécute** : le diagnostic manipule du réel dès la
+  première question. Une fonction est un **adaptateur d'entrée** — elle valide, appelle le domaine,
+  répond ; elle ne contient aucune règle. C'est ce qui garde la migration bornée à deux endroits.
 - **Inférence** : fournisseur européen en tier gratuit
   → [`19-fournisseurs-modeles.md`](19-fournisseurs-modeles.md),
   [`adr/0009`](adr/0009-fournisseur-inference-ue.md).

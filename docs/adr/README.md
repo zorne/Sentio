@@ -61,6 +61,8 @@ pas compris ce que la décision coûte — cherche encore.
 | [0018](0018-service-expedition-resend.md) | Resend expédie la V1, derrière une interface qui le rend remplaçable | acceptée |
 | [0019](0019-priorites-ingenierie.md) | ⭐ Six priorités ordonnées : sécurité, confidentialité, architecture, fiabilité, observabilité, qualité | acceptée |
 | [0020](0020-ordre-des-lots-produit-complet.md) | L'ordre des lots devient `0→1→2→4→5→6→3` (D10 rouverte) | acceptée |
+| [0021](0021-execution-serveur-en-ue.md) | Le serveur s'exécute en UE chez Supabase, et reste remplaçable (D12) | acceptée |
+| [0022](0022-interface-sveltekit.md) | SvelteKit : sortie statique aujourd'hui, sortie Node à la migration | acceptée |
 
 ---
 

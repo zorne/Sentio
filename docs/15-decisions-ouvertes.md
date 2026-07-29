@@ -140,13 +140,14 @@ une zone exemptée pour cette information, comme les pages légales.
 
 ---
 
-## D12 — Hébergeur de l'interface
+## ✅ D12 — Hébergement de l'interface — TRANCHÉE
 
-Jamais tranché : [`02-architecture.md`](02-architecture.md) laisse le choix ouvert et impose
-seulement de rester **indépendant de l'hébergeur** (aucune interface propriétaire). La décision
-n'était pas suivie ici, alors qu'elle conditionne une migration probable dès le premier client
-payant. Critère dominant, comme pour l'inférence : l'offre gratuite doit autoriser l'usage
-commercial (C3). **Bloque :** la mise en ligne, pas un lot précis.
+**Décision : le code serveur qui touche une donnée personnelle s'exécute dans les fonctions
+Supabase, en région UE ; la vitrine est prérendue et ne porte aucune donnée.** Le critère dominant
+n'était pas l'offre gratuite mais **où le code s'exécute** : le diagnostic manipule du réel dès la
+première question, et un runtime « edge » mondial le traiterait hors d'UE.
+Cadre applicatif : **SvelteKit**, sortie statique aujourd'hui, sortie Node le jour de la migration.
+→ [`adr/0021`](adr/0021-execution-serveur-en-ue.md) et [`adr/0022`](adr/0022-interface-sveltekit.md)
 
 ---
 
