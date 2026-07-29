@@ -28,3 +28,29 @@ jobs:
 
       - name: Tests
         run: pnpm test
+
+  # Le schéma porte des garanties que le code ne peut pas rattraper : ADN immuable, journal en
+  # ajout seul, idempotence, isolation par entreprise. Elles se vérifient sur une vraie base,
+  # pas par relecture.
+  schema:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: sentio_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Migrations et invariants
+        env:
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/sentio_test
+        run: packages/db/tests/run.sh
