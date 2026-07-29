@@ -106,4 +106,16 @@ export class PostgresOutboundMessages implements OutboundMessageStore {
     );
     return rows.length > 0;
   }
+
+  async confirm(input: {
+    tenantId: string;
+    idempotencyKey: string;
+    providerMessageId: string;
+  }): Promise<void> {
+    await this.sql.query(
+      `update outbound_message set provider_message_id = $3
+        where tenant_id = $1 and idempotency_key = $2`,
+      [input.tenantId, input.idempotencyKey, input.providerMessageId],
+    );
+  }
 }

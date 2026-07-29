@@ -48,6 +48,9 @@ importers:
 
   packages/capabilities:
     dependencies:
+      '@sentio/config':
+        specifier: workspace:*
+        version: link:../config
       '@sentio/domain':
         specifier: workspace:*
         version: link:../domain

@@ -49,6 +49,7 @@ Plusieurs migrations ne créent aucune table :
 | `…037_quota_inference_journalier.sql` | plafond d'inférence **par jour et par formule**, en données — le quota de période ne borne pas la journée |
 | `…038_prospection.sql` | prospects, exclusions, domaine d'envoi, messages — et `peut_envoyer()`, la garde aux sept conditions |
 | `…039_adn_commercial_v1.sql` | l'ADN v1 du Commercial et ses cinq capacités, **en données** |
+| `…040_retour_expedition.sql` | l'identifiant rendu par le service d'envoi — sans lui, un rebond ne peut être rattaché à son message |
 
 Les migrations `0033` à `0035` corrigent des failles que **seuls les parcours joués avec le rôle
 `authenticated` ont révélées** — les tests de schéma table par table les laissaient toutes

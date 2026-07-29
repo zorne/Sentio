@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PostgresApprovalStore } from "./approvals.js";
 import { PostgresJournalWriter } from "./journal.js";
 import { PostgresUsageLedger, periodFor } from "./ledger.js";
+import { PostgresDeliveryFeedback } from "./reputation.js";
 import { PostgresOutboundMessages, PostgresSendingGuard } from "./sending.js";
 
 /**
@@ -45,6 +46,7 @@ describeIfDatabase("Le noyau contre un vrai Postgres", () => {
   let approvals: PostgresApprovalStore;
 
   const tenantId = randomUUID() as TenantId;
+  const jetables: TenantId[] = [];
   let employeeId: EmployeeId;
   let taskId: TaskId;
 
@@ -86,11 +88,42 @@ describeIfDatabase("Le noyau contre un vrai Postgres", () => {
   afterAll(async () => {
     await sql.withTransaction(async (tx) => {
       await tx.query("select set_config('sentio.retention_purge', 'on', true)", []);
-      await tx.query("delete from execution_event where tenant_id = $1", [tenantId]);
-      await tx.query("delete from tenant where id = $1", [tenantId]);
+      await tx.query("delete from execution_event where tenant_id = any($1)", [
+        [tenantId, ...jetables],
+      ]);
+      await tx.query("delete from tenant where id = any($1)", [[tenantId, ...jetables]]);
     });
     await sql.close();
   });
+
+  /**
+   * Une entreprise neuve, pour les tests qui comptent des messages : le plafond du jour est
+   * global à l'entreprise, donc deux tests qui partagent un tenant se marchent dessus.
+   */
+  async function freshTenant(): Promise<{ tenantId: TenantId; employeeId: EmployeeId }> {
+    const fresh = randomUUID() as TenantId;
+    await sql.query("insert into tenant (id, name) values ($1, $2)", [fresh, "Entreprise d'essai"]);
+    await sql.query(
+      `insert into subscription (tenant_id, plan_id, status, current_period_start, current_period_end)
+       select $1, id, 'active', now(), now() + interval '30 days' from plan where tier = 'start'`,
+      [fresh],
+    );
+    const [definition] = await sql.query<{ id: string }>(
+      `insert into employee_definition (profession, version, dna)
+       values ('commercial', $1, '{}'::jsonb) returning id`,
+      [(Date.now() % 100000) + Math.floor(Math.random() * 1000) + 100000],
+    );
+    const [identity] = await sql.query<{ id: string }>("select * from reserve_identity($1)", [
+      "commercial",
+    ]);
+    const [employee] = await sql.query<{ id: string }>(
+      `insert into employee (tenant_id, employee_definition_id, identity_id)
+       values ($1, $2, $3) returning id`,
+      [fresh, definition?.id, identity?.id],
+    );
+    jetables.push(fresh);
+    return { tenantId: fresh, employeeId: employee?.id as EmployeeId };
+  }
 
   it("lit le plafond dans la formule, pas dans le code", async () => {
     // La valeur vient de la migration de seed : la changer ne demande aucun déploiement.
@@ -341,6 +374,105 @@ describeIfDatabase("Le noyau contre un vrai Postgres", () => {
       allowed: false,
       reason: "plafond_du_jour_atteint",
     });
+  });
+
+  it("un rebond ferme l'adresse, et la garde le voit aussitôt", async () => {
+    const { tenantId, employeeId } = await freshTenant();
+    const [domain] = await sql.query<{ id: string }>(
+      `insert into sending_domain
+         (tenant_id, domain, spf_verified_at, dkim_verified_at, dmarc_verified_at, warmup_started_on)
+       values ($1, 'rebonds.fr', now(), now(), now(), current_date) returning id`,
+      [tenantId],
+    );
+    const [lead] = await sql.query<{ id: string }>(
+      `insert into lead (tenant_id, company_name, email, source, qualification)
+       values ($1, 'Prospect Injoignable', 'mort@prospect.fr', 'import_client', 'qualifie')
+       returning id`,
+      [tenantId],
+    );
+
+    const store = new PostgresOutboundMessages(sql);
+    await store.claim({
+      tenantId,
+      leadId: lead?.id as string,
+      employeeId,
+      sendingDomainId: domain?.id as string,
+      subject: "Bonjour",
+      idempotencyKey: "envoyer_un_message:rebond",
+    });
+    await store.confirm({
+      tenantId,
+      idempotencyKey: "envoyer_un_message:rebond",
+      providerMessageId: "prov_1",
+    });
+
+    const feedback = new PostgresDeliveryFeedback(sql);
+    const outcome = await feedback.apply({
+      tenantId,
+      providerMessageId: "prov_1",
+      kind: "bounce",
+      email: "MORT@prospect.fr",
+    });
+
+    expect(outcome.matched).toBe(true);
+    // Volume trop faible pour conclure sur les taux : on ne suspend pas, mais l'adresse est fermée.
+    expect(outcome.suspended).toBe(false);
+
+    const guard = new PostgresSendingGuard(sql, ledger);
+    expect(
+      await guard.check({
+        tenantId,
+        leadId: lead?.id as string,
+        sendingDomainId: domain?.id as string,
+      }),
+    ).toEqual({ allowed: false, reason: "destinataire_sur_liste_d_exclusion" });
+  });
+
+  it("au-delà des seuils, le domaine se suspend tout seul — et ne repart pas tout seul", async () => {
+    const { tenantId, employeeId } = await freshTenant();
+    const [domain] = await sql.query<{ id: string }>(
+      `insert into sending_domain
+         (tenant_id, domain, spf_verified_at, dkim_verified_at, dmarc_verified_at, warmup_started_on)
+       values ($1, 'sature.fr', now(), now(), now(), current_date - 30) returning id`,
+      [tenantId],
+    );
+    const [lead] = await sql.query<{ id: string }>(
+      `insert into lead (tenant_id, company_name, email, source, qualification)
+       values ($1, 'Prospect Ordinaire', 'ok@prospect.fr', 'import_client', 'qualifie')
+       returning id`,
+      [tenantId],
+    );
+
+    // 100 messages, dont 5 rebonds : 5 % là où la limite est de 2 %.
+    await sql.query(
+      `insert into outbound_message
+         (tenant_id, lead_id, employee_id, sending_domain_id, subject,
+          carried_optout, carried_notice, idempotency_key, status)
+       select $1, $2, $3, $4, 'lot', true, true, 'seuil-' || g,
+              case when g <= 5 then 'rebond' else 'envoye' end
+         from generate_series(1, 100) g`,
+      [tenantId, lead?.id, employeeId, domain?.id],
+    );
+
+    const raison = await new PostgresDeliveryFeedback(sql).reassess(tenantId, domain?.id as string);
+    expect(raison).toMatch(/rebonds/);
+
+    const [row] = await sql.query<{ suspended_at: Date | null; suspension_reason: string }>(
+      "select suspended_at, suspension_reason from sending_domain where id = $1",
+      [domain?.id],
+    );
+    expect(row?.suspended_at).not.toBeNull();
+    expect(row?.suspension_reason).toMatch(/rebonds/);
+
+    // Et la garde refuse désormais, quoi qu'il arrive par ailleurs.
+    const guard = new PostgresSendingGuard(sql, ledger);
+    expect(
+      await guard.check({
+        tenantId,
+        leadId: lead?.id as string,
+        sendingDomainId: domain?.id as string,
+      }),
+    ).toEqual({ allowed: false, reason: "domaine_suspendu" });
   });
 
   it("journalise chaque décision de politique dans la bonne entreprise", async () => {

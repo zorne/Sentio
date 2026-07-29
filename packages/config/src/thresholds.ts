@@ -66,3 +66,26 @@ export const INFERENCE_PROVIDER_LIMITS = {
  * → `docs/11-exploitation.md`, surveillance minimale
  */
 export const APPROVAL_PENDING_ALERT_HOURS = 48;
+
+/**
+ * Seuils de délivrabilité imposés par les grandes messageries.
+ * → `docs/10-securite-rgpd.md`, « Obligations d'expéditeur »
+ *
+ * ⚠️ Ils ne servent pas à mesurer : ils servent à **suspendre**. Au-delà, l'envoi s'arrête tout
+ * seul et ne redémarre pas tout seul — c'est la réputation du client qui est en jeu, et elle se
+ * répare en mois (`docs/adr/0017`).
+ */
+export const DELIVERABILITY_THRESHOLDS = {
+  /** Part de plaintes au-delà de laquelle un domaine est suspendu. */
+  complaintRate: 0.003,
+  /** Part de rebonds au-delà de laquelle un domaine est suspendu. */
+  bounceRate: 0.02,
+  /**
+   * Nombre de messages en dessous duquel on ne conclut rien.
+   *
+   * Sans ce plancher, un seul rebond sur deux envois donnerait 50 % et suspendrait un domaine
+   * en parfaite santé — le premier jour de la montée en charge, précisément quand les volumes
+   * sont les plus faibles.
+   */
+  minimumVolume: 20,
+} as const;

@@ -9,3 +9,6 @@
 export * from "./email/provider.js";
 export * from "./email/resend.js";
 export * from "./email/send-message.js";
+export * from "./email/reputation.js";
+export * from "./prospects/import.js";
+export * from "./prospects/qualify.js";

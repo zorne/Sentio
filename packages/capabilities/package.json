@@ -10,7 +10,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@sentio/domain": "workspace:*"
+    "@sentio/domain": "workspace:*",
+    "@sentio/config": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.2",

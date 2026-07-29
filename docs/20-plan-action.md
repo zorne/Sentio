@@ -199,12 +199,21 @@ trouvera en V2 ([`adr/0016`](adr/0016-source-des-prospects.md)). **D6** — envo
 du client, sous la contrainte qui commande tout le lot : *ne jamais délivrer un message qui
 pourrait brûler la réputation du client* ([`adr/0017`](adr/0017-domaine-du-client-et-reputation.md)).
 
-> **Avancement au 2026-07-29 :** le socle du lot est posé et vérifié — tables `lead`,
-> `suppression`, `sending_domain`, `outbound_message` (migration `0038`), ADN v1 du Commercial et
-> ses cinq capacités **en données** (migration `0039`), et la garde `peut_envoyer()` dont les sept
-> conditions refusent chacune seule. Restent les **moteurs** : import de la liste du client,
-> qualification, et envoi réel — ce dernier attend le choix d'un service d'envoi, décision qui
-> n'était pas au catalogue et qui bloque `METIER-09`.
+> **Avancement au 2026-07-29 :** socle posé et vérifié — tables `lead`, `suppression`,
+> `sending_domain`, `outbound_message` (migration `0038`), ADN v1 du Commercial et ses cinq
+> capacités **en données** (`0039`), et la garde `peut_envoyer()` dont les sept conditions refusent
+> chacune seule.
+>
+> Livré depuis : le **service d'expédition** ([`adr/0018`](adr/0018-service-expedition-resend.md),
+> Resend derrière une interface `EmailProvider`), la **capacité d'envoi** qui demande, compose,
+> réserve puis envoie — dans cet ordre —, l'**import** de la liste du client qui refuse ligne par
+> ligne avec sa raison, la **qualification déterministe** (`METIER-06/07`, P0), et la
+> **suspension automatique** sur rebonds et plaintes (`METIER-21`), qui rend enfin réelle la
+> condition « aucune suspension en cours » de la garde.
+>
+> **Restent :** le lien d'opposition doit atterrir quelque part (dépend de l'interface, lot 4), la
+> relance (`METIER-08`), et la mise en service du domaine d'envoi — trois gestes de console à
+> faire au moment du premier envoi réel, rappelés dans l'ADR 0018.
 
 > **Sentio reste généraliste** ([`adr/0011`](adr/0011-generaliste-profils-sectoriels.md)) : l'ADN est
 > commun, et la spécialisation passe par les **profils sectoriels** (`METIER-23/24`), rédigés par

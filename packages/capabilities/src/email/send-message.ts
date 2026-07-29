@@ -48,6 +48,19 @@ export interface OutboundMessageStore {
     subject: string;
     idempotencyKey: string;
   }): Promise<boolean>;
+
+  /**
+   * Note l'identifiant rendu par le service, une fois le message parti.
+   *
+   * C'est lui — et lui seul — que le service renverra en cas de rebond ou de plainte. Sans ce
+   * rattachement, un retour arrive sans qu'on puisse dire de quel message il parle, donc sans
+   * qu'on puisse fermer l'adresse ni suspendre le domaine (migration 0040).
+   */
+  confirm(input: {
+    tenantId: string;
+    idempotencyKey: string;
+    providerMessageId: string;
+  }): Promise<void>;
 }
 
 export interface SendMessageInput {
@@ -178,6 +191,14 @@ export class SendMessageCapability {
         // courrier (RFC 3834) : on l'emploie plutôt que d'inventer un en-tête à nous.
         "Auto-Submitted": "auto-generated",
       },
+    });
+
+    // 5. Rattacher l'identifiant du service. L'envoi a eu lieu : si cette écriture échoue, le
+    //    message reste enregistré comme parti — on ne le renvoie pas pour autant.
+    await this.store.confirm({
+      tenantId: input.tenantId,
+      idempotencyKey: input.idempotencyKey,
+      providerMessageId: sent.providerMessageId,
     });
 
     return { status: "envoye", providerMessageId: sent.providerMessageId };

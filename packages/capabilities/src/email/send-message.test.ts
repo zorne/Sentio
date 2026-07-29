@@ -39,6 +39,7 @@ function build(options: { verdict?: SendingVerdict; claimed?: boolean } = {}) {
         claims.push(input.idempotencyKey);
         return options.claimed ?? true;
       },
+      confirm: async () => undefined,
     },
     provider,
   );
@@ -126,6 +127,9 @@ describe("Capacité d'envoi — ce qu'elle refuse", () => {
           ordre.push("reserve");
           return true;
         },
+        confirm: async () => {
+          ordre.push("confirme");
+        },
       },
       {
         key: "faux",
@@ -138,13 +142,13 @@ describe("Capacité d'envoi — ce qu'elle refuse", () => {
 
     await capability.execute(input());
 
-    expect(ordre).toEqual(["reserve", "envoi"]);
+    expect(ordre).toEqual(["reserve", "envoi", "confirme"]);
   });
 
   it("laisse remonter une panne du service sans prétendre avoir envoyé", async () => {
     const capability = new SendMessageCapability(
       { check: async () => ({ allowed: true, recipient: { address: "contact@prospect.fr" } }) },
-      { claim: async () => true },
+      { claim: async () => true, confirm: async () => undefined },
       {
         key: "faux",
         send: async () => {
