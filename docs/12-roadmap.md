@@ -137,9 +137,13 @@ Le lot **8** le rend légal.
 
 Aucun ne peut être sauté avant le premier client payant, **à l'exception du lot 7**.
 
-Si le fondateur code seul et veut valider le marché plus vite, l'ordre alternatif défendable
-est `0 → 1 → 2 → 4 → 5 → 6 → 3 → 7 → 8` : on vend et on sert le premier client à la main
-pendant que l'automatisation complète se construit. C'est la décision D10.
+> **Ordre retenu depuis le 2026-07-29 : `0 → 1 → 2 → 4 → 5 → 6 → 3`, puis `7` et `8`**
+> ([`adr/0020`](adr/0020-ordre-des-lots-produit-complet.md)). L'objectif est un produit cohérent
+> **de bout en bout** plutôt qu'un moteur isolé terminé : le lot 2 ne peut pas être fini sans
+> l'interface (page d'opposition, retours d'expédition), et chaque bout à bout de ce projet a
+> révélé ce qu'aucun test unitaire n'avait vu. Conséquence assumée : le premier client est servi
+> de près, sans battement autonome — le lot 3 devient bloquant pour le **troisième** client, pas
+> pour le premier.
 
 ---
 

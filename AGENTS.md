@@ -10,9 +10,39 @@ les invariants du produit. **Lis-le entièrement avant ta première modification
 Sentio vend des **employés numériques** : des collaborateurs autonomes spécialisés dans un
 métier, recrutés par une entreprise pour atteindre un objectif chiffré. L'architecture est un
 monolithe modulaire TypeScript, hébergé sur des tiers gratuits, avec Supabase (Postgres) comme
-base. Le code n'existe pas encore : tout ce dépôt est de la documentation d'architecture.
+base. Les lots 0 à 2 sont écrits — schéma, noyau, métier commercial ; l'interface, elle, n'existe
+pas encore.
 
 Détail complet : [`docs/README.md`](docs/README.md).
+
+---
+
+## 1 bis. Les six priorités — l'ordre qui tranche les arbitrages
+
+**Sentio est un logiciel destiné à des entreprises exigeantes, pas un produit minimum viable.**
+Quand deux exigences s'opposent, celle qui est le plus haut dans cette liste gagne — et les cinq
+premières gagnent **toujours** contre le délai. Décision du fondateur :
+[`docs/adr/0019`](docs/adr/0019-priorites-ingenierie.md), à lire avant tout arbitrage
+d'architecture.
+
+1. **Sécurité** — moindre privilège, validation de **toutes** les entrées, aucune donnée sensible
+   dans les journaux, chiffrement du sensible, secrets uniquement en variables d'environnement.
+   Aucune décision ne la sacrifie pour gagner du temps.
+2. **Confidentialité** — privacy by design réel : isolation stricte entre entreprises, RGPD,
+   **collecte minimale**, effacement possible, journalisation des accès sensibles. On ne collecte
+   pas « au cas où ».
+3. **Architecture** — propre, modulaire, découplée. **Tout service externe reste derrière une
+   interface** et n'est nommé que dans son adaptateur.
+4. **Fiabilité** — rendre les bugs critiques improbables, pas seulement rares. **Un correctif sans
+   test qui échoue avant lui n'est pas un correctif.** Idempotence et transactions sur les
+   traitements critiques.
+5. **Observabilité** — journaux structurés, métriques, identifiant de corrélation, audit des
+   actions sensibles : un incident doit se comprendre vite.
+6. **Qualité avant rapidité** — repousser une fonctionnalité plutôt qu'introduire de la dette.
+
+Signaler au fondateur toute **découverte d'architecture** — un manque structurel révélé en
+écrivant, comme l'identifiant de message absent qui empêchait de rattacher un rebond. Ce sont ces
+points-là qui renforcent le produit, et ils se perdent s'ils ne sont pas dits.
 
 ---
 

@@ -59,6 +59,8 @@ pas compris ce que la décision coûte — cherche encore.
 | [0016](0016-source-des-prospects.md) | Les prospects viennent du client d'abord, de Sentio ensuite (D5) | acceptée |
 | [0017](0017-domaine-du-client-et-reputation.md) | Domaine du client, et aucun envoi qui puisse brûler sa réputation (D6) | acceptée |
 | [0018](0018-service-expedition-resend.md) | Resend expédie la V1, derrière une interface qui le rend remplaçable | acceptée |
+| [0019](0019-priorites-ingenierie.md) | ⭐ Six priorités ordonnées : sécurité, confidentialité, architecture, fiabilité, observabilité, qualité | acceptée |
+| [0020](0020-ordre-des-lots-produit-complet.md) | L'ordre des lots devient `0→1→2→4→5→6→3` (D10 rouverte) | acceptée |
 
 ---
 

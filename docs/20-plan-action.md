@@ -6,8 +6,14 @@
 > **Ce fichier donne l'ordre**, et ajoute tout ce que le backlog ne contient pas : les démarches
 > administratives, les décisions à trancher, la mise en ligne et la vente.
 >
-> Établi le 2026-07-28. Ordre retenu : **canonique** (`0→1→2→3→4→5→6→7→8`) — l'automatisation
-> complète avant la première vente (décision D10).
+> Établi le 2026-07-28. **Ordre révisé le 2026-07-29 : `0 → 1 → 2 → 4 → 5 → 6 → 3`, puis `7` et
+> `8`** ([`adr/0020`](adr/0020-ordre-des-lots-produit-complet.md)) — un produit cohérent de bout en
+> bout avant l'automatisation complète. Les phases ci-dessous gardent leur numérotation par lot ;
+> seule leur **succession** change : après la phase 3 (lot 2) vient la phase 5 (lot 4), et la
+> phase 4 (lot 3) passe après la phase 7.
+>
+> ⚠️ Toute décision d'architecture prise à partir d'ici obéit aux **six priorités** de
+> [`adr/0019`](adr/0019-priorites-ingenierie.md), dans leur ordre.
 
 ---
 
@@ -29,7 +35,7 @@ construit sur un lot amont incomplet produit du travail à refaire ([`12-roadmap
 | 1 | Lot 0 — Fondations | ~15 h | ✅ *(sauf temps réel — voir phase 1)* |
 | 2 | Lot 1 — Noyau | ~17 h | ✅ |
 | 3 | Lot 2 — Métier Commercial | ~11 h | ☐ |
-| 4 | Lot 3 — Exécution autonome | ~11 h | ☐ |
+| 4 | Lot 3 — Exécution autonome *(déplacé après la phase 7)* | ~11 h | ☐ |
 | 5 | Lot 4 — Acquisition | ~19 h | ☐ |
 | 6 | Lot 5 — Recrutement et paiement | ~9,5 h | ☐ |
 | 7 | Lot 6 — Dashboard | ~16 h | ☐ |

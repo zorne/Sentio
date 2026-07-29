@@ -46,6 +46,7 @@ fichier non lu.**
 
 | Sujet | Fichier |
 |---|---|
+| ⭐ **Les six priorités qui tranchent tout arbitrage** | `docs/adr/0019-priorites-ingenierie.md` |
 | Vision, ce que Sentio vend | `docs/00-vision.md` |
 | €0, clés partagées, conflits induits | `docs/01-contraintes.md` |
 | Vue d'ensemble technique | `docs/02-architecture.md` |
@@ -83,7 +84,8 @@ fichier non lu.**
 `0012-retention-journal-30-jours` · `0013-acces-donnees-portee-entreprise` ·
 `0014-etancheite-entre-entreprises` · `0015-transparence-ai-act` ·
 `0016-source-des-prospects` · `0017-domaine-du-client-et-reputation` ·
-`0018-service-expedition-resend`.
+`0018-service-expedition-resend` · ⭐ `0019-priorites-ingenierie` ·
+`0020-ordre-des-lots-produit-complet`.
 Ne pas les rouvrir sans raison explicite.
 
 ⚠️ `0007-perimetre-v1-commercial-support` est **remplacée par `0008`** : le fondateur est revenu
