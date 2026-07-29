@@ -151,5 +151,10 @@ Aucun texte visible par un client ne contient « IA », « bot », « agent », 
 Un jeu de conversations de référence est rejoué à chaque modification de prompt : pour chaque
 conversation, le frein détecté et le métier recommandé doivent rester conformes à l'attendu.
 
+> **Automatisé** — `packages/domain/src/recommendation.test.ts`. Huit conversations de référence,
+> dont deux hors périmètre et deux incomplètes. Le moteur est **pur** : sans déterminisme, ce jeu
+> ne prouverait rien. Un test vérifie aussi qu'une consigne glissée dans un champ libre ne change
+> pas la décision — ce que tape un visiteur est une donnée, jamais une instruction.
+
 C'est le seul garde-fou contre une régression invisible : une modification de prompt ne casse
 rien de façon détectable par un test classique.

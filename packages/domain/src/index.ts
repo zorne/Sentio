@@ -5,3 +5,4 @@ export * from "./memory.js";
 export * from "./work.js";
 export * from "./capability.js";
 export * from "./acquisition.js";
+export * from "./recommendation.js";
