@@ -121,4 +121,16 @@ describe("Policy Engine — traçabilité", () => {
     expect(decision).toMatchObject({ outcome: "refuse" });
     expect(decision.outcome === "refuse" && decision.reason).toMatch(/trouver_des_prospects/);
   });
+
+  it("trace le refus hors périmètre — TEST-02 exige la trace, pas seulement le refus", async () => {
+    const { engine, journal } = build();
+
+    const decision = await engine.refuse(
+      request({ capabilityKey: "tenir_la_comptabilite" }),
+      ["trouver_des_prospects"],
+    );
+
+    expect(decision.outcome).toBe("refuse");
+    expect(journal.entries).toEqual(["politique_refuse"]);
+  });
 });

@@ -115,6 +115,73 @@ describeIfDatabase("Le noyau contre un vrai Postgres", () => {
     );
   });
 
+  it("sans abonnement actif, le plafond est zéro — pas « pas de plafond »", async () => {
+    // Le trou que ce test ferme : une entreprise résiliée ou impayée n'a aucune ligne
+    // d'abonnement actif. Lire « aucun quota défini » revenait à lui accorder un travail
+    // ILLIMITÉ, aux frais des autres — le quota du fournisseur étant unique et partagé.
+    const resilie = randomUUID() as TenantId;
+    await sql.query("insert into tenant (id, name) values ($1, $2)", [resilie, "Entreprise résiliée"]);
+    await sql.query(
+      `insert into subscription (tenant_id, plan_id, status, current_period_start, current_period_end)
+       select $1, id, 'canceled', now() - interval '60 days', now() - interval '30 days'
+         from plan where tier = 'start'`,
+      [resilie],
+    );
+
+    expect(await ledger.tenantLimit(resilie, USAGE_METRICS.inferenceTokensPerDay)).toBe(0);
+
+    const gateway = new ModelGateway({
+      providers: [
+        {
+          key: "mistral",
+          dataPolicy: "no_train",
+          complete: async () => ({ turn: { role: "assistant", type: "text", text: "…" }, tokens: 1 }),
+        },
+      ],
+      ledger,
+      journal,
+      flags: FLAGS,
+      clock: { now: () => new Date(), sleep: async () => undefined },
+    });
+
+    await expect(
+      gateway.complete({
+        turns: [{ role: "user", type: "text", text: "prospecte" }],
+        dataClass: "real",
+        envelope: INFERENCE_ENVELOPES.soldEmployees,
+        tenantId: resilie,
+      }),
+    ).rejects.toBeInstanceOf(TaskDeferred);
+
+    await sql.withTransaction(async (tx) => {
+      await tx.query("select set_config('sentio.retention_purge', 'on', true)", []);
+      await tx.query("delete from execution_event where tenant_id = $1", [resilie]);
+      await tx.query("delete from tenant where id = $1", [resilie]);
+    });
+  });
+
+  it("compte la période sur le cycle d'abonnement, pas sur le mois calendaire", async () => {
+    // Un client inscrit le 20 verrait sinon son quota mensuel remis à zéro le 1er : deux fois son
+    // quota le premier mois, puis un décalage permanent entre ce qu'il paie et ce qu'il consomme.
+    const [row] = await sql.query<{ current_period_start: Date }>(
+      "select current_period_start from subscription where tenant_id = $1 and status = 'active'",
+      [tenantId],
+    );
+    const debutCycle = new Date(row?.current_period_start as unknown as string);
+
+    await ledger.recordTenantUsage(tenantId, USAGE_METRICS.inferenceTokensPerPeriod, 7, new Date());
+
+    const counters = await sql.query<{ period_start: Date }>(
+      "select period_start from usage_counter where tenant_id = $1 and metric = $2",
+      [tenantId, USAGE_METRICS.inferenceTokensPerPeriod],
+    );
+
+    expect(counters).toHaveLength(1);
+    expect(new Date(counters[0]?.period_start as unknown as string).getTime()).toBe(
+      debutCycle.getTime(),
+    );
+  });
+
   it("compte l'enveloppe même si personne n'a ouvert la fenêtre", async () => {
     // Un fournisseur « sans entraînement » ne peut pas exister en base sans preuve datée : la
     // contrainte `provider_no_train_needs_proof` le refuse. Le test n'en fabrique donc pas une —

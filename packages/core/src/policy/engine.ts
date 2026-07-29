@@ -90,6 +90,20 @@ export class PolicyEngine {
     return decision;
   }
 
+  /**
+   * Refus hors périmètre — le verrou de métier (`TEST-02`), **journalisé**.
+   *
+   * ⚠️ Cette méthode existe parce que la fonction pure ci-dessous ne suffisait pas : elle rendait
+   * une décision sans laisser de trace, et l'appelant pouvait l'oublier. Or `TEST-02` n'exige pas
+   * seulement que l'employé refuse : il exige que **le refus soit tracé**. Un refus non tracé est
+   * indistinguable d'une panne, pour le client comme pour nous.
+   */
+  async refuse(request: PolicyRequest, allowed: readonly string[]): Promise<PolicyDecision> {
+    const decision = refuseOutOfScope(request.capabilityKey, allowed);
+    await this.trace(request, decision);
+    return decision;
+  }
+
   private async suspend(request: PolicyRequest): Promise<PolicyDecision> {
     const approvalId = await this.approvals.requestApproval({
       tenantId: request.tenantId,
@@ -121,11 +135,11 @@ export class PolicyEngine {
 }
 
 /**
- * Refus hors périmètre — le verrou de métier (`TEST-02`).
+ * La décision de refus, à l'état pur — sans journal, pour être testable seule.
  *
- * Il vit ici, avec le reste des décisions, pour une raison : le refus doit être **une décision
- * de politique**, pas une consigne de rédaction adressée au modèle. Une règle de prompt se
- * contourne ; une politique, non.
+ * Le refus est **une décision de politique**, pas une consigne de rédaction adressée au modèle :
+ * une règle de prompt se contourne, une politique non. En production, passer par
+ * `PolicyEngine.refuse()`, qui journalise.
  */
 export function refuseOutOfScope(capabilityKey: string, allowed: readonly string[]): PolicyDecision {
   return {

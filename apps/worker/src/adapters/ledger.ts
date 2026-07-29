@@ -11,34 +11,71 @@
  *     qu'une journée de trafic sur la vitrine n'empêche pas les clients payants d'être servis.
  */
 
-import type { InferenceEnvelope, UsageMetric } from "@sentio/config";
+import {
+  INFERENCE_ENVELOPE_SHARE,
+  INFERENCE_PROVIDER_LIMITS,
+  type InferenceEnvelope,
+  type UsageMetric,
+} from "@sentio/config";
 import type { UsageLedger } from "@sentio/core";
 import type { SqlClient } from "@sentio/db";
 import type { TenantId } from "@sentio/domain";
 
+/** Une métrique bornée à la journée civile plutôt qu'à la période de facturation. */
+function isDaily(metric: UsageMetric): boolean {
+  return metric.endsWith("_per_day");
+}
+
 /**
- * Bornes de la période d'une métrique.
+ * Bornes par défaut d'une métrique : la journée civile, ou le mois calendaire.
  *
- * Une métrique « par jour » se compte sur la journée civile ; les autres sur la période
- * d'abonnement en cours. Sans cette distinction, un plafond journalier serait comparé au
- * compteur du mois, et ne se déclencherait jamais.
+ * Le mois calendaire n'est qu'un **repli** : la période qui fait foi est celle de l'abonnement
+ * (voir `periodOf`). Un client inscrit le 20 ne voit pas son quota se remettre à zéro le 1er.
  */
 export function periodFor(metric: UsageMetric, on: Date): { start: Date; end: Date } {
-  if (metric.endsWith("_per_day")) {
+  if (isDaily(metric)) {
     const start = new Date(Date.UTC(on.getUTCFullYear(), on.getUTCMonth(), on.getUTCDate()));
-    const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
-    return { start, end };
+    return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
   }
-  const start = new Date(Date.UTC(on.getUTCFullYear(), on.getUTCMonth(), 1));
-  const end = new Date(Date.UTC(on.getUTCFullYear(), on.getUTCMonth() + 1, 1));
-  return { start, end };
+  return {
+    start: new Date(Date.UTC(on.getUTCFullYear(), on.getUTCMonth(), 1)),
+    end: new Date(Date.UTC(on.getUTCFullYear(), on.getUTCMonth() + 1, 1)),
+  };
 }
 
 export class PostgresUsageLedger implements UsageLedger {
   constructor(private readonly sql: SqlClient) {}
 
+  /**
+   * La période réellement applicable.
+   *
+   * Une métrique « par période » se compte sur la **période d'abonnement en cours**, pas sur le
+   * mois calendaire : le quota de `plan_quota` est celui d'un cycle de facturation. Les compter
+   * sur des bornes différentes donnerait à un client inscrit le 20 une remise à zéro le 1er —
+   * c'est-à-dire deux fois son quota le premier mois, puis un décalage permanent.
+   */
+  private async periodOf(
+    tenantId: TenantId,
+    metric: UsageMetric,
+    on: Date,
+  ): Promise<{ start: Date; end: Date }> {
+    if (isDaily(metric)) return periodFor(metric, on);
+
+    const rows = await this.sql.query<{ current_period_start: Date; current_period_end: Date }>(
+      `select current_period_start, current_period_end
+         from subscription
+        where tenant_id = $1 and status = 'active'
+          and $2 >= current_period_start and $2 < current_period_end
+        limit 1`,
+      [tenantId, on],
+    );
+    const row = rows[0];
+    if (row === undefined) return periodFor(metric, on);
+    return { start: new Date(row.current_period_start), end: new Date(row.current_period_end) };
+  }
+
   async tenantUsage(tenantId: TenantId, metric: UsageMetric, on: Date): Promise<number> {
-    const { start } = periodFor(metric, on);
+    const { start } = await this.periodOf(tenantId, metric, on);
     const rows = await this.sql.query<{ value: string }>(
       `select value from usage_counter
         where tenant_id = $1 and metric = $2 and period_start = $3`,
@@ -50,19 +87,30 @@ export class PostgresUsageLedger implements UsageLedger {
   /**
    * Le plafond vient de la formule **en base**. Aucune condition « si formule = Start » n'existe
    * ici : ouvrir Growth reste une modification de données (`docs/03-modele-de-donnees.md`).
-   * `null` signifie « aucun quota défini », ce qui n'est pas zéro.
+   *
+   * ⚠️ Deux absences très différentes, et les confondre ouvrait un trou :
+   *
+   *   • **aucun abonnement actif** → plafond **0**. Un abonnement résilié, impayé, ou jamais
+   *     souscrit ne donne pas droit à un travail illimité : c'est exactement l'inverse. Renvoyer
+   *     « pas de quota défini » ici laissait un client résilié consommer sans aucune borne, aux
+   *     frais de tous les autres — le quota du fournisseur étant unique et partagé.
+   *   • **abonnement actif, mais métrique absente de la formule** → `null`, c'est-à-dire
+   *     « aucun plafond défini pour cette métrique ». Cas normal d'une métrique introduite avant
+   *     d'être semée.
    */
   async tenantLimit(tenantId: TenantId, metric: UsageMetric): Promise<number | null> {
-    const rows = await this.sql.query<{ quota_limit: string }>(
+    const rows = await this.sql.query<{ quota_limit: string | null }>(
       `select q.quota_limit
          from subscription s
-         join plan_quota q on q.plan_id = s.plan_id
-        where s.tenant_id = $1 and s.status = 'active' and q.metric = $2
+         left join plan_quota q on q.plan_id = s.plan_id and q.metric = $2
+        where s.tenant_id = $1 and s.status = 'active'
         limit 1`,
       [tenantId, metric],
     );
-    const limit = rows[0]?.quota_limit;
-    return limit === undefined ? null : Number(limit);
+
+    const row = rows[0];
+    if (row === undefined) return 0; // Pas d'abonnement actif : rien ne travaille.
+    return row.quota_limit === null ? null : Number(row.quota_limit);
   }
 
   async recordTenantUsage(
@@ -71,7 +119,7 @@ export class PostgresUsageLedger implements UsageLedger {
     amount: number,
     on: Date,
   ): Promise<void> {
-    const { start, end } = periodFor(metric, on);
+    const { start, end } = await this.periodOf(tenantId, metric, on);
     // Incrément atomique : deux exécutants peuvent compter en même temps sans se perdre.
     await this.sql.query(
       `insert into usage_counter (tenant_id, metric, period_start, period_end, value)
@@ -109,13 +157,22 @@ export class PostgresUsageLedger implements UsageLedger {
       // Pas de fenêtre ouverte : on en ouvre une pour la journée. Perdre le comptage parce que
       // personne n'avait créé la ligne reviendrait à rendre le plafond décoratif — exactement ce
       // que cette table existe pour empêcher.
+      //
+      // La borne inscrite est celle que le Gateway applique : la part de l'enveloppe dans le
+      // quota du fournisseur. Écrire 0 ferait de cette colonne un mensonge, et un jour une
+      // surveillance lirait ce 0 en croyant lire un plafond.
       await this.sql.query(
         `insert into provider_quota (provider_key, envelope, window_start, window_end, consumed, quota_limit)
-         values ($1, $2, date_trunc('day', now()), date_trunc('day', now()) + interval '1 day', $3, 0)
+         values ($1, $2, date_trunc('day', now()), date_trunc('day', now()) + interval '1 day', $3, $4)
          on conflict (provider_key, envelope, window_start)
          do update set consumed = provider_quota.consumed + excluded.consumed`,
-        [providerKey, envelope, amount],
+        [providerKey, envelope, amount, envelopeBudget(envelope)],
       );
     }
   }
+}
+
+/** La part de l'enveloppe dans le quota du fournisseur — la même valeur que celle du Gateway. */
+export function envelopeBudget(envelope: InferenceEnvelope): number {
+  return Math.floor(INFERENCE_PROVIDER_LIMITS.tokensPerMonth * INFERENCE_ENVELOPE_SHARE[envelope]);
 }
