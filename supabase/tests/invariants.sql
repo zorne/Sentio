@@ -26,19 +26,18 @@ insert into public.tenant_member (tenant_id, user_id, role) values
   ('aaaaaaaa-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'owner'),
   ('bbbbbbbb-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222', 'owner');
 
-insert into public.plan (id, tier, commercialisable, job_priority) values
-  ('cccccccc-0000-0000-0000-000000000001', 'start', true, 100);
+-- Les formules et le réservoir d'identités viennent des migrations de seed : les tests
+-- s'appuient sur les données RÉELLES du produit, pas sur un jeu d'essai parallèle qui pourrait
+-- diverger sans qu'on s'en aperçoive.
 
 insert into public.employee_definition (id, profession, version, dna) values
   ('dddddddd-0000-0000-0000-000000000001', 'commercial', 1, '{"perimetre": ["prospection"]}'::jsonb);
 
-insert into public.identity (id, profession, first_name, last_name) values
-  ('eeeeeeee-0000-0000-0000-000000000001', 'commercial', 'Carter', 'Delmas'),
-  ('eeeeeeee-0000-0000-0000-000000000002', 'commercial', 'Elise', 'Nadaud');
-
-insert into public.employee (id, tenant_id, employee_definition_id, identity_id) values
-  ('ffffffff-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001',
-   'dddddddd-0000-0000-0000-000000000001', 'eeeeeeee-0000-0000-0000-000000000001');
+-- Un employé recruté sur une identité prise dans le réservoir semé.
+insert into public.employee (id, tenant_id, employee_definition_id, identity_id)
+select 'ffffffff-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001',
+       'dddddddd-0000-0000-0000-000000000001', id
+from public.reserve_identity('commercial');
 
 insert into public.task (id, tenant_id, employee_id) values
   ('99999999-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001',
@@ -232,9 +231,11 @@ begin
   end if;
 
   -- Réservoir épuisé : on échoue franchement plutôt que de rendre une identité déjà prise.
+  -- Un métier sans réservoir est le cas le plus proche : c'est exactement ce qui arriverait le
+  -- jour où un second métier serait vendu sans que son réservoir ait été garni.
   begin
-    perform public.reserve_identity('commercial');
-    raise exception 'ÉCHEC : une identité a été servie alors que le réservoir est vide.';
+    perform public.reserve_identity('metier_sans_reservoir');
+    raise exception 'ÉCHEC : une identité a été servie pour un métier sans réservoir.';
   exception when sqlstate 'P0001' then
     if position('épuisé' in sqlerrm) = 0 then raise; end if;
   end;
@@ -389,6 +390,67 @@ begin
   end if;
 
   raise notice 'OK  droits par défaut — une table ajoutée après coup naît inaccessible';
+end;
+$$;
+
+
+-- ── Les formules sont des données, pas du code ──────────────────────────────────────────────
+-- TEST-09 : activer Growth doit être une modification de données, sans déploiement ni
+-- redémarrage (docs/13-verification.md).
+do $$
+declare
+  vendables integer;
+  quotas_start integer;
+begin
+  if (select count(*) from public.plan) <> 3 then
+    raise exception 'ÉCHEC : les trois formules ne sont pas toutes en base.';
+  end if;
+
+  select count(*) into vendables from public.plan where commercialisable;
+  if vendables <> 1 then
+    raise exception 'ÉCHEC : % formules commercialisables au lieu de Start seule.', vendables;
+  end if;
+
+  -- Le seul geste nécessaire pour ouvrir Growth : un update.
+  update public.plan set commercialisable = true where tier = 'growth';
+  select count(*) into vendables from public.plan where commercialisable;
+  if vendables <> 2 then
+    raise exception 'ÉCHEC : ouvrir Growth par modification de données n''a pas fonctionné.';
+  end if;
+
+  -- La priorité d'exécution des formules supérieures est bien une donnée, pas une condition.
+  if (select job_priority from public.plan where tier = 'growth')
+     <= (select job_priority from public.plan where tier = 'start') then
+    raise exception 'ÉCHEC : Growth n''a pas une priorité d''exécution supérieure à Start.';
+  end if;
+
+  select count(*) into quotas_start
+  from public.plan_quota q join public.plan p on p.id = q.plan_id
+  where p.tier = 'start';
+  if quotas_start < 5 then
+    raise exception 'ÉCHEC : Start ne porte que % quotas.', quotas_start;
+  end if;
+
+  raise notice 'OK  TEST-09 — formules en données, Growth ouvrable sans déploiement';
+end;
+$$;
+
+
+-- ── Le réservoir d'identités est garni ──────────────────────────────────────────────────────
+-- Un recrutement qui échoue faute d'identité est un paiement encaissé sans employé livré.
+do $$
+declare
+  libres integer;
+begin
+  select count(*) into libres
+  from public.identity where profession = 'commercial' and status = 'free';
+
+  -- Trois identités ont été consommées par les tests précédents.
+  if libres < 297 then
+    raise exception 'ÉCHEC : seulement % identités libres.', libres;
+  end if;
+
+  raise notice 'OK  réservoir — % identités commerciales disponibles', libres;
 end;
 $$;
 

@@ -1,9 +1,13 @@
 /**
  * Clés de métriques de consommation.
  *
- * Ces clés sont le contrat entre `usage_counter` (ce qui est consommé) et `plan` (ce qui est
- * autorisé). Le code lit toujours un quota par sa clé — il ne teste jamais la formule elle-même
- * (`docs/03-modele-de-donnees.md`, règle : « aucune condition `si formule = Start` »).
+ * Ces clés sont le contrat entre `usage_counter` (ce qui est consommé) et `plan_quota` (ce qui
+ * est autorisé). Le code lit toujours un quota par sa clé — il ne teste jamais la formule
+ * elle-même (`docs/03-modele-de-donnees.md`, règle : « aucune condition `si formule = Start` »).
+ *
+ * ⚠️ Seules les CLÉS vivent ici. Les valeurs de quota sont en base, semées par la migration
+ * `…031_seed_plans.sql`, qui fait foi. Les tenir aux deux endroits donnerait deux sources de
+ * vérité pour un même chiffre, et un jour deux chiffres différents.
  */
 export const USAGE_METRICS = {
   /** Employés numériques simultanément actifs dans l'entreprise. */
