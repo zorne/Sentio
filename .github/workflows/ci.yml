@@ -68,7 +68,10 @@ jobs:
           DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/sentio_test
         run: supabase/tests/run.sh
 
+      # SENTIO_REQUIRE_DB_TESTS déclare que ces tests DOIVENT s'exécuter ici. Sans lui, retirer
+      # DATABASE_URL les ferait sauter en silence et l'étape resterait verte.
       - name: Repositories contre une vraie base
         env:
           DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/sentio_test
+          SENTIO_REQUIRE_DB_TESTS: "1"
         run: pnpm --filter @sentio/db test

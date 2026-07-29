@@ -24,13 +24,17 @@ import { TenantScope } from "./tenant-scope.js";
 
 const connectionString = process.env["DATABASE_URL"];
 
-// En local, sauter est acceptable : tout le monde n'a pas un Postgres qui tourne.
-// En intégration continue, sauter serait un mensonge — la suite resterait verte en n'ayant rien
-// vérifié, ce qui est exactement la situation qui a laissé passer trois bugs. On échoue donc.
-if (connectionString === undefined && process.env["CI"] !== undefined) {
+// Sauter est acceptable quand personne n'attendait ces tests : en local sans Postgres, et dans
+// le job `verify` de l'intégration continue, qui n'a délibérément pas de base.
+//
+// Ce qui ne l'est pas, c'est de sauter là où on croyait les exécuter. Le job qui doit les faire
+// tourner le déclare en posant SENTIO_REQUIRE_DB_TESTS : si la base manque alors, on échoue
+// bruyamment. Sans ce garde, retirer DATABASE_URL laisserait la suite verte en n'ayant rien
+// vérifié — exactement la situation qui a laissé vivre trois bugs.
+if (connectionString === undefined && process.env["SENTIO_REQUIRE_DB_TESTS"] === "1") {
   throw new Error(
-    "DATABASE_URL absente en intégration continue : les tests d'intégration seraient sautés " +
-      "sans que rien ne l'indique. Voir .github/workflows/ci.yml, job « schema ».",
+    "DATABASE_URL absente alors que les tests d'intégration sont exigés " +
+      "(SENTIO_REQUIRE_DB_TESTS=1). Voir .github/workflows/ci.yml, job « schema ».",
   );
 }
 
