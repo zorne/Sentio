@@ -52,6 +52,8 @@ pas compris ce que la décision coûte — cherche encore.
 | [0009](0009-fournisseur-inference-ue.md) | Fournisseur d'inférence européen, avant la qualité de modèle | acceptée |
 | [0010](0010-diagnostic-calibrage.md) | Le diagnostic calibre l'employé au lieu de recommander un métier | acceptée |
 | [0011](0011-generaliste-profils-sectoriels.md) | Sentio reste généraliste ; la niche est celle du client | acceptée |
+| [0012](0012-retention-journal-30-jours.md) | Rétention du journal d'exécution : 30 jours | acceptée |
+| [0013](0013-acces-donnees-portee-entreprise.md) | La portée d'entreprise est obligatoire à l'accès aux données | acceptée |
 
 ---
 

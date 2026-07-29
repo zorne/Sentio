@@ -10,8 +10,10 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "declaration": true,
-    "composite": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    // Les paquets exposent leurs sources (`"types": "./src/index.ts"`) : rien n'est compilé, la
+    // résolution se fait par le lien de l'espace de travail. `composite` et les `references`
+    // exigeraient une compilation préalable pour un bénéfice nul ici.
+    "noEmit": true
   }
 }
