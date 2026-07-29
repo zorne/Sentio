@@ -6,15 +6,25 @@
 # qu'on ne peut vérifier que sur la plateforme cible n'est pas vérifiable en intégration continue.
 #
 # Usage :
-#   packages/db/tests/run.sh                      # utilise DATABASE_URL, ou la base locale
-#   DATABASE_URL=postgres://... packages/db/tests/run.sh
+#   supabase/tests/run.sh                      # base locale jetable
+#   DATABASE_URL=postgres://... supabase/tests/run.sh
 
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 migrations="$here/../migrations"
 
+# Base LOCALE et jetable par défaut. Ce script applique un schéma complet et exécute des tests
+# destructifs dans une transaction : ne jamais le pointer vers le projet Supabase distant.
 : "${DATABASE_URL:=postgres://postgres@127.0.0.1:5432/sentio_test}"
+
+case "$DATABASE_URL" in
+  *supabase.co*|*supabase.com*|*pooler.supabase*)
+    echo "✋ DATABASE_URL désigne un projet Supabase distant." >&2
+    echo "   Ce script est fait pour une base jetable. Pour le distant : supabase db push." >&2
+    exit 1
+    ;;
+esac
 export PGOPTIONS="--client-min-messages=notice"
 
 echo "→ base : ${DATABASE_URL%%\?*}"

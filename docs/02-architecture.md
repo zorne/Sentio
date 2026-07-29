@@ -27,10 +27,14 @@ seul. Des frontières propres donnent le découpage futur sans en payer le prix 
 | `packages/domain` | Types, contrats, règles métier pures (recrutement, quotas, attribution). **Aucune entrée/sortie.** | rien |
 | `packages/core` | Runtime d'employé, Model Gateway, Policy Engine, Mémoire, Registre de capacités | `domain` |
 | `packages/capabilities` | Adaptateurs concrets d'une capacité (prospection, envoi d'email, CRM…) | `domain` |
-| `packages/db` | Schéma, migrations, repositories, politiques d'isolation | `domain` |
+| `packages/db` | Repositories, accès typé à la base | `domain` |
 | `packages/config` | Formules, quotas, seuils, drapeaux de fonctionnalité, lexique | rien |
 | `apps/web` | Interface : vitrine publique + espace privé | tous |
 | `apps/worker` | Exécution en arrière-plan (en V1 : points d'entrée déclenchés par un battement) | `core`, `db` |
+
+Le **schéma** lui-même — migrations, politiques d'isolation, tests d'invariants — vit dans
+[`supabase/`](../supabase/), à l'emplacement où le CLI qui les applique les lit. Le détail et la
+raison de ce choix sont dans [`supabase/README.md`](../supabase/README.md).
 
 **Frontières strictes, à faire respecter :**
 - L'interface n'appelle **jamais** un fournisseur de modèle ni une capacité directement.

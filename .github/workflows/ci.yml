@@ -53,4 +53,4 @@ jobs:
       - name: Migrations et invariants
         env:
           DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/sentio_test
-        run: packages/db/tests/run.sh
+        run: supabase/tests/run.sh
