@@ -78,6 +78,10 @@ l'authentification et le temps réel ; il portera l'exécution. La règle 2 est 
 dépendance de devenir un enfermement — elle doit être défendue à chaque revue, pas seulement
 écrite ici.
 
+> **Mise à jour du 2026-07-30** — la règle 2 n'est plus défendue par la seule revue : un contrôle
+> automatique vérifie qu'une fonction n'importe rien d'autre que le domaine et la configuration
+> ([`0024`](0024-verification-automatique.md)).
+
 ## Quand revisiter
 
 - **Dès qu'une limite de fonction est atteinte** — durée, mémoire, taille de paquet, connexion

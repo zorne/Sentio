@@ -10,13 +10,14 @@ et toute la vie du client se déroule ensuite dans son espace privé.
 > Il doit avoir l'impression de recruter un collaborateur, de suivre ses performances,
 > et de voir son équipe grandir.
 
-**État du projet : lot 0 (Fondations) terminé.** Schéma, isolation par entreprise et repositories
-vérifiés — le parcours client est joué de bout en bout sous ses deux formes, **entreprise
-individuelle** et **entreprise à plusieurs membres**, avec les droits d'un vrai client et non ceux
-du serveur. Une réserve connue, énoncée : l'accès croisé par abonnement temps réel ne se teste que
-sur la plateforme, et le sera avant la mise en ligne
+**État du projet : lots 0, 1 et 2 terminés ; lot 4 (Acquisition) en cours.** Le schéma et son
+isolation par entreprise sont vérifiés sur une vraie base, le noyau et le métier commercial sont
+écrits et testés, et l'interface est initialisée — vitrine en sortie statique, première fonction
+serveur en région UE. Une réserve connue, énoncée : l'accès croisé par abonnement temps réel ne se
+teste que sur la plateforme, et le sera avant la mise en ligne
 ([`docs/13-verification.md`](docs/13-verification.md)).
-Étape suivante : lot 1 (Noyau) — [`docs/20-plan-action.md`](docs/20-plan-action.md).
+Étape suivante : les sections de la vitrine et la conversation de diagnostic
+(`ACQUIS-01` → `ACQUIS-12`) — [`docs/20-plan-action.md`](docs/20-plan-action.md).
 
 ---
 
@@ -51,6 +52,28 @@ premier client payant arrive ».
 [`projet.md`](projet.md) est la vision brute écrite par le fondateur. C'est la **source de
 vérité produit** : en cas de contradiction avec la documentation technique, `projet.md` gagne
 sur le *quoi*, la documentation gagne sur le *comment*.
+
+---
+
+## Vérifier
+
+Une seule commande définit « vérifié » : lint, frontières d'architecture, types, tests,
+construction de la vitrine, et les fonctions sous Deno. Elle tourne aussi **avant chaque
+`git push`** ([`.githooks/pre-push`](.githooks/pre-push), installé par `pnpm install`) et dans
+l'intégration continue.
+
+```bash
+pnpm install          # installe aussi le crochet d'avant-envoi
+pnpm run verify       # tout ce qui est vérifiable automatiquement
+```
+
+Outils requis : **Node 20+**, **pnpm**, et **Deno** (`brew install deno`) — les fonctions serveur
+sont vérifiées dans leur runtime de production, pas dans un autre. Les tests d'intégration de base
+exigent un Postgres local (`supabase/tests/run.sh`).
+
+Ce qui échappe à la machine est **écrit**, jamais espéré : les gestes de console sont listés dans
+[`docs/20-plan-action.md`](docs/20-plan-action.md). Pourquoi cette règle et ce qu'elle couvre :
+[`docs/adr/0024`](docs/adr/0024-verification-automatique.md).
 
 ---
 

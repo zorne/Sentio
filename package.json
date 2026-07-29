@@ -11,7 +11,12 @@
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm -r --if-present run test",
     "build": "pnpm -r --if-present run build",
-    "functions:sync": "node scripts/sync-shared-to-functions.mjs"
+    "functions:sync": "node scripts/sync-shared-to-functions.mjs",
+    "verify:frontieres": "node scripts/verifier-frontieres.mjs",
+    "functions:verify": "pnpm run functions:sync && deno lint --config supabase/functions/deno.json supabase/functions/diagnostic supabase/functions/_shared && deno check --config supabase/functions/deno.json supabase/functions/diagnostic/index.ts && deno test --config supabase/functions/deno.json --allow-env supabase/functions/diagnostic/",
+    "functions:deploy": "pnpm run functions:verify && supabase functions deploy diagnostic",
+    "verify": "pnpm run lint && pnpm run verify:frontieres && pnpm run typecheck && pnpm run test && pnpm run build && pnpm run functions:verify",
+    "prepare": "git config core.hooksPath .githooks"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.18.0",
@@ -20,6 +25,8 @@
     "typescript": "^5.7.2"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }

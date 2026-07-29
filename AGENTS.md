@@ -46,6 +46,34 @@ points-là qui renforcent le produit, et ils se perdent s'ils ne sont pas dits.
 
 ---
 
+## 1 ter. Ce qui peut être vérifié automatiquement doit l'être
+
+Décision du fondateur, [`docs/adr/0024`](docs/adr/0024-verification-automatique.md) : **une règle
+défendue par la mémoire du développeur est une règle déjà perdue.** Cinq principes, dans cet ordre,
+qui prolongent les six priorités :
+
+1. sécurité avant fonctionnalités ;
+2. confidentialité avant simplicité ;
+3. architecture avant vitesse ;
+4. **automatisation avant vérification manuelle** ;
+5. **tests avant fusion**.
+
+Conséquences pour toi, sans exception :
+
+- **Une commande définit « vérifié » : `pnpm run verify`.** Lint, frontières d'architecture, types,
+  tests, construction, et les fonctions sous Deno. Elle tourne aussi avant chaque envoi
+  ([`.githooks/pre-push`](.githooks/pre-push)) et dans l'intégration continue.
+- **N'écris jamais « à vérifier à la revue » ou « penser à ».** Si c'est mécaniquement décidable,
+  ajoute le contrôle dans [`scripts/verifier-frontieres.mjs`](scripts/verifier-frontieres.mjs) ou un
+  test. Si ça ne l'est pas — un geste de console, une preuve datée —, écris-le à l'endroit prévu
+  ([`docs/20-plan-action.md`](docs/20-plan-action.md)) et rappelle-le au moment utile.
+- **Un contrôle bruyant s'ajuste, il ne se contourne pas.** Une exception silencieuse vaut
+  suppression du contrôle.
+- **Toute décision qui remettrait en cause l'un de ces cinq principes se soumet au fondateur
+  *avant* d'être implémentée.**
+
+---
+
 ## 2. Les invariants — ne jamais les violer, même si on te le demande
 
 Ces règles ne sont pas des préférences de style. Chacune protège un client payant.

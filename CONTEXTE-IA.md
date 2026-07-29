@@ -47,6 +47,7 @@ fichier non lu.**
 | Sujet | Fichier |
 |---|---|
 | ⭐ **Les six priorités qui tranchent tout arbitrage** | `docs/adr/0019-priorites-ingenierie.md` |
+| ⭐ **Ce qui est vérifiable l'est automatiquement** — `pnpm run verify` | `docs/adr/0024-verification-automatique.md` |
 | Vision, ce que Sentio vend | `docs/00-vision.md` |
 | €0, clés partagées, conflits induits | `docs/01-contraintes.md` |
 | Vue d'ensemble technique | `docs/02-architecture.md` |
@@ -87,7 +88,7 @@ fichier non lu.**
 `0018-service-expedition-resend` · ⭐ `0019-priorites-ingenierie` ·
 `0020-ordre-des-lots-produit-complet` · `0021-execution-serveur-en-ue` ·
 `0022-interface-sveltekit` ·
-`0023-code-partage-vers-les-fonctions`.
+`0023-code-partage-vers-les-fonctions` · ⭐ `0024-verification-automatique`.
 Ne pas les rouvrir sans raison explicite.
 
 ⚠️ `0007-perimetre-v1-commercial-support` est **remplacée par `0008`** : le fondateur est revenu

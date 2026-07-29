@@ -26,19 +26,25 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: pnpm lint
+        run: pnpm run lint
+
+      # Les frontières d'architecture — fonction = adaptateur, aucune donnée depuis l'interface,
+      # domaine pur, textes visibles dans un seul fichier. Elles étaient défendues par la revue ;
+      # elles le sont maintenant par un contrôle (docs/adr/0024-verification-automatique.md).
+      - name: Frontières d'architecture
+        run: pnpm run verify:frontieres
 
       - name: Typecheck
-        run: pnpm typecheck
+        run: pnpm run typecheck
 
       - name: Tests
-        run: pnpm test
+        run: pnpm run test
 
       # La vitrine se construit en sortie statique. L'adresse des fonctions n'est pas un secret —
       # elle est livrée au navigateur — mais elle est obligatoire : une vitrine qui ne sait pas où
       # parler ne doit pas se construire en silence.
       - name: Construction de l'interface
-        run: pnpm --filter @sentio/web run build
+        run: pnpm run build
 
   # Les fonctions s'exécutent sous Deno, pas sous Node : les vérifier avec l'outillage du reste du
   # dépôt reviendrait à vérifier autre chose (docs/adr/0021, compromis 1).
@@ -60,19 +66,14 @@ jobs:
         with:
           deno-version: v2.x
 
-      # Le domaine partagé est recopié ici, jamais versionné (docs/adr/0023). L'étape suivante
-      # échouerait si cette recopie était oubliée — c'est le but.
-      - name: Recopie du code partagé
-        run: pnpm run functions:sync
-
-      # `--config` est indispensable : Deno cherche sa configuration à partir du dossier COURANT,
-      # pas de celui du fichier vérifié. Sans lui, la table d'imports de `supabase/functions/`
-      # n'est pas lue et `@sentio/domain` n'est pas résolu.
-      - name: Contrôle de types des fonctions
-        run: deno check --config supabase/functions/deno.json supabase/functions/diagnostic/index.ts
-
-      - name: Tests des fonctions
-        run: deno test --config supabase/functions/deno.json --allow-env supabase/functions/diagnostic/
+      # Une seule commande, la même qu'en local et la même que dans le crochet d'avant-envoi :
+      # recopie du code partagé (docs/adr/0023), lint, contrôle de types, tests — sous Deno.
+      # Un `pnpm run functions:sync` oublié fait échouer l'étape, c'est le but.
+      #
+      # Elle vit dans package.json, pas ici : deux définitions de « vérifié » finiraient par
+      # diverger, et c'est toujours celle de l'intégration continue qu'on découvrirait trop tard.
+      - name: Fonctions — recopie, lint, types, tests
+        run: pnpm run functions:verify
 
   # Le schéma porte des garanties que le code ne peut pas rattraper : ADN immuable, journal en
   # ajout seul, idempotence, isolation par entreprise. Elles se vérifient sur une vraie base,

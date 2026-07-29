@@ -88,6 +88,12 @@ tenir entièrement en tête.
 c'est le risque de la règle 3, et il est humain, pas technique. La parade est la revue, et le fait
 que le domaine soit déjà testé sans interface.
 
+> **Mise à jour du 2026-07-30** — la revue n'est plus la seule parade. Un contrôle automatique tient
+> ce qui est mécaniquement décidable : aucun accès aux données depuis un composant, un seul endroit
+> où `fetch` est permis, aucun code du domaine embarqué dans le navigateur, aucun texte visible hors
+> du fichier de libellés ([`0024`](0024-verification-automatique.md)). Ce qui reste au jugement
+> humain : une règle métier écrite en toutes lettres, sans texte visible ni appel réseau.
+
 ## Quand revisiter
 
 - **Si SvelteKit bloque un besoin réel de Sentio** — à signaler immédiatement, pour décider avant

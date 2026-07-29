@@ -66,9 +66,12 @@ apps/web/
   src/routes/            les pages ; `+layout.ts` déclare le prérendu de la vitrine
 ```
 
-**Deux endroits à ne pas contourner.** Un texte visible qui n'est pas dans `labels.ts` échappe au
-contrôle de lexique (`CONF-08`, [`17-lexique.md`](../../docs/17-lexique.md)) ; un appel réseau qui
-n'est pas dans `server-functions/` échappe à la règle 2.
+**Deux endroits à ne pas contourner** — et ce n'est plus une consigne, c'est un contrôle
+([`adr/0024`](../../docs/adr/0024-verification-automatique.md)). Un texte visible hors de
+`labels.ts`, un `fetch` hors de `server-functions/`, un client de base dans un composant ou un import
+du domaine **en valeur** : `pnpm run verify:frontieres` refuse, avec le fichier et la ligne. Et
+`labels.test.ts` rejette tout mot interdit par [`17-lexique.md`](../../docs/17-lexique.md) — en
+laissant parler la zone exemptée, comme la loi l'exige.
 
 ---
 

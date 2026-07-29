@@ -55,10 +55,24 @@ Le script s'arrête si l'un d'eux se met à dépendre de quelque chose.
 ## Vérifier avant de déployer
 
 ```bash
+pnpm run functions:verify    # recopie + deno lint + deno check + deno test
+pnpm run functions:deploy    # vérifie, PUIS déploie — il n'y a pas d'autre chemin sanctionné
+```
+
+Une commande, la même en local, dans le crochet d'avant-envoi et dans l'intégration continue
+([`adr/0024`](../../docs/adr/0024-verification-automatique.md)). Ce qu'elle enchaîne, si tu veux les
+étapes séparément :
+
+```bash
 pnpm run functions:sync
+deno lint  --config supabase/functions/deno.json supabase/functions/diagnostic supabase/functions/_shared
 deno check --config supabase/functions/deno.json supabase/functions/diagnostic/index.ts
 deno test  --config supabase/functions/deno.json --allow-env supabase/functions/diagnostic/
 ```
+
+`--config` est indispensable : Deno cherche sa configuration à partir du dossier **courant**, pas de
+celui du fichier vérifié. Sans lui, la table d'imports n'est pas lue et `@sentio/domain` n'est pas
+résolu. **Deno est donc une dépendance de développement obligatoire** (`brew install deno`).
 
 Les tests tournent **sous Deno**, comme la fonction : vérifier ce code dans un autre runtime que
 celui de production reviendrait à vérifier autre chose. Ils construisent une `Request`, lisent la

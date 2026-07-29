@@ -1,0 +1,19 @@
+#!/bin/sh
+# Rien ne part vers le dépôt distant sans avoir été vérifié.
+#
+# « Tout ce qui peut être vérifié automatiquement doit l'être » — décision du fondateur,
+# docs/adr/0024-verification-automatique.md. L'intégration continue vérifie déjà tout ceci ; ce
+# crochet le fait **avant** le partage, pour que personne n'ait à s'en souvenir.
+#
+# Installé par `pnpm install` (script `prepare` : git config core.hooksPath .githooks).
+# Contournement en cas d'urgence : `git push --no-verify` — et il se voit, ce qui est le but.
+
+set -e
+
+# Le contrôle de types de l'interface exige cette adresse : SvelteKit en engendre les types. Ce
+# n'est pas un secret, et la valeur de repli ne désigne rien — on vérifie du code, pas un
+# déploiement.
+export PUBLIC_SENTIO_FUNCTIONS_URL="${PUBLIC_SENTIO_FUNCTIONS_URL:-https://exemple.invalid/functions/v1}"
+
+printf '\n→ Vérification avant envoi (pnpm run verify)\n\n'
+pnpm run verify
