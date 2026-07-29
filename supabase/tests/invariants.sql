@@ -454,4 +454,397 @@ begin
 end;
 $$;
 
+
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+--  DEUX PARCOURS COMPLETS, JOUÉS COMME LE CLIENT LES JOUERA
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+--
+-- Les tests ci-dessus vérifient des invariants un par un, la plupart avec les droits du serveur.
+-- Ceux qui suivent jouent une vie de client entière avec le rôle `authenticated` et un jeton —
+-- exactement le chemin qu'emprunte l'interface, celui où une politique manquante se voit.
+--
+-- Deux formes d'entreprise, parce qu'elles n'éprouvent pas les mêmes choses :
+--
+--   INDIVIDUEL — un dirigeant seul. C'est le cas de vente du lancement. Il éprouve les droits
+--   d'un membre unique : tout ce qu'il doit pouvoir faire, et tout ce qu'il ne doit pas.
+--
+--   GROUPE — plusieurs membres dans la même entreprise, dont un consultant présent chez deux
+--   clients. Il éprouve ce que l'individuel ne peut pas montrer : le partage à l'intérieur d'une
+--   entreprise, le retrait d'un membre, et la double appartenance — le seul cas où un même
+--   compte est légitimement des deux côtés d'une frontière.
+
+
+-- ── PARCOURS 1 — entreprise individuelle ────────────────────────────────────────────────────
+-- Camille dirige seule. Elle recrute un employé, fixe son objectif, déclare une vente, corrige
+-- sa mémoire d'entreprise, tranche une validation. Rien de plus, et rien de moins.
+
+insert into auth.users (id) values ('0c000000-0000-0000-0000-0000000000c1');
+
+insert into public.tenant (id, name) values
+  ('c0000000-0000-0000-0000-00000000000c', 'Atelier Camille');
+
+insert into public.tenant_member (tenant_id, user_id, role) values
+  ('c0000000-0000-0000-0000-00000000000c', '0c000000-0000-0000-0000-0000000000c1', 'owner');
+
+insert into public.subscription (tenant_id, plan_id, status, current_period_start, current_period_end)
+select 'c0000000-0000-0000-0000-00000000000c', id, 'active', now(), now() + interval '30 days'
+from public.plan where tier = 'start';
+
+insert into public.employee (id, tenant_id, employee_definition_id, identity_id)
+select '0c000000-0000-0000-0000-0000000000ce', 'c0000000-0000-0000-0000-00000000000c',
+       'dddddddd-0000-0000-0000-000000000001', id
+from public.reserve_identity('commercial');
+
+insert into public.task (id, tenant_id, employee_id) values
+  ('0c000000-0000-0000-0000-0000000000ca', 'c0000000-0000-0000-0000-00000000000c',
+   '0c000000-0000-0000-0000-0000000000ce');
+
+insert into public.notification (tenant_id, employee_id, kind, message) values
+  ('c0000000-0000-0000-0000-00000000000c', '0c000000-0000-0000-0000-0000000000ce',
+   'recrutement', 'Votre commercial a rejoint votre équipe.');
+
+insert into public.approval (tenant_id, task_id) values
+  ('c0000000-0000-0000-0000-00000000000c', '0c000000-0000-0000-0000-0000000000ca');
+
+-- Un fait appris par l'employé : c'est la pièce que la cliente pourra contester, jamais réécrire.
+insert into public.learned_fact (id, tenant_id, employee_id, fact, author) values
+  ('0c000000-0000-0000-0000-0000000000cf', 'c0000000-0000-0000-0000-00000000000c',
+   '0c000000-0000-0000-0000-0000000000ce', 'Les relances du mardi obtiennent plus de réponses.',
+   'apprentissage');
+
+do $$
+declare
+  visible integer;
+  objectif_id uuid;
+  passe boolean;
+begin
+  set local role authenticated;
+  perform set_config('request.jwt.claim.sub', '0c000000-0000-0000-0000-0000000000c1', true);
+
+  -- ── Ce qu'elle voit : son entreprise, et le catalogue public des formules.
+  select count(*) into visible from public.tenant;
+  if visible <> 1 then raise exception 'ÉCHEC individuel : % entreprises visibles.', visible; end if;
+
+  select count(*) into visible from public.employee;
+  if visible <> 1 then raise exception 'ÉCHEC individuel : % employés visibles.', visible; end if;
+
+  select count(*) into visible from public.subscription;
+  if visible <> 1 then raise exception 'ÉCHEC individuel : % abonnements visibles.', visible; end if;
+
+  select count(*) into visible from public.plan;
+  if visible <> 3 then raise exception 'ÉCHEC individuel : % formules au catalogue.', visible; end if;
+
+  -- ── Ce qu'elle fait : fixer un objectif, le corriger.
+  insert into public.objective (tenant_id, metric, target_value, horizon)
+  values ('c0000000-0000-0000-0000-00000000000c', 'chiffre_affaires', 5000, 'mensuel')
+  returning id into objectif_id;
+
+  update public.objective set target_value = 6000 where id = objectif_id;
+  if (select target_value from public.objective where id = objectif_id) <> 6000 then
+    raise exception 'ÉCHEC individuel : l''objectif n''a pas été corrigé.';
+  end if;
+
+  -- Poser un objectif chez quelqu'un d'autre : refusé par la politique, pas par l'interface.
+  begin
+    insert into public.objective (tenant_id, metric, target_value, horizon)
+    values ('aaaaaaaa-0000-0000-0000-000000000001', 'chiffre_affaires', 1, 'mensuel');
+    raise exception 'ÉCHEC individuel : un objectif a été posé chez une autre entreprise.';
+  exception when insufficient_privilege then null;
+  end;
+
+  -- Supprimer : jamais. Aucun droit de suppression n'est accordé au client.
+  begin
+    delete from public.objective where id = objectif_id;
+    raise exception 'ÉCHEC individuel : une suppression a été acceptée.';
+  exception when insufficient_privilege then null;
+  end;
+
+  -- ── Ce qu'elle déclare : sa vente, et seulement la sienne.
+  insert into public.outcome (tenant_id, task_id, kind, value, declared_by)
+  values ('c0000000-0000-0000-0000-00000000000c', '0c000000-0000-0000-0000-0000000000ca',
+          'sale', 4200, 'client');
+
+  -- Signer « sentio » un résultat qu'on déclare soi-même : refusé (docs/09-metriques-roi.md).
+  begin
+    insert into public.outcome (tenant_id, task_id, kind, declared_by)
+    values ('c0000000-0000-0000-0000-00000000000c', '0c000000-0000-0000-0000-0000000000ca',
+            'meeting', 'sentio');
+    raise exception 'ÉCHEC individuel : un résultat a été signé « sentio » par le client.';
+  exception when insufficient_privilege then null;
+  end;
+
+  -- Rattacher sa vente à la tâche d'une autre entreprise : refusé par la clé étrangère, qui
+  -- porte désormais l'entreprise (migration 0033). La politique, elle, laissait passer.
+  begin
+    insert into public.outcome (tenant_id, task_id, kind, value, declared_by)
+    values ('c0000000-0000-0000-0000-00000000000c', '99999999-0000-0000-0000-000000000001',
+            'sale', 9999, 'client');
+    raise exception 'ÉCHEC individuel : une vente a été rattachée à la tâche d''une autre entreprise.';
+  exception when foreign_key_violation then null;
+  end;
+
+  -- ── Sa notification : elle la lit, elle la marque comme lue.
+  update public.notification set read_at = now()
+  where tenant_id = 'c0000000-0000-0000-0000-00000000000c';
+  if (select count(*) from public.notification where read_at is not null) <> 1 then
+    raise exception 'ÉCHEC individuel : la notification n''a pas été marquée comme lue.';
+  end if;
+
+  -- ── Sa mémoire d'entreprise : elle écrit la sienne, elle retire celle de son employé.
+  insert into public.company_profile (tenant_id, key, value, author)
+  values ('c0000000-0000-0000-0000-00000000000c', 'secteur', '"menuiserie"'::jsonb, 'client');
+
+  -- Signer « apprentissage » ce qu'on écrit soi-même : refusé à l'insertion.
+  begin
+    insert into public.company_profile (tenant_id, key, value, author)
+    values ('c0000000-0000-0000-0000-00000000000c', 'cible', '"artisans"'::jsonb, 'apprentissage');
+    raise exception 'ÉCHEC individuel : le client a signé « apprentissage » une ligne de mémoire.';
+  exception when insufficient_privilege then null;
+  end;
+
+  -- Contester un fait appris = le retirer. Le texte reste lisible : on doit pouvoir expliquer
+  -- ce que l'employé croyait au moment où il a agi (migration 0035).
+  update public.learned_fact set status = 'retire'
+  where id = '0c000000-0000-0000-0000-0000000000cf';
+  if (select status from public.learned_fact where id = '0c000000-0000-0000-0000-0000000000cf')
+     <> 'retire' then
+    raise exception 'ÉCHEC individuel : le droit de contestation ne fonctionne pas.';
+  end if;
+
+  -- ⚠️ Un `raise exception` posé DANS le bloc serait attrapé par son propre gestionnaire : le
+  -- déclencheur et l'échec de test portent tous deux le code P0001. On note donc le passage, et
+  -- on échoue au-dehors. Le message est vérifié, sinon n'importe quelle erreur ferait « passer »
+  -- le test.
+  passe := false;
+  begin
+    update public.learned_fact set fact = 'Ce que je préfère lire.'
+    where id = '0c000000-0000-0000-0000-0000000000cf';
+    passe := true;
+  exception when raise_exception then
+    if position('ne se réécrit pas' in sqlerrm) = 0 then raise; end if;
+  end;
+  if passe then
+    raise exception 'ÉCHEC individuel : un fait appris a été réécrit en place par le client.';
+  end if;
+
+  passe := false;
+  begin
+    update public.learned_fact set author = 'client'
+    where id = '0c000000-0000-0000-0000-0000000000cf';
+    passe := true;
+  exception when raise_exception then
+    if position('auteur' in sqlerrm) = 0 then raise; end if;
+  end;
+  if passe then
+    raise exception 'ÉCHEC individuel : l''auteur d''une ligne de mémoire a été réécrit.';
+  end if;
+
+  -- ── Sa validation humaine : elle tranche (RGPD, décisions automatisées).
+  update public.approval set state = 'granted', resolved_at = now()
+  where tenant_id = 'c0000000-0000-0000-0000-00000000000c';
+  if (select state from public.approval where tenant_id = 'c0000000-0000-0000-0000-00000000000c')
+     <> 'granted' then
+    raise exception 'ÉCHEC individuel : la validation humaine n''a pas été enregistrée.';
+  end if;
+
+  -- ── Ce qu'elle ne voit jamais : les autres entreprises, et la mécanique.
+  select count(*) into visible from public.employee
+  where tenant_id = 'aaaaaaaa-0000-0000-0000-000000000001';
+  if visible <> 0 then raise exception 'ÉCHEC individuel : accès à l''employé d''une autre entreprise.'; end if;
+
+  begin
+    select count(*) into visible from public.execution_event;
+    raise exception 'ÉCHEC individuel : accès au journal (% lignes).', visible;
+  exception when insufficient_privilege then null;
+  end;
+
+  reset role;
+  raise notice 'OK  parcours individuel — un dirigeant seul fait tout son parcours, et rien d''autre';
+end;
+$$;
+
+
+-- ── PARCOURS 2 — entreprise en groupe ───────────────────────────────────────────────────────
+-- Trois membres dans la même entreprise, dont un consultant également membre de l'entreprise
+-- individuelle ci-dessus. L'employé appartient à l'ENTREPRISE, pas à celui qui l'a recruté.
+
+insert into auth.users (id) values
+  ('0d000000-0000-0000-0000-0000000000d1'),   -- la dirigeante
+  ('0d000000-0000-0000-0000-0000000000d2'),   -- un salarié
+  ('0d000000-0000-0000-0000-0000000000d3');   -- un consultant, membre de deux entreprises
+
+insert into public.tenant (id, name) values
+  ('d0000000-0000-0000-0000-00000000000d', 'Groupe Duval');
+
+insert into public.tenant_member (tenant_id, user_id, role) values
+  ('d0000000-0000-0000-0000-00000000000d', '0d000000-0000-0000-0000-0000000000d1', 'owner'),
+  ('d0000000-0000-0000-0000-00000000000d', '0d000000-0000-0000-0000-0000000000d2', 'member'),
+  ('d0000000-0000-0000-0000-00000000000d', '0d000000-0000-0000-0000-0000000000d3', 'member'),
+  -- Double appartenance : le consultant intervient aussi chez Camille.
+  ('c0000000-0000-0000-0000-00000000000c', '0d000000-0000-0000-0000-0000000000d3', 'member');
+
+insert into public.employee (id, tenant_id, employee_definition_id, identity_id)
+select '0d000000-0000-0000-0000-0000000000de', 'd0000000-0000-0000-0000-00000000000d',
+       'dddddddd-0000-0000-0000-000000000001', id
+from public.reserve_identity('commercial');
+
+insert into public.task (id, tenant_id, employee_id) values
+  ('0d000000-0000-0000-0000-0000000000da', 'd0000000-0000-0000-0000-00000000000d',
+   '0d000000-0000-0000-0000-0000000000de');
+
+do $$
+declare
+  visible integer;
+  objectif_id uuid;
+  passe boolean;
+begin
+  set local role authenticated;
+
+  -- ── La dirigeante fixe l'objectif de l'entreprise.
+  perform set_config('request.jwt.claim.sub', '0d000000-0000-0000-0000-0000000000d1', true);
+
+  select count(*) into visible from public.tenant_member;
+  if visible <> 3 then
+    raise exception 'ÉCHEC groupe : la dirigeante voit % membres au lieu de 3.', visible;
+  end if;
+
+  insert into public.objective (tenant_id, metric, target_value, horizon)
+  values ('d0000000-0000-0000-0000-00000000000d', 'chiffre_affaires', 12000, 'mensuel')
+  returning id into objectif_id;
+
+  -- ── Le salarié voit le même employé et le même objectif : il n'a rien créé, il est membre.
+  perform set_config('request.jwt.claim.sub', '0d000000-0000-0000-0000-0000000000d2', true);
+
+  select count(*) into visible from public.employee;
+  if visible <> 1 then
+    raise exception 'ÉCHEC groupe : le salarié voit % employés au lieu de 1.', visible;
+  end if;
+
+  if (select target_value from public.objective where id = objectif_id) <> 12000 then
+    raise exception 'ÉCHEC groupe : ce qu''écrit un membre n''est pas visible des autres.';
+  end if;
+
+  -- Il déclare une vente sur le travail de l'employé de l'entreprise.
+  insert into public.outcome (tenant_id, task_id, kind, value, declared_by)
+  values ('d0000000-0000-0000-0000-00000000000d', '0d000000-0000-0000-0000-0000000000da',
+          'sale', 3000, 'client');
+
+  -- ── Le consultant est membre des deux entreprises : il voit les deux, et rien de plus.
+  perform set_config('request.jwt.claim.sub', '0d000000-0000-0000-0000-0000000000d3', true);
+
+  select count(*) into visible from public.tenant;
+  if visible <> 2 then
+    raise exception 'ÉCHEC groupe : le consultant voit % entreprises au lieu de ses 2.', visible;
+  end if;
+
+  select count(*) into visible from public.employee;
+  if visible <> 2 then
+    raise exception 'ÉCHEC groupe : le consultant voit % employés au lieu des 2 de ses clients.', visible;
+  end if;
+
+  select count(*) into visible from public.employee
+  where tenant_id in ('aaaaaaaa-0000-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-000000000002');
+  if visible <> 0 then
+    raise exception 'ÉCHEC groupe : le consultant atteint une entreprise dont il n''est pas membre.';
+  end if;
+
+  -- Le cas que la double appartenance rend possible, et que rien n'interdisait avant la
+  -- migration 0034 : faire passer une ligne d'un client à l'autre. Les deux entreprises sont
+  -- les siennes, la politique dit oui — le verrou dit non.
+  passe := false;
+  begin
+    update public.objective set tenant_id = 'c0000000-0000-0000-0000-00000000000c'
+    where id = objectif_id;
+    passe := true;
+  exception when raise_exception then
+    if position('ne change jamais d''entreprise' in sqlerrm) = 0 then raise; end if;
+  end;
+  if passe then
+    raise exception 'ÉCHEC groupe : une ligne a changé d''entreprise.';
+  end if;
+
+  -- ── Un membre retiré perd l'accès immédiatement, sans redéploiement ni expiration de cache.
+  reset role;
+  delete from public.tenant_member
+  where tenant_id = 'd0000000-0000-0000-0000-00000000000d'
+    and user_id = '0d000000-0000-0000-0000-0000000000d2';
+
+  set local role authenticated;
+  perform set_config('request.jwt.claim.sub', '0d000000-0000-0000-0000-0000000000d2', true);
+
+  select count(*) into visible from public.tenant;
+  if visible <> 0 then
+    raise exception 'ÉCHEC groupe : un membre retiré voit encore % entreprise(s).', visible;
+  end if;
+
+  select count(*) into visible from public.employee;
+  if visible <> 0 then
+    raise exception 'ÉCHEC groupe : un membre retiré voit encore l''employé.';
+  end if;
+
+  -- Ce qu'il avait déclaré reste : la donnée appartient à l'entreprise, pas à lui.
+  reset role;
+  if (select count(*) from public.outcome
+      where tenant_id = 'd0000000-0000-0000-0000-00000000000d') <> 1 then
+    raise exception 'ÉCHEC groupe : le départ d''un membre a emporté une donnée de l''entreprise.';
+  end if;
+
+  raise notice 'OK  parcours groupe — partage interne, double appartenance, retrait immédiat';
+end;
+$$;
+
+
+-- ── Filets structurels, appliqués au schéma FINAL ───────────────────────────────────────────
+-- Les migrations 0033 et 0034 portent le même contrôle, mais chacune ne voit que les tables
+-- existant à son propre instant. Ici, on regarde le schéma tel qu'il est après TOUTES les
+-- migrations — c'est ce contrôle-ci qui attrapera la table ajoutée le mois prochain.
+do $$
+declare
+  incomplete text;
+  unprotected text;
+begin
+  select string_agg(c.conrelid::regclass::text || '.' || c.conname, ', ')
+  into incomplete
+  from pg_constraint c
+  join pg_class child on child.oid = c.conrelid
+  join pg_namespace n on n.oid = child.relnamespace
+  where c.contype = 'f'
+    and n.nspname = 'public'
+    and c.confrelid <> 'public.tenant'::regclass
+    and exists (select 1 from pg_attribute a
+                where a.attrelid = c.conrelid and a.attname = 'tenant_id' and a.attnum > 0)
+    and exists (select 1 from pg_attribute a
+                where a.attrelid = c.confrelid and a.attname = 'tenant_id' and a.attnum > 0)
+    and not exists (select 1 from pg_attribute a
+                    where a.attrelid = c.conrelid and a.attname = 'tenant_id'
+                      and a.attnum = any (c.conkey));
+
+  if incomplete is not null then
+    raise exception
+      'ÉCHEC : clé(s) étrangère(s) entre tables client sans l''entreprise dans la clé : %.',
+      incomplete;
+  end if;
+
+  select string_agg(c.relname, ', ' order by c.relname)
+  into unprotected
+  from pg_class c
+  join pg_namespace n on n.oid = c.relnamespace
+  join pg_attribute a on a.attrelid = c.oid and a.attname = 'tenant_id' and a.attnum > 0
+  where n.nspname = 'public'
+    and c.relkind = 'r'
+    and not exists (
+      select 1 from pg_trigger g
+      where g.tgrelid = c.oid and not g.tgisinternal
+        and g.tgfoid = 'public.reject_tenant_change'::regproc);
+
+  if unprotected is not null then
+    raise exception
+      'ÉCHEC : table(s) portant tenant_id sans le verrou de changement d''entreprise : %.',
+      unprotected;
+  end if;
+
+  raise notice 'OK  filets structurels — clés étrangères et verrou d''entreprise sur tout le schéma';
+end;
+$$;
+
 rollback;

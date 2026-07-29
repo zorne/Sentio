@@ -25,7 +25,11 @@ Ces règles ne sont pas des préférences de style. Chacune protège un client p
    d'une nouvelle version. Il ne doit exister **aucun chemin de code** permettant à
    l'apprentissage d'écrire dans cette table.
 2. **Isolation par entreprise sur chaque table, dès la première migration.** Jamais différée,
-   jamais « on la mettra après ». C'est irrattrapable.
+   jamais « on la mettra après ». C'est irrattrapable. Elle ne se limite pas à filtrer les
+   lectures : **une ligne ne change jamais d'entreprise**, et **une clé étrangère entre deux
+   tables client porte toujours `tenant_id`**, sans quoi un lien peut relier deux entreprises.
+   Ces deux règles sont tenues par la base (migrations `0033` et `0034`), donc valables aussi
+   pour le rôle de service, qui ignore RLS.
 3. **Toute action à effet extérieur porte une clé d'idempotence.** Un rejeu ne doit jamais
    envoyer deux fois le même email.
 4. **Aucun chiffre affiché sans une ligne en base qui le justifie.** Pas de valeur de

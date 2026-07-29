@@ -10,8 +10,13 @@ et toute la vie du client se déroule ensuite dans son espace privé.
 > Il doit avoir l'impression de recruter un collaborateur, de suivre ses performances,
 > et de voir son équipe grandir.
 
-**État du projet : lot 0 (Fondations) terminé.** Schéma, isolation par entreprise et
-repositories vérifiés. Étape suivante : lot 1 (Noyau) — [`docs/20-plan-action.md`](docs/20-plan-action.md).
+**État du projet : lot 0 (Fondations) terminé.** Schéma, isolation par entreprise et repositories
+vérifiés — le parcours client est joué de bout en bout sous ses deux formes, **entreprise
+individuelle** et **entreprise à plusieurs membres**, avec les droits d'un vrai client et non ceux
+du serveur. Une réserve connue, énoncée : l'accès croisé par abonnement temps réel ne se teste que
+sur la plateforme, et le sera avant la mise en ligne
+([`docs/13-verification.md`](docs/13-verification.md)).
+Étape suivante : lot 1 (Noyau) — [`docs/20-plan-action.md`](docs/20-plan-action.md).
 
 ---
 

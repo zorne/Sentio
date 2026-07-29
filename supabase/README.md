@@ -36,12 +36,19 @@ Les tables suivent l'ordre des dépendances de clés étrangères. Une correctio
 backlog : `capability` (`FOND-23`) est créée **avant** `employee_capability` (`FOND-12`), qui la
 référence — incohérence signalée dans [`20-plan-action.md`](../docs/20-plan-action.md), phase 1.
 
-Deux migrations ne créent aucune table :
+Plusieurs migrations ne créent aucune table :
 
 | Fichier | Rôle |
 |---|---|
 | `…028_grants.sql` | droits explicites — ne jamais dépendre des défauts de la plateforme |
 | `…029_verify_tenant_isolation.sql` | `FOND-30` — échoue le déploiement si une table échappe à l'isolation |
+| `…033_cle_etrangere_par_entreprise.sql` | un lien ne traverse jamais deux entreprises : les clés étrangères portent `tenant_id` |
+| `…034_ligne_ne_change_pas_entreprise.sql` | verrou : `tenant_id` d'une ligne existante est immuable, pour tous les rôles |
+| `…035_provenance_memoire.sql` | l'auteur d'une ligne de mémoire est immuable ; le contenu d'autrui se retire, ne se réécrit pas |
+
+Les trois dernières corrigent des failles que **seuls les parcours joués avec le rôle
+`authenticated` ont révélées** — les tests de schéma table par table les laissaient toutes
+passer. Chacune porte en tête ce qui était possible avant elle.
 
 ---
 
@@ -54,6 +61,19 @@ supabase/tests/run.sh
 Applique les migrations sur une base **locale et jetable**, puis exécute
 [`tests/invariants.sql`](tests/invariants.sql) : ADN immuable, journal en ajout seul, idempotence,
 attribution des ventes, réservation d'identité, et TEST-01 (isolation entre deux entreprises).
+
+Le fichier se termine par **deux parcours complets joués avec le rôle `authenticated`**, c'est-à-dire
+par le chemin qu'emprunte l'interface :
+
+- **individuel** — un dirigeant seul : il fixe son objectif, déclare sa vente, corrige sa mémoire,
+  tranche une validation ; et se heurte à tout ce qu'il ne doit pas pouvoir faire ;
+- **groupe** — plusieurs membres dans la même entreprise, dont un consultant membre de deux
+  clients : partage interne, retrait immédiat d'un membre, et impossibilité de faire passer une
+  ligne d'un client à l'autre.
+
+Puis deux filets structurels appliqués au schéma **final** : aucune clé étrangère entre tables
+client sans l'entreprise dans la clé, aucune table portant `tenant_id` sans le verrou de la
+migration 0034. Ce sont eux qui attraperont la table ajoutée le mois prochain.
 
 Ne nécessite pas Supabase — le schéma `auth` est stubé
 ([`tests/supabase-stub.sql`](tests/supabase-stub.sql)), parce qu'un schéma vérifiable uniquement

@@ -228,6 +228,74 @@ describeIfDatabase("Repositories sur un vrai Postgres", () => {
     expect(await fromB.forTask(taskId)).toHaveLength(0);
   });
 
+  /**
+   * Ce que le serveur ne peut pas faire non plus.
+   *
+   * Le rôle de service contourne RLS : un employé numérique travaille sans utilisateur connecté,
+   * donc sans jeton. Les politiques d'accès ne le protègent de rien. Les trois garanties
+   * ci-dessous sont donc posées en contraintes et en déclencheurs, qui, eux, s'appliquent à tout
+   * le monde — y compris à `apps/worker`, et y compris à un script de reprise écrit un soir de
+   * panne (migrations 0033, 0034, 0035).
+   */
+  it("refuse un lien entre deux entreprises, même écrit par le serveur", async () => {
+    const [source] = await sql.query<{ employee_definition_id: string }>(
+      "select employee_definition_id from employee where id = $1",
+      [employeeId],
+    );
+    const [identity] = await sql.query<{ id: string }>("select * from reserve_identity($1)", [
+      "commercial",
+    ]);
+    const [employeeB] = await sql.query<{ id: string }>(
+      `insert into employee (tenant_id, employee_definition_id, identity_id)
+       values ($1, $2, $3) returning id`,
+      [tenantB, source?.employee_definition_id, identity?.id],
+    );
+    const [taskB] = await sql.query<{ id: string }>(
+      "insert into task (tenant_id, employee_id) values ($1, $2) returning id",
+      [tenantB, employeeB?.id],
+    );
+
+    // Le repository force le bon `tenant_id` — mais rien ne l'empêchait de désigner la tâche
+    // d'un autre client. C'est la clé étrangère qui refuse, pas nous.
+    const outcomes = new TenantScopedRepository(sql, "outcome", TenantScope.of(tenantA));
+    await expect(
+      outcomes.insert({ taskId: taskB?.id, kind: "sale", value: 100, declaredBy: "client" }),
+    ).rejects.toThrow(/foreign key|clé étrangère/i);
+  });
+
+  it("refuse qu'une ligne change d'entreprise, même par le rôle de service", async () => {
+    const repo = new TenantScopedRepository<{ id: string }>(
+      sql,
+      "objective",
+      TenantScope.of(tenantA),
+    );
+    const created = await repo.insert({ metric: "ca", targetValue: 1, horizon: "mensuel" });
+
+    // Le repository refuse déjà d'en entendre parler…
+    await expect(repo.update(created.id, { tenantId: tenantB })).rejects.toThrow(
+      /tenant_id ne se passe pas en argument/,
+    );
+
+    // …et la base refuse aussi quand on court-circuite le repository.
+    await expect(
+      sql.query("update objective set tenant_id = $1 where id = $2", [tenantB, created.id]),
+    ).rejects.toThrow(/ne change jamais d'entreprise/);
+  });
+
+  it("refuse de réécrire l'auteur d'une ligne de mémoire", async () => {
+    const [fact] = await sql.query<{ id: string }>(
+      `insert into learned_fact (tenant_id, employee_id, fact, author)
+       values ($1, $2, 'Les relances du mardi obtiennent plus de réponses.', 'apprentissage')
+       returning id`,
+      [tenantA, employeeId],
+    );
+
+    // « Pourquoi mon employé croit ça ? » n'a de réponse que si la signature ne bouge jamais.
+    await expect(
+      sql.query("update learned_fact set author = 'client' where id = $1", [fact?.id]),
+    ).rejects.toThrow(/auteur d'une ligne de mémoire ne se réécrit pas/);
+  });
+
   it("bute sur le trigger d'immuabilité de l'ADN", async () => {
     // Le repository global n'expose aucune écriture ; on force donc la requête à la main pour
     // vérifier que la base refuse, et pas seulement l'API TypeScript.

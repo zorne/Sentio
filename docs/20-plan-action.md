@@ -26,7 +26,7 @@ construit sur un lot amont incomplet produit du travail à refaire ([`12-roadmap
 | Phase | Objet | Charge | État |
 |---|---|---|---|
 | 0 | Lancer ce qui a un délai | ~4 h + délais | ☐ |
-| 1 | Lot 0 — Fondations | ~15 h | ☐ |
+| 1 | Lot 0 — Fondations | ~15 h | ✅ *(sauf temps réel — voir phase 1)* |
 | 2 | Lot 1 — Noyau | ~17 h | ☐ |
 | 3 | Lot 2 — Métier Commercial | ~11 h | ☐ |
 | 4 | Lot 3 — Exécution autonome | ~11 h | ☐ |
@@ -133,6 +133,22 @@ prouvé, le fournisseur est **non conforme** et aucune donnée réelle ne doit y
 **Terminé quand :** `TEST-01` passe (deux entreprises créées, tout accès croisé refusé : interface,
 appel direct, identifiant deviné, abonnement temps réel) **et** `TEST-09` passe (activer Growth par
 modification de données, sans déploiement ni redémarrage).
+
+> **État au 2026-07-29 : fait, à une réserve près, énoncée plutôt que passée sous silence.**
+>
+> `TEST-01` et `TEST-09` passent, automatisés dans
+> [`supabase/tests/invariants.sql`](../supabase/tests/invariants.sql), et joués **sous les deux
+> formes d'entreprise** — un dirigeant seul, et un groupe de plusieurs membres dont un consultant
+> présent chez deux clients ([`13-verification.md`](13-verification.md)). Ces parcours ont révélé
+> trois failles qu'aucun test table par table ne pouvait voir : une clé étrangère pouvait relier
+> deux entreprises, une ligne pouvait changer d'entreprise, et un client pouvait réécrire un fait
+> appris par son employé en laissant la signature de l'employé. Fermées par les migrations `0033`,
+> `0034` et `0035`, chacune vérifiée par la négative.
+>
+> **La réserve :** l'accès croisé *par abonnement temps réel* n'est pas vérifié. Aucune table
+> n'est publiée en temps réel aujourd'hui, donc rien ne circule par ce canal — mais le jour où une
+> table y sera ajoutée (lot 6, le dashboard), ce quatrième chemin devra être éprouvé **avant** la
+> mise en ligne. Il n'est pas couvert par la suite locale : il ne se teste que sur la plateforme.
 
 ---
 

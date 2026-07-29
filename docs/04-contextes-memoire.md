@@ -110,6 +110,14 @@ Conséquences directes :
 - le client peut consulter, corriger et retirer n'importe quel élément — ce qui satisfait
   aussi le droit de contestation d'une décision automatisée.
 
+**La forme exacte de « corriger et retirer »** (migration `0035`, vérifiée par
+[`13-verification.md`](13-verification.md)) : le client modifie librement **ses propres** lignes ;
+sur une ligne écrite par son employé ou par Sentio, il change le **statut** — il la retire, ou la
+réactive — et le texte reste lisible. Une réécriture en place effacerait précisément ce qu'on doit
+pouvoir expliquer : *ce que l'employé croyait au moment où il a agi*. Et l'**auteur d'une ligne
+n'est modifiable par personne**, pas même par le serveur : une signature qui bouge ne prouve plus
+rien, et « pourquoi mon employé croit ça ? » redevient sans réponse.
+
 ---
 
 ## Couche 3 — Contexte de tâche (éphémère, **ce n'est pas une mémoire**)

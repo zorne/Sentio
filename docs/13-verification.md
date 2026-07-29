@@ -16,6 +16,33 @@ Depuis la session de l'entreprise A, aucune donnée de l'entreprise B n'est acce
 
 **Comment le tester :** créer deux entreprises, tenter chaque accès depuis la mauvaise session.
 À automatiser — c'est le test qui doit tourner à chaque modification du schéma.
+**Automatisé** dans [`supabase/tests/invariants.sql`](../supabase/tests/invariants.sql).
+
+### Et sous les deux formes d'entreprise, pas seulement une
+
+Un test qui ne connaît que des entreprises à un membre ne voit qu'une moitié du produit. Les deux
+parcours suivants sont joués avec le rôle `authenticated`, par le chemin de l'interface :
+
+| Forme | Ce qu'elle éprouve, et qu'aucune autre ne montre |
+|---|---|
+| **Individuel** — un dirigeant seul | tout ce qu'un membre unique doit pouvoir faire (objectif, vente déclarée, mémoire, validation humaine) **et** tout ce qu'il ne doit pas : écrire chez autrui, supprimer, signer « sentio » un résultat, réécrire un fait appris |
+| **Groupe** — plusieurs membres, dont un consultant présent chez deux clients | la donnée appartient à l'**entreprise**, pas au membre qui l'a créée ; le retrait d'un membre coupe l'accès immédiatement sans rien lui emporter ; et la double appartenance ne permet pas de faire passer une ligne d'un client à l'autre |
+
+### Trois garanties que le filtrage des lectures ne donne pas
+
+Découvertes en jouant ces parcours, et fermées par les migrations `0033`, `0034` et `0035` :
+
+1. **Une clé étrangère ne relie jamais deux entreprises.** Sans `tenant_id` dans la clé, une vente
+   pouvait être rattachée à la tâche d'un autre client, et un fait appris pointer l'employé d'un
+   autre client.
+2. **Une ligne ne change jamais d'entreprise.** `with check (is_tenant_member(tenant_id))` valide
+   la valeur d'arrivée, jamais celle de départ : un compte membre de deux entreprises pouvait
+   déplacer ses données de l'une à l'autre.
+3. **La provenance d'une ligne de mémoire ne se réécrit pas** — voir
+   [`04-contextes-memoire.md`](04-contextes-memoire.md).
+
+**Comment le vérifier :** retirer la migration concernée et rejouer la suite. Chacune des trois
+fait tomber un test précis, et un seul — sinon le test ne prouve pas ce qu'il prétend prouver.
 
 ---
 
