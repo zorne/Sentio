@@ -1,3 +1,5 @@
+/** Réalise : TEST-04, TEST-07 */
+
 import { INFERENCE_ENVELOPES, USAGE_METRICS, type FeatureFlags } from "@sentio/config";
 import { describe, expect, it } from "vitest";
 

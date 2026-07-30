@@ -1,3 +1,5 @@
+/** Réalise : FOND-36 */
+
 export * from "./ids.js";
 export * from "./tenant.js";
 export * from "./employee.js";

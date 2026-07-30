@@ -13,6 +13,8 @@
  * La traduction des erreurs est la partie qui compte : elle décide si la chaîne de repli se
  * déclenche. Une erreur logique déguisée en panne ferait essayer trois fournisseurs pour rien —
  * et masquerait le bug (`docs/05-runtime-employe.md`).
+ *
+ * Réalise : NOYAU-02, NOYAU-03
  */
 
 import type { DataPolicy } from "@sentio/domain";

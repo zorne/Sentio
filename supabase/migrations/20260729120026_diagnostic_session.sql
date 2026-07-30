@@ -1,4 +1,5 @@
 -- FOND-27 — table diagnostic_session : la conversation d'un visiteur sur la vitrine.
+-- Réalise : FOND-27
 --
 -- ⚠️ CLASSE DE DONNÉES — le diagnostic manipule de la donnée RÉELLE dès la première question
 -- (nom d'entreprise, email). Il ne peut donc passer que par un fournisseur « sans entraînement »

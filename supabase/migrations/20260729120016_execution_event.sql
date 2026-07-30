@@ -1,4 +1,5 @@
 -- FOND-18 + FOND-37 — table execution_event : le journal en ajout seul.
+-- Réalise : FOND-18, FOND-37
 --
 -- ⚠️ C'EST LA SOURCE DE VÉRITÉ. Tout le reste (états, statistiques, fiches) est une projection
 -- reconstructible à partir d'elle. Elle fournit l'audit, le débogage, la reprise après

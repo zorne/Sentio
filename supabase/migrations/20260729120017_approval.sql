@@ -1,4 +1,5 @@
 -- FOND-19 — table approval : les validations humaines.
+-- Réalise : FOND-19
 --
 -- ⚠️ INVARIANT 6 (AGENTS.md) — l'irréversible n'est jamais automatique par défaut, quel que
 -- soit le niveau d'autonomie choisi par le client.

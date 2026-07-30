@@ -1,4 +1,5 @@
 -- METIER-01 à 04 — l'ADN v1 du Commercial, et ses cinq capacités.
+-- Réalise : METIER-01, METIER-02, METIER-04, METIER-06, METIER-08
 --
 -- ⚠️ C'EST LE LOT QUI PROUVE QUE LE PRODUIT EXISTE. Tout ce qui précède est de la plomberie.
 --

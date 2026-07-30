@@ -1,4 +1,5 @@
 -- FOND-06 — table plan.
+-- Réalise : FOND-06
 --
 -- Les trois formules existent dès le jour 1 ; seul Start porte le drapeau « commercialisable »
 -- (projet.md §28). Les quotas vivent ici, EN DONNÉES : le code lit un quota par sa clé et ne

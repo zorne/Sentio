@@ -1,4 +1,5 @@
 -- FOND-05 — table tenant_member + fondation de l'isolation.
+-- Réalise : FOND-05
 --
 -- is_tenant_member() est le point de passage unique de toutes les politiques d'accès du schéma.
 -- Elle est SECURITY DEFINER pour deux raisons :

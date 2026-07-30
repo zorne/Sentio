@@ -9,6 +9,8 @@
  * ⚠️ Un tour ne nomme jamais un outil, il nomme une **capacité** : le contrat est stable, le
  * moteur derrière est remplaçable (`docs/adr/0006`). Écrire ici le nom d'un moteur ferait entrer
  * l'implémentation dans le protocole.
+ *
+ * Réalise : NOYAU-22
  */
 
 /** Consigne permanente : l'ADN, la mémoire, la tâche. Assemblée par le noyau, jamais par un modèle. */

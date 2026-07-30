@@ -9,6 +9,8 @@
  * de transparence du diagnostic (`LIBELLES_EXEMPTES`). Un contrôle qui ferait échouer la
  * construction sur une mention légale obligatoire finirait par être désactivé — et c'est tout le
  * contrôle qu'on perdrait.
+ *
+ * Réalise : CONF-08
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -70,8 +72,9 @@ describe("lexique — ce qu'un visiteur ne doit jamais lire", () => {
   it("n'emploie aucun mot interdit dans les composants", () => {
     // Les composants ne devraient contenir aucun texte visible (le garde des frontières le vérifie).
     // Ce contrôle-ci couvre le reste : un attribut, un commentaire recopié, un libellé oublié.
-    const dossierRoutes = join(import.meta.dirname, "..", "routes");
-    const fautes = fichiersSvelte(dossierRoutes)
+    // Tout `src`, pas seulement les pages : une section oubliée dans `lib/sections` serait
+    // exactement l'angle mort que ce contrôle existe pour couvrir.
+    const fautes = fichiersSvelte(join(import.meta.dirname, ".."))
       .flatMap((fichier) => {
         const contenu = readFileSync(fichier, "utf8");
         return findForbiddenTerms(contenu, TERMES_INTERDITS).map(

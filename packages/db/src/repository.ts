@@ -1,3 +1,5 @@
+/** Réalise : FOND-31 */
+
 import { DataAccessError, type SqlClient } from "./client.js";
 import { quoteIdentifier } from "./identifiers.js";
 import { rowToDomain, toSnakeCase } from "./naming.js";

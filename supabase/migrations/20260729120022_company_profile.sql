@@ -1,4 +1,5 @@
 -- FOND-13 — table company_profile : couche 2, ce que l'entreprise EST.
+-- Réalise : FOND-13
 --
 -- Contexte Entreprise (docs/04-contextes-memoire.md) : objectifs, produits, services, processus,
 -- préférences, documents, KPI. Peu de lignes, lues à chaque run.

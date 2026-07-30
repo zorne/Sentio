@@ -1,4 +1,5 @@
 -- FOND-15 — table objective : l'objectif du dirigeant (ex. +5 000 €/mois).
+-- Réalise : FOND-15
 --
 -- Le succès est mesuré UNIQUEMENT par rapport à cet objectif (projet.md §19). Le dashboard
 -- affiche la progression vers lui, jamais des métriques techniques.

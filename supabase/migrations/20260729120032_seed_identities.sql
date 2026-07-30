@@ -1,4 +1,5 @@
 -- FOND-34 — le réservoir d'identités du métier Commercial.
+-- Réalise : FOND-34
 --
 -- « Les identités sont choisies automatiquement par Sentio. Le client ne choisit jamais. Une
 -- identité ne peut jamais être réutilisée. Chaque employé est unique » (projet.md §9).

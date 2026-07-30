@@ -77,6 +77,24 @@ Ce qui échappe à la machine est **écrit**, jamais espéré : les gestes de co
 
 ---
 
+## Outillage local (conception)
+
+Ni versionné, ni requis pour construire le produit — mais à réinstaller sur un poste neuf, sinon
+l'aide à la conception d'interface disparaît sans bruit. Ces deux commandes sont l'équivalent, pour
+l'outillage, de ce que `docs/20-plan-action.md` est pour les gestes de console
+([`adr/0024`](docs/adr/0024-verification-automatique.md)) : ce qui échappe à la machine est écrit.
+
+```bash
+npx ui-ux-pro-max-cli init --ai claude   # skills de conception → .claude/skills/ (ignoré par git)
+npx @21st-dev/cli init --client claude --write   # serveur MCP « 21st » → .mcp.json
+```
+
+[`.mcp.json`](.mcp.json) est **versionné et sans secret** : il ne référence que des variables
+d'environnement (`${MAGIC_API_KEY}`, `${API_KEY_21ST}`), à poser dans un `.env` local à partir de
+[`.env.example`](.env.example). Une clé ne vit jamais dans le dépôt (`AGENTS.md`, invariant 7).
+
+---
+
 ## Les six choses à savoir avant de toucher quoi que ce soit
 
 1. **Deux contextes, jamais un seul.** Chaque employé a un ADN commun et immuable, et une

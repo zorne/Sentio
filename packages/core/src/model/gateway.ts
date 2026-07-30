@@ -16,6 +16,8 @@
  *
  * Ce qu'il ne fait pas : décider quoi demander (c'est le runtime), ni ce qui a le droit de
  * s'exécuter (c'est le Policy Engine).
+ *
+ * Réalise : NOYAU-04, NOYAU-05, NOYAU-06, NOYAU-07, NOYAU-08
  */
 
 import {

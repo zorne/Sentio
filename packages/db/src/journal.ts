@@ -1,3 +1,5 @@
+/** Réalise : NOYAU-19 */
+
 import type { ExecutionEvent } from "@sentio/domain";
 
 import { DataAccessError, type SqlClient } from "./client.js";

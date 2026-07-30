@@ -1,3 +1,5 @@
+/** Réalise : TEST-02 */
+
 import { describe, expect, it } from "vitest";
 
 import type { ApprovalStore, JournalWriter } from "../ports.js";

@@ -10,6 +10,8 @@
  * heurte à la contrainte d'unicité de `execution_event`. C'est bien la base qui refuse le doublon,
  * jamais le code appelant — un garde en mémoire ne survivrait pas au redémarrage qui provoque
  * précisément le rejeu.
+ *
+ * Réalise : NOYAU-21
  */
 
 import { createHash } from "node:crypto";

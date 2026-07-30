@@ -1,4 +1,5 @@
 -- FOND-20 — table outcome : les résultats mesurables rattachés à une tâche.
+-- Réalise : FOND-20
 --
 -- ⚠️ INVARIANT 4 (AGENTS.md) — aucun chiffre affiché sans une ligne en base qui le justifie.
 -- Cette table EST cette ligne. Le chiffre d'affaires du dashboard se calcule d'ici, jamais

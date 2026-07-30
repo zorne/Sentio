@@ -1,4 +1,5 @@
 -- FOND-30 — activer et VÉRIFIER l'isolation par entreprise sur toutes les tables.
+-- Réalise : FOND-30, TEST-01
 --
 -- ⚠️ Point 1 des « huit points qu'on ne rattrape jamais ». Différer l'isolation pour « aller
 -- plus vite » est le piège classique : le jour où on la rebranche, chaque lecture, chaque

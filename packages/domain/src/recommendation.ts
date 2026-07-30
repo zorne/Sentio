@@ -19,6 +19,8 @@
  * Tant qu'un seul métier existe, le moteur ne choisit pas *quel* employé : il détermine **comment
  * il est calibré** — objectif, cible, ton, exclusions ([`adr/0010`](../../docs/adr/0010-diagnostic-calibrage.md)).
  * Le calibrage s'écrit dans `company_profile` et `employee_capability`. **Jamais dans l'ADN.**
+ *
+ * Réalise : ACQUIS-14
  */
 
 /** Les freins que Sentio sait traiter aujourd'hui. Un frein absent de cette liste est hors périmètre. */

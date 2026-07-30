@@ -10,6 +10,8 @@
  * au client, impossible à rejouer à l'identique, et sensible à une consigne glissée dans une
  * fiche de prospect (`docs/10-securite-rgpd.md`, injection). Ici, chaque refus porte sa raison,
  * en français, et la même entrée donne toujours la même sortie.
+ *
+ * Réalise : METIER-07, METIER-22
  */
 
 import { looksLikeEmail } from "./import.js";

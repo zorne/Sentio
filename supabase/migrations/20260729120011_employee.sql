@@ -1,4 +1,5 @@
 -- FOND-11 — table employee : l'employé numérique recruté par une entreprise.
+-- Réalise : FOND-11
 --
 -- Pointe vers une VERSION FIGÉE d'ADN. La colonne employee_definition_id désigne une ligne
 -- précise de employee_definition, laquelle est immuable : un employé vendu ne change donc

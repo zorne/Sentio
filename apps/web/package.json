@@ -11,7 +11,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@sentio/domain": "workspace:*"
+    "@sentio/domain": "workspace:*",
+    "motion": "^12.43.0"
   },
   "devDependencies": {
     "@sentio/config": "workspace:*",

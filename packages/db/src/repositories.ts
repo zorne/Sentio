@@ -1,3 +1,5 @@
+/** Réalise : FOND-32 */
+
 import type {
   Approval,
   Capability,

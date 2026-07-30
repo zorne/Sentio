@@ -1,4 +1,5 @@
 -- FOND-22 — table strategy_change : la trace horodatée de chaque évolution RÉELLE d'un employé.
+-- Réalise : FOND-22
 --
 -- ⚠️ C'est le garde-fou contre le mensonge le plus tentant du produit : émettre « votre employé
 -- a progressé » sans progression réelle (AGENTS.md, §5 « ton pire risque »).

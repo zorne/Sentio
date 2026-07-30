@@ -19,6 +19,8 @@
  * (`docs/10-securite-rgpd.md`). D'où trois refus systématiques : les champs inconnus, les textes
  * démesurés, et les caractères de contrôle — un profil ne contient pas de saut de ligne, et une
  * phrase glissée dans un champ ne doit pas pouvoir devenir une consigne en aval.
+ *
+ * Réalise : ACQUIS-13
  */
 
 import { HANDLED_FRICTIONS, OUT_OF_SCOPE_NEEDS, type DiagnosticProfile } from "./recommendation.js";

@@ -1,4 +1,5 @@
 -- FOND-25 — table provider_credential : les fournisseurs de modèle et leur politique de données.
+-- Réalise : FOND-25
 --
 -- ⚠️ AUCUN SECRET ICI (AGENTS.md, invariant 7). Cette table décrit un fournisseur et son statut
 -- de conformité ; la clé elle-même vit exclusivement dans les variables d'environnement de

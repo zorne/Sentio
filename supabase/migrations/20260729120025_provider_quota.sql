@@ -1,4 +1,5 @@
 -- FOND-26 — table provider_quota : compteur global par fournisseur et par fenêtre.
+-- Réalise : FOND-26
 --
 -- Le quota du fournisseur est UNIQUE ET PARTAGÉ par tous les clients (docs/01-contraintes.md).
 -- Il est découpé en trois enveloppes — employés vendus, diagnostic public, interne — sans quoi

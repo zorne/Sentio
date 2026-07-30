@@ -1,4 +1,5 @@
 -- FOND-38 — table sector_profile.
+-- Réalise : FOND-38
 --
 -- Sentio reste généraliste : la spécialisation passe par des profils sectoriels, RÉDIGÉS PAR
 -- SENTIO et jamais dérivés des données d'un client (docs/adr/0011). C'est pourquoi cette table

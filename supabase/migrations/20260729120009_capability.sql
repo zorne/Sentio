@@ -1,4 +1,5 @@
 -- FOND-23 — table capability : le CONTRAT d'une capacité.
+-- Réalise : FOND-23
 --
 -- ⚠️ Ordre corrigé par rapport au backlog : celui-ci créait employee_capability (FOND-12) avant
 -- capability (FOND-23), alors que la première référence la seconde. L'incohérence était déjà

@@ -1,4 +1,5 @@
 -- FOND-29 — table standing_approval : « confirmer une fois », révocable.
+-- Réalise : FOND-29
 --
 -- Porte le niveau d'autonomie recommandé par D7 : confirmer une fois sur l'irréversible.
 -- Révocable à tout moment — une autorisation permanente qu'on ne peut pas retirer n'en est pas

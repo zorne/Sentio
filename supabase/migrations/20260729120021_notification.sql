@@ -1,4 +1,5 @@
 -- FOND-21 — table notification : Recrutement / Travail / Évolution (projet.md §17).
+-- Réalise : FOND-21
 --
 -- ⚠️ La contrainte ci-dessous est le cœur de TEST-08 : « aucune notification Évolution n'existe
 -- sans strategy_change ». Elle rend MÉCANIQUEMENT impossible d'annoncer à un client que son

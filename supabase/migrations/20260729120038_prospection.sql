@@ -1,4 +1,5 @@
 -- METIER-05, 16, 18 à 22 — les tables de la prospection.
+-- Réalise : METIER-03, METIER-16, METIER-17, METIER-19, METIER-20
 --
 -- ⚠️ CE QUE CETTE MIGRATION REND IMPOSSIBLE.
 --

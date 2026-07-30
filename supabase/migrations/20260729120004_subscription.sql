@@ -1,4 +1,5 @@
 -- FOND-07 — table subscription. Source de vérité des droits d'une entreprise.
+-- Réalise : FOND-07
 
 create table public.subscription (
   id                    uuid primary key default gen_random_uuid(),

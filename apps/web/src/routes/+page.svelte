@@ -1,33 +1,25 @@
 <script lang="ts">
   /**
-   * Accueil de la vitrine — **squelette assumé**. Les sections (Hero, Mission, démonstration
-   * scriptée, tarifs) sont les tâches `ACQUIS-01` → `ACQUIS-11` : elles ne sont pas ébauchées ici,
-   * parce qu'une ébauche de page de vente finit toujours par être prise pour la page de vente.
+   * L'accueil de la vitrine : ouverture, engagements, déroulement.
    *
-   * Ce que cette page prouve aujourd'hui : la vitrine se construit en sortie statique, elle ne
-   * touche aucune donnée, et aucun de ses textes n'est écrit dans un composant.
+   * Cette page **assemble**, elle ne rédige pas. Chaque section est un composant qui affiche des
+   * libellés ; aucune n'accède à une donnée, et la page entière est prérendue — elle ne peut donc
+   * pas, par construction, toucher une donnée client (adr/0021, règle 1).
+   *
+   * Restent à écrire dans ce lot : la démonstration scriptée, la section tarifs — en attente du
+   * prix, non tranché — et les pages légales.
    */
+  import Deroulement from "$lib/sections/Deroulement.svelte";
+  import Hero from "$lib/sections/Hero.svelte";
+  import Mission from "$lib/sections/Mission.svelte";
   import { LIBELLES } from "$lib/labels";
 </script>
 
 <svelte:head>
-  <title>{LIBELLES.marque}</title>
+  <title>{LIBELLES.marque} — {LIBELLES.baseline}</title>
+  <meta name="description" content={LIBELLES.hero.sousTitre} />
 </svelte:head>
 
-<section>
-  <h1>{LIBELLES.accueil.titre}</h1>
-  <p>{LIBELLES.accueil.sousTitre}</p>
-  <p class="chantier">{LIBELLES.accueil.enConstruction}</p>
-</section>
-
-<style>
-  h1 {
-    font-size: 1.75rem;
-    font-weight: 600;
-    margin: 0 0 1rem;
-  }
-
-  .chantier {
-    color: #6b6b6b;
-  }
-</style>
+<Hero />
+<Mission />
+<Deroulement />

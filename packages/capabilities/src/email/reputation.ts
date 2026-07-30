@@ -9,6 +9,8 @@
  * La règle est volontairement brutale : **on suspend tôt, on reprend à la main**. Un domaine
  * suspendu par erreur coûte une journée d'envois ; un domaine brûlé coûte des mois au client, sur
  * l'outil dont dépend le reste de son activité.
+ *
+ * Réalise : METIER-21
  */
 
 import { DELIVERABILITY_THRESHOLDS } from "@sentio/config";

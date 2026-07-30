@@ -1,4 +1,5 @@
 -- FOND-09 — table employee_definition : le Contexte Général, l'ADN d'un métier.
+-- Réalise : FOND-09
 --
 -- ⚠️ INVARIANT 1 (AGENTS.md) — l'ADN n'est JAMAIS modifiable : ni par le client, ni par
 -- l'auto-apprentissage, ni à l'exécution. Il n'évolue que par publication d'une nouvelle

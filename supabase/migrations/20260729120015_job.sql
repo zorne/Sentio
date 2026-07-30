@@ -1,4 +1,5 @@
 -- FOND-17 — table job : la file d'exécution.
+-- Réalise : FOND-17
 --
 -- Une vraie file dans Postgres : consommée avec verrouillage par ligne et saut des lignes déjà
 -- verrouillées. Elle tient plusieurs milliers de tâches par jour, coûte €0, et se remplace plus

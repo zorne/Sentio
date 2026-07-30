@@ -8,6 +8,8 @@
  *
  * Il sert aussi le client : ce qu'il verra un jour dans « ce que votre employé a fait » est une
  * projection de ces événements, jamais un texte rédigé pour l'occasion.
+ *
+ * Réalise : NOYAU-20
  */
 
 export interface JournalEntry {

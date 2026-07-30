@@ -7,6 +7,8 @@
  *
  * C'est aussi, juridiquement, le **droit d'intervention humaine** sur une décision automatisée.
  * Il n'est pas seulement codé : il est documenté comme tel.
+ *
+ * Réalise : NOYAU-09, NOYAU-10, NOYAU-11, NOYAU-12
  */
 
 import type { EmployeeId, TaskId, TenantId } from "@sentio/domain";

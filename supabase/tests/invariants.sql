@@ -1,4 +1,5 @@
 -- Tests des invariants du schéma.
+-- Réalise : TEST-01, TEST-05, TEST-08, TEST-09
 --
 -- Ces tests ne vérifient pas des colonnes : ils vérifient que les promesses du produit sont
 -- MÉCANIQUEMENT tenues, y compris face à un futur chemin de code fautif. Chacun correspond à un

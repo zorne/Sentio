@@ -18,6 +18,8 @@
  *   4. **envoyer**.
  *
  * Le service d'expédition n'est jamais nommé ici : il arrive par l'interface `EmailProvider`.
+ *
+ * Réalise : METIER-09, METIER-10
  */
 
 import type { EmailAddress, EmailProvider } from "./provider.js";

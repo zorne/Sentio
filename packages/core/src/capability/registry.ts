@@ -9,6 +9,8 @@
  * Le registre est aussi ce qui rend une capacité **premium** possible sans condition en dur :
  * la liaison porte la formule, donc un moteur meilleur se réserve à Growth en écrivant une ligne
  * (`docs/06-scalabilite.md`).
+ *
+ * Réalise : NOYAU-17, NOYAU-18
  */
 
 import type { CapabilityBinding, PlanId } from "@sentio/domain";

@@ -9,6 +9,8 @@
  *
  * L'ordre n'est pas une préférence. L'ADN passe en premier parce que c'est lui qui garantit qu'un
  * commercial reste un commercial : ce qui vient après le précise, jamais ne le contredit.
+ *
+ * Réalise : NOYAU-13, NOYAU-14, NOYAU-15, NOYAU-16
  */
 
 import type { CompanyProfileEntry, LearnedFact } from "@sentio/domain";

@@ -5,6 +5,8 @@
  * noyau sait d'un fournisseur tient ici : une clé, une politique de données, et une méthode.
  * Ajouter un fournisseur, c'est écrire une implémentation et une ligne de configuration — pas
  * toucher au Gateway.
+ *
+ * Réalise : NOYAU-01
  */
 
 import type { DataPolicy } from "@sentio/domain";

@@ -1,4 +1,5 @@
 -- FOND-28 — table recommendation : le métier recommandé et sa justification.
+-- Réalise : FOND-28
 --
 -- ⚠️ DEUX RÈGLES À NE JAMAIS RELÂCHER (docs/20-plan-action.md, phase 5) :
 --   1. LE MODÈLE NE CHOISIT JAMAIS LE MÉTIER. Le métier sort d'un moteur de règles

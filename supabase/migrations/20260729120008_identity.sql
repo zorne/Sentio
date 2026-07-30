@@ -1,4 +1,5 @@
 -- FOND-10 — table identity : le réservoir d'identités.
+-- Réalise : FOND-10
 --
 -- « Une identité ne peut jamais être réutilisée. Chaque employé est unique » (projet.md §9).
 -- L'unicité est GLOBALE, pas par entreprise : deux clients ne doivent jamais avoir un employé

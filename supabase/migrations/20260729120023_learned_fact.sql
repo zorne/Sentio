@@ -1,4 +1,5 @@
 -- FOND-14 — table learned_fact : couche 2, ce que l'employé a APPRIS en travaillant.
+-- Réalise : FOND-14
 --
 -- Beaucoup de lignes, triées, expirables (docs/04-contextes-memoire.md). Injecter tous les
 -- faits appris à chaque run ferait croître le coût d'inférence sans limite avec l'ancienneté du

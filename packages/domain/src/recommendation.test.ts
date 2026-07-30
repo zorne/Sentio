@@ -1,3 +1,5 @@
+/** Réalise : ACQUIS-19, ACQUIS-20 */
+
 import { describe, expect, it } from "vitest";
 
 import {

@@ -1,4 +1,5 @@
 -- FOND-08 — table usage_counter. C'est elle qui rend les quotas réels.
+-- Réalise : FOND-08
 --
 -- Le couple (metric, période) est comparé au quota de la formule lu dans plan_quota. Le code
 -- ne teste jamais la formule elle-même.

@@ -1,4 +1,5 @@
 -- FOND-12 — table employee_capability : les capacités réellement ouvertes à un employé.
+-- Réalise : FOND-12
 --
 -- Intersection ADN × formule × configuration (docs/03-modele-de-donnees.md).
 --

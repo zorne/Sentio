@@ -1,4 +1,5 @@
 -- FOND-24 — table capability_binding : quel moteur sert quelle capacité.
+-- Réalise : FOND-24
 --
 -- C'est la table qui permet de remplacer le moteur derrière une capacité sans toucher à aucun
 -- employé existant. Un employé ne connaît jamais son moteur — il n'appelle qu'un contrat.

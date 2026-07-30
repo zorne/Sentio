@@ -9,6 +9,8 @@
  * Il ne fait aucune entrée/sortie : il prend du texte et rend des lignes valides et des lignes
  * refusées, chacune avec sa raison. C'est ce qui permet de rendre au client un compte-rendu utile
  * — « 43 importés, 7 refusés, voici pourquoi » — au lieu d'un « erreur d'import ».
+ *
+ * Réalise : METIER-05
  */
 
 /** Ce qu'une ligne d'import doit fournir pour devenir un prospect. */
