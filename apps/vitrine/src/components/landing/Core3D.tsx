@@ -138,7 +138,7 @@ function CoreShell({ count = 3400, radius = 1.05 }: { count?: number; radius?: n
       // Plancher relevé : à 0.42, la moitié des points étaient quasi
       // éteints et la coque se lisait comme du bruit plutôt que de la
       // matière lumineuse.
-      const fade = 0.72 + Math.random() * 0.28;
+      const fade = 0.85 + Math.random() * 0.15;
       col[i * 3] = tmp.r * fade;
       col[i * 3 + 1] = tmp.g * fade;
       col[i * 3 + 2] = tmp.b * fade;
@@ -151,13 +151,13 @@ function CoreShell({ count = 3400, radius = 1.05 }: { count?: number; radius?: n
   }, [count, radius]);
 
   useFrame((_, dt) => {
-    if (ref.current) ref.current.rotation.y += dt * 0.075;
+    if (ref.current) ref.current.rotation.y += dt * 0.16;
   });
 
   return (
     <points ref={ref} geometry={geometry}>
       <pointsMaterial
-        size={0.02}
+        size={0.026}
         map={dot}
         vertexColors
         transparent

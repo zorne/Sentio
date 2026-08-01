@@ -5,7 +5,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-  --bg-void: #050505;
+  --bg-void: #000000;
   --bg-surface: #0A0A0B;
   --bg-elevated: #101012;
   --text-primary: #ffffff;
