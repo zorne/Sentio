@@ -31,9 +31,9 @@ import { ScrollNav } from "@/components/landing/ScrollNav";
 import "./landing.css";
 
 export const metadata: Metadata = {
-  title: "Sentio — Ils travaillent seuls. Ils vous demandent avant ce qui compte.",
+  title: "Sentio : ils travaillent seuls. Ils vous demandent avant ce qui compte.",
   description:
-    "Des employés numériques qui consultent vos données, arbitrent et agissent — 8 760 heures par an contre 1 607 pour un salarié. Vous voyez chaque étape. Rien d'irréversible ne part sans votre accord.",
+    "Des employés numériques qui consultent vos données, arbitrent et agissent : 8 760 heures par an contre 1 607 pour un salarié. Vous voyez chaque étape. Rien d'irréversible ne part sans votre accord.",
   openGraph: {
     title: "Sentio",
     description: "Ils travaillent seuls. Ils vous demandent avant ce qui compte.",
@@ -59,7 +59,7 @@ const DISPONIBILITE = [
     texte: (
       <>
         C&apos;est la durée légale du travail en France. Retirez encore les congés, les onze jours
-        fériés, les arrêts, les trajets, les réunions — <b>et les nuits</b>.
+        fériés, les arrêts, les trajets, les réunions, <b>et les nuits</b>.
       </>
     ),
   },
@@ -133,7 +133,7 @@ const REGLAGE = [
     texte: (
       <>
         Ce qu&apos;est un bon prospect chez vous, et l&apos;offre qu&apos;il met en avant.{" "}
-        <b>Deux champs libres</b>, remplis une fois — ni cases à cocher, ni menu déroulant.
+        <b>Deux champs libres</b>, remplis une fois : ni cases à cocher, ni menu déroulant.
       </>
     ),
   },
@@ -174,7 +174,7 @@ const RETARD = [
     texte: (
       <>
         Comme le site web, comme le terminal de paiement. <b>Plus personne ne se demande s&apos;il
-        en faut un</b> — on se demande seulement pourquoi certains n&apos;en ont toujours pas.
+        en faut un</b>. On se demande seulement pourquoi certains n&apos;en ont toujours pas.
       </>
     ),
   },
@@ -227,7 +227,7 @@ export default function LandingPage() {
             <span>Ils vous demandent.</span>
           </h1>
           <p className="lp-hero-sub">
-            Des employés numériques qui ouvrent vos données, arbitrent et agissent — la nuit, le
+            Des employés numériques qui ouvrent vos données, arbitrent et agissent, la nuit, le
             dimanche, en août. Vous voyez chaque décision. Rien d&apos;irréversible ne part sans
             vous.
           </p>
@@ -254,7 +254,7 @@ export default function LandingPage() {
             <h2>Il n&apos;a ni week-end, ni mois d&apos;août.</h2>
             <p>
               La comparaison n&apos;est pas une figure de style, c&apos;est une soustraction. Voici
-              les seuls chiffres que nous puissions tenir — et d&apos;où ils viennent.
+              les seuls chiffres que nous puissions tenir, et d&apos;où ils viennent.
             </p>
           </Reveal>
 
@@ -327,7 +327,7 @@ export default function LandingPage() {
             <span className="lp-mono">L&apos;équipe</span>
             <h2>Un moteur. Une équipe entière.</h2>
             <p>
-              Le commercial est en service aujourd&apos;hui. Les autres arrivent — et chacun se
+              Le commercial est en service aujourd&apos;hui. Les autres arrivent, et chacun se
               recrute exactement comme le premier, sans rien réinstaller ni reconfigurer.
             </p>
           </Reveal>
@@ -358,7 +358,7 @@ export default function LandingPage() {
             <h2>Dans quelques années, la question ne se posera plus.</h2>
             <p>
               Nous n&apos;avons pas d&apos;étude à vous citer, et nous n&apos;allons pas en inventer
-              une. Nous avons une conviction — la voici en clair, à vous d&apos;en faire ce que vous
+              une. Nous avons une conviction : la voici en clair, à vous d&apos;en faire ce que vous
               voulez.
             </p>
           </Reveal>
@@ -384,7 +384,7 @@ export default function LandingPage() {
             <span className="lp-mono">Tarifs</span>
             <h2>Choisissez la génération de votre équipe.</h2>
             <p>
-              Trois paliers, pas trois quotas différents — chacun change ce que vos employés numériques
+              Trois paliers, pas trois quotas différents : chacun change ce que vos employés numériques
               sont capables de faire seuls.
             </p>
           </Reveal>

@@ -101,7 +101,7 @@ export const PLANS: Record<PlanId, Plan> = {
     period: "/ mois",
     tagline: "Pour les entreprises qui confient des départements entiers à leur équipe numérique.",
     unlock:
-      "Des équipes d'employés qui s'organisent, se supervisent et s'améliorent elles-mêmes — à l'échelle d'une organisation entière.",
+      "Des équipes d'employés qui s'organisent, se supervisent et s'améliorent elles-mêmes, à l'échelle d'une organisation entière.",
     highlights: [
       "Employés numériques illimités",
       "Équipes d'employés autonomes",

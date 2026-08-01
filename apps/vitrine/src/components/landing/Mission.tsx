@@ -38,7 +38,7 @@ const BEATS: Beat[] = [
   {
     time: "09:04",
     say: "Il ouvre vos données. Personne ne lui a dit où chercher.",
-    out: "lecture · prospects\n\nJulie Martin — Acme SAS — contact il y a 12 j\nMarc Dubois — Zenith SARL — contact il y a 40 j",
+    out: "lecture · prospects\n\nJulie Martin · Acme SAS · contact il y a 12 j\nMarc Dubois · Zenith SARL · contact il y a 40 j",
     tone: "read",
   },
   {

@@ -53,7 +53,7 @@ export function Threshold() {
           {verdict === null && (
             <>
               Lire vos données, prendre des notes : il le fait seul. Envoyer un message à
-              votre client, non. <em>Décidez maintenant — c’est exactement ce que vous
+              votre client, non. <em>Décidez maintenant : c’est exactement ce que vous
               ferez chaque jour.</em>
             </>
           )}
