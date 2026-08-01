@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Cookies — SENTIA" };
+export const metadata: Metadata = { title: "Cookies — Sentio" };
 
 export default function CookiesPage() {
   return (
@@ -10,7 +10,7 @@ export default function CookiesPage() {
 
       <h2>Ce qui est utilisé aujourd&apos;hui</h2>
       <p>
-        SENTIA n&apos;utilise que des <strong>cookies strictement
+        Sentio n&apos;utilise que des <strong>cookies strictement
         nécessaires</strong> au fonctionnement du Service. Selon la
         recommandation de la CNIL, ces cookies ne nécessitent pas de
         consentement préalable.
@@ -25,13 +25,13 @@ export default function CookiesPage() {
             <td>sb-access-token</td>
             <td>Session d&apos;authentification</td>
             <td>1 heure</td>
-            <td>SENTIA (via Supabase)</td>
+            <td>Sentio (via Supabase)</td>
           </tr>
           <tr>
             <td>sb-refresh-token</td>
             <td>Renouvellement de session</td>
             <td>30 jours</td>
-            <td>SENTIA (via Supabase)</td>
+            <td>Sentio (via Supabase)</td>
           </tr>
         </tbody>
       </table>

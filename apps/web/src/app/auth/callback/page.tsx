@@ -26,7 +26,7 @@ export default async function AuthCallbackPage({
   return (
     <section style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div className="card" style={{ maxWidth: 420, width: "100%" }}>
-        <h1 style={{ fontSize: 22, marginBottom: 8 }}>SENTIA</h1>
+        <h1 style={{ fontSize: 22, marginBottom: 8 }}>Sentio</h1>
 
         {error ? (
           <>

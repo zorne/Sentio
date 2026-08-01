@@ -24,7 +24,7 @@ interface Msg {
 }
 
 const SUGGESTIONS = [
-  "Qu'est-ce que SENTIA exactement ?",
+  "Qu'est-ce que Sentio exactement ?",
   "Comment gardez-vous le contrôle ?",
   "Combien ça coûte ?",
   "Que deviennent mes données ?",
@@ -172,14 +172,14 @@ export function Advisor() {
         }}
       >
         <label htmlFor="adv-input" className="adv-sr">
-          Votre question sur SENTIA
+          Votre question sur Sentio
         </label>
         <input
           id="adv-input"
           ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Votre question sur SENTIA…"
+          placeholder="Votre question sur Sentio…"
           maxLength={1000}
           autoComplete="off"
           disabled={busy}

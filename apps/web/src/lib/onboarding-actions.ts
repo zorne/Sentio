@@ -55,7 +55,7 @@ export async function onboardingChat(history: ChatMessage[]): Promise<Onboarding
 
       return {
         reply:
-          "C'est fait ! Votre Employé IA Commercial est prêt et personnalisé selon vos réponses. " +
+          "C'est fait ! Votre Employé numérique Commercial est prêt et personnalisé selon vos réponses. " +
           "Vous pouvez maintenant voir son tableau de bord.",
         tenantId: output.tenantId,
         agentInstanceId: output.agentInstanceId,

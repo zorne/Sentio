@@ -45,12 +45,12 @@ export async function submitRgpdRequest(input: RgpdInput): Promise<RgpdResult> {
       `insert into rgpd_request (right_type, subject_email, detail) values ($1, $2, $3)`,
       [input.right, email, detail]
     );
-    // TODO : notifier privacy@sentia.com par email (Resend/SMTP à brancher).
+    // TODO : notifier privacy@sentio.fr par email (Resend/SMTP à brancher).
     // Pour l'instant, la trace en base est la source de vérité juridique.
     return { ok: true };
   } catch (err) {
     console.error("[rgpd]", err instanceof Error ? err.message : err);
-    return { ok: false, error: "Erreur d'enregistrement. Contactez privacy@sentia.com." };
+    return { ok: false, error: "Erreur d'enregistrement. Contactez privacy@sentio.fr." };
   } finally {
     await db.end();
   }

@@ -23,7 +23,7 @@ import "@/app/landing.css";
 import "./agent.css";
 
 const DEFAULT_NAME = "Léo";
-const DEFAULT_ROLE = "Assistant conversationnel";
+const DEFAULT_ROLE = "Collaborateur numérique";
 
 // Next.js exige que tout composant lisant useSearchParams() soit enveloppé
 // dans un Suspense quand la page est pré-rendue : sans ce boundary, le

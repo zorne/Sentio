@@ -35,7 +35,7 @@ export function AgentActions({ tenant, agentInstanceId }: { tenant: string; agen
           {pending ? "Il travaille…" : "Tester maintenant"}
         </button>
         <Link href={`/plans?tenant=${tenant}&agent=${agentInstanceId}`} className="lp-btn lp-btn--ghost">
-          Recruter mon agent
+          Recruter mon employé
         </Link>
       </div>
       {error && <p className="agt-err">{error}</p>}

@@ -56,7 +56,7 @@ export const AGENT_ROLES: Record<AgentRoleSlug, AgentRole> = {
     displayName: "Employé commercial",
     live: true,
     greeting:
-      "Bonjour ! Je vais configurer votre premier Employé IA. Pour commencer, quel est le nom de votre entreprise, et une adresse email de contact ?",
+      "Bonjour ! Je vais configurer votre premier Employé numérique. Pour commencer, quel est le nom de votre entreprise, et une adresse email de contact ?",
     followUps: [],
     skills: {
       "crm-read": { label: "Lit vos leads CRM", desc: "Ouvre vos données commerciales sans ressaisie." },

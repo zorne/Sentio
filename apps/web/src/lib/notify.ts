@@ -34,9 +34,9 @@ export async function notifyWaitingHuman(
   try {
     const resend = new Resend(process.env.RESEND_API_KEY);
     await resend.emails.send({
-      from: "SENTIA <onboarding@resend.dev>",
+      from: "Sentio <onboarding@resend.dev>",
       to: contactEmail,
-      subject: "Votre employé IA a besoin de votre validation",
+      subject: "Votre employé numérique a besoin de votre validation",
       text: `Une tâche attend votre décision : ${process.env.NEXT_PUBLIC_APP_URL ?? ""}/tasks/${params.taskId}`,
     });
     await db.query(`update notification set email_sent_at = now() where task_id = $1`, [params.taskId]);

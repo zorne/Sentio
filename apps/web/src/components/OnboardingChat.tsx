@@ -3,7 +3,7 @@ import { useState, useTransition, useRef, useEffect } from "react";
 import { onboardingChat, type ChatMessage } from "@/lib/onboarding-actions";
 
 const FIRST_MESSAGE =
-  "Bonjour ! Je vais configurer votre premier Employé IA. Pour commencer, quel est le nom de votre entreprise, et une adresse email de contact ?";
+  "Bonjour ! Je vais configurer votre premier Employé numérique. Pour commencer, quel est le nom de votre entreprise, et une adresse email de contact ?";
 
 // Tenant/agent démo en dur (ADR-018), mêmes valeurs que
 // packages/core/src/wiring.ts (DEMO_TENANT_ID / DEMO_AGENT_INSTANCE_ID).

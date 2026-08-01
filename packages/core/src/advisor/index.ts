@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-// Conseiller SENTIA — service métier, indépendant du transport HTTP et
+// Conseiller Sentio — service métier, indépendant du transport HTTP et
 // du fournisseur d'IA.
 //
 // Il ne connaît ni Next.js, ni Groq : il reçoit un ModelGateway et
@@ -54,7 +54,7 @@ export function buildAdvisorGateway(): ModelGateway {
 export class AdvisorUnavailable extends Error {}
 
 export const REFUSAL =
-  "Je suis le conseiller de SENTIA. Je peux uniquement répondre aux questions concernant notre plateforme, son fonctionnement et son utilisation.";
+  "Je suis le conseiller de Sentio. Je peux uniquement répondre aux questions concernant notre plateforme, son fonctionnement et son utilisation.";
 
 /**
  * Détection d'injection de prompt — défense DÉTERMINISTE appliquée avant

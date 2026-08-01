@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { RgpdRequestForm } from "@/components/legal/RgpdRequestForm";
 
-export const metadata: Metadata = { title: "Vos droits RGPD — SENTIA" };
+export const metadata: Metadata = { title: "Vos droits RGPD — Sentio" };
 
 export default function RgpdPage() {
   return (
@@ -27,7 +27,7 @@ export default function RgpdPage() {
 
       <h2>Demande directe pour un compte actif</h2>
       <p>
-        Si vous avez un compte SENTIA, l&apos;export et la suppression sont
+        Si vous avez un compte Sentio, l&apos;export et la suppression sont
         accessibles depuis votre espace personnel (Paramètres → Mes données).
         C&apos;est la voie la plus rapide.
       </p>

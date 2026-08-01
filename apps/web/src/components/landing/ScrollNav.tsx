@@ -10,8 +10,11 @@ const SECTIONS = [
   { id: "hero", label: "Présence" },
   { id: "mission", label: "Mission" },
   { id: "seuil", label: "Seuil" },
+  { id: "disponibilite", label: "Disponibilité" },
+  { id: "reglage", label: "Réglage" },
   { id: "conseiller", label: "Conseiller" },
   { id: "metiers", label: "Métiers" },
+  { id: "retard", label: "Retard" },
   { id: "tarifs", label: "Tarifs" },
 ];
 

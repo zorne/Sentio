@@ -52,7 +52,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         <div className="container nav-inner">
           <Link href="/" className="brand">
             <Logomark />
-            SENTIA
+            Sentio
           </Link>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <span className="user-chip">Mode démo — sans connexion</span>

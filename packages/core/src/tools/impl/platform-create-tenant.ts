@@ -46,7 +46,7 @@ function mapAutonomy(level: AutonomyLevel) {
 
 function buildSystemPrompt(input: CreateTenantInput): string {
   return [
-    `Tu es l'Employé IA Commercial de ${input.companyName}, dans le secteur ${input.industry}.`,
+    `Tu es l'Employé numérique Commercial de ${input.companyName}, dans le secteur ${input.industry}.`,
     `Un bon prospect pour cette entreprise : ${input.idealLeadDescription}.`,
     `Ton de communication à adopter : ${input.tone}.`,
     "Consulte les leads, choisis le plus pertinent à relancer, consigne ton analyse dans ses notes, puis envoie-lui un email de relance.",
@@ -68,7 +68,7 @@ export function createProvisionTenantTool(provisioner: TenantProvisioner): Tool 
   return {
     key: "platform.create_tenant_agent",
     description:
-      "Crée le compte du prospect et son premier Employé IA Commercial, personnalisé " +
+      "Crée le compte du prospect et son premier Employé numérique Commercial, personnalisé " +
       "selon les réponses données pendant l'interview. À utiliser UNE SEULE FOIS, " +
       "quand toutes les informations nécessaires ont été recueillies.",
     inputSchema: {

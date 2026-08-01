@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Conditions générales — SENTIA" };
+export const metadata: Metadata = { title: "Conditions générales — Sentio" };
 
 export default function CguPage() {
   return (
@@ -17,7 +17,7 @@ export default function CguPage() {
       <h2>1. Objet</h2>
       <p>
         Les présentes conditions régissent l&apos;utilisation de la
-        plateforme SENTIA (ci-après « le Service »), éditée par la société
+        plateforme Sentio (ci-après « le Service »), éditée par la société
         désignée aux <a href="/legal/mentions">mentions légales</a>.
       </p>
 
@@ -30,7 +30,7 @@ export default function CguPage() {
 
       <h2>3. Description du Service</h2>
       <p>
-        SENTIA fournit une plateforme d&apos;employés numériques — des
+        Sentio fournit une plateforme d&apos;employés numériques — des
         agents autonomes capables de consulter des données, arbitrer et
         agir dans le cadre d&apos;autorisations définies par le client.
         Chaque action est journalisée. Les actions irréversibles nécessitent
@@ -56,7 +56,7 @@ export default function CguPage() {
 
       <h2>6. Disponibilité</h2>
       <p>
-        SENTIA met en œuvre les moyens raisonnables pour maintenir le
+        Sentio met en œuvre les moyens raisonnables pour maintenir le
         Service accessible 24/7, sans garantir une disponibilité absolue.
         Des interruptions peuvent survenir pour maintenance, mise à jour ou
         cause indépendante (panne fournisseur, force majeure).
@@ -65,10 +65,10 @@ export default function CguPage() {
       <h2>7. Limitations de responsabilité</h2>
       <p>
         Le client reste responsable des actions effectuées par ses agents
-        et des données qu&apos;il leur confie. SENTIA ne saurait être tenue
+        et des données qu&apos;il leur confie. Sentio ne saurait être tenue
         responsable des conséquences d&apos;une action irréversible qu&apos;un
         client aurait explicitement approuvée. En aucun cas la responsabilité
-        de SENTIA ne pourra dépasser le montant payé par le client au cours
+        de Sentio ne pourra dépasser le montant payé par le client au cours
         des 12 derniers mois.
       </p>
 

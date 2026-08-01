@@ -1,16 +1,17 @@
 "use client";
 
-// Un fondu avant de quitter la page, plutôt qu'un saut brutal vers
-// /onboarding — le même principe que la transition chat→hologramme dans
-// OnboardingChat, appliqué à l'entrée du parcours. La page d'arrivée
-// (.rec-page) fait le fondu inverse à son montage.
+// Un fondu avant de quitter la page, plutôt qu'un saut brutal vers la
+// destination — le même principe que la transition chat→hologramme dans
+// OnboardingChat, appliqué à l'entrée du parcours. C'est RouteFadeReset,
+// monté dans le layout racine, qui lève le fondu à l'arrivée : la page de
+// destination n'a rien à savoir de la transition qui l'a amenée.
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { MouseEvent, ReactNode } from "react";
 
 export function RecruitLink({
-  href = "/onboarding",
+  href = "/plans",
   className,
   children,
 }: {

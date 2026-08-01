@@ -71,7 +71,7 @@ function OnboardingPageContent() {
         <div className="container nav-inner">
           <Link href="/" className="brand">
             <Logomark />
-            SENTIA
+            Sentio
           </Link>
           <Link href="/" className="nav-back" aria-label="Retour à l'accueil">
             ← Retour

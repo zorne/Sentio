@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Mentions légales — SENTIA" };
+export const metadata: Metadata = { title: "Mentions légales — Sentio" };
 
 export default function MentionsPage() {
   return (
@@ -9,7 +9,7 @@ export default function MentionsPage() {
       <p className="legal-updated">Dernière mise à jour · à définir</p>
 
       <div className="legal-todo">
-        <strong>À compléter avant ouverture au public.</strong> SENTIA
+        <strong>À compléter avant ouverture au public.</strong> Sentio
         n&apos;est pas encore constituée en société. Les mentions ci-dessous
         sont des placeholders — remplacez-les dès l&apos;immatriculation.
         L&apos;ouverture d&apos;un site marchand sans mentions légales
@@ -26,7 +26,7 @@ export default function MentionsPage() {
         <strong>N° TVA intracommunautaire :</strong> à définir<br />
         <strong>Siège social :</strong> à définir<br />
         <strong>Directeur de la publication :</strong> à définir<br />
-        <strong>Contact :</strong> <a href="mailto:contact@sentia.com">contact@sentia.com</a>
+        <strong>Contact :</strong> <a href="mailto:contact@sentio.fr">contact@sentio.fr</a>
       </p>
 
       <h2>Hébergement</h2>
@@ -50,7 +50,7 @@ export default function MentionsPage() {
       <h2>Signalement d&apos;un contenu illicite</h2>
       <p>
         Conformément à la LCEN, tout signalement d&apos;un contenu illicite
-        peut être adressé à <a href="mailto:abuse@sentia.com">abuse@sentia.com</a>.
+        peut être adressé à <a href="mailto:abuse@sentio.fr">abuse@sentio.fr</a>.
       </p>
     </>
   );

@@ -12,7 +12,7 @@ export function ComingSoonActions({ role }: { role: AgentRole }) {
         travaille réellement aujourd&apos;hui. Vous serez prévenu·e dès que celui-ci sera prêt.
       </p>
       <div className="lp-hero-act">
-        <Link href="/onboarding?agent=commercial" className="lp-btn lp-btn--primary">
+        <Link href="/plans?agent=commercial" className="lp-btn lp-btn--primary">
           Essayer l&apos;employé Commercial
         </Link>
         <Link href="/" className="lp-btn lp-btn--ghost">

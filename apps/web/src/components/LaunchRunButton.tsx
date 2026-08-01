@@ -32,7 +32,7 @@ export function LaunchRunButton({
           });
         }}
       >
-        {pending ? "Agent en cours…" : "Lancer une tâche — Sales Agent"}
+        {pending ? "Au travail…" : "Lancer une tâche — Employé commercial"}
       </button>
       {error && (
         <p style={{ color: "var(--red)", fontSize: 12.5, marginTop: 8 }}>{error}</p>

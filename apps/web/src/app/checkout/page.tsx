@@ -10,7 +10,7 @@ import "@/app/landing.css";
 import "./checkout.css";
 
 export const metadata: Metadata = {
-  title: "SENTIA — Récapitulatif de commande",
+  title: "Sentio — Récapitulatif de commande",
 };
 
 export default async function CheckoutPage({
@@ -41,7 +41,7 @@ export default async function CheckoutPage({
         <div className="container nav-inner">
           <Link href="/" className="brand">
             <Logomark />
-            SENTIA
+            Sentio
           </Link>
           <Link href="/plans" className="nav-back" aria-label="Changer de formule">
             ← Changer de formule

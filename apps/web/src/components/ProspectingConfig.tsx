@@ -64,7 +64,7 @@ export function ProspectingConfig({
         {running && (
           <span className="status-chip done">
             <span className="dot" />
-            Agent actif
+            Employé actif
           </span>
         )}
       </div>
@@ -98,7 +98,7 @@ export function ProspectingConfig({
 
       {running ? (
         <button className="btn btn-secondary" onClick={stop} disabled={pending}>
-          {pending ? "Arrêt…" : "Arrêter l'agent"}
+          {pending ? "Arrêt…" : "Arrêter l'employé"}
         </button>
       ) : (
         <button className="btn btn-primary" onClick={start} disabled={pending || !criteria || !offer}>

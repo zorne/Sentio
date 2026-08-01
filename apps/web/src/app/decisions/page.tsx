@@ -48,7 +48,7 @@ export default async function DecisionsPage({
         <div className="container nav-inner">
           <Link href="/" className="brand">
             <Logomark />
-            SENTIA
+            Sentio
           </Link>
           <Link href={`/dashboard${tenant ? `?tenant=${tenant}` : ""}`} className="nav-back" aria-label="Retour au dashboard">
             ← Dashboard

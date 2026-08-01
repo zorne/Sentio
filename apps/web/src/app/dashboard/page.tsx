@@ -96,7 +96,7 @@ export default async function Home({
         <div className="container nav-inner">
           <Link href="/" className="brand">
             <Logomark />
-            SENTIA
+            Sentio
           </Link>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <span className="user-chip">
@@ -130,7 +130,7 @@ export default async function Home({
             </>
           ) : (
             <p style={{ color: "var(--text-tertiary)", fontSize: 13.5, marginBottom: 32 }}>
-              Aucun Employé IA pour ce compte. <Link href="/onboarding">Recrutez-en un</Link>.
+              Aucun Employé numérique pour ce compte. <Link href="/plans">Recrutez-en un</Link>.
             </p>
           )}
 
@@ -150,7 +150,7 @@ export default async function Home({
               ))
             ) : (
               <div className="empty">
-                Aucune tâche pour le moment. Cliquez sur « Lancer une tâche » pour démarrer votre premier Employé IA.
+                Aucune tâche pour le moment. Cliquez sur « Lancer une tâche » pour démarrer votre premier Employé numérique.
               </div>
             )}
           </div>
@@ -188,7 +188,7 @@ export default async function Home({
           </details>
 
           <div className="footer">
-            <span>sentia · sales agent v0.1</span>
+            <span>sentio · employé commercial v0.1</span>
             <span>{tasks?.length ?? 0} tâche{(tasks?.length ?? 0) > 1 ? "s" : ""}</span>
           </div>
         </div>

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Politique de confidentialité — SENTIA",
-  description: "Comment SENTIA collecte, utilise et protège vos données personnelles.",
+  title: "Politique de confidentialité — Sentio",
+  description: "Comment Sentio collecte, utilise et protège vos données personnelles.",
 };
 
 export default function ConfidentialitePage() {
@@ -13,16 +13,16 @@ export default function ConfidentialitePage() {
 
       <div className="legal-todo">
         <strong>Document en cours de finalisation.</strong> Ce texte décrit fidèlement
-        les traitements techniques réels de SENTIA, mais doit être relu par un
+        les traitements techniques réels de Sentio, mais doit être relu par un
         conseil juridique avant toute ouverture au public. Certains champs
         (raison sociale, DPO, DPA sous-traitants) sont laissés en attente.
       </div>
 
       <h2>1. Qui est responsable de vos données</h2>
       <p>
-        Le responsable de traitement est <strong>SENTIA</strong>, désigné dans
+        Le responsable de traitement est <strong>Sentio</strong>, désigné dans
         les <a href="/legal/mentions">mentions légales</a>. Contact pour toute
-        question relative à vos données : <a href="mailto:privacy@sentia.com">privacy@sentia.com</a>.
+        question relative à vos données : <a href="mailto:privacy@sentio.fr">privacy@sentio.fr</a>.
       </p>
 
       <h2>2. Quelles données sont collectées</h2>
@@ -39,7 +39,7 @@ export default function ConfidentialitePage() {
         Prospects, notes, brouillons d&apos;emails, historique de missions.
         Vous en restez propriétaire. Elles sont hébergées dans votre espace
         cloisonné et ne sont accessibles à personne d&apos;autre — pas même
-        aux autres clients de SENTIA.
+        aux autres clients de Sentio.
       </p>
 
       <h3>Journal d&apos;exécution</h3>
@@ -143,7 +143,7 @@ export default function ConfidentialitePage() {
 
       <h2>9. Cookies</h2>
       <p>
-        SENTIA n&apos;utilise que les cookies strictement nécessaires au
+        Sentio n&apos;utilise que les cookies strictement nécessaires au
         fonctionnement (session d&apos;authentification). Aucun cookie
         publicitaire, aucun traceur tiers.{" "}
         <a href="/legal/cookies">Détail complet des cookies</a>.

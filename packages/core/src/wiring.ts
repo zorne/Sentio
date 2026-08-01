@@ -126,7 +126,7 @@ class ResendMailTransport implements MailTransport {
       return { messageId: "simulated-demo-tenant" };
     }
     const { data, error } = await this.client.emails.send({
-      from: process.env.RESEND_FROM_EMAIL ?? "SENTIA <onboarding@resend.dev>",
+      from: process.env.RESEND_FROM_EMAIL ?? "Sentio <onboarding@resend.dev>",
       to: email.to,
       subject: email.subject,
       text: email.body,
@@ -421,9 +421,9 @@ export async function reflectAndRemember(
 // ════════════════════════════════════════════════════════════════════
 
 export const ONBOARDING_SYSTEM_PROMPT = [
-  "Tu es l'assistant d'accueil de la plateforme SENTIA.",
+  "Tu es l'assistant d'accueil de la plateforme Sentio.",
   "Ton rôle : interviewer un visiteur pour comprendre son entreprise, puis créer",
-  "pour lui un premier Employé IA Commercial personnalisé.",
+  "pour lui un premier Employé numérique Commercial personnalisé.",
   "Pose des questions courtes, une à la fois, jusqu'à avoir : le nom de l'entreprise,",
   "un email de contact, le secteur d'activité, à quoi ressemble un bon prospect pour",
   "lui, le ton de communication souhaité, et son niveau d'autonomie préféré",

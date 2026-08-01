@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-// Base de connaissances SENTIA — source unique de vérité du conseiller.
+// Base de connaissances Sentio — source unique de vérité du conseiller.
 //
 // Choix d'architecture : des entrées TYPÉES et INDEXÉES plutôt qu'un
 // prompt système géant. Deux raisons concrètes :
@@ -43,16 +43,16 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
   {
     id: "quoi",
     topic: "produit",
-    keywords: ["sentia", "quoi", "c'est quoi", "produit", "plateforme", "présentation", "définition", "sert"],
+    keywords: ["sentio", "quoi", "c'est quoi", "produit", "plateforme", "présentation", "définition", "sert"],
     content:
-      "SENTIA est une plateforme d'employés numériques. Chaque employé SENTIA est un agent autonome qui consulte les données de l'entreprise, arbitre, et exécute des actions métier. Il travaille seul sur ce qui est réversible et s'arrête pour demander l'accord de l'humain avant toute action irréversible.",
+      "Sentio est un cabinet de recrutement d'employés numériques. On n'y achète pas un logiciel : on y recrute un collaborateur spécialisé, qui consulte les données de l'entreprise, arbitre, et exécute des actions métier. Il travaille seul sur ce qui est réversible et s'arrête pour demander l'accord du dirigeant avant toute action irréversible.",
   },
   {
     id: "difference",
     topic: "produit",
     keywords: ["différence", "chatbot", "assistant", "concurrent", "mieux", "pourquoi", "unique", "comparaison"],
     content:
-      "Un chatbot répond à des questions. Un employé SENTIA accomplit des missions : il décide de ce qu'il faut faire, agit dans les outils, et rend compte. La différence tient à trois choses : l'autonomie réglable par type d'action, la traçabilité intégrale de chaque décision, et une mémoire qui s'enrichit à chaque mission.",
+      "Un outil conversationnel répond à des questions. Un employé Sentio accomplit des missions : il décide de ce qu'il faut faire, agit dans les outils, et rend compte. La différence tient à trois choses : l'autonomie réglable par type d'action, la traçabilité intégrale de chaque décision, et une mémoire qui s'enrichit à chaque mission.",
   },
   {
     id: "boucle",
@@ -94,14 +94,14 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
     topic: "securite",
     keywords: ["clé", "api", "modèle", "fournisseur", "openai", "groq", "gemini", "llm", "ia utilisée"],
     content:
-      "SENTIA n'est lié à aucun fournisseur d'IA unique. Les modèles sont interchangeables derrière une couche d'abstraction interne, et le système bascule automatiquement sur un fournisseur de secours si le principal est indisponible. Chaque client peut utiliser sa propre clé, ce qui lui garantit la maîtrise de ses coûts et de la gouvernance de ses données.",
+      "Sentio n'est lié à aucun fournisseur d'IA unique. Les modèles sont interchangeables derrière une couche d'abstraction interne, et le système bascule automatiquement sur un fournisseur de secours si le principal est indisponible. Chaque client peut utiliser sa propre clé, ce qui lui garantit la maîtrise de ses coûts et de la gouvernance de ses données.",
   },
   {
     id: "integrations",
     topic: "integrations",
     keywords: ["intégration", "connecter", "outils", "crm", "email", "api", "compatible", "brancher"],
     content:
-      "Un employé SENTIA agit à travers des outils déclarés : lecture de prospects, mise à jour de fiches, envoi d'emails. Chaque outil précise ce qu'il fait et s'il est réversible — c'est cette déclaration qui pilote les règles de validation. Ajouter une intégration (CRM, messagerie, facturation) consiste à déclarer un nouvel outil, sans modifier le moteur.",
+      "Un employé Sentio agit à travers des outils déclarés : lecture de prospects, mise à jour de fiches, envoi d'emails. Chaque outil précise ce qu'il fait et s'il est réversible — c'est cette déclaration qui pilote les règles de validation. Ajouter une intégration (CRM, messagerie, facturation) consiste à déclarer un nouvel outil, sans modifier le moteur.",
   },
   {
     id: "tarifs",
@@ -129,14 +129,14 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
     topic: "cas-usage",
     keywords: ["démarrer", "commencer", "inscription", "essayer", "installer", "configurer", "onboarding", "recruter"],
     content:
-      "Le recrutement se fait par conversation, en deux minutes environ : un assistant pose quelques questions sur l'activité, les clients types et le ton souhaité, puis configure l'employé à partir des réponses. Il n'y a ni logiciel à installer ni panneau de réglages techniques — tout se passe dans le navigateur.",
+      "Le recrutement se fait par conversation, en deux minutes environ : Sentio pose quelques questions sur l'activité, les clients types et le ton souhaité, puis configure l'employé à partir des réponses. Il n'y a ni logiciel à installer ni panneau de réglages techniques — tout se passe dans le navigateur.",
   },
   {
     id: "installation",
     topic: "performance",
     keywords: ["installer", "télécharger", "logiciel", "machine", "ordinateur", "cloud", "navigateur"],
     content:
-      "Rien ne s'installe et rien ne tourne sur la machine du client. SENTIA est une application web : le calcul se fait sur les serveurs, le navigateur ne fait qu'afficher. Aucune charge, aucune installation, aucune maintenance côté client.",
+      "Rien ne s'installe et rien ne tourne sur la machine du client. Sentio est une application web : le calcul se fait sur les serveurs, le navigateur ne fait qu'afficher. Aucune charge, aucune installation, aucune maintenance côté client.",
   },
   {
     id: "erreur",
@@ -150,7 +150,7 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
     topic: "support",
     keywords: ["support", "aide", "contact", "assistance", "accompagnement", "humain", "joindre"],
     content:
-      "Le support se fait par email à contact@sentia.com. Les comptes Entreprise bénéficient d'un engagement de service et d'un accompagnement dédié, notamment sur les sujets de conformité.",
+      "Le support se fait par email à contact@sentio.fr. Les comptes Entreprise bénéficient d'un engagement de service et d'un accompagnement dédié, notamment sur les sujets de conformité.",
   },
 ];
 
@@ -180,7 +180,7 @@ export function retrieve(question: string, limit = 4): KnowledgeEntry[] {
     .sort((a, b) => b.score - a.score);
 
   // Aucune correspondance : on renvoie le socle produit plutôt que rien,
-  // pour que le conseiller puisse toujours répondre sur SENTIA.
+  // pour que le conseiller puisse toujours répondre sur Sentio.
   if (scored.length === 0) {
     return KNOWLEDGE.filter((e) => e.id === "quoi" || e.id === "boucle");
   }

@@ -23,7 +23,7 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
         <div className="lp-shell lp-nav-in">
           <Link href="/" className="lp-brand">
             <Logomark size={18} />
-            SENTIA
+            Sentio
           </Link>
           <Link href="/" className="lp-btn lp-btn--ghost lp-btn--sm">Retour</Link>
         </div>
@@ -43,7 +43,7 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
 
       <footer className="lp-foot">
         <div className="lp-shell lp-foot-in">
-          <span>© 2026 SENTIA</span>
+          <span>© 2026 Sentio</span>
           <span>hébergement européen · journal permanent · rgpd</span>
         </div>
       </footer>
