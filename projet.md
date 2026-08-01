@@ -53,12 +53,13 @@ Sentio réalise un diagnostic.
 Il identifie :
 * le principal frein
 * le plus gros levier
-* le meilleur employé numérique à créer
-Le client ne choisit jamais un agent.
-C'est Sentio qui recommande.
+* plusieurs profils d'employé numérique pertinents
+Le client ne construit jamais un agent seul, dans un catalogue libre.
+C'est Sentio qui recommande — plusieurs profils, jamais un seul par défaut.
+Le client choisit celui qui lui semble le meilleur parmi les profils recommandés.
 
 Étape 4
-Le client achète l'agent recommandé.
+Le client achète l'employé choisi parmi les profils recommandés.
 Paiement via Stripe.
 
 Étape 5
