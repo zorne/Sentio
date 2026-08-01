@@ -10,8 +10,8 @@
 "use server";
 
 import { Client } from "pg";
-import { buildOnboardingDeps, ONBOARDING_SYSTEM_PROMPT } from "@employes-ia/core/wiring";
-import type { ConversationTurn } from "@employes-ia/core/gateway";
+import { buildOnboardingDeps, ONBOARDING_SYSTEM_PROMPT } from "@sentio/vitrine-core/wiring";
+import type { ConversationTurn } from "@sentio/vitrine-core/gateway";
 
 export interface ChatMessage {
   role: "user" | "assistant";

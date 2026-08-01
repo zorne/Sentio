@@ -8,7 +8,7 @@ import Link from "next/link";
 import { pool } from "@/lib/db";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requireTenantAccess } from "@/lib/tenant-access";
-import { DEMO_TENANT_ID } from "@employes-ia/core/wiring";
+import { DEMO_TENANT_ID } from "@sentio/vitrine-core/wiring";
 import { listPendingDecisions, markNotificationsRead } from "@/lib/prospecting-actions";
 import { ApproveControls } from "@/components/ApproveControls";
 import { Logomark } from "@/components/Logomark";

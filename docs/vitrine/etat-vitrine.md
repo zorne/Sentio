@@ -2,13 +2,13 @@
 
 ## Projet
 SaaS d'employés numériques (agents IA autonomes). Renommé "Employés IA" →
-**SENTIA** en cours de route (code + UI). Monorepo `employes-ia`, TS partout.
+**SENTIA** en cours de route (code + UI). Vitrine Next.js du monorepo Sentio (`apps/vitrine`), TS partout.
 Fondateur solo, budget €0, mode caveman actif (réponses terses demandées).
 
 ## Stack
-- `packages/core` — noyau : ModelGateway (Gemini+Groq, BYOK), Tool Registry,
+- `packages/vitrine-core` — noyau : ModelGateway (Gemini+Groq, BYOK), Tool Registry,
   Policy Engine (autonomie réglable), Memory, Advisor.
-- `apps/web` — Next.js 15 App Router : landing (`/`), onboarding
+- `apps/vitrine` — Next.js 15 App Router : landing (`/`), onboarding
   (`/onboarding`), tarifs (`/plans`, `/checkout`), dashboard (`/dashboard`),
   pages légales (`/legal/*`).
 - Supabase (Postgres+RLS+Auth, EU), Vercel (déploiement, prod OK).

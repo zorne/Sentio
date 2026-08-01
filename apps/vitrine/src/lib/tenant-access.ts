@@ -18,7 +18,7 @@
 import { redirect } from "next/navigation";
 import { pool } from "./db";
 import { createSupabaseServerClient } from "./supabase-server";
-import { DEMO_TENANT_ID } from "@employes-ia/core/wiring";
+import { DEMO_TENANT_ID } from "@sentio/vitrine-core/wiring";
 
 export async function isAuthorizedForTenant(tenantId: string): Promise<boolean> {
   const supabase = await createSupabaseServerClient();

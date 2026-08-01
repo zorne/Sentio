@@ -13,7 +13,7 @@
 // ════════════════════════════════════════════════════════════════════
 
 import { NextResponse } from "next/server";
-import { buildAdvisorGateway, answer, type AdvisorMessage } from "@employes-ia/core/advisor";
+import { buildAdvisorGateway, answer, type AdvisorMessage } from "@sentio/vitrine-core/advisor";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

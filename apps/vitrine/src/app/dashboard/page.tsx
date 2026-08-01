@@ -12,7 +12,7 @@ import Link from "next/link";
 import { pool } from "@/lib/db";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requireTenantAccess } from "@/lib/tenant-access";
-import { DEMO_TENANT_ID } from "@employes-ia/core/wiring";
+import { DEMO_TENANT_ID } from "@sentio/vitrine-core/wiring";
 import { LaunchRunButton } from "@/components/LaunchRunButton";
 import { AddLeadForm } from "@/components/AddLeadForm";
 import { ProspectingConfig } from "@/components/ProspectingConfig";

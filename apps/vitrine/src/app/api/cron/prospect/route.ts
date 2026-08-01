@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Client } from "pg";
 import { launchSalesRunInternal } from "@/lib/agent-actions";
-import { DEMO_TENANT_ID } from "@employes-ia/core/wiring";
+import { DEMO_TENANT_ID } from "@sentio/vitrine-core/wiring";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;

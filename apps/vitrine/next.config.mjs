@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Transpile le package core du monorepo (fichiers TS bruts, pas de dist publié)
-  transpilePackages: ["@employes-ia/core"],
+  transpilePackages: ["@sentio/vitrine-core"],
   webpack: (config) => {
     // Le noyau (tsconfig NodeNext) importe avec extension ".js" — obligatoire
     // pour tsc en NodeNext, même si la source est ".ts". Webpack, lui, résout

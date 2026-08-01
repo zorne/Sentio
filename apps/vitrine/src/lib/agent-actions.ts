@@ -12,10 +12,10 @@
 
 import { revalidatePath } from "next/cache";
 import { Client } from "pg";
-import { ContextAssembler } from "@employes-ia/core/context";
-import type { AgentIdentity } from "@employes-ia/core/context";
-import { RunJournal } from "@employes-ia/core/execution";
-import { AgentRuntime } from "@employes-ia/core/runtime";
+import { ContextAssembler } from "@sentio/vitrine-core/context";
+import type { AgentIdentity } from "@sentio/vitrine-core/context";
+import { RunJournal } from "@sentio/vitrine-core/execution";
+import { AgentRuntime } from "@sentio/vitrine-core/runtime";
 import { isAuthorizedForTenant } from "./tenant-access";
 import { notifyWaitingHuman } from "./notify";
 import {
@@ -23,7 +23,7 @@ import {
   SALES_AGENT_TASK,
   buildDemoRuntimeDeps,
   reflectAndRemember,
-} from "@employes-ia/core/wiring";
+} from "@sentio/vitrine-core/wiring";
 
 /** Charge l'identité réelle de l'instance — surchargée par l'interview
  *  d'accueil (agent_instance.config.systemPrompt) si elle existe, sinon
