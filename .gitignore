@@ -7,8 +7,8 @@ dist/
 .env.*
 !.env.example
 
-# Interface : sortie de construction et fichiers générés par SvelteKit.
-.svelte-kit/
+# Interface : sortie de construction et fichiers engendrés par Next.
+.next/
 build/
 
 # Outillage de conception installé localement (skills UI/UX, 2,8 Mo de données tierces).

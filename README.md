@@ -12,12 +12,15 @@ et toute la vie du client se déroule ensuite dans son espace privé.
 
 **État du projet : lots 0, 1 et 2 terminés ; lot 4 (Acquisition) en cours.** Le schéma et son
 isolation par entreprise sont vérifiés sur une vraie base, le noyau et le métier commercial sont
-écrits et testés, et l'interface est initialisée — vitrine en sortie statique, première fonction
-serveur en région UE. Une réserve connue, énoncée : l'accès croisé par abonnement temps réel ne se
-teste que sur la plateforme, et le sera avant la mise en ligne
-([`docs/13-verification.md`](docs/13-verification.md)).
-Étape suivante : les sections de la vitrine et la conversation de diagnostic
-(`ACQUIS-01` → `ACQUIS-12`) — [`docs/20-plan-action.md`](docs/20-plan-action.md).
+écrits et testés. L'interface publique est **`apps/vitrine`** (Next.js), fusionnée depuis un dépôt
+antérieur : landing, formules, paiement, tableau de bord et pages légales existent et se
+construisent. Deux réserves connues, énoncées plutôt que tues : l'accès croisé par abonnement
+temps réel ne se teste que sur la plateforme et le sera avant la mise en ligne
+([`docs/13-verification.md`](docs/13-verification.md)) ; et la vitrine ne partage encore aucun code
+avec `packages/core`, `domain` ou `capabilities` — deux ensembles cohérents côte à côte, dont le
+rapprochement reste à faire.
+Étape suivante : la conversation de diagnostic (`ACQUIS-01` → `ACQUIS-12`) —
+[`docs/20-plan-action.md`](docs/20-plan-action.md).
 
 ---
 
