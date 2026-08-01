@@ -17,19 +17,19 @@
 
 ## Avancement
 
-**93 tâches sur 181** portent une preuve dans le dépôt.
+**88 tâches sur 181** portent une preuve dans le dépôt.
 
 | Lot | Fait | Total | |
 |---|---|---|---|
 | Fondations (Lot 0) | 38 | 38 | `████████████████████` |
 | Noyau (Lot 1) | 22 | 22 | `████████████████████` |
 | Métier Commercial (Lot 2) | 16 | 24 | `█████████████·······` |
-| Acquisition (Lot 4) | 8 | 24 | `███████·············` |
+| Acquisition (Lot 4) | 4 | 24 | `███·················` |
 | Recrutement & Paiement (Lot 5) | 0 | 10 | `····················` |
 | Dashboard (Lot 6) | 0 | 21 | `····················` |
 | Exécution autonome (Lot 3) | 0 | 15 | `····················` |
 | Évolution (Lot 7) | 0 | 8 | `····················` |
-| Conformité & Lancement (Lot 8) | 2 | 10 | `████················` |
+| Conformité & Lancement (Lot 8) | 1 | 10 | `██··················` |
 | Vérification (transverse) | 7 | 9 | `████████████████····` |
 ---
 
@@ -142,11 +142,11 @@
 
 | | Tâche | Priorité | Preuve dans le dépôt |
 |---|---|---|---|
-| ✅ | **ACQUIS-01** Layout de la vitrine + navigation | P0 | [`apps/web/src/routes/+layout.svelte`](../apps/web/src/routes/+layout.svelte) |
-| ✅ | **ACQUIS-02** Section Hero de la vitrine | P1 | [`apps/web/src/lib/sections/Hero.svelte`](../apps/web/src/lib/sections/Hero.svelte) |
-| ✅ | **ACQUIS-03** Section Mission de la vitrine | P1 | [`apps/web/src/lib/sections/Mission.svelte`](../apps/web/src/lib/sections/Mission.svelte) |
+| ☐ | **ACQUIS-01** Layout de la vitrine + navigation | P0 | — |
+| ☐ | **ACQUIS-02** Section Hero de la vitrine | P1 | — |
+| ☐ | **ACQUIS-03** Section Mission de la vitrine | P1 | — |
 | ☐ | **ACQUIS-04** Section démonstration scriptée (données fixes, présentée comme démonstration) | P0 | — |
-| ✅ | **ACQUIS-05** Section "comment ça marche" | P2 | [`apps/web/src/lib/sections/Deroulement.svelte`](../apps/web/src/lib/sections/Deroulement.svelte) |
+| ☐ | **ACQUIS-05** Section "comment ça marche" | P2 | — |
 | ☐ | **ACQUIS-06** Section tarifs (Start affichée comme achetable, Growth/Scale visibles non actives) | P0 | — |
 | ☐ | **ACQUIS-07** Page légale : mentions légales (contenu provisoire signalé) | P0 | — |
 | ☐ | **ACQUIS-08** Page légale : conditions générales d'utilisation/vente | P0 | — |
@@ -262,7 +262,7 @@
 | ✅ | **CONF-05** Implémentation de la procédure d'effacement (anonymisation du journal) | P0 | [`supabase/migrations/20260729120036_effacement.sql`](../supabase/migrations/20260729120036_effacement.sql) |
 | ☐ | **CONF-06** Script de sauvegarde exportée hors plateforme | P0 | — |
 | ☐ | **CONF-07** Surveillance minimale : alerte email sur quota/échecs/taille base/tâches bloquées | P0 | — |
-| ✅ | **CONF-08** Contrôle automatique du lexique interdit en intégration continue | P1 | [`apps/web/src/lib/labels.test.ts`](../apps/web/src/lib/labels.test.ts) |
+| ☐ | **CONF-08** Contrôle automatique du lexique interdit en intégration continue | P1 | — |
 | ☐ | **CONF-09** Checklist de vérification des conditions d'usage commercial des offres gratuites (préparation, décision humaine finale) | P0 | — |
 | ☐ | **CONF-10** Modèle de contrat de sous-traitance par prestataire (préparation, signature humaine) | P0 | — |
 
