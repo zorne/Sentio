@@ -188,8 +188,9 @@ const APRES_RECRUTEMENT = [
     titre: "Vous quittez cette page, pour de bon",
     texte: (
       <>
-        Le recrutement vous ouvre un espace privé. Toute la suite <b>s&apos;y déroule</b> : la
-        conversation, le suivi, les résultats. Vous n&apos;avez plus de raison d&apos;y revenir.
+        Le recrutement vous ouvre un espace privé, <b>une fois le paiement effectué, jamais
+        avant</b>. Toute la suite s&apos;y déroule : la conversation, le suivi, les résultats.
+        Vous n&apos;avez plus de raison d&apos;y revenir.
       </>
     ),
   },
@@ -199,8 +200,10 @@ const APRES_RECRUTEMENT = [
     titre: "Vous parlez à Sentio avant toute chose",
     texte: (
       <>
-        Pas de formulaire à remplir seul dans un coin : <b>Sentio vous pose les questions qui
-        comptent</b>, sur votre activité, vos objectifs, ce qui vous ralentit.
+        Pas de formulaire à remplir seul dans un coin : Sentio vous pose les questions qui
+        comptent, sur votre activité, vos objectifs, ce qui vous ralentit. <b>Vos réponses
+        restent hébergées en Europe</b>, protégées comme toute donnée sensible de votre
+        entreprise.
       </>
     ),
   },
