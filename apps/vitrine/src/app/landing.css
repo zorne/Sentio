@@ -341,6 +341,38 @@ html { scroll-behavior: smooth; }
 .lp-memo-fact { font-size: 14.5px; line-height: 1.55; color: var(--ink-2); }
 .lp-memo-fact b { color: var(--ink); font-weight: 500; }
 
+/* Une grille de 3 colonnes dont le compte de cellules n'est pas un multiple
+   de 3 laisse un dernier rang orphelin — des cases vides, pas un silence
+   voulu. `nth-child(3n+1)` ne cible que la cellule qui ouvre seule un
+   nouveau rang (position 1, 4, 7, 10…) : la règle ne s'active donc que
+   quand l'orphelin existe réellement, quel que soit le nombre total de
+   cellules d'une section donnée. On en fait un accent plutôt qu'un
+   rustinage — la seule cellule qui traverse toute la largeur devient de
+   fait la conclusion de la grille. */
+.lp-memo-cell:last-child:nth-child(3n+1) {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  gap: 32px;
+  border-left: 2px solid var(--mint-line);
+}
+.lp-memo-cell:last-child:nth-child(3n+1) .lp-memo-day {
+  flex: 0 0 auto;
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+.lp-memo-cell:last-child:nth-child(3n+1) .lp-memo-fact { max-width: 64ch; }
+@media (max-width: 860px) {
+  .lp-memo-cell:last-child:nth-child(3n+1) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    border-left: none;
+    border-top: 2px solid var(--mint-line);
+  }
+  .lp-memo-cell:last-child:nth-child(3n+1) .lp-memo-day { white-space: normal; }
+}
+
 /* Tarifs — trois paliers : chacun une génération d'employé différente */
 .lp-plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: stretch; }
 @media (max-width: 1000px) { .lp-plans { grid-template-columns: 1fr 1fr; } }
