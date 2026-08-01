@@ -13,6 +13,7 @@ const SECTIONS = [
   { id: "disponibilite", label: "Disponibilité" },
   { id: "reglage", label: "Réglage" },
   { id: "conseiller", label: "Conseiller" },
+  { id: "apres-recrutement", label: "Après" },
   { id: "retard", label: "Retard" },
   { id: "tarifs", label: "Tarifs" },
 ];

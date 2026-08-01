@@ -173,6 +173,84 @@ const REGLAGE = [
   },
 ];
 
+// ── Après le recrutement ────────────────────────────────────────────
+// Décrit le parcours voulu par le fondateur, pas ce que le produit fait
+// aujourd'hui : la conversation qui construit l'agent visuellement,
+// le choix parmi plusieurs profils, la fiche de résultats. Rien ici
+// n'est encore câblé — /plans (« Le déroulé ») décrit le parcours
+// RÉEL actuel (deux champs, pas de conversation, pas de choix). Les
+// deux textes divergent volontairement tant que celui-ci n'est pas
+// construit ; à réconcilier au moment de l'implémenter.
+const APRES_RECRUTEMENT = [
+  {
+    cle: "espace",
+    rang: "01 · Votre espace",
+    titre: "Vous quittez cette page, pour de bon",
+    texte: (
+      <>
+        Le recrutement vous ouvre un espace privé. Toute la suite <b>s&apos;y déroule</b> : la
+        conversation, le suivi, les résultats. Vous n&apos;avez plus de raison d&apos;y revenir.
+      </>
+    ),
+  },
+  {
+    cle: "conversation",
+    rang: "02 · La conversation",
+    titre: "Vous parlez à Sentio avant toute chose",
+    texte: (
+      <>
+        Pas de formulaire à remplir seul dans un coin : <b>Sentio vous pose les questions qui
+        comptent</b>, sur votre activité, vos objectifs, ce qui vous ralentit.
+      </>
+    ),
+  },
+  {
+    cle: "choix",
+    rang: "03 · Vous choisissez",
+    titre: "Sentio propose, vous décidez",
+    texte: (
+      <>
+        Selon vos réponses, plusieurs profils d&apos;employé se dessinent. <b>Vous choisissez
+        celui qui vous correspond</b>, jamais un catalogue imposé.
+      </>
+    ),
+  },
+  {
+    cle: "construction",
+    rang: "04 · Il se construit",
+    titre: "Vous le voyez prendre forme",
+    texte: (
+      <>
+        Une fois choisi, il se construit sous vos yeux. <b>Pas une ligne de code affichée</b>,
+        juste ce qu&apos;il devient, en train de se faire.
+      </>
+    ),
+  },
+  {
+    cle: "cadrage",
+    rang: "05 · Son terrain de jeu",
+    titre: "Vous lui donnez ce qui lui manque",
+    texte: (
+      <>
+        Le profil d&apos;un bon prospect chez vous, les informations qui comptent avant qu&apos;il
+        agisse. <b>Vous validez</b>, et il se met au travail.
+      </>
+    ),
+  },
+  {
+    cle: "resultats",
+    rang: "06 · Sa fiche, ses chiffres",
+    titre: "Vous voyez tout, sans avoir à demander",
+    texte: (
+      <>
+        Sa fiche de poste, le chiffre d&apos;affaires généré, son taux de conversion, les
+        prospects contactés et ceux réellement intéressés. <b>Aucun chiffre décoratif</b> : que
+        ce qui compte pour vous.
+      </>
+    ),
+  },
+];
+
 // ── Le retard ────────────────────────────────────────────────────────
 // Une conviction, annoncée comme telle. Aucune étude n'est citée parce
 // qu'aucune n'est vérifiée — et une statistique inventée sur ce sujet
@@ -320,6 +398,35 @@ export default function LandingPage() {
 
           <Reveal>
             <Advisor />
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── APRÈS LE RECRUTEMENT ────────────────────────────────────
+          Vision du fondateur, pas le comportement actuel du produit —
+          voir le commentaire au-dessus d'APRES_RECRUTEMENT. ──────────*/}
+      <section className="lp-sec" id="apres-recrutement">
+        <div className="lp-shell">
+          <Reveal className="lp-sec-head">
+            <span className="lp-mono">Après le recrutement</span>
+            <h2>Le recrutement n&apos;est que le premier geste.</h2>
+            <p>
+              Six étapes vous séparent d&apos;un employé qui travaille vraiment pour vous, de la
+              conversation qui le façonne à la fiche qui prouve son travail.
+            </p>
+          </Reveal>
+
+          <Reveal>
+            <div className="lp-memo">
+              {APRES_RECRUTEMENT.map((a) => (
+                <div className="lp-memo-cell" key={a.cle}>
+                  <div className="lp-memo-day">{a.rang}</div>
+                  <div className="lp-memo-fact">
+                    <b>{a.titre}.</b> {a.texte}
+                  </div>
+                </div>
+              ))}
+            </div>
           </Reveal>
         </div>
       </section>
