@@ -55,6 +55,38 @@ sur le *quoi*, la documentation gagne sur le *comment*.
 
 ---
 
+## La vitrine, et son déploiement
+
+`apps/vitrine` (Next.js 15) est **l'interface publique**, avec son noyau dans
+`packages/vitrine-core`. Elle vient d'un dépôt antérieur, fusionnée ici avec son historique.
+
+```bash
+pnpm --filter @sentio/vitrine dev     # http://localhost:3000
+pnpm --filter @sentio/vitrine build
+```
+
+**Sur Vercel**, l'espace de travail pnpm impose un réglage manuel, à faire une fois dans les
+paramètres du projet :
+
+| Réglage | Valeur |
+|---|---|
+| Root Directory | `apps/vitrine` |
+| Install Command | *(laisser vide — Vercel remonte à la racine de l'espace de travail)* |
+| Build Command | *(laisser vide — `next build` est détecté)* |
+
+Les variables d'environnement attendues sont listées dans
+[`apps/vitrine/.env.example`](apps/vitrine/.env.example). Deux pièges déjà payés :
+`SUPABASE_DB_URL` doit passer par le **pooler de transactions (port 6543)**, jamais par la
+connexion directe (5432) — Vercel ne route pas l'IPv6 ; et le déclencheur de prospection
+(`.github/workflows/prospect-cron.yml`) exige les secrets GitHub `SENTIA_APP_URL` et
+`CRON_SECRET`, le premier portant encore l'ancien nom de marque.
+
+Les migrations SQL de la vitrine vivent dans [`apps/vitrine/migrations/`](apps/vitrine/migrations)
+et **visent un projet Supabase distinct** de celui des lots 0 à 2 (`supabase/migrations/`). Les
+réunir est une décision à prendre, pas un détail d'intendance.
+
+---
+
 ## Vérifier
 
 Une seule commande définit « vérifié » : lint, frontières d'architecture, types, tests,

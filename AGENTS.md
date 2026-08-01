@@ -10,8 +10,19 @@ les invariants du produit. **Lis-le entièrement avant ta première modification
 Sentio vend des **employés numériques** : des collaborateurs autonomes spécialisés dans un
 métier, recrutés par une entreprise pour atteindre un objectif chiffré. L'architecture est un
 monolithe modulaire TypeScript, hébergé sur des tiers gratuits, avec Supabase (Postgres) comme
-base. Les lots 0 à 2 sont écrits — schéma, noyau, métier commercial ; l'interface, elle, n'existe
-pas encore.
+base. Les lots 0 à 2 sont écrits — schéma, noyau, métier commercial.
+
+**L'interface vit dans `apps/vitrine`** (Next.js 15), fusionnée depuis un dépôt antérieur et
+déployée sur Vercel, avec son propre noyau dans `packages/vitrine-core`. Elle ne partage encore
+rien avec `packages/core`, `domain`, `capabilities` ni `db` : ce sont deux ensembles cohérents
+côte à côte, et leur rapprochement est un chantier en soi, pas un effet de bord à provoquer au
+détour d'une tâche.
+
+⚠️ Conséquence à connaître avant d'écrire du texte visible : `apps/vitrine` **n'a pas de contrôle
+automatique de lexique**. L'ancienne vitrine SvelteKit tenait tout son texte dans un `labels.ts`
+que l'intégration continue relisait ; ce fichier a disparu avec elle. Le lexique de
+[`docs/17-lexique.md`](docs/17-lexique.md) s'applique toujours — il n'est simplement plus défendu
+par une machine. Écris-le juste du premier coup.
 
 Détail complet : [`docs/README.md`](docs/README.md).
 
