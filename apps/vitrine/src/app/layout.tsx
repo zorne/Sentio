@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { RouteFadeReset } from "@/components/RouteFadeReset";
+import { FullscreenToggle } from "@/components/FullscreenToggle";
 import "./globals.css";
 
 export const metadata = {
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <RouteFadeReset />
         {children}
+        <FullscreenToggle />
       </body>
     </html>
   );

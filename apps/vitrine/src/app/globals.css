@@ -210,6 +210,19 @@ section { padding: 48px 0; }
   color: var(--text-primary); font-family: inherit; font-size: 13.5px;
 }
 
+/* Bouton plein écran — flottant, présent sur toute l'application */
+.fs-toggle {
+  position: fixed; right: 20px; bottom: 20px; z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  width: 38px; height: 38px; border-radius: 50%;
+  background: var(--glass); border: 1px solid var(--border-default);
+  color: var(--text-tertiary); cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.fs-toggle:hover { color: var(--text-primary); border-color: var(--border-strong); background: var(--glass-hover); }
+@media (max-width: 640px) { .fs-toggle { right: 14px; bottom: 14px; } }
+
 /* Bouton retour de nav — cohérent avec les boutons ghost du dashboard */
 .nav-back {
   display: inline-flex; align-items: center; gap: 6px;
