@@ -33,13 +33,10 @@ export function Nav() {
       <div className="lp-shell lp-nav-in">
         <Link href="/" className="lp-brand">
           <Logomark size={18} />
-          SENTIA
+          Sentio
         </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Link href="/dashboard" className="lp-btn lp-btn--ghost lp-btn--sm">
-            Dashboard (test)
-          </Link>
-          <RecruitLink href="/onboarding" className="lp-btn lp-btn--ghost lp-btn--sm">
+          <RecruitLink href="/plans" className="lp-btn lp-btn--ghost lp-btn--sm">
             Recruter
           </RecruitLink>
         </div>
