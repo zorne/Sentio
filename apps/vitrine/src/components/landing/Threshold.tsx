@@ -54,14 +54,14 @@ export function Threshold() {
             <>
               Lire vos données, prendre des notes : il le fait seul. Envoyer un message à
               votre client, non. <em>Décidez maintenant : c’est exactement ce que vous
-              ferez chaque jour</em> — le temps de vérifier, un message après l’autre,
+              ferez chaque jour</em>, le temps de vérifier, un message après l’autre,
               qu’il n’écrit jamais rien de faux ni de maladroit.
             </>
           )}
           {verdict === "sent" && (
             <>
               Vous venez de vérifier vous-même qu’il n’a rien écrit de faux ni de
-              maladroit — c’est précisément le contrôle qui manque à un outil qui
+              maladroit. C’est précisément le contrôle qui manque à un outil qui
               agirait dans votre dos. Répétez-le autant de fois qu’il le faut. Puis,
               seulement si vous êtes convaincu, dites-lui de ne plus jamais demander
               pour les emails : la confiance se règle, elle ne se subit pas, et elle se
@@ -74,6 +74,12 @@ export function Threshold() {
               n’a eu lieu. C’est vous qui décidez du moment.
             </>
           )}
+        </p>
+
+        <p className="lp-th-note">
+          Exemple de démonstration, pas une garantie de résultat. Après le recrutement,
+          Sentio configure les messages, les capacités, les limites et la mémoire de votre
+          employé selon votre activité. Le vôtre ne travaillera pas exactement comme celui-ci.
         </p>
 
         <div className={`lp-th-mail${verdict ? " is-done" : ""}`}>
