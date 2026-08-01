@@ -336,7 +336,7 @@ export default function AgentHologram3D({ accent }: HologramPalette = {}) {
   return (
     <Canvas
       camera={{ position: [0, 0.1, 4.4], fov: 38 }}
-      dpr={[1, 2]}
+      dpr={[1, 1.5]}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       style={{ pointerEvents: "none" }}
     >

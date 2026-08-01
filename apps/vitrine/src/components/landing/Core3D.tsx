@@ -12,8 +12,14 @@
 // Choix de performance — tout est pensé pour ne jamais coûter :
 //   · nuage de points (pas de maillage) : quelques milliers de sommets
 //   · aucun post-processing, aucune ombre, aucune lumière dynamique
-//   · densité de pixels plafonnée à 1.5
+//   · densité de pixels plafonnée à 1.5 (le prop `dpr` avait dérivé à
+//     [1, 2] sans que ce commentaire ne bouge ; sur un écran Retina, un
+//     satellite de plus payé pour rien pendant tout le scroll)
 //   · la parallaxe curseur est lissée dans useFrame, sans re-rendu React
+//   · `active` (passé par CoreStage, via IntersectionObserver) coupe la
+//     boucle de rendu dès que le hero sort de l'écran — sans ça, la scène
+//     continue de tourner à plein régime pendant tout le reste du scroll,
+//     et dispute le budget d'image à chaque section suivante
 // ════════════════════════════════════════════════════════════════════
 
 import { useMemo, useRef } from "react";
@@ -256,13 +262,14 @@ function Parallax({ children }: { children: React.ReactNode }) {
   return <group ref={g}>{children}</group>;
 }
 
-export default function Core3D() {
+export default function Core3D({ active = true }: { active?: boolean }) {
   return (
     <Canvas
       camera={{ position: [0, 0, 4.6], fov: 42 }}
-      dpr={[1, 2]}
+      dpr={[1, 1.5]}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       style={{ pointerEvents: "none" }}
+      frameloop={active ? "always" : "never"}
     >
       {/* Le noyau couronne le titre plutôt que de le traverser. À 0.42 le
           cœur incandescent tombait au milieu du mot « travaille » et

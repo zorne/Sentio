@@ -519,7 +519,7 @@ html { scroll-behavior: smooth; }
   flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%;
   border: 1px solid var(--line-2); background: transparent; color: var(--ink-2);
   font-size: 16px; cursor: pointer;
-  transition: all 0.25s var(--ease);
+  transition: background 0.25s var(--ease), color 0.25s var(--ease), border-color 0.25s var(--ease);
 }
 .adv-send:hover:not(:disabled) { background: var(--ink); color: #060707; border-color: var(--ink); }
 .adv-send:disabled { opacity: 0.35; cursor: default; }
@@ -564,7 +564,7 @@ html { scroll-behavior: smooth; }
 .lp-sn-dot {
   width: 6px; height: 6px; border-radius: 50%;
   background: var(--ink-3); opacity: 0.4;
-  transition: all 0.3s var(--ease);
+  transition: background 0.3s var(--ease), opacity 0.3s var(--ease), box-shadow 0.3s var(--ease);
 }
 .lp-sn-lbl {
   font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
