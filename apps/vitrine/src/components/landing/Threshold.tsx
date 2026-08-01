@@ -54,13 +54,18 @@ export function Threshold() {
             <>
               Lire vos données, prendre des notes : il le fait seul. Envoyer un message à
               votre client, non. <em>Décidez maintenant : c’est exactement ce que vous
-              ferez chaque jour.</em>
+              ferez chaque jour</em> — le temps de vérifier, un message après l’autre,
+              qu’il n’écrit jamais rien de faux ni de maladroit.
             </>
           )}
           {verdict === "sent" && (
             <>
-              Vous pouvez aussi lui dire de ne plus jamais demander pour les emails. La
-              confiance se règle, elle ne se subit pas.
+              Vous venez de vérifier vous-même qu’il n’a rien écrit de faux ni de
+              maladroit — c’est précisément le contrôle qui manque à un outil qui
+              agirait dans votre dos. Répétez-le autant de fois qu’il le faut. Puis,
+              seulement si vous êtes convaincu, dites-lui de ne plus jamais demander
+              pour les emails : la confiance se règle, elle ne se subit pas, et elle se
+              retire aussi facilement qu’elle s’accorde.
             </>
           )}
           {verdict === "held" && (
