@@ -13,6 +13,8 @@ export default [
       "**/.svelte-kit/**",
       "**/build/**",
       "supabase/functions/_generated/**",
+      // Engendré par Next à chaque construction, jamais écrit à la main.
+      "apps/vitrine/next-env.d.ts",
     ],
   },
   {
@@ -28,7 +30,14 @@ export default [
     },
     rules: {
       ...tseslint.configs.recommended.rules,
-      "@typescript-eslint/no-unused-vars": "error",
+      // Le préfixe `_` est une déclaration d'intention, pas une échappatoire :
+      // il dit « ce paramètre est imposé par la signature et je ne m'en sers
+      // pas ». Sans lui, la seule façon de satisfaire la règle serait de
+      // casser la signature, ou de désactiver le contrôle ligne par ligne.
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },
+      ],
     },
   },
 ];

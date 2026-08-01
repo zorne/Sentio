@@ -11,7 +11,7 @@ import { ModelGateway } from "./gateway/index.js";
 import type { GenerateRequest, GenerateResult, ModelProvider, TenantCredential, CredentialResolver } from "./gateway/index.js";
 import { ContextAssembler } from "./context/index.js";
 import { ToolRegistry, ToolExecutor } from "./tools/index.js";
-import type { PolicyEngine, ToolAuditSink, Tool, ToolContext, PolicyDecision } from "./tools/index.js";
+import type { PolicyEngine, ToolAuditSink, Tool, PolicyDecision } from "./tools/index.js";
 import { RunJournal } from "./execution/index.js";
 import type { ExecutionStore, ExecutionEvent, StoredExecutionEvent } from "./execution/index.js";
 import { AgentRuntime } from "./runtime/index.js";

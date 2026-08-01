@@ -82,19 +82,13 @@ export interface CredentialResolver {
 
 export class GatewayError extends Error {}
 
-/**
- * LA RÈGLE D'OR (ADR-004/005) : des données réelles ne partent JAMAIS
- * vers un provider qui peut entraîner dessus. Défense par design, pas
- * une vérification qu'on oublie de faire ailleurs.
- */
-function assertDataPolicy(dataClass: DataClass, policy: DataPolicy): void {
-  if (dataClass === "real" && policy === "free") {
-    throw new GatewayError(
-      "Refus: données réelles vers un tier gratuit (peut entraîner sur les données). " +
-        "Configurez une clé 'no_train' pour ce tenant avant de traiter des données clients."
-    );
-  }
-}
+// LA RÈGLE D'OR (ADR-004/005) — des données réelles ne partent JAMAIS vers
+// un provider qui peut entraîner dessus — est appliquée dans generate() et
+// generateStream() ci-dessous, au moment de parcourir les identifiants.
+// Un helper `assertDataPolicy` vivait ici et n'était plus appelé : il
+// *levait* une erreur là où la boucle *saute* le provider et bascule sur le
+// suivant. Le garder aurait laissé croire à deux comportements pour une
+// seule règle ; c'est le repli silencieux qui est voulu.
 
 export class ModelGateway {
   private readonly providers = new Map<ProviderName, ModelProvider>();
