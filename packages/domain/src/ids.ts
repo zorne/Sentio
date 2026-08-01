@@ -14,6 +14,9 @@ export type EmployeeCapabilityId = Brand<string, "EmployeeCapabilityId">;
 export type CompanyProfileEntryId = Brand<string, "CompanyProfileEntryId">;
 export type LearnedFactId = Brand<string, "LearnedFactId">;
 
+export type LeadId = Brand<string, "LeadId">;
+export type SuppressionId = Brand<string, "SuppressionId">;
+
 export type ObjectiveId = Brand<string, "ObjectiveId">;
 export type TaskId = Brand<string, "TaskId">;
 export type JobId = Brand<string, "JobId">;

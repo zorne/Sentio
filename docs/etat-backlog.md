@@ -17,13 +17,13 @@
 
 ## Avancement
 
-**88 tâches sur 181** portent une preuve dans le dépôt.
+**89 tâches sur 181** portent une preuve dans le dépôt.
 
 | Lot | Fait | Total | |
 |---|---|---|---|
 | Fondations (Lot 0) | 38 | 38 | `████████████████████` |
 | Noyau (Lot 1) | 22 | 22 | `████████████████████` |
-| Métier Commercial (Lot 2) | 16 | 24 | `█████████████·······` |
+| Métier Commercial (Lot 2) | 17 | 24 | `██████████████······` |
 | Acquisition (Lot 4) | 4 | 24 | `███·················` |
 | Recrutement & Paiement (Lot 5) | 0 | 10 | `····················` |
 | Dashboard (Lot 6) | 0 | 21 | `····················` |
@@ -123,7 +123,7 @@
 | ✅ | **METIER-08** Capacité "envoyer un message de prospection" : contrat | P0 | [`supabase/migrations/20260729120039_adn_commercial_v1.sql`](../supabase/migrations/20260729120039_adn_commercial_v1.sql) |
 | ✅ | **METIER-09** Capacité "envoyer un message de prospection" : moteur (service d'envoi) | P0 | [`scripts/etat-du-backlog.mjs`](../scripts/etat-du-backlog.mjs) · [`packages/capabilities/src/email/send-message.ts`](../packages/capabilities/src/email/send-message.ts) |
 | ✅ | **METIER-10** Garde-fou : mention d'opposition obligatoire dans chaque message envoyé | P0 | [`scripts/etat-du-backlog.mjs`](../scripts/etat-du-backlog.mjs) · [`packages/capabilities/src/email/send-message.ts`](../packages/capabilities/src/email/send-message.ts) |
-| ☐ | **METIER-11** Garde-fou : respect immédiat des désinscriptions | P0 | — |
+| ✅ | **METIER-11** Garde-fou : respect immédiat des désinscriptions | P0 | [`packages/domain/src/optout.ts`](../packages/domain/src/optout.ts) |
 | ☐ | **METIER-12** Capacité "relancer un prospect" : contrat + moteur | P1 | — |
 | ☐ | **METIER-13** Capacité "mettre à jour une fiche CRM" : contrat + moteur | P0 | — |
 | ☐ | **METIER-14** Réflexion post-run spécifique au Commercial (0 à 3 faits par run) | P1 | — |
