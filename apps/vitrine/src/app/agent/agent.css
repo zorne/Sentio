@@ -1,0 +1,61 @@
+/* ════════════════════════════════════════════════════════════════════
+   /agent — même direction artistique que la landing (landing.css) :
+   sérif éditorial pour la voix humaine, mono pour les repères, mint pour
+   ce qui est vivant. Cette feuille n'ajoute que ce que la landing ne
+   couvre pas déjà (le noyau devient ici un hologramme, la mise en page
+   change), elle réutilise ses variables et animations (--ink, --mint,
+   --serif, @keyframes lp-rise) plutôt que de les redéfinir.
+   ════════════════════════════════════════════════════════════════════ */
+
+.agt-hero {
+  position: relative;
+  min-height: 100svh;
+  overflow: hidden;
+  padding: 130px 0 70px;
+}
+
+.agt-stage {
+  position: absolute;
+  top: 4vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(40vh, 340px);
+  height: min(62vh, 520px);
+  z-index: 0;
+  pointer-events: none;
+  mask-image: radial-gradient(ellipse 70% 74% at 50% 42%, #000 55%, transparent 92%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 74% at 50% 42%, #000 55%, transparent 92%);
+}
+.agt-stage canvas { display: block; width: 100% !important; height: 100% !important; }
+.agt-stage-fallback {
+  position: absolute; inset: 0; z-index: -1;
+  background: radial-gradient(ellipse 60% 60% at 50% 40%, rgba(46, 230, 245, 0.08), transparent 65%);
+}
+
+.agt-in {
+  position: relative; z-index: 2; text-align: center;
+  margin-top: min(58vh, 480px);
+}
+
+.agt-name {
+  font-family: var(--serif); font-weight: 400;
+  font-size: clamp(38px, 6.4vw, 72px); line-height: 1; letter-spacing: -0.03em;
+  margin: 14px 0 8px;
+  opacity: 0; animation: lp-rise 1.1s var(--ease) 0.38s forwards;
+}
+.agt-role {
+  font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--ink-3); margin: 0 0 40px;
+  opacity: 0; animation: lp-rise 1s var(--ease) 0.52s forwards;
+}
+.agt-err { color: #f8a5a5; font-size: 13px; margin-top: 16px; }
+.agt-in .lp-hero-sub { margin-top: 30px; }
+
+@media (max-width: 640px) {
+  .agt-stage { width: min(46vh, 260px); height: min(58vh, 420px); }
+  .agt-in { margin-top: min(54vh, 400px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agt-name, .agt-role { opacity: 1 !important; transform: none !important; animation: none !important; }
+}

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sentia-web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@employes-ia/web", "dev"],
+      "port": 3000
+    }
+  ]
+}
