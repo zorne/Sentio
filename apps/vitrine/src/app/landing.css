@@ -341,21 +341,6 @@ html { scroll-behavior: smooth; }
 .lp-memo-fact { font-size: 14.5px; line-height: 1.55; color: var(--ink-2); }
 .lp-memo-fact b { color: var(--ink); font-weight: 500; }
 
-/* Métiers — liste sobre, pas une grille de cartes */
-.lp-roles { border-top: 1px solid var(--line); }
-.lp-role {
-  display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: baseline;
-  padding: 24px 4px; border-bottom: 1px solid var(--line);
-  transition: padding-left 0.4s var(--ease), background 0.4s var(--ease);
-  text-decoration: none; color: inherit; cursor: pointer;
-}
-.lp-role:hover { padding-left: 14px; background: rgba(244, 245, 246, 0.014); }
-.lp-role-l { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }
-.lp-role-name { font-family: var(--serif); font-size: clamp(22px, 2.6vw, 32px); letter-spacing: -0.02em; }
-.lp-role-desc { font-size: 14px; color: var(--ink-3); }
-.lp-role-state { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.13em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
-.lp-role-state.is-live { color: var(--mint); }
-
 /* Tarifs — trois paliers : chacun une génération d'employé différente */
 .lp-plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: stretch; }
 @media (max-width: 1000px) { .lp-plans { grid-template-columns: 1fr 1fr; } }

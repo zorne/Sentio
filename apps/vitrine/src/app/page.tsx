@@ -118,6 +118,18 @@ const DISPONIBILITE = [
       </>
     ),
   },
+  {
+    cle: "vitesse",
+    rang: "Sa vitesse",
+    titre: "Il ne s'interrompt jamais",
+    texte: (
+      <>
+        Lire une fiche, comparer des prospects, rédiger une relance : un salarié fait ça entre
+        deux réunions, un appel, une pause café. <b>Lui va d&apos;un bout à l&apos;autre sans
+        détour</b>, la tâche entière en une seule fois.
+      </>
+    ),
+  },
 ];
 
 // ── Réglage ──────────────────────────────────────────────────────────
@@ -201,15 +213,6 @@ const RETARD = [
     ),
   },
 ];
-
-const ROLES = [
-  { slug: "commercial", name: "Commercial", desc: "Relance vos prospects, prépare vos rendez-vous.", live: true },
-  { slug: "support", name: "Support", desc: "Traite les demandes, documente les réponses.", live: false },
-  { slug: "comptabilite", name: "Comptabilité", desc: "Émet les factures, relance les impayés.", live: false },
-  { slug: "marketing", name: "Marketing", desc: "Rédige et planifie vos campagnes.", live: false },
-  { slug: "rh", name: "Ressources humaines", desc: "Trie les candidatures, organise les entretiens.", live: false },
-];
-
 
 export default function LandingPage() {
   return (
@@ -317,35 +320,6 @@ export default function LandingPage() {
 
           <Reveal>
             <Advisor />
-          </Reveal>
-        </div>
-      </section>
-
-      <section className="lp-sec" id="metiers">
-        <div className="lp-shell">
-          <Reveal className="lp-sec-head">
-            <span className="lp-mono">L&apos;équipe</span>
-            <h2>Un moteur. Une équipe entière.</h2>
-            <p>
-              Le commercial est en service aujourd&apos;hui. Les autres arrivent, et chacun se
-              recrute exactement comme le premier, sans rien réinstaller ni reconfigurer.
-            </p>
-          </Reveal>
-
-          <Reveal>
-            <div className="lp-roles">
-              {ROLES.map((r) => (
-                <RecruitLink href={`/plans?agent=${r.slug}`} className="lp-role" key={r.slug}>
-                  <div className="lp-role-l">
-                    <span className="lp-role-name">{r.name}</span>
-                    <span className="lp-role-desc">{r.desc}</span>
-                  </div>
-                  <span className={`lp-role-state${r.live ? " is-live" : ""}`}>
-                    {r.live ? "en service" : "bientôt"}
-                  </span>
-                </RecruitLink>
-              ))}
-            </div>
           </Reveal>
         </div>
       </section>
