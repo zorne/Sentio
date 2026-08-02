@@ -17,13 +17,13 @@
 
 ## Avancement
 
-**90 tâches sur 181** portent une preuve dans le dépôt.
+**91 tâches sur 181** portent une preuve dans le dépôt.
 
 | Lot | Fait | Total | |
 |---|---|---|---|
 | Fondations (Lot 0) | 38 | 38 | `████████████████████` |
 | Noyau (Lot 1) | 22 | 22 | `████████████████████` |
-| Métier Commercial (Lot 2) | 18 | 24 | `███████████████·····` |
+| Métier Commercial (Lot 2) | 19 | 24 | `████████████████····` |
 | Acquisition (Lot 4) | 4 | 24 | `███·················` |
 | Recrutement & Paiement (Lot 5) | 0 | 10 | `····················` |
 | Dashboard (Lot 6) | 0 | 21 | `····················` |
@@ -130,7 +130,7 @@
 | ☐ | **METIER-15** Variantes de stratégie du Commercial (angles d'accroche, moments de relance) | P1 | — |
 | ✅ | **METIER-16** Migration : table suppression_entry (exclusions par entreprise - clients, concurrents, comptes sensibles) | P0 | [`supabase/migrations/20260729120038_prospection.sql`](../supabase/migrations/20260729120038_prospection.sql) |
 | ✅ | **METIER-17** Garde-fou : vérification des exclusions avant tout envoi (bloquant, pas consultatif) | P0 | [`supabase/migrations/20260729120038_prospection.sql`](../supabase/migrations/20260729120038_prospection.sql) |
-| ☐ | **METIER-18** Vérification de l'authentification du domaine d'envoi (SPF, DKIM, DMARC) à l'onboarding | P0 | — |
+| ✅ | **METIER-18** Vérification de l'authentification du domaine d'envoi (SPF, DKIM, DMARC) à l'onboarding | P0 | [`packages/capabilities/src/email/domain-auth.ts`](../packages/capabilities/src/email/domain-auth.ts) |
 | ✅ | **METIER-19** Montée en charge progressive du volume d'envoi sur un domaine neuf | P0 | [`supabase/migrations/20260729120038_prospection.sql`](../supabase/migrations/20260729120038_prospection.sql) |
 | ✅ | **METIER-20** Plafond dur de volume d'envoi par employé et par jour | P0 | [`supabase/migrations/20260729120038_prospection.sql`](../supabase/migrations/20260729120038_prospection.sql) |
 | ✅ | **METIER-21** Surveillance des taux de rebond et de plainte, avec suspension automatique au seuil | P0 | [`packages/capabilities/src/email/reputation.ts`](../packages/capabilities/src/email/reputation.ts) |
