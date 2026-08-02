@@ -17,13 +17,13 @@
 
 ## Avancement
 
-**89 tâches sur 181** portent une preuve dans le dépôt.
+**90 tâches sur 181** portent une preuve dans le dépôt.
 
 | Lot | Fait | Total | |
 |---|---|---|---|
 | Fondations (Lot 0) | 38 | 38 | `████████████████████` |
 | Noyau (Lot 1) | 22 | 22 | `████████████████████` |
-| Métier Commercial (Lot 2) | 17 | 24 | `██████████████······` |
+| Métier Commercial (Lot 2) | 18 | 24 | `███████████████·····` |
 | Acquisition (Lot 4) | 4 | 24 | `███·················` |
 | Recrutement & Paiement (Lot 5) | 0 | 10 | `····················` |
 | Dashboard (Lot 6) | 0 | 21 | `····················` |
@@ -125,7 +125,7 @@
 | ✅ | **METIER-10** Garde-fou : mention d'opposition obligatoire dans chaque message envoyé | P0 | [`scripts/etat-du-backlog.mjs`](../scripts/etat-du-backlog.mjs) · [`packages/capabilities/src/email/send-message.ts`](../packages/capabilities/src/email/send-message.ts) |
 | ✅ | **METIER-11** Garde-fou : respect immédiat des désinscriptions | P0 | [`packages/domain/src/optout.ts`](../packages/domain/src/optout.ts) |
 | ☐ | **METIER-12** Capacité "relancer un prospect" : contrat + moteur | P1 | — |
-| ☐ | **METIER-13** Capacité "mettre à jour une fiche CRM" : contrat + moteur | P0 | — |
+| ✅ | **METIER-13** Capacité "mettre à jour une fiche CRM" : contrat + moteur | P0 | [`packages/capabilities/src/prospects/update-fiche.ts`](../packages/capabilities/src/prospects/update-fiche.ts) |
 | ☐ | **METIER-14** Réflexion post-run spécifique au Commercial (0 à 3 faits par run) | P1 | — |
 | ☐ | **METIER-15** Variantes de stratégie du Commercial (angles d'accroche, moments de relance) | P1 | — |
 | ✅ | **METIER-16** Migration : table suppression_entry (exclusions par entreprise - clients, concurrents, comptes sensibles) | P0 | [`supabase/migrations/20260729120038_prospection.sql`](../supabase/migrations/20260729120038_prospection.sql) |
