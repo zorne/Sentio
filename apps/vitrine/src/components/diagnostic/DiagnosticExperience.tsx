@@ -28,6 +28,11 @@ import { diagnosticTurn, type DiagnosticMessage, type EmployeePresentation } fro
 
 const OUVERTURE = "Parlez-moi de votre entreprise.";
 
+// Un exemple concret vaut mieux qu'une consigne : plutôt que d'expliquer ce qu'on attend, le
+// placeholder du tout premier champ montre le format — quelques faits, pas un historique.
+const EXEMPLE_PLACEHOLDER =
+  "Ex. : une menuiserie de 8 personnes, on perd des devis faute de relance…";
+
 type Exchange = { readonly question: string; readonly answer: string };
 
 type Phase =
@@ -157,7 +162,7 @@ export function DiagnosticExperience() {
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={onKeyDown}
-          placeholder="Écrivez votre réponse…"
+          placeholder={trail.length === 0 ? EXEMPLE_PLACEHOLDER : "Écrivez votre réponse…"}
           rows={1}
           disabled={phase.kind === "thinking"}
         />
@@ -171,7 +176,10 @@ export function DiagnosticExperience() {
         </button>
       </div>
       {trail.length === 0 && phase.kind !== "thinking" && (
-        <p className="diag-hint">L&apos;essentiel suffit — quelques phrases valent mieux qu&apos;un historique complet.</p>
+        <p className="diag-hint">
+          Rien n&apos;est conservé. Ce que vous dites sert uniquement, et tout de suite, à calibrer
+          l&apos;employé numérique qu&apos;on va vous présenter.
+        </p>
       )}
     </div>
   );
