@@ -4,16 +4,19 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@sentio/domain": "workspace:*",
     "dotenv": "^16.4.0",
     "pg": "^8.13.0",
     "resend": "^6.18.0"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",
-    "@types/pg": "^8.11.0"
+    "@types/pg": "^8.11.0",
+    "vitest": "^2.1.8"
   },
   "exports": {
     "./gateway": "./src/gateway/index.ts",
@@ -26,6 +29,7 @@
     "./policy": "./src/policy/index.ts",
     "./memory": "./src/memory/index.ts",
     "./advisor": "./src/advisor/index.ts",
+    "./diagnostic": "./src/diagnostic/index.ts",
     "./wiring": "./src/wiring.ts"
   }
 }

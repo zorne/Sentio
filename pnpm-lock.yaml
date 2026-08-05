@@ -178,6 +178,9 @@ importers:
 
   packages/vitrine-core:
     dependencies:
+      '@sentio/domain':
+        specifier: workspace:*
+        version: link:../domain
       dotenv:
         specifier: ^16.4.0
         version: 16.6.1
@@ -194,6 +197,9 @@ importers:
       '@types/pg':
         specifier: ^8.11.0
         version: 8.20.0
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@26.1.2)
 
 packages:
 
