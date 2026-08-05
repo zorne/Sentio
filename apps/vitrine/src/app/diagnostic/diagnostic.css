@@ -87,6 +87,11 @@
 .diag-send:hover:not(:disabled) { background: var(--ink); color: #060707; border-color: var(--ink); }
 .diag-send:disabled { opacity: 0.3; cursor: default; }
 
+.diag-hint {
+  margin-top: 16px; font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+  letter-spacing: 0.02em; animation: lp-rise 0.8s var(--ease) 0.3s backwards;
+}
+
 .diag-back {
   margin-top: 28px; font-family: var(--mono); font-size: 12px; color: var(--ink-3);
   text-decoration: none; letter-spacing: 0.04em;

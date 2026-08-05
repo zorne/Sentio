@@ -170,6 +170,9 @@ export function DiagnosticExperience() {
           →
         </button>
       </div>
+      {trail.length === 0 && phase.kind !== "thinking" && (
+        <p className="diag-hint">L&apos;essentiel suffit — quelques phrases valent mieux qu&apos;un historique complet.</p>
+      )}
     </div>
   );
 }
