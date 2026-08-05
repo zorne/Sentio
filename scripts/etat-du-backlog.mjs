@@ -41,8 +41,13 @@ const RACINES = [
   ".github",
 ];
 
-const EXCLUS = ["node_modules", "_generated", ".svelte-kit", "/build/", "dist"];
-const EXTENSIONS = [".ts", ".svelte", ".sql", ".mjs", ".js", ".sh", ".yml", ".yaml", ".toml"];
+// .next : sortie de construction de la vitrine Next.js — jamais commitée (.gitignore), donc
+// jamais une preuve stable. Sans cette exclusion, une déclaration s'y retrouve recopiée par le
+// bundler et « prouve » une tâche avec un lien qui casse au prochain `rm -rf .next`.
+const EXCLUS = ["node_modules", "_generated", ".svelte-kit", ".next", "/build/", "dist"];
+// .tsx : la vitrine est passée de SvelteKit à Next.js/React (fusion du dépôt employer-ia) sans
+// que cette liste ne bouge — aucun composant React ne pouvait donc jamais déclarer une tâche.
+const EXTENSIONS = [".ts", ".tsx", ".svelte", ".sql", ".mjs", ".js", ".sh", ".yml", ".yaml", ".toml"];
 
 /** Deux fichiers de racine portent aussi une déclaration : l'espace de travail et le CLI. */
 const FICHIERS_EXPLICITES = ["pnpm-workspace.yaml", "supabase/config.toml"];

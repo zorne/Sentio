@@ -19,6 +19,9 @@ import { ModelGateway } from "../gateway/index.js";
 import type { ConversationTurn, CredentialResolver, TenantCredential } from "../gateway/index.js";
 import { GroqProvider } from "../gateway/providers/groq.js";
 import { buildDiagnosticSystemPrompt, EXTRACTION_TOOL } from "./prompt.js";
+import { buildPresentationPrompt, PRESENTATION_TOOL, type PresentEmployeeDeps } from "./presentation.js";
+
+export { presentEmployee, type EmployeePresentation } from "./presentation.js";
 
 const PLATFORM_TENANT = "platform-diagnostic";
 
@@ -136,5 +139,31 @@ export function createModelConverse(gateway: ModelGateway): DiagnosticStepDeps["
     const call = result.toolCalls.find((c) => c.name === EXTRACTION_TOOL.name);
     if (call) return { candidate: call.input };
     return { reply: result.text };
+  };
+}
+
+/** L'implémentation réelle de `PresentEmployeeDeps["present"]` — même gateway, un second appel,
+ *  system prompt dédié (`buildPresentationPrompt`). Non testée ici pour la même raison que
+ *  `createModelConverse` : c'est `presentEmployee`, injecté d'un faux `present`, qui porte les
+ *  tests de comportement (repli, nettoyage des champs). */
+export function createModelPresent(gateway: ModelGateway): PresentEmployeeDeps["present"] {
+  return async ({ calibration, grounds }) => {
+    const result = await gateway.generate({
+      tenantId: PLATFORM_TENANT,
+      dataClass: "test",
+      system: buildPresentationPrompt(),
+      messages: [
+        {
+          kind: "text",
+          role: "user",
+          content: JSON.stringify({ calibration, grounds }),
+        },
+      ],
+      tools: [PRESENTATION_TOOL],
+      maxTokens: 600,
+    });
+
+    const call = result.toolCalls.find((c) => c.name === PRESENTATION_TOOL.name);
+    return call?.input ?? null;
   };
 }

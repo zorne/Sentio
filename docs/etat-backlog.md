@@ -17,14 +17,14 @@
 
 ## Avancement
 
-**91 tâches sur 181** portent une preuve dans le dépôt.
+**94 tâches sur 181** portent une preuve dans le dépôt.
 
 | Lot | Fait | Total | |
 |---|---|---|---|
 | Fondations (Lot 0) | 38 | 38 | `████████████████████` |
 | Noyau (Lot 1) | 22 | 22 | `████████████████████` |
 | Métier Commercial (Lot 2) | 19 | 24 | `████████████████····` |
-| Acquisition (Lot 4) | 4 | 24 | `███·················` |
+| Acquisition (Lot 4) | 7 | 24 | `██████··············` |
 | Recrutement & Paiement (Lot 5) | 0 | 10 | `····················` |
 | Dashboard (Lot 6) | 0 | 21 | `····················` |
 | Exécution autonome (Lot 3) | 0 | 15 | `····················` |
@@ -153,16 +153,16 @@
 | ☐ | **ACQUIS-09** Page légale : politique de confidentialité | P0 | — |
 | ☐ | **ACQUIS-10** Page légale : politique de cookies | P1 | — |
 | ☐ | **ACQUIS-11** Page légale : formulaire de demande RGPD (accès/effacement/contestation) | P0 | — |
-| ☐ | **ACQUIS-12** Composant de conversation de diagnostic (aller-retour direct au Model Gateway) | P0 | — |
+| ✅ | **ACQUIS-12** Composant de conversation de diagnostic (aller-retour direct au Model Gateway) | P0 | [`apps/vitrine/src/components/diagnostic/DiagnosticExperience.tsx`](../apps/vitrine/src/components/diagnostic/DiagnosticExperience.tsx) |
 | ✅ | **ACQUIS-13** Extraction de profil structuré depuis la conversation de diagnostic | P0 | [`scripts/etat-du-backlog.mjs`](../scripts/etat-du-backlog.mjs) · [`packages/domain/src/diagnostic-request.ts`](../packages/domain/src/diagnostic-request.ts) |
 | ✅ | **ACQUIS-14** Moteur de règles déterministe (frein + situation → calibrage de l'employé) | P0 | [`scripts/etat-du-backlog.mjs`](../scripts/etat-du-backlog.mjs) · [`packages/domain/src/recommendation.ts`](../packages/domain/src/recommendation.ts) |
-| ☐ | **ACQUIS-15** Génération de la justification de recommandation par le modèle | P0 | — |
+| ✅ | **ACQUIS-15** Génération de la justification de recommandation par le modèle | P0 | [`packages/vitrine-core/src/diagnostic/presentation.ts`](../packages/vitrine-core/src/diagnostic/presentation.ts) |
 | ☐ | **ACQUIS-21** Questions de calibrage du diagnostic, bornées à ce que les capacités savent faire | P0 | — |
 | ☐ | **ACQUIS-22** Écriture du calibrage dans le profil entreprise et les capacités actives (jamais l'ADN) | P0 | — |
 | ☐ | **ACQUIS-23** Identification du secteur du client pendant le diagnostic | P0 | — |
 | ☐ | **ACQUIS-24** Sélection du profil sectoriel par le moteur déterministe, message honnête si aucun ne correspond | P0 | — |
 | ☐ | **ACQUIS-16** Cas "besoin hors périmètre détecté" : message honnête + liste d'attente | P0 | — |
-| ☐ | **ACQUIS-17** Limitation par visiteur et par adresse sur le diagnostic public | P0 | — |
+| ✅ | **ACQUIS-17** Limitation par visiteur et par adresse sur le diagnostic public | P0 | [`apps/vitrine/src/lib/diagnostic-rate-limit.ts`](../apps/vitrine/src/lib/diagnostic-rate-limit.ts) |
 | ☐ | **ACQUIS-18** Enveloppe d'inférence dédiée au diagnostic public (plafond appliqué) | P0 | — |
 | ✅ | **ACQUIS-19** Jeu de conversations de référence pour le diagnostic | P1 | [`packages/domain/src/recommendation.test.ts`](../packages/domain/src/recommendation.test.ts) |
 | ✅ | **ACQUIS-20** Test de non-régression rejouant le jeu de référence à chaque modification de prompt | P1 | [`packages/domain/src/recommendation.test.ts`](../packages/domain/src/recommendation.test.ts) |

@@ -1,0 +1,147 @@
+/* ════════════════════════════════════════════════════════════════════
+   /diagnostic — réutilise --void, --ink, --ink-2, --ink-3, --mint,
+   --line, --serif, --mono, --ease, @keyframes lp-rise/lp-pulse de
+   landing.css. N'ajoute que la mise en page propre à cette expérience.
+
+   Un principe tient toute la feuille : UNE ligne de Sentio à l'écran à
+   la fois, grande, sérif. Pas de bulles de chat, pas d'avatar, pas
+   d'horodatage — la conversation passée s'estompe en traînée, elle ne
+   s'empile pas.
+   ════════════════════════════════════════════════════════════════════ */
+
+.diag-page {
+  min-height: 100svh; background: var(--void); color: var(--ink);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 100px 24px 60px;
+  position: relative;
+}
+
+.diag-brand {
+  position: fixed; top: 28px; left: 28px; z-index: 10;
+  display: inline-flex; align-items: center; gap: 9px;
+  font-family: var(--serif); font-size: 17px; color: var(--ink-2); text-decoration: none;
+  transition: color 0.3s var(--ease);
+}
+.diag-brand:hover { color: var(--ink); }
+
+.diag-stage {
+  width: 100%; max-width: 620px;
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center;
+}
+
+/* ── La traînée — le passé de la conversation, jamais un journal ───── */
+.diag-trail {
+  display: flex; flex-direction: column; gap: 18px; margin-bottom: 40px;
+  width: 100%;
+}
+.diag-trail-item { transition: opacity 0.6s var(--ease); }
+.diag-trail-q {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; color: var(--ink-3);
+  margin-bottom: 4px;
+}
+.diag-trail-a {
+  font-family: var(--serif); font-size: 15px; color: var(--ink-2); font-style: italic;
+  line-height: 1.4;
+}
+
+/* ── La ligne courante — le même vocabulaire que le Seuil (lp-th-title) ── */
+.diag-line {
+  font-family: var(--serif); font-weight: 400;
+  font-size: clamp(26px, 4.4vw, 42px); line-height: 1.2; letter-spacing: -0.02em;
+  margin-bottom: 40px;
+  animation: lp-rise 0.7s var(--ease);
+}
+
+.diag-thinking {
+  display: flex; gap: 8px; justify-content: center; margin-bottom: 40px; height: 46px;
+  align-items: center;
+}
+.diag-thinking span {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--mint); opacity: 0.4;
+  animation: lp-pulse 1.6s ease-in-out infinite;
+}
+.diag-thinking span:nth-child(2) { animation-delay: 0.2s; }
+.diag-thinking span:nth-child(3) { animation-delay: 0.4s; }
+
+/* ── La réponse — une ligne d'écriture, jamais une boîte de chat ───── */
+.diag-input-row {
+  width: 100%; display: flex; align-items: flex-end; gap: 14px;
+  border-bottom: 1px solid var(--line); padding-bottom: 14px;
+  transition: border-color 0.3s var(--ease);
+}
+.diag-input-row:focus-within { border-color: var(--mint-line); }
+.diag-input {
+  flex: 1; background: transparent; border: none; outline: none; resize: none;
+  font-family: var(--serif); font-size: 18px; color: var(--ink); line-height: 1.5;
+  min-height: 28px; max-height: 200px; text-align: center;
+}
+.diag-input::placeholder { color: var(--ink-3); }
+.diag-input:disabled { opacity: 0.4; }
+.diag-send {
+  flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%;
+  border: 1px solid var(--line-2); background: transparent; color: var(--ink-2);
+  font-size: 16px; cursor: pointer; margin-bottom: 3px;
+  transition: background 0.25s var(--ease), color 0.25s var(--ease), border-color 0.25s var(--ease);
+}
+.diag-send:hover:not(:disabled) { background: var(--ink); color: #060707; border-color: var(--ink); }
+.diag-send:disabled { opacity: 0.3; cursor: default; }
+
+.diag-back {
+  margin-top: 28px; font-family: var(--mono); font-size: 12px; color: var(--ink-3);
+  text-decoration: none; letter-spacing: 0.04em;
+  transition: color 0.3s var(--ease);
+}
+.diag-back:hover { color: var(--ink); }
+
+/* ── La présentation — rupture volontaire avec tout ce qui précède ─── */
+.diag-present {
+  width: 100%; max-width: 560px; text-align: center;
+  animation: lp-rise 0.9s var(--ease);
+}
+.diag-present-eyebrow {
+  display: block; font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--mint); margin-bottom: 22px;
+}
+.diag-present-name {
+  font-family: var(--serif); font-weight: 400;
+  font-size: clamp(48px, 8vw, 84px); line-height: 1; letter-spacing: -0.03em;
+  margin-bottom: 10px;
+}
+.diag-present-title {
+  font-family: var(--serif); font-style: italic; color: var(--ink-2);
+  font-size: clamp(17px, 2vw, 21px); margin-bottom: 48px;
+}
+.diag-present-block { margin-bottom: 34px; text-align: left; }
+.diag-present-label {
+  display: block; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--ink-3); margin-bottom: 10px;
+}
+.diag-present-mission {
+  font-family: var(--serif); font-size: clamp(19px, 2.2vw, 24px); line-height: 1.4; color: var(--ink);
+}
+.diag-present-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.diag-present-list li {
+  font-size: 15px; line-height: 1.5; color: var(--ink-2); padding-left: 18px; position: relative;
+}
+.diag-present-list li::before {
+  content: ""; position: absolute; left: 0; top: 9px; width: 5px; height: 5px;
+  border-radius: 50%; background: var(--mint);
+}
+.diag-present-why {
+  font-size: 15.5px; line-height: 1.65; color: var(--ink-2); text-align: left; margin-bottom: 18px;
+}
+.diag-present-outcome {
+  font-size: 15.5px; line-height: 1.65; color: var(--ink); text-align: left; margin-bottom: 44px;
+  font-weight: 500;
+}
+.diag-present-cta { display: inline-flex; }
+
+@media (max-width: 640px) {
+  .diag-page { padding: 88px 20px 40px; }
+  .diag-input { text-align: left; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .diag-line, .diag-present, .diag-thinking span { animation: none !important; }
+}
