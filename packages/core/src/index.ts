@@ -22,4 +22,5 @@ export * from "./journal/vocabulaire.js";
 export * from "./journal/trace.js";
 export * from "./journal/run-state.js";
 export * from "./runtime/next-action.js";
+export * from "./runtime/execute-action.js";
 export * from "./idempotency.js";

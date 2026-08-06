@@ -17,6 +17,7 @@ export * from "./next-step.js";
 export * from "./adapters/ledger.js";
 export * from "./adapters/approvals.js";
 export * from "./adapters/autonomy.js";
+export * from "./adapters/effects.js";
 export * from "./adapters/journal.js";
 export * from "./adapters/sending.js";
 export * from "./adapters/reputation.js";

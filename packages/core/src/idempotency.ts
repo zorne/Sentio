@@ -16,16 +16,29 @@
 
 import { createHash } from "node:crypto";
 
+/**
+ * L'empreinte d'un EFFET, pas d'un pas de run.
+ *
+ * ⚠️ **Correction EXEC-06.** L'empreinte incluait `taskId` et `step`. Elle répondait donc à
+ * « ce run est-il déjà passé par ici ? » — et pas à la seule question qui protège le prospect :
+ * « cet effet a-t-il déjà eu lieu ? ». Deux runs, ou deux tâches, qui décidaient d'écrire au
+ * même prospect le même message produisaient deux clés différentes, donc **deux emails**. La
+ * contrainte d'unicité en base ne voyait rien à refuser.
+ *
+ * Ce qui identifie un effet, c'est l'entreprise, la capacité, et ce que l'action va réellement
+ * faire — jamais le chemin par lequel on y est arrivé.
+ *
+ * Une relance légitime n'est pas bloquée par ce choix : elle porte un contenu ou une date
+ * différents, donc un effet différent. Ce qui est bloqué, c'est le rejeu à l'identique — qui est
+ * précisément ce qu'une panne produit.
+ */
 export interface ActionFingerprint {
   readonly tenantId: string;
-  readonly taskId: string;
-  /** Numéro du pas dans le run : deux pas différents sont deux actions différentes. */
-  readonly step: number;
   readonly capabilityKey: string;
   /**
    * Ce qui identifie l'effet lui-même — destinataire, référence, contenu. Deux envois au même
-   * prospect dans le même pas sont le **même** envoi ; deux destinataires différents sont deux
-   * actions.
+   * prospect avec le même message sont le **même** envoi ; deux destinataires différents sont
+   * deux actions.
    */
   readonly effect: unknown;
 }
@@ -37,8 +50,6 @@ export interface ActionFingerprint {
 export function idempotencyKeyFor(fingerprint: ActionFingerprint): string {
   const canonical = JSON.stringify([
     fingerprint.tenantId,
-    fingerprint.taskId,
-    fingerprint.step,
     fingerprint.capabilityKey,
     stableStringify(fingerprint.effect),
   ]);

@@ -14,8 +14,27 @@
 export const RUN_DEMARRE = "run_demarre";
 /** Le modèle a choisi une action. Aucun effet extérieur : pas de clé d'idempotence. */
 export const ACTION_DECIDEE = "action_decidee";
-/** L'action a produit son effet. Porte TOUJOURS une clé d'idempotence si l'effet est extérieur. */
+/**
+ * L'action est **engagée** : écrit AVANT le moindre effet, et porte la clé d'idempotence.
+ *
+ * C'est la pièce qui rend une interruption survivable. La clé vit ici, et sur cette ligne seule
+ * — la contrainte `unique (tenant_id, idempotency_key)` fait donc que deux workers ne peuvent
+ * pas engager le même effet, quoi qu'ils décident chacun de leur côté. Écrire cette ligne
+ * d'abord garantit aussi qu'**il ne peut pas exister d'effet sans trace** : au pire une trace
+ * sans effet, ce qui se rattrape ; jamais l'inverse, qui ne se rattrape pas.
+ */
+export const ACTION_ENGAGEE = "action_engagee";
+/**
+ * L'action a produit son effet, et voici son résultat.
+ *
+ * Ne porte **pas** la clé d'idempotence — elle est déjà sur `action_engagee`, et l'unicité
+ * refuserait la seconde ligne. La clé est reprise dans la charge utile pour rattacher le
+ * résultat à son engagement.
+ */
 export const ACTION_EXECUTEE = "action_executee";
+/** L'action a échoué. Transitoire ou définitif : la charge le dit, et c'est ce qui décide si le
+ *  pas suivant a le droit de réessayer. */
+export const ACTION_ECHOUEE = "action_echouee";
 /** Le Policy Engine a suspendu l'action : elle attend un accord humain. */
 export const POLITIQUE_SUSPEND = "politique_suspend";
 /** L'humain a accordé. Le run repart. */
@@ -30,7 +49,9 @@ export const RUN_ECHOUE = "run_echoue";
 export const NATURES_CONNUES = [
   RUN_DEMARRE,
   ACTION_DECIDEE,
+  ACTION_ENGAGEE,
   ACTION_EXECUTEE,
+  ACTION_ECHOUEE,
   POLITIQUE_SUSPEND,
   ACCORD_ACCORDE,
   ACCORD_REFUSE,

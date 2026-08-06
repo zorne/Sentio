@@ -17,7 +17,7 @@
 
 ## Avancement
 
-**99 tâches sur 182** portent une preuve dans le dépôt.
+**100 tâches sur 182** portent une preuve dans le dépôt.
 
 | Lot | Fait | Total | |
 |---|---|---|---|
@@ -27,7 +27,7 @@
 | Acquisition (Lot 4) | 7 | 24 | `██████··············` |
 | Recrutement & Paiement (Lot 5) | 0 | 10 | `····················` |
 | Dashboard (Lot 6) | 0 | 21 | `····················` |
-| Exécution autonome (Lot 3) | 5 | 16 | `██████··············` |
+| Exécution autonome (Lot 3) | 6 | 16 | `████████············` |
 | Évolution (Lot 7) | 0 | 8 | `····················` |
 | Conformité & Lancement (Lot 8) | 1 | 10 | `██··················` |
 | Vérification (transverse) | 7 | 9 | `████████████████····` |
@@ -223,7 +223,7 @@
 | ✅ | **EXEC-03** Runtime : appeler l'assemblage de contexte pour le pas courant | P0 | [`apps/worker/src/step-context.ts`](../apps/worker/src/step-context.ts) |
 | ✅ | **EXEC-04** Runtime : demander la prochaine action au Model Gateway | P0 | [`packages/core/src/runtime/next-action.ts`](../packages/core/src/runtime/next-action.ts) |
 | ✅ | **EXEC-05** Runtime : soumettre l'action au Policy Engine | P0 | [`apps/worker/src/next-step.ts`](../apps/worker/src/next-step.ts) · [`supabase/migrations/20260806120002_autonomie_et_accords.sql`](../supabase/migrations/20260806120002_autonomie_et_accords.sql) |
-| ☐ | **EXEC-06** Runtime : exécuter l'action ou suspendre selon la décision de politique | P0 | — |
+| ✅ | **EXEC-06** Runtime : exécuter l'action ou suspendre selon la décision de politique | P0 | [`packages/core/src/runtime/execute-action.ts`](../packages/core/src/runtime/execute-action.ts) |
 | ☐ | **EXEC-07** Runtime : écrire l'événement d'exécution au journal | P0 | — |
 | ☐ | **EXEC-08** Runtime : replanifier le pas suivant ou terminer le run | P0 | — |
 | ☐ | **EXEC-09** Reprise après interruption (reconstruction d'état depuis le journal) | P0 | — |

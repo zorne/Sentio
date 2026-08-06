@@ -45,6 +45,8 @@ import {
   ACCORD_ACCORDE,
   ACCORD_REFUSE,
   ACTION_DECIDEE,
+  ACTION_ECHOUEE,
+  ACTION_ENGAGEE,
   ACTION_EXECUTEE,
   NATURES_TERMINALES,
   POLITIQUE_SUSPEND,
@@ -76,6 +78,14 @@ export interface EtatRun {
   readonly actionEnAttente: unknown;
   /** Clés d'idempotence déjà consommées : ce qui a été fait ne se refait pas. */
   readonly effetsDejaProduits: ReadonlySet<string>;
+  /**
+   * Effets **engagés sans résultat connu** — l'action a été réservée, puis plus rien.
+   *
+   * C'est l'état laissé par une interruption entre l'engagement et l'enregistrement du résultat,
+   * et c'est le seul cas où l'on ne sait pas si le monde extérieur a bougé. Il n'est pas rendu
+   * pour information : c'est lui qui interdit de réessayer un effet irréversible (EXEC-06).
+   */
+  readonly effetsEngagesSansResultat: ReadonlySet<string>;
 }
 
 export type NatureAnomalie =
@@ -122,7 +132,15 @@ const ETAT_VIDE: EtatRun = {
   reprendreApres: null,
   actionEnAttente: null,
   effetsDejaProduits: new Set(),
+  effetsEngagesSansResultat: new Set(),
 };
+
+/** La clé que porte un résultat ou un échec, pour le rattacher à son engagement. Elle vit dans
+ *  la charge utile et non dans `idempotency_key`, que l'unicité réserve à l'engagement seul. */
+function cleRattachee(payload: unknown): string {
+  const charge = payload as { cle?: unknown } | null;
+  return typeof charge?.cle === "string" ? charge.cle : "";
+}
 
 /** Trie sur `seq` seul. Aucun départage : deux rangs égaux sont une anomalie, pas un cas à gérer. */
 function parRang(entrees: readonly JournalEntry[]): JournalEntry[] {
@@ -173,6 +191,9 @@ export function reconstruireEtatRun(entrees: readonly JournalEntry[]): Reconstru
   let actionsExecutees = 0;
   let actionEnAttente: unknown = null;
   const effets = new Set<string>();
+  // Engagés, puis refermés par un résultat ou un échec. Ce qui reste à la fin est ce dont on ne
+  // sait rien — et dont on ne DOIT rien supposer.
+  const enSuspens = new Set<string>();
   let dernierRang: number | null = null;
 
   for (const etape of etapes) {
@@ -232,8 +253,21 @@ export function reconstruireEtatRun(entrees: readonly JournalEntry[]): Reconstru
       case ACTION_DECIDEE:
         break;
 
+      case ACTION_ENGAGEE:
+        // La clé a déjà été enregistrée plus haut (elle est portée par cet événement) : on note
+        // seulement que rien ne l'a encore refermée.
+        if (etape.idempotencyKey !== null) enSuspens.add(etape.idempotencyKey);
+        break;
+
       case ACTION_EXECUTEE:
         actionsExecutees += 1;
+        enSuspens.delete(cleRattachee(etape.payload));
+        break;
+
+      case ACTION_ECHOUEE:
+        // Un échec REFERME l'engagement : on sait ce qui s'est passé. C'est l'absence de toute
+        // ligne — ni résultat, ni échec — qui laisse l'incertitude.
+        enSuspens.delete(cleRattachee(etape.payload));
         break;
 
       case POLITIQUE_SUSPEND:
@@ -288,6 +322,7 @@ export function reconstruireEtatRun(entrees: readonly JournalEntry[]): Reconstru
       reprendreApres: dernierRang,
       actionEnAttente,
       effetsDejaProduits: effets,
+      effetsEngagesSansResultat: enSuspens,
     },
   };
 }

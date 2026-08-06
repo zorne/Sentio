@@ -62,6 +62,7 @@ describe("l'état métier d'un run, projeté depuis le journal", () => {
       reprendreApres: null,
       actionEnAttente: null,
       effetsDejaProduits: new Set(),
+      effetsEngagesSansResultat: new Set(),
     });
   });
 
