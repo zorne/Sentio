@@ -121,6 +121,23 @@ Ces règles ne sont pas des préférences de style. Chacune protège un client p
    **source unique** de la liste des mots interdits dans un texte visible par un client — « IA »,
    « bot », « agent », « assistant », « GPT », « automation » et d'autres. Ne pas recopier la
    liste ailleurs : trois copies divergentes valent zéro règle.
+9. **Il n'existe qu'un seul Sentio.** Décision d'architecture du 2026-08-06, définitive :
+   - `packages/domain` + `packages/core` contiennent la **logique métier**. C'est le cerveau,
+     et il est unique.
+   - Le schéma de `supabase/migrations` est la **source de vérité**.
+   - `apps/vitrine` est une **interface et une expérience utilisateur**. Elle affiche et elle
+     déclenche ; elle ne décide pas.
+   - **Aucun deuxième modèle métier ne doit être recréé dans la vitrine** — ni assembleur de
+     contexte, ni moteur de décision, ni catalogue d'offre parallèle. Si tu es sur le point
+     d'en écrire un, tu es en train de refaire l'erreur que
+     [`docs/27-convergence.md`](docs/27-convergence.md) existe pour réparer.
+
+   Et ce que cette unicité sert : **Sentio reste généraliste sur les métiers, mais spécialisé
+   dans la personnalisation de l'employé numérique à chaque entreprise.** Le diagnostic, le
+   profil entreprise, l'ADN métier, les capacités et l'évolution de l'employé partent du
+   **besoin réel du client**, jamais d'une niche imposée. C'est précisément ce qu'un second
+   moteur rendrait invérifiable : trois chemins de personnalisation dans deux moteurs ne se
+   garantissent pas, ils se surveillent.
 
 Si une demande t'oblige à violer un invariant : **ne le fais pas silencieusement**. Dis-le,
 explique le coût, propose l'alternative, et laisse le fondateur trancher.

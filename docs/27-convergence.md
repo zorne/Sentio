@@ -231,19 +231,23 @@ ajouter — décision à prendre, pas à improviser pendant la migration.
 modification. Le journal est append-only par construction : la migration devra insérer, jamais
 corriger.
 
-### 3.3 Divergences de conception à trancher AVANT de migrer
+### 3.3 Divergences de conception — **tranchées le 2026-08-06**
 
-Ce sont des décisions produit, pas des détails d'implémentation. Aucune ne doit être prise dans
-le feu d'une migration.
+Décidées dans [`adr/0025`](adr/0025-un-seul-sentio.md). Elles ne sont plus ouvertes.
 
-1. **BYOK.** La vitrine a `tenant_ai_credential` (clé chiffrée **par entreprise**, ADR-005). Le
-   cœur a `provider_credential` **global**, sans `tenant_id`, avec une contrainte exigeant une
-   preuve d'opt-out. Les deux modèles sont défendables ; ils ne sont pas compatibles.
-2. **Grille tarifaire.** Vitrine : `standard` / `professionnel` / `entreprise`, 499 €. Cœur :
-   `start` / `growth` / `scale`, un seul commercialisable. Deux catalogues, deux vérités.
-3. **Métiers annoncés.** La landing annonce 5 métiers, 4 sans aucun backend
-   (`agent-roles.ts`, `live: false`). Le cœur n'a qu'un ADN publié. La convergence rend l'écart
-   visible : soit on publie 4 ADN, soit on retire l'annonce.
+1. **BYOK : non.** Sentio ne demande jamais sa clé d'API à une entreprise — la complexité
+   technologique est cachée au client, et la plateforme porte les fournisseurs et leurs coûts.
+   Le modèle du cœur est retenu : `provider_credential` global, avec sa contrainte de preuve
+   d'opt-out. `tenant_ai_credential` n'a pas d'avenir dans la cible et **ne sera pas migrée**.
+2. **Une seule grille : celle du cœur.** `plan` en base fait foi — Start, Growth, Scale. Les
+   prix s'ajustent en base, jamais par déploiement. `lib/plans.ts` disparaît. Le prix doit
+   refléter un résultat et une expérience, jamais un accès technique à des modèles.
+3. **Métiers ouverts, aucune verticale artificielle.** Une promesse unique — « Un employé adapté
+   à votre entreprise » — illustrée par des **exemples** (commercial, support, administratif,
+   marketing), présentés comme tels. On ne publie pas quatre ADN pour rendre une page cohérente.
+   **Contrainte qui en découle :** le diagnostic doit rester capable de découvrir un besoin hors
+   liste et de le dire honnêtement (`OUT_OF_SCOPE_NEEDS`), plutôt que de le forcer dans un métier
+   existant.
 
 ---
 
@@ -301,74 +305,91 @@ insoluble contre un renommage de projet. Le « projet du cœur » n'est pas sacr
 
 ---
 
-## 5. Ordre exact des migrations
+## 5. Ordre exact des phases — **validé le 2026-08-06**
 
-Chaque phase est réversible tant que la suivante n'a pas commencé. **Rien n'est supprimé avant
-la phase 6.**
+Chaque phase est réversible tant que la suivante n'a pas commencé. **Aucune suppression
+irréversible avant d'avoir les tests ET un chemin de retour arrière.**
 
-### Phase 0 — Geler la divergence (aucun schéma touché)
+### Phase 0 — Sécuriser ✅ FAITE
 
-- **0.1** Règle : plus aucune table nouvelle dans `apps/vitrine/migrations`. Contrôle mécanique
-  dans `scripts/verifier-frontieres.mjs` — le nombre de fichiers y est figé, un ajout fait
-  échouer `pnpm verify`.
-- **0.2** Règle : aucun nouveau module dans `packages/vitrine-core`. Même contrôle, liste
-  d'exports gelée.
-- **Réversible** : retirer les deux règles.
-- **Preuve** : `pnpm verify` échoue si on ajoute une migration vitrine.
+- **0.1** `demo_anon_read` supprimée — migration
+  [`0012`](../apps/vitrine/migrations/0012_fermeture_demo_anon_read.sql). Remplacée par
+  `demo_journal_authentifie`, même portée (journal du seul tenant démo) réservée aux sessions
+  authentifiées. `tenant_read_journal` refermée au même titre : plus aucune policy
+  d'`execution_event` ne s'adresse à un rôle non authentifié.
+- **0.2** Test qui échoue si la policy revient, ou si une autre rouvre le journal sans session —
+  [`journal-rls.integration.test.ts`](../apps/vitrine/src/lib/journal-rls.integration.test.ts),
+  exécuté par la CI (job `schema`).
+- **Réversible** : la migration `0012` s'annule par un `drop policy` + recréation de l'ancienne.
+- **Reste ouvert** : le tenant démo ne doit porter que des données de test, et cette garantie
+  tient encore à une ligne de code, pas à une contrainte de base (§8.1).
 
-### Phase 1 — Rendre le cœur exécutable (EXEC-01 à 15)
+### Phase 1 — Rendre le cœur réellement exécutable
 
-C'est le préalable absolu : **le cœur ne tourne pas encore**. Basculer quoi que ce soit avant
-cette phase remplacerait un produit qui fonctionne par un produit qui ne fonctionne pas.
+C'est le préalable absolu : **le cœur ne tourne pas encore** (lot 3 : 0/15). Basculer quoi que
+ce soit avant cette phase remplacerait un produit qui fonctionne par un produit qui ne
+fonctionne pas.
 
-- **1.1** EXEC-01..08 — boucle complète dans `apps/worker` sur les ports existants.
-- **1.2** EXEC-09..11 — reprise après interruption, suspension, validation humaine.
-- **1.3** EXEC-12..15 — verrouillage de la file, priorité par formule, notifications, réflexion.
-- **Réversible** : ajout pur, la vitrine continue de tourner à l'identique.
-- **Preuve** : un run réel de bout en bout sur base locale, sans `apps/vitrine`.
+- **1.1 Worker et exécution autonome** — EXEC-01..08 (boucle sur les ports existants), puis
+  EXEC-09..11 (reprise après interruption, suspension, validation humaine), puis EXEC-12..15
+  (verrouillage de la file, priorité par formule, notifications, réflexion post-run).
+- **1.2 Capacités** — porter ce que la vitrine a déjà résolu : outils de prospection vers
+  `@sentio/capabilities/prospects` ; envoi d'email **passé par `peut_envoyer()`**, garde que la
+  vitrine n'a pas ; plafond du diagnostic (ACQUIS-17), trace en `diagnostic_session`
+  (ACQUIS-22), justification rédigée (ACQUIS-15).
+- **1.3 Recrutement** — RECRUT-03/04 (`reserve_identity()` puis `employee` sur un ADN figé),
+  RECRUT-06, et surtout **RECRUT-05 : initialisation du `company_profile` depuis le profil du
+  diagnostic et le `sector_profile`**. *C'est le cœur de la vision — ce que l'entreprise a dit
+  avant l'achat devient la mémoire de son employé après.*
+- **1.4 Paiement** — RECRUT-01/02/07 : paiement hébergé, confirmation **serveur** (jamais la
+  redirection navigateur), ouverture de l'accès à l'espace privé. Sur la grille unique du cœur
+  (ADR-0025, décision 2).
+- **Réversible** : ajout pur. La vitrine continue de tourner à l'identique pendant toute la
+  phase.
+- **Preuve de fin de phase** : un run réel de bout en bout sur base locale, sans `apps/vitrine`.
 
-### Phase 2 — Porter les capacités déjà résolues par la vitrine
+### Phase 2 — Préparer la migration
 
-- **2.1** Outils de prospection → `@sentio/capabilities/prospects` (socle déjà présent).
-- **2.2** Envoi d'email → `capabilities/email/send-message`, **passé par `peut_envoyer()`** —
-  garde que la vitrine n'a pas.
-- **2.3** Diagnostic : plafond par visiteur/adresse (ACQUIS-17), trace en
-  `diagnostic_session` (ACQUIS-22), justification rédigée (ACQUIS-15).
-- **Réversible** : ajout pur.
+Aucune donnée déplacée. On lève les inconnues pendant que les deux systèmes tournent.
 
-### Phase 3 — Le recrutement dans le cœur (RECRUT-01 à 10)
+- **2.1 Auth** — trancher §4.3 (`auth.users` non transposable). L'option (c) — appliquer le
+  schéma du cœur sur le projet Supabase *de la vitrine* — supprime le problème et mérite d'être
+  évaluée en premier.
+- **2.2 Schéma** — résoudre les correspondances non mécaniques de §3.2 : destination de
+  `config.systemPrompt`, `task` sans `title`/`input`, `notification` sans `task_id`, collisions
+  d'identités. Chaque décision écrite avant d'être codée.
+- **2.3 Données** — inventaire réel (§4.1), classement, détection des collisions.
+- **2.4 Compatibilité** — script de migration idempotent, **rejoué sur une copie**, jamais sur
+  la source. Tests de parité vitrine ↔ cœur (§7).
+- **Réversible** : rien n'a bougé.
 
-- **3.1** Paiement + confirmation **serveur** (jamais la redirection navigateur).
-- **3.2** `reserve_identity()` + création de l'`employee` sur une version d'ADN figée.
-- **3.3** **RECRUT-05** — initialisation du `company_profile` depuis le profil du diagnostic et
-  le `sector_profile`. *C'est le cœur de la vision : ce que l'entreprise a dit avant l'achat
-  devient la mémoire de son employé après.*
-- **3.4** Lien magique + rattachement automatique au tenant créé pendant le diagnostic.
-- **Réversible** : les deux parcours d'achat coexistent derrière un drapeau.
+### Phase 3 — Faire converger l'application
 
-### Phase 4 — Bascule de l'interface, en lecture d'abord
-
-- **4.1** `apps/vitrine` lit le cœur via `@sentio/db`, **pour les nouveaux tenants seulement**
+- **3.1** `apps/vitrine` lit le cœur via `@sentio/db`, **pour les nouveaux tenants seulement**
   (drapeau par entreprise).
-- **4.2** Les Server Actions appellent `@sentio/core` ou déposent un `job`.
-- **4.3** Retrait progressif des imports `@sentio/vitrine-core`, un module à la fois.
+- **3.2** Ses Server Actions appellent `@sentio/core` ou déposent un `job`.
+- **3.3** Retrait progressif des imports `@sentio/vitrine-core`, un module à la fois.
 - **Réversible** : le drapeau se rebascule par entreprise, sans déploiement.
+- **Fin de phase** : `apps/vitrine` est l'interface, `packages/domain`+`core` le cerveau, le
+  schéma cœur la source de vérité.
 
-### Phase 5 — Migration des données
+### Phase 4 — Migrer, puis retirer progressivement
 
-- **5.1** Inventaire (§4.1) et décision sur `auth.users` (§4.3).
-- **5.2** Copie **entreprise par entreprise**, idempotente (rejouable sans doublon).
-- **5.3** Journal en dernier, par insertion seule.
-- **5.4** Vérification : comptes ligne à ligne, puis **un run réel par entreprise migrée**.
-- **Réversible** : la base vitrine reste intacte, en lecture seule, jusqu'à validation.
+- **4.1** Copie **entreprise par entreprise**, idempotente. Journal en dernier, par insertion
+  seule (trigger append-only).
+- **4.2** Vérification : comptes ligne à ligne, puis **un run réel par entreprise migrée**.
+- **4.3** Retrait, seulement après validation : `packages/vitrine-core` supprimé,
+  `apps/vitrine/migrations` **archivé et non supprimé** (historique des données migrées).
+- **4.4** Projet Supabase vitrine en lecture seule, puis supprimé après une rétention décidée à
+  ce moment-là.
+- **Chemin de retour** : la base vitrine reste intacte et lisible tant que 4.4 n'a pas eu lieu.
+  4.3 et 4.4 sont les **premières étapes irréversibles du plan** — elles ne se font pas sans les
+  tests de 4.2 au vert.
 
-### Phase 6 — Retrait (première étape irréversible)
+### Phase 5 — Vérification mécanique du point de bascule
 
-- **6.1** `drop policy demo_anon_read on execution_event`.
-- **6.2** Suppression de `packages/vitrine-core`.
-- **6.3** `apps/vitrine/migrations` archivé, **pas supprimé** (historique des données migrées).
-- **6.4** Projet Supabase vitrine passé en lecture seule, puis supprimé après une période de
-  rétention décidée à ce moment-là.
+Les sept critères du §9, tous automatisés. Tant qu'un seul est rouge, la convergence n'est pas
+finie — quelle que soit l'impression que donne le produit.
 
 ---
 
@@ -463,16 +484,29 @@ prospect — elle devient publique, en silence, sans erreur.
 Sa propre migration dit « à supprimer avant d'onboarder un vrai second client ». Ce moment est
 passé : le chat d'accueil crée de vrais tenants depuis ADR-019.
 
-### 8.3 À faire avant toute ouverture publique
+### 8.3 Ce qui a été fait, et ce qui reste
 
-Dans cet ordre, indépendamment de la convergence :
+**Fait (phase 0, migration [`0012`](../apps/vitrine/migrations/0012_fermeture_demo_anon_read.sql)) :**
 
-1. `drop policy demo_anon_read on execution_event`.
-2. Remplacer l'abonnement temps réel anonyme par une session — anonyme signée, ou réelle.
-3. **Contrôle mécanique** que la policy n'est jamais réintroduite (test sur `pg_policies`).
-4. Restreindre le pool « de confiance » à une portée entreprise, ou le supprimer.
+1. ✅ `demo_anon_read` supprimée.
+2. ✅ Remplacée par `demo_journal_authentifie` — même portée, réservée aux sessions
+   authentifiées. La vue temps réel de la démo continue de fonctionner pour un visiteur
+   connecté, ce que `requireTenantAccess` exigeait déjà.
+3. ✅ `tenant_read_journal` refermée au même titre. Elle n'était pas une fuite — `is_member()`
+   compare à `auth.uid()`, nul sans session — mais une règle qui tient par son prédicat est une
+   règle qu'il faut relire pour se rassurer. L'invariant est maintenant simple : **aucune policy
+   d'`execution_event` ne s'adresse à un rôle non authentifié.**
+4. ✅ Contrôle mécanique : `journal-rls.integration.test.ts` échoue si la policy revient, sous
+   son nom ou sous un autre.
 
-Les points 1 à 3 ne dépendent d'aucune phase du plan et peuvent être faits tout de suite.
+**Reste ouvert :**
+
+- Le pool « de confiance » contourne toujours RLS (§8.1, point 1). Il disparaît en phase 3,
+  quand `apps/vitrine` lira par `@sentio/db` à portée entreprise.
+- Les cinq chemins d'écriture sans vérification d'appartenance (§8.1, point 2) — certains
+  légitimement publics, aucun distingué mécaniquement des autres.
+- Le tenant démo ne porte que des données de test **par convention de code**, pas par contrainte
+  de base. Une garde en base serait la vraie réponse.
 
 ---
 
@@ -498,14 +532,17 @@ l'architecture.
 
 ---
 
-## 10. Ce que je recommande de faire en premier
+## 10. Où en est le plan
 
-Trois choses, dans cet ordre, avant toute migration :
+| Phase | État |
+|---|---|
+| 0 — Sécuriser | ✅ faite (migration `0012` + test dans la CI) |
+| 1 — Rendre le cœur exécutable | non commencée — **le vrai chantier**, 15 tâches du lot 3 |
+| 2 — Préparer la migration | non commencée |
+| 3 — Faire converger l'application | non commencée |
+| 4 — Migrer et retirer | non commencée |
+| 5 — Vérification du point de bascule | non commencée |
 
-1. **§8.3, points 1 à 3** — `demo_anon_read` ne dépend d'aucune phase et fuit déjà.
-2. **Phase 0** — geler la divergence coûte une règle dans un script existant.
-3. **Trancher §4.3 (option c ?) et §3.3** — trois décisions produit qui changent la forme de
-   tout le reste, et qu'il ne faut pas prendre pendant une migration.
-
-La phase 1 (rendre le cœur exécutable) est le vrai chantier. Elle représente les 15 tâches du
-lot 3, et rien ne peut basculer avant elle.
+Les décisions produit de §3.3 sont tranchées ([`adr/0025`](adr/0025-un-seul-sentio.md)).
+Restent ouvertes, à trancher en phase 2 : `auth.users` (§4.3) et les correspondances non
+mécaniques (§3.2).

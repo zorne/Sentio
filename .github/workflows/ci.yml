@@ -134,9 +134,10 @@ jobs:
           PGPASSWORD: postgres
         run: psql -h 127.0.0.1 -U postgres -c 'create database vitrine_test'
 
-      # Ce que ce test tient et qu'aucun autre ne tient : le chemin complet entre ce que le
-      # client dit après l'achat et le prompt que son employé relit — fusion jsonb comprise.
-      - name: Le profil d'entreprise contre une vraie base
+      # Deux invariants qu'aucun autre test ne tient : le chemin complet entre ce que le client
+      # dit après l'achat et le prompt que son employé relit (fusion jsonb comprise), et le fait
+      # que le journal d'exécution ne soit jamais lisible sans session.
+      - name: Profil d'entreprise et RLS du journal, contre une vraie base
         env:
           DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/vitrine_test
           SENTIO_REQUIRE_DB_TESTS: "1"

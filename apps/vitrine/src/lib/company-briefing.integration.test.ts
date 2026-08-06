@@ -16,9 +16,6 @@
 //   DATABASE_URL=postgres://postgres@127.0.0.1:5432/vitrine_test pnpm --filter @sentio/vitrine test
 // ════════════════════════════════════════════════════════════════════
 
-import { readdir, readFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -27,6 +24,7 @@ import {
   readProfileFromConfig,
   saveCompanyProfile,
 } from "@sentio/vitrine-core/company-briefing";
+import { applyVitrineSchema } from "./test-support/schema.js";
 
 const connectionString = process.env["DATABASE_URL"];
 
@@ -38,17 +36,6 @@ if (connectionString === undefined && process.env["SENTIO_REQUIRE_DB_TESTS"] ===
       "(SENTIO_REQUIRE_DB_TESTS=1). Voir .github/workflows/ci.yml, job « schema ».",
   );
 }
-
-const MIGRATIONS = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "migrations");
-
-/** Le strict minimum de ce que Supabase fournit et qu'un Postgres nu n'a pas. Les migrations
- *  n'en utilisent que ça — un test le vérifierait mal, `psql` le dirait tout de suite. */
-const SHIM_SUPABASE = `
-  create schema if not exists auth;
-  create table if not exists auth.users (id uuid primary key);
-  create or replace function auth.uid() returns uuid language sql stable
-    as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
-`;
 
 const DEFAUT = "Vous êtes un employé commercial.";
 const ACCUEIL = "Vous travaillez pour Menuiserie Kerbrat.";
@@ -70,12 +57,7 @@ describeIfDatabase("le profil d'entreprise, écrit et relu sur un vrai Postgres"
     await db.connect();
 
     // Base jetable : on repart d'un schéma vide à chaque exécution, jamais d'un reliquat.
-    await db.query(`drop schema if exists public cascade; create schema public;`);
-    await db.query(SHIM_SUPABASE);
-    const fichiers = (await readdir(MIGRATIONS)).filter((f) => f.endsWith(".sql")).sort();
-    for (const fichier of fichiers) {
-      await db.query(await readFile(join(MIGRATIONS, fichier), "utf8"));
-    }
+    await applyVitrineSchema(db);
 
     const tenant = await db.query(`insert into tenant (name) values ('Menuiserie Kerbrat') returning id`);
     tenantId = tenant.rows[0].id;
