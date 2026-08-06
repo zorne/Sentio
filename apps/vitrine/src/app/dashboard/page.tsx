@@ -16,6 +16,7 @@ import { DEMO_TENANT_ID } from "@sentio/vitrine-core/wiring";
 import { LaunchRunButton } from "@/components/LaunchRunButton";
 import { AddLeadForm } from "@/components/AddLeadForm";
 import { ProspectingConfig } from "@/components/ProspectingConfig";
+import { CompanyBriefingChat } from "@/components/CompanyBriefingChat";
 import { Logomark } from "@/components/Logomark";
 
 export const dynamic = "force-dynamic"; // pas de cache : chaque visite recharge les tâches
@@ -116,14 +117,22 @@ export default async function Home({
 
           {agentInstance ? (
             <>
-              <ProspectingConfig
-                tenantId={tenantId}
-                agentInstanceId={agentInstance.id}
-                isActive={agentInstance.is_active}
-                hasConfig={hasProspectingConfig}
-                initialCriteria={agentInstance.config?.prospectingCriteria ?? ""}
-                initialOffer={agentInstance.config?.prospectingOffer ?? ""}
-              />
+              {hasProspectingConfig ? (
+                <ProspectingConfig
+                  tenantId={tenantId}
+                  agentInstanceId={agentInstance.id}
+                  isActive={agentInstance.is_active}
+                  hasConfig={hasProspectingConfig}
+                  initialCriteria={agentInstance.config?.prospectingCriteria ?? ""}
+                  initialOffer={agentInstance.config?.prospectingOffer ?? ""}
+                />
+              ) : (
+                // Toute première configuration : un vrai chat, pas un formulaire vide. Une
+                // fois enregistrée (agent_instance.config, via briefingTurn →
+                // saveProspectingConfigAndStart), la page se rafraîchit et ProspectingConfig
+                // prend le relais pour tout réglage ultérieur.
+                <CompanyBriefingChat tenantId={tenantId} agentInstanceId={agentInstance.id} />
+              )}
               <div style={{ marginBottom: 32 }}>
                 <LaunchRunButton tenantId={tenantId} agentInstanceId={agentInstance.id} />
               </div>

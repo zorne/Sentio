@@ -30,6 +30,7 @@
     "./memory": "./src/memory/index.ts",
     "./advisor": "./src/advisor/index.ts",
     "./diagnostic": "./src/diagnostic/index.ts",
+    "./company-briefing": "./src/company-briefing/index.ts",
     "./wiring": "./src/wiring.ts"
   }
 }
