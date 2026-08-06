@@ -85,7 +85,30 @@ sérif éditorial (voix humaine) + mono (voix machine), accent **cyan
 #2ee6f5** (changé depuis le mint d'origine, partout dans l'app).
 
 ## Migrations DB (Supabase SQL Editor, manuel, pas de CI)
-0001 à 0009 appliquées. 0009 = table `rgpd_request`.
+0001 à 0009 appliquées à l'époque de cette note. 0010 (notifications) et 0011
+(plafond du diagnostic) ont suivi. **0012 n'est PAS appliquée** — voir ci-dessous.
+
+## ⛔ Projet Supabase en pause — et ce qu'il faut faire avant de le rallumer
+**Décision du 2026-08-06.** Le projet Supabase de la vitrine est **volontairement en pause**
+en attendant la convergence vers le cœur ([`../27-convergence.md`](../27-convergence.md)).
+Une base en pause ne sert aucune requête : l'API REST est éteinte, la clé anon ne donne accès
+à rien. Constaté le même jour : cette base ne contient **aucun client réel ni donnée client de
+production** — uniquement le tenant démo et des essais.
+
+**Trois règles, dans cet ordre, le jour où le projet sera repris :**
+
+1. [`../../apps/vitrine/migrations/0012_fermeture_demo_anon_read.sql`](../../apps/vitrine/migrations/0012_fermeture_demo_anon_read.sql)
+   porte un **correctif de sécurité P0** : la policy `demo_anon_read` laissait n'importe qui
+   lire le journal d'exécution du tenant démo, sans session, via l'API REST — donc les payloads
+   d'outils (prospects lus, messages rédigés).
+2. **Appliquer 0012 dès la reprise, dans la même session** — avant de déployer, avant de
+   tester, avant tout le reste. Le trou se rouvre à la seconde où la base répond.
+3. **Aucune donnée client réelle n'entre dans cette base tant que 0012 n'est pas appliquée.**
+   Un seul run réel sur le tenant démo suffirait à rendre publics de vrais contenus.
+
+Le correctif est vérifié par
+[`journal-rls.integration.test.ts`](../../apps/vitrine/src/lib/journal-rls.integration.test.ts),
+qui échoue si la policy revient — sous son nom ou sous un autre.
 
 ## Pages légales
 `/legal/{confidentialite,cgu,mentions,cookies,rgpd}` — mentions légales

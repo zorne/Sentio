@@ -11,6 +11,7 @@
  * le noyau, et c'est ici que les deux se rencontrent — à un seul endroit.
  */
 
+export * from "./heartbeat/index.js";
 export * from "./adapters/ledger.js";
 export * from "./adapters/approvals.js";
 export * from "./adapters/journal.js";

@@ -324,6 +324,30 @@ irréversible avant d'avoir les tests ET un chemin de retour arrière.**
 - **Reste ouvert** : le tenant démo ne doit porter que des données de test, et cette garantie
   tient encore à une ligne de code, pas à une contrainte de base (§8.1).
 
+> ### ⚠️ Le correctif n'est pas appliqué en base — et c'est délibéré
+>
+> **Le projet Supabase de la vitrine est volontairement en pause** (décision du 2026-08-06), en
+> attendant la convergence. Une base en pause ne sert aucune requête : l'API REST est éteinte,
+> la clé anon ne donne accès à rien. **La faille est donc inaccessible**, non parce qu'elle est
+> corrigée en base, mais parce que la base est éteinte. Constaté le 2026-08-06 : elle ne
+> contient aucun client réel ni donnée client de production — uniquement le tenant démo et des
+> essais.
+>
+> Les migrations de la vitrine s'appliquent **à la main**, dans le SQL Editor de Supabase
+> (`docs/vitrine/etat-vitrine.md`). Aucune CI ne le fait. D'où les trois règles suivantes,
+> qui ne sont pas des rappels de confort :
+>
+> 1. [`apps/vitrine/migrations/0012`](../apps/vitrine/migrations/0012_fermeture_demo_anon_read.sql)
+>    porte le correctif de sécurité.
+> 2. **Il doit être appliqué dès la reprise du projet**, dans la même session — avant de
+>    déployer, avant de tester, avant tout le reste. Le trou se rouvre à la seconde où la base
+>    répond.
+> 3. **Aucune donnée client réelle ne doit entrer dans cette base tant que le correctif n'est
+>    pas appliqué.** Un seul run réel sur le tenant démo suffirait à rendre publics des contenus
+>    de prospects et des messages rédigés.
+
+
+
 ### Phase 1 — Rendre le cœur réellement exécutable
 
 C'est le préalable absolu : **le cœur ne tourne pas encore** (lot 3 : 0/15). Basculer quoi que
