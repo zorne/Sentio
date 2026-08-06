@@ -11,23 +11,23 @@ import { revalidatePath } from "next/cache";
 import { Client } from "pg";
 import { isAuthorizedForTenant } from "./tenant-access";
 import { launchSalesRunInternal } from "./agent-actions";
+import { saveCompanyProfile, type CompanyProfile } from "@sentio/vitrine-core/company-briefing";
 
+/** Accepte soit les deux champs du formulaire, soit le profil complet issu du briefing —
+ *  l'écriture, elle, est la même (saveCompanyProfile, qui fusionne au lieu de remplacer). */
 export async function saveProspectingConfigAndStart(
   tenantId: string,
   agentInstanceId: string,
-  params: { criteria: string; offer: string }
+  params: { criteria: string; offer: string } | { profile: CompanyProfile }
 ): Promise<{ taskId: string }> {
   if (!(await isAuthorizedForTenant(tenantId))) throw new Error("Non autorisé.");
+  const profile: CompanyProfile =
+    "profile" in params ? params.profile : { cible: params.criteria, offre: params.offer };
+
   const db = new Client({ connectionString: process.env.SUPABASE_DB_URL! });
   await db.connect();
   try {
-    await db.query(
-      `update agent_instance
-       set config = config || jsonb_build_object('prospectingCriteria', $2::text, 'prospectingOffer', $3::text),
-           is_active = true
-       where id = $1`,
-      [agentInstanceId, params.criteria, params.offer]
-    );
+    await saveCompanyProfile(db, agentInstanceId, profile);
     revalidatePath("/dashboard");
     return await launchSalesRunInternal(db, tenantId, agentInstanceId);
   } finally {

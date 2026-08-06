@@ -8,6 +8,20 @@ import { ModelGateway } from "../gateway/index.js";
 import type { ConversationTurn, CredentialResolver, TenantCredential } from "../gateway/index.js";
 import { GeminiProvider } from "../gateway/providers/gemini.js";
 import { buildBriefingSystemPrompt, BRIEFING_TOOL } from "./prompt.js";
+import { parseProfile, type CompanyProfile, type ProfileKey } from "./profile.js";
+
+export {
+  PROFILE_FIELDS,
+  REQUIRED_FIELDS,
+  buildProfileBriefing,
+  composeSystemPrompt,
+  parseProfile,
+  readProfileFromConfig,
+  type CompanyProfile,
+  type ProfileKey,
+} from "./profile.js";
+
+export { saveCompanyProfile, type Queryable } from "./store.js";
 
 const MAX_HISTORY = 16;
 
@@ -16,14 +30,22 @@ export interface BriefingMessage {
   content: string;
 }
 
-export interface BriefingConfiguration {
-  readonly criteria: string;
-  readonly offer: string;
-}
+/** Ce qu'on redit au modèle quand une clé exigée manque — en français adressé au client,
+ *  jamais le nom technique du champ. */
+const MANQUE: Record<ProfileKey, string> = {
+  activite: "ce que fait l'entreprise",
+  cible: "le profil de bon prospect",
+  offre: "l'offre à mettre en avant",
+  preuves: "les résultats concrets à citer",
+  objections: "les objections fréquentes",
+  exclusions: "qui ne jamais contacter",
+  ton: "le ton à adopter",
+  interdits: "ce qu'il ne faut jamais promettre",
+};
 
 export type BriefingStepResult =
   | { readonly stage: "conversation"; readonly reply: string }
-  | { readonly stage: "configured"; readonly configuration: BriefingConfiguration };
+  | { readonly stage: "configured"; readonly profile: CompanyProfile };
 
 export type BriefingConverseOutcome = { readonly reply: string } | { readonly candidate: unknown };
 
@@ -34,28 +56,12 @@ export interface BriefingStepDeps {
   }): Promise<BriefingConverseOutcome>;
 }
 
-function isNonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value.trim() !== "";
-}
-
-/** Validation défensive du candidat — jamais fait confiance à sa forme. `null` s'il manque
- *  un des deux champs, avec le nom du champ manquant pour guider la relance. */
-function tryConfigure(candidate: unknown): { configuration: BriefingConfiguration } | { hint: readonly string[] } {
-  if (typeof candidate !== "object" || candidate === null) {
-    return { hint: ["le profil de bon prospect", "l'offre à mettre en avant"] };
-  }
-  const c = candidate as Record<string, unknown>;
-  const missing: string[] = [];
-  if (!isNonEmptyString(c.criteria)) missing.push("le profil de bon prospect");
-  if (!isNonEmptyString(c.offer)) missing.push("l'offre à mettre en avant");
-  if (missing.length > 0) return { hint: missing };
-
-  return {
-    configuration: {
-      criteria: (c.criteria as string).trim(),
-      offer: (c.offer as string).trim(),
-    },
-  };
+/** Validation défensive du candidat — jamais fait confiance à sa forme. Les clés exigées
+ *  manquantes reviennent en clair, pour guider la relance. */
+function tryConfigure(candidate: unknown): { profile: CompanyProfile } | { hint: readonly string[] } {
+  const parsed = parseProfile(candidate);
+  if ("profile" in parsed) return parsed;
+  return { hint: parsed.missing.map((key) => MANQUE[key]) };
 }
 
 /** Même structure que `stepDiagnostic` (../diagnostic) : un candidat invalide retente une fois
@@ -68,13 +74,13 @@ export async function stepBriefing(
   if ("reply" in first) return { stage: "conversation", reply: first.reply };
 
   const firstTry = tryConfigure(first.candidate);
-  if ("configuration" in firstTry) return { stage: "configured", configuration: firstTry.configuration };
+  if ("profile" in firstTry) return { stage: "configured", profile: firstTry.profile };
 
   const second = await deps.converse({ history, hint: firstTry.hint });
   if ("reply" in second) return { stage: "conversation", reply: second.reply };
 
   const secondTry = tryConfigure(second.candidate);
-  if ("configuration" in secondTry) return { stage: "configured", configuration: secondTry.configuration };
+  if ("profile" in secondTry) return { stage: "configured", profile: secondTry.profile };
 
   return {
     stage: "conversation",

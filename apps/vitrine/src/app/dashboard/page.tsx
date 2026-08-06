@@ -13,6 +13,7 @@ import { pool } from "@/lib/db";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requireTenantAccess } from "@/lib/tenant-access";
 import { DEMO_TENANT_ID } from "@sentio/vitrine-core/wiring";
+import { readProfileFromConfig } from "@sentio/vitrine-core/company-briefing";
 import { LaunchRunButton } from "@/components/LaunchRunButton";
 import { AddLeadForm } from "@/components/AddLeadForm";
 import { ProspectingConfig } from "@/components/ProspectingConfig";
@@ -71,7 +72,7 @@ export default async function Home({
     id: string;
     name: string;
     is_active: boolean;
-    config: { prospectingCriteria?: string; prospectingOffer?: string };
+    config: unknown;
   }>(
     `select id, name, is_active, config from agent_instance where tenant_id = $1 limit 1`,
     [tenantId]
@@ -87,9 +88,10 @@ export default async function Home({
   );
   const unreadDecisions = Number(unreadRows[0]?.count ?? 0);
   const agentInstance = agentRows[0];
-  const hasProspectingConfig = Boolean(
-    agentInstance?.config?.prospectingCriteria || agentInstance?.config?.prospectingOffer
-  );
+  // Une seule lecture de la config, quelle que soit la génération qui l'a écrite (formulaire
+  // historique ou briefing) — c'est elle qui décide si on affiche le chat ou les réglages.
+  const profile = readProfileFromConfig(agentInstance?.config);
+  const hasProspectingConfig = Boolean(profile.cible || profile.offre);
 
   return (
     <>
@@ -123,8 +125,8 @@ export default async function Home({
                   agentInstanceId={agentInstance.id}
                   isActive={agentInstance.is_active}
                   hasConfig={hasProspectingConfig}
-                  initialCriteria={agentInstance.config?.prospectingCriteria ?? ""}
-                  initialOffer={agentInstance.config?.prospectingOffer ?? ""}
+                  initialCriteria={profile.cible ?? ""}
+                  initialOffer={profile.offre ?? ""}
                 />
               ) : (
                 // Toute première configuration : un vrai chat, pas un formulaire vide. Une

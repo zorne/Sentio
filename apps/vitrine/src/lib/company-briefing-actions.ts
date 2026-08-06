@@ -50,8 +50,7 @@ export async function briefingTurn(
     }
 
     const { taskId } = await saveProspectingConfigAndStart(tenantId, agentInstanceId, {
-      criteria: step.configuration.criteria,
-      offer: step.configuration.offer,
+      profile: step.profile,
     });
     return { kind: "configured", taskId };
   } catch (error) {

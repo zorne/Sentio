@@ -29,25 +29,25 @@ describe("stepBriefing — ce qu'un pas de briefing produit", () => {
 
   it("enregistre la configuration quand les deux champs sont fournis", async () => {
     const { converse } = scripted({
-      candidate: { criteria: "Architectes et maîtres d'œuvre en Bretagne", offer: "Devis gratuit sous 48h" },
+      candidate: { cible: "Architectes et maîtres d'œuvre en Bretagne", offre: "Devis gratuit sous 48h" },
     });
     const result = await stepBriefing(HISTORY, { converse });
     expect(result).toEqual({
       stage: "configured",
-      configuration: { criteria: "Architectes et maîtres d'œuvre en Bretagne", offer: "Devis gratuit sous 48h" },
+      profile: { cible: "Architectes et maîtres d'œuvre en Bretagne", offre: "Devis gratuit sous 48h" },
     });
   });
 
   it("recadre les espaces superflus des deux champs", async () => {
-    const { converse } = scripted({ candidate: { criteria: "  archi  ", offer: "  devis  " } });
+    const { converse } = scripted({ candidate: { cible: "  archi  ", offre: "  devis  " } });
     const result = await stepBriefing(HISTORY, { converse });
     if (result.stage !== "configured") throw new Error("attendu configured");
-    expect(result.configuration).toEqual({ criteria: "archi", offer: "devis" });
+    expect(result.profile).toEqual({ cible: "archi", offre: "devis" });
   });
 
   it("retente une fois avec un indice si un seul champ est fourni, puis continue en prose", async () => {
     const { converse, calls } = scripted(
-      { candidate: { criteria: "Architectes" } },
+      { candidate: { cible: "Architectes" } },
       { reply: "Et quelle offre mettre en avant ?" },
     );
     const result = await stepBriefing(HISTORY, { converse });
@@ -58,8 +58,8 @@ describe("stepBriefing — ce qu'un pas de briefing produit", () => {
 
   it("retente une fois, et enregistre si le second candidat est complet", async () => {
     const { converse, calls } = scripted(
-      { candidate: { criteria: "Architectes" } },
-      { candidate: { criteria: "Architectes", offer: "Devis gratuit" } },
+      { candidate: { cible: "Architectes" } },
+      { candidate: { cible: "Architectes", offre: "Devis gratuit" } },
     );
     const result = await stepBriefing(HISTORY, { converse });
     expect(result.stage).toBe("configured");

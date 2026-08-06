@@ -24,26 +24,21 @@ import {
   buildDemoRuntimeDeps,
   reflectAndRemember,
 } from "@sentio/vitrine-core/wiring";
+import { composeSystemPrompt } from "@sentio/vitrine-core/company-briefing";
 
-/** Charge l'identité réelle de l'instance — surchargée par l'interview
- *  d'accueil (agent_instance.config.systemPrompt) si elle existe, sinon
- *  par les critères de prospection configurés par le client (archi §2
- *  principe 3 : un agent = données, pas code — la personnalisation vit
- *  en config, pas en dur), sinon le prompt par défaut de la démo. */
+/** Charge l'identité réelle de l'instance (archi §2 principe 3 : un agent
+ *  = données, pas code — la personnalisation vit en config, pas en dur).
+ *
+ *  Toute la composition est dans `composeSystemPrompt` (@sentio/vitrine-core/
+ *  company-briefing), testée hors de Next.js : le prompt d'accueil et le
+ *  profil d'entreprise s'ADDITIONNENT, ils ne se remplacent plus. */
 async function loadIdentity(db: Client, agentInstanceId: string): Promise<AgentIdentity> {
   const res = await db.query(`select config from agent_instance where id = $1`, [agentInstanceId]);
   const cfg = res.rows[0]?.config ?? {};
-  if (cfg.systemPrompt) {
-    return { ...SALES_AGENT_TASK.identity, systemPrompt: cfg.systemPrompt as string };
-  }
-  if (cfg.prospectingCriteria || cfg.prospectingOffer) {
-    const prompt =
-      SALES_AGENT_TASK.identity.systemPrompt +
-      `\n\nCe client considère un lead qualifié si : ${cfg.prospectingCriteria ?? "non précisé"}.` +
-      `\nOffre(s) à mettre en avant : ${cfg.prospectingOffer ?? "non précisé"}.`;
-    return { ...SALES_AGENT_TASK.identity, systemPrompt: prompt };
-  }
-  return SALES_AGENT_TASK.identity;
+  return {
+    ...SALES_AGENT_TASK.identity,
+    systemPrompt: composeSystemPrompt(SALES_AGENT_TASK.identity.systemPrompt, cfg),
+  };
 }
 
 /** Corps partagé d'un run du Sales Agent — pris par un `db` déjà connecté
