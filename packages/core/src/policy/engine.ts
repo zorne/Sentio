@@ -31,6 +31,8 @@ export interface PolicyRequest {
   readonly capabilityKey: string;
   readonly effectClass: EffectClass;
   readonly autonomy: AutonomyLevel;
+  /** Le pas de run, pour que la décision se relise dans sa chaîne (EXEC-07). */
+  readonly stepId?: string;
 }
 
 /**
@@ -145,6 +147,7 @@ export class PolicyEngine {
       taskId: request.taskId,
       employeeId: request.employeeId,
       kind: `politique_${decision.outcome}`,
+      ...(request.stepId !== undefined && { stepId: request.stepId }),
       payload: {
         capacite: request.capabilityKey,
         classe_effet: request.effectClass,

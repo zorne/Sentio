@@ -12,6 +12,16 @@
 
 /** Le run commence. Premier événement de toute tâche, sans exception. */
 export const RUN_DEMARRE = "run_demarre";
+/**
+ * Le contexte du pas a été assemblé. **Premier maillon de la chaîne explicative** : sans lui, on
+ * sait ce que l'employé a fait, jamais avec quoi il l'a décidé.
+ *
+ * Ne porte que la FORME du contexte — quelles couches ont parlé, combien de faits, lesquels ont
+ * été écartés et pourquoi. Jamais le contexte lui-même : recopier le prompt dans le journal
+ * dupliquerait des données personnelles dans une table conçue pour survivre à l'action, et ferait
+ * grossir sans fin une table déjà bornée à 30 jours.
+ */
+export const CONTEXTE_ASSEMBLE = "contexte_assemble";
 /** Le modèle a choisi une action. Aucun effet extérieur : pas de clé d'idempotence. */
 export const ACTION_DECIDEE = "action_decidee";
 /**
@@ -48,6 +58,7 @@ export const RUN_ECHOUE = "run_echoue";
 
 export const NATURES_CONNUES = [
   RUN_DEMARRE,
+  CONTEXTE_ASSEMBLE,
   ACTION_DECIDEE,
   ACTION_ENGAGEE,
   ACTION_EXECUTEE,

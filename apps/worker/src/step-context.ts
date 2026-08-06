@@ -70,6 +70,9 @@ export type ChargementContexte =
       /** Les couches qui n'avaient rien à dire. À journaliser : une absence tue ressemble à un
        *  branchement oublié. */
       readonly couchesAbsentes: readonly string[];
+      /** L'objectif visé, en clair. Rendu pour la trace (EXEC-07) : « pourquoi ? » commence par
+       *  « pour quoi ? ». */
+      readonly objectif: string;
     }
   | { readonly ok: false; readonly manques: readonly Manque[] };
 
@@ -234,5 +237,11 @@ export async function loadStepContext(
     ...(input.maxLearnedFacts !== undefined && { maxLearnedFacts: input.maxLearnedFacts }),
   });
 
-  return { ok: true, contexte, etat, couchesAbsentes: contexte.missingLayers };
+  return {
+    ok: true,
+    contexte,
+    etat,
+    couchesAbsentes: contexte.missingLayers,
+    objectif: `${objectif.metric} — cible ${objectif.targetValue} (${objectif.horizon})`,
+  };
 }

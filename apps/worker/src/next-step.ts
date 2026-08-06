@@ -29,7 +29,10 @@
  * Réalise : EXEC-05
  */
 
+import { randomUUID } from "node:crypto";
+
 import {
+  CONTEXTE_ASSEMBLE,
   decideNextAction,
   type CapabilityRegistry,
   type DecisionPas,
@@ -43,7 +46,13 @@ import { PostgresAutonomyResolver } from "./adapters/autonomy.js";
 import { loadStepContext, type Manque } from "./step-context.js";
 
 export type ResultatPas =
-  | { readonly ok: true; readonly decision: DecisionPas; readonly couchesAbsentes: readonly string[] }
+  | {
+      readonly ok: true;
+      readonly decision: DecisionPas;
+      readonly couchesAbsentes: readonly string[];
+      /** L'identifiant de ce pas. C'est par lui qu'on relit toute la chaîne (EXEC-07). */
+      readonly stepId: string;
+    }
   /** Le contexte n'est pas fiable : on ne demande rien au modèle. Un contexte incomplet ne se
    *  complète pas d'hypothèses (EXEC-03). */
   | { readonly ok: false; readonly manques: readonly Manque[] };
@@ -106,11 +115,38 @@ export async function decideNextStep(
   });
   if (!contexte.ok) return { ok: false, manques: contexte.manques };
 
+  // Un pas commence. Tous les événements qui suivent porteront cet identifiant : c'est ce qui
+  // rend la chaîne relisible au lieu d'être devinée à partir des horodatages.
+  const stepId = randomUUID();
+
   // ⚠️ Lus DANS LA BASE, à chaque pas. C'est tout l'objet de ce module : ni l'un ni l'autre ne
   // peut être influencé par ce que le modèle vient de répondre, puisque ni l'un ni l'autre ne
   // traverse le modèle.
   const autonomy = await new PostgresAutonomyResolver(sql).resolve(input.tenantId, input.employeeId);
   const capacitesAutorisees = await capacitesActivees(sql, input.tenantId, input.employeeId);
+
+  // ── Premier maillon : AVEC QUOI il a décidé. Sans lui, la trace commence à la proposition et
+  //    ne répond pas à « pourquoi ? » — seulement à « quoi ? ».
+  //
+  //    Seule la FORME est écrite : quelles couches ont parlé, combien de faits, lesquels ont été
+  //    écartés et pourquoi, l'objectif visé. Jamais le contexte lui-même — le recopier
+  //    dupliquerait des données personnelles dans une seconde table et ferait grossir sans fin
+  //    un journal déjà borné à 30 jours.
+  await deps.journal.append({
+    tenantId: input.tenantId,
+    taskId: input.taskId as never,
+    employeeId: input.employeeId,
+    kind: CONTEXTE_ASSEMBLE,
+    stepId,
+    payload: {
+      couchesAbsentes: contexte.couchesAbsentes,
+      objectif: contexte.objectif,
+      faitsRetenus: contexte.contexte.usedFacts.length,
+      faitsEcartes: contexte.contexte.excluded,
+      autonomie: autonomy,
+      capacitesAutorisees,
+    },
+  });
 
   const decision = await decideNextAction(deps, {
     tenantId: input.tenantId,
@@ -121,10 +157,11 @@ export async function decideNextStep(
     autonomy,
     dataClass: input.dataClass,
     envelope: input.envelope,
+    stepId,
     ...(input.maxTokens !== undefined && { maxTokens: input.maxTokens }),
   });
 
-  return { ok: true, decision, couchesAbsentes: contexte.couchesAbsentes };
+  return { ok: true, decision, couchesAbsentes: contexte.couchesAbsentes, stepId };
 }
 
 /** Exporté pour les tests d'intégration : la liste des capacités est une décision de sécurité,

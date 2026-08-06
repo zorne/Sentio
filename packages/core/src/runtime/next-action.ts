@@ -235,6 +235,7 @@ export interface NextActionDeps {
       employeeId: EmployeeId;
       kind: string;
       payload: unknown;
+      stepId?: string;
     }): Promise<void>;
   };
 }
@@ -251,6 +252,8 @@ export interface NextActionInput {
   readonly dataClass: DataClass;
   readonly envelope: string;
   readonly maxTokens?: number;
+  /** Le pas de run : ce qui relie cette proposition à son contexte et à sa décision (EXEC-07). */
+  readonly stepId?: string;
 }
 
 /** Insère la consigne de forme parmi les consignes permanentes, jamais après la tâche :
@@ -303,6 +306,7 @@ export async function decideNextAction(
     taskId: input.taskId,
     employeeId: input.employeeId,
     kind: lecture.ok ? "proposition_recue" : "proposition_illisible",
+    ...(input.stepId !== undefined && { stepId: input.stepId }),
     payload: {
       fournisseur: resultat.providerKey,
       jetons: resultat.tokens,
@@ -332,6 +336,7 @@ export async function decideNextAction(
     // besoin de la classe d'effet, et le cas autorisé la lit dans le CONTRAT, jamais ailleurs.
     effectClass: "read" as const,
     autonomy: input.autonomy,
+    ...(input.stepId !== undefined && { stepId: input.stepId }),
   };
 
   // ── Verrou de métier. Que le modèle l'ait demandée ne rend rien permis : une capacité hors de

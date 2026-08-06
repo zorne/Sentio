@@ -48,6 +48,9 @@ export interface ExecutionEvent {
    *  `createdAt` ne convient pas : il vaut l'heure de début de transaction, identique pour tous
    *  les événements d'un même pas. */
   seq: number;
+  /** Le pas de run auquel l'événement appartient (EXEC-07) : contexte, proposition, politique,
+   *  engagement et résultat d'un même raisonnement partagent cet identifiant. Nul hors d'un pas. */
+  stepId: string | null;
   tenantId: TenantId;
   taskId: TaskId;
   employeeId: EmployeeId;

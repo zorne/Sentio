@@ -83,6 +83,7 @@ export interface EffectLedger {
     employeeId: EmployeeId;
     capabilityKey: string;
     idempotencyKey: string;
+    stepId?: string;
   }): Promise<boolean>;
 
   /** Enregistre le résultat, ou l'échec. Ne porte jamais la clé en propre : elle est sur
@@ -94,6 +95,7 @@ export interface EffectLedger {
     kind: typeof ACTION_EXECUTEE | typeof ACTION_ECHOUEE;
     idempotencyKey: string;
     payload: Record<string, unknown>;
+    stepId?: string;
   }): Promise<void>;
 }
 
@@ -135,6 +137,8 @@ export interface ExecuteInput {
   readonly employeeId: EmployeeId;
   /** La décision rendue par EXEC-04/05. Seul `agir` ouvre la porte. */
   readonly decision: DecisionPas;
+  /** Le pas de run : ce qui rattache l'effet à la décision qui l'a permis (EXEC-07). */
+  readonly stepId?: string;
 }
 
 /** Une erreur transitoire porte ce marqueur ; tout le reste est définitif. Le moteur en décide,
@@ -224,6 +228,7 @@ export async function executeDecidedAction(
     employeeId: input.employeeId,
     capabilityKey: proposition.capabilityKey,
     idempotencyKey: cle,
+    ...(input.stepId !== undefined && { stepId: input.stepId }),
   });
 
   if (!gagne) {
@@ -262,6 +267,7 @@ async function exécuter(
       employeeId: input.employeeId,
       kind: ACTION_ECHOUEE,
       idempotencyKey: cle,
+      ...(input.stepId !== undefined && { stepId: input.stepId }),
       payload: { cle, capacite: proposition.capabilityKey, definitif: true, detail: String(error) },
     });
     return { kind: "echec_definitif", detail: String(error) };
@@ -276,6 +282,7 @@ async function exécuter(
       employeeId: input.employeeId,
       kind: ACTION_EXECUTEE,
       idempotencyKey: cle,
+      ...(input.stepId !== undefined && { stepId: input.stepId }),
       payload: { cle, capacite: proposition.capabilityKey, resultat, tentative },
     });
 
@@ -290,6 +297,7 @@ async function exécuter(
       employeeId: input.employeeId,
       kind: ACTION_ECHOUEE,
       idempotencyKey: cle,
+      ...(input.stepId !== undefined && { stepId: input.stepId }),
       payload: {
         cle,
         capacite: proposition.capabilityKey,

@@ -61,6 +61,8 @@ export class ExecutionJournal {
     kind: string;
     idempotencyKey: string | null;
     payload?: unknown;
+    /** Le pas de run auquel l'événement appartient (EXEC-07). Nul hors d'un pas. */
+    stepId?: string | null;
   }): Promise<ExecutionEvent> {
     if (event.kind.trim() === "") {
       throw new DataAccessError("Un événement de journal sans nature n'est pas exploitable.");
@@ -68,8 +70,8 @@ export class ExecutionJournal {
 
     const rows = await this.sql.query<Record<string, unknown>>(
       `insert into "execution_event"
-         ("tenant_id", "task_id", "employee_id", "kind", "idempotency_key", "payload")
-       values ($1, $2, $3, $4, $5, $6)
+         ("tenant_id", "task_id", "employee_id", "kind", "idempotency_key", "payload", "step_id")
+       values ($1, $2, $3, $4, $5, $6, $7)
        returning *`,
       [
         this.scope.tenantId,
@@ -78,6 +80,7 @@ export class ExecutionJournal {
         event.kind,
         event.idempotencyKey,
         JSON.stringify(event.payload ?? {}),
+        event.stepId ?? null,
       ],
     );
 
@@ -86,6 +89,17 @@ export class ExecutionJournal {
       throw new DataAccessError("Ajout au journal sans ligne retournée.");
     }
     return toExecutionEvent(appended);
+  }
+
+  /** Les événements d'UN pas de run, dans l'ordre — la chaîne explicative (EXEC-07). */
+  async forStep(taskId: string, stepId: string): Promise<ExecutionEvent[]> {
+    const rows = await this.sql.query<Record<string, unknown>>(
+      `select * from "execution_event"
+       where "tenant_id" = $1 and "task_id" = $2 and "step_id" = $3
+       order by "seq" asc`,
+      [this.scope.tenantId, taskId, stepId],
+    );
+    return rows.map(toExecutionEvent);
   }
 
   /**

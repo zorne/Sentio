@@ -56,6 +56,14 @@ export interface JournalWriter {
     kind: string;
     payload?: unknown;
     idempotencyKey?: string | null;
+    /**
+     * Le pas de run auquel cet événement appartient (EXEC-07). Il relie contexte, proposition,
+     * politique, engagement et résultat en une chaîne qu'on peut relire — au lieu de la deviner
+     * à partir des horodatages, ce qui devient faux dès que deux pas se chevauchent.
+     *
+     * Nul pour ce qui n'appartient à aucun pas : routage du Gateway, effacement, purge.
+     */
+    stepId?: string | null;
   }): Promise<void>;
 }
 

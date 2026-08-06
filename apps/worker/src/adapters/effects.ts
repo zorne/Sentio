@@ -75,12 +75,13 @@ export class PostgresEffectLedger implements EffectLedger {
     employeeId: EmployeeId;
     capabilityKey: string;
     idempotencyKey: string;
+    stepId?: string;
   }): Promise<boolean> {
     try {
       await this.sql.query(
         `insert into execution_event
-           (tenant_id, task_id, employee_id, kind, idempotency_key, payload)
-         values ($1, $2, $3, $4, $5, $6::jsonb)`,
+           (tenant_id, task_id, employee_id, kind, idempotency_key, payload, step_id)
+         values ($1, $2, $3, $4, $5, $6::jsonb, $7)`,
         [
           input.tenantId,
           input.taskId,
@@ -88,6 +89,7 @@ export class PostgresEffectLedger implements EffectLedger {
           ACTION_ENGAGEE,
           input.idempotencyKey,
           JSON.stringify({ capacite: input.capabilityKey }),
+          input.stepId ?? null,
         ],
       );
       return true;
@@ -108,16 +110,18 @@ export class PostgresEffectLedger implements EffectLedger {
     kind: string;
     idempotencyKey: string;
     payload: Record<string, unknown>;
+    stepId?: string;
   }): Promise<void> {
     await this.sql.query(
-      `insert into execution_event (tenant_id, task_id, employee_id, kind, payload)
-       values ($1, $2, $3, $4, $5::jsonb)`,
+      `insert into execution_event (tenant_id, task_id, employee_id, kind, payload, step_id)
+       values ($1, $2, $3, $4, $5::jsonb, $6)`,
       [
         input.tenantId,
         input.taskId,
         input.employeeId,
         input.kind,
         JSON.stringify({ ...input.payload, cle: input.idempotencyKey }),
+        input.stepId ?? null,
       ],
     );
   }
