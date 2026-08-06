@@ -12,6 +12,7 @@
  */
 
 export * from "./heartbeat/index.js";
+export * from "./step-context.js";
 export * from "./adapters/ledger.js";
 export * from "./adapters/approvals.js";
 export * from "./adapters/journal.js";

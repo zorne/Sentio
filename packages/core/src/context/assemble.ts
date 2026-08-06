@@ -77,6 +77,117 @@ export function parseDna(raw: unknown): EmployeeDna {
 }
 
 /**
+ * La connaissance sectorielle, une fois lue et vérifiée.
+ *
+ * Tous les champs sauf `sector` sont **facultatifs**, et c'est délibéré : un profil sectoriel est
+ * un document que Sentio écrit progressivement (`docs/22-niche-et-verticalisation.md`). Un profil
+ * qui ne connaît encore que le vocabulaire d'un secteur doit pouvoir servir — sans que le moteur
+ * comble les rubriques manquantes.
+ *
+ * ⚠️ Ce contenu n'est JAMAIS dérivé des données d'un client (`docs/adr/0011`). C'est ce qui
+ * permet à cette couche d'être commune sans faire fuiter une entreprise vers une autre.
+ */
+export interface SectorKnowledge {
+  readonly sector: string;
+  readonly vocabulaire?: readonly string[];
+  readonly interlocuteurs?: readonly string[];
+  readonly cycleAchat?: string;
+  readonly objections?: readonly string[];
+  readonly angles?: readonly string[];
+}
+
+export class MalformedSectorProfile extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MalformedSectorProfile";
+  }
+}
+
+/**
+ * Lit un profil sectoriel stocké en base (`jsonb`) et **refuse** ce qui n'en est pas un.
+ *
+ * Le parallèle avec `parseDna` est voulu, la sévérité aussi : un profil mal formé qu'on lirait
+ * « au mieux » injecterait dans la tête de l'employé des fragments dont personne ne saurait dire
+ * d'où ils viennent. Mieux vaut un run qui échoue bruyamment.
+ *
+ * Ce qui est absent reste absent : aucune rubrique n'est inventée, aucune valeur par défaut n'est
+ * posée. Un profil sans objections n'est pas un profil sans objection connue — c'est un profil
+ * dont ce chapitre n'est pas encore écrit, et l'employé ne doit pas parler à sa place.
+ */
+export function parseSectorKnowledge(raw: unknown): SectorKnowledge {
+  if (typeof raw !== "object" || raw === null) {
+    throw new MalformedSectorProfile("Profil sectoriel illisible : un objet est attendu.");
+  }
+  const record = raw as Record<string, unknown>;
+
+  const sector = record["sector"] ?? record["secteur"];
+  if (typeof sector !== "string" || sector.trim() === "") {
+    throw new MalformedSectorProfile(
+      "Profil sectoriel invalide : le secteur est obligatoire — sans lui, on ne sait pas à qui ce savoir s'applique.",
+    );
+  }
+
+  const optionalStrings = (value: unknown, field: string): string[] | undefined => {
+    if (value === undefined || value === null) return undefined;
+    if (!Array.isArray(value) || value.some((v) => typeof v !== "string")) {
+      throw new MalformedSectorProfile(
+        `Profil sectoriel invalide : « ${field} » doit être une liste de textes.`,
+      );
+    }
+    const nettoyes = (value as string[]).map((v) => v.trim()).filter((v) => v !== "");
+    return nettoyes.length === 0 ? undefined : nettoyes;
+  };
+
+  const optionalText = (value: unknown, field: string): string | undefined => {
+    if (value === undefined || value === null) return undefined;
+    if (typeof value !== "string") {
+      throw new MalformedSectorProfile(`Profil sectoriel invalide : « ${field} » doit être un texte.`);
+    }
+    return value.trim() === "" ? undefined : value.trim();
+  };
+
+  // Construit champ par champ : une clé n'est POSÉE que si elle a une valeur. Poser
+  // `vocabulaire: undefined` ferait croire à une rubrique vide là où il n'y a pas de rubrique.
+  const connaissance: {
+    sector: string;
+    vocabulaire?: readonly string[];
+    interlocuteurs?: readonly string[];
+    cycleAchat?: string;
+    objections?: readonly string[];
+    angles?: readonly string[];
+  } = { sector: sector.trim() };
+
+  const vocabulaire = optionalStrings(record["vocabulaire"], "vocabulaire");
+  if (vocabulaire !== undefined) connaissance.vocabulaire = vocabulaire;
+
+  const interlocuteurs = optionalStrings(record["interlocuteurs"], "interlocuteurs");
+  if (interlocuteurs !== undefined) connaissance.interlocuteurs = interlocuteurs;
+
+  const cycleAchat = optionalText(record["cycleAchat"] ?? record["cycle_achat"], "cycleAchat");
+  if (cycleAchat !== undefined) connaissance.cycleAchat = cycleAchat;
+
+  const objections = optionalStrings(record["objections"], "objections");
+  if (objections !== undefined) connaissance.objections = objections;
+
+  const angles = optionalStrings(record["angles"], "angles");
+  if (angles !== undefined) connaissance.angles = angles;
+
+  return connaissance;
+}
+
+/** Le profil porte-t-il autre chose que son propre nom ? Un profil réduit à son secteur n'apprend
+ *  rien à l'employé : la couche est alors comptée absente, plutôt qu'écrite vide. */
+function hasSubstance(sector: SectorKnowledge): boolean {
+  return (
+    sector.vocabulaire !== undefined ||
+    sector.interlocuteurs !== undefined ||
+    sector.cycleAchat !== undefined ||
+    sector.objections !== undefined ||
+    sector.angles !== undefined
+  );
+}
+
+/**
  * Nombre de faits appris injectés au plus.
  *
  * Ce n'est pas une règle produit, c'est un garde-fou de coût : sans bornage, le contexte — donc
@@ -93,17 +204,26 @@ export interface TaskContext {
 
 export interface AssembleInput {
   readonly dna: EmployeeDna;
+  /** Couche 2 — la connaissance du SECTEUR, rédigée par Sentio et jamais dérivée d'un client
+   *  (`docs/adr/0011`). Absente tant qu'aucun profil n'existe pour le secteur du client : dans
+   *  ce cas la couche ne s'écrit pas, elle ne se remplace pas par du générique. */
+  readonly sector?: SectorKnowledge;
   readonly profile: readonly CompanyProfileEntry[];
   readonly facts: readonly LearnedFact[];
   readonly task: TaskContext;
   readonly maxLearnedFacts?: number;
 }
 
+/** Les couches qui n'ont rien eu à dire. Rendues explicitement pour que le runtime les
+ *  journalise : une absence qu'on ne nomme pas est indistinguable d'un oubli de branchement. */
+export type MissingLayer = "secteur" | "profil_entreprise" | "faits_appris";
+
 export interface AssembledContext {
   readonly turns: readonly ConversationTurn[];
   readonly usedFacts: readonly LearnedFact[];
   /** Écartés, avec la raison — le runtime les journalise, on doit pouvoir expliquer une absence. */
   readonly excluded: readonly { readonly factId: string; readonly reason: string }[];
+  readonly missingLayers: readonly MissingLayer[];
 }
 
 /** Normalise pour comparer : minuscules, sans accents. Le filtre ne doit pas dépendre de la typographie. */
@@ -153,7 +273,34 @@ export function assembleContext(input: AssembleInput): AssembledContext {
     dnaLines.push(`Règles : ${input.dna.regles.join(" ; ")}.`);
   }
 
-  // ── Couche 2 — la mémoire d'entreprise. Seul ce qui est ACTIF est injecté : une ligne retirée
+  // ── Couche 2 — le SECTEUR. Après l'ADN, avant l'entreprise : elle précise le métier, elle ne
+  //    le redéfinit pas, et elle s'efface devant ce que le client dit de lui-même.
+  //    Rien n'est écrit si rien n'est su : pas de rubrique vide, pas de valeur générique.
+  const sectorLines: string[] = [];
+  if (input.sector !== undefined && hasSubstance(input.sector)) {
+    sectorLines.push(`Ce que Sentio sait du secteur « ${input.sector.sector} » :`);
+    if (input.sector.vocabulaire !== undefined) {
+      sectorLines.push(`- Vocabulaire du métier : ${input.sector.vocabulaire.join(" ; ")}.`);
+    }
+    if (input.sector.interlocuteurs !== undefined) {
+      sectorLines.push(`- Interlocuteurs habituels : ${input.sector.interlocuteurs.join(" ; ")}.`);
+    }
+    if (input.sector.cycleAchat !== undefined) {
+      sectorLines.push(`- Cycle d'achat : ${input.sector.cycleAchat}.`);
+    }
+    if (input.sector.objections !== undefined) {
+      sectorLines.push(`- Objections fréquentes : ${input.sector.objections.join(" ; ")}.`);
+    }
+    if (input.sector.angles !== undefined) {
+      sectorLines.push(`- Angles qui fonctionnent : ${input.sector.angles.join(" ; ")}.`);
+    }
+    sectorLines.push(
+      "Ce savoir est général au secteur, jamais tiré d'une autre entreprise. Ce que dit ce client " +
+        "précisément prime toujours dessus.",
+    );
+  }
+
+  // ── Couche 3 — la mémoire d'entreprise. Seul ce qui est ACTIF est injecté : une ligne retirée
   //    reste lisible pour expliquer le passé, elle ne guide plus l'action.
   const profileLines = input.profile
     .filter((entry) => entry.status === "actif")
@@ -194,19 +341,28 @@ export function assembleContext(input: AssembleInput): AssembledContext {
     );
   }
 
-  // ── Couche 3 — la tâche. Éphémère, et clairement séparée du reste.
+  // ── Couche 5 — la tâche et l'état du run. Éphémère, et clairement séparée du reste : ce n'est
+  //    pas une mémoire, ça ne survit pas au run.
   const taskLines = [`Objectif de ce travail : ${input.task.objective}.`];
   if (input.task.done !== undefined && input.task.done.length > 0) {
     taskLines.push("Déjà fait :", ...input.task.done.map((step) => `- ${step}`));
   }
 
+  const missingLayers: MissingLayer[] = [];
+  if (sectorLines.length === 0) missingLayers.push("secteur");
+  if (profileLines.length === 0) missingLayers.push("profil_entreprise");
+  if (usedFacts.length === 0) missingLayers.push("faits_appris");
+
   const turns: ConversationTurn[] = [
     { role: "system", type: "text", text: dnaLines.join("\n") },
   ];
+  if (sectorLines.length > 0) {
+    turns.push({ role: "system", type: "text", text: sectorLines.join("\n") });
+  }
   if (memoryLines.length > 0) {
     turns.push({ role: "system", type: "text", text: memoryLines.join("\n") });
   }
   turns.push({ role: "user", type: "text", text: taskLines.join("\n") });
 
-  return { turns, usedFacts, excluded };
+  return { turns, usedFacts, excluded, missingLayers };
 }
