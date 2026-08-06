@@ -18,5 +18,7 @@ export * from "./model/http/openai-compatible.js";
 export * from "./policy/engine.js";
 export * from "./context/assemble.js";
 export * from "./capability/registry.js";
+export * from "./journal/vocabulaire.js";
 export * from "./journal/trace.js";
+export * from "./journal/run-state.js";
 export * from "./idempotency.js";

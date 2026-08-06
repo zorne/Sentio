@@ -43,6 +43,11 @@ export interface Job {
 
 export interface ExecutionEvent {
   id: ExecutionEventId;
+  /** Rang d'insertion attribué par la base — le seul ordre total du journal, et donc le seul
+   *  sur lequel une reconstruction de run peut s'appuyer (migration `20260806120001`).
+   *  `createdAt` ne convient pas : il vaut l'heure de début de transaction, identique pour tous
+   *  les événements d'un même pas. */
+  seq: number;
   tenantId: TenantId;
   taskId: TaskId;
   employeeId: EmployeeId;

@@ -7,6 +7,29 @@ import { rowToDomain } from "./naming.js";
 import type { TenantScope } from "./tenant-scope.js";
 
 /**
+ * Rend une ligne de journal au domaine, en réparant le seul champ que la traduction de noms ne
+ * peut pas réparer.
+ *
+ * `seq` est un `bigint`, et node-postgres rend les `bigint` en **texte** — parce qu'un `int8`
+ * dépasse `Number.MAX_SAFE_INTEGER`. `rowToDomain` ne touche qu'aux clés, à raison : il ne sait
+ * rien du sens des valeurs. Ici, on le sait. Sans cette conversion, `seq` vaudrait `"12"` et la
+ * reconstruction d'un run refuserait le journal entier pour rang illisible.
+ *
+ * Le dépassement lève au lieu d'arrondir : un rang tronqué casserait l'ordre total sur lequel
+ * repose toute la reprise, et le ferait sans bruit.
+ */
+function toExecutionEvent(row: Record<string, unknown>): ExecutionEvent {
+  const event = rowToDomain<ExecutionEvent>(row);
+  const seq = Number(event.seq);
+  if (!Number.isSafeInteger(seq)) {
+    throw new DataAccessError(
+      `Rang de journal inexploitable (« ${String(event.seq)} ») : l'ordre du journal ne peut plus être garanti.`,
+    );
+  }
+  return { ...event, seq };
+}
+
+/**
  * Le journal d'exécution.
  *
  * ⚠️ Il n'hérite **pas** de `TenantScopedRepository`, et c'est délibéré : ce dernier expose
@@ -62,17 +85,25 @@ export class ExecutionJournal {
     if (appended === undefined) {
       throw new DataAccessError("Ajout au journal sans ligne retournée.");
     }
-    return rowToDomain<ExecutionEvent>(appended);
+    return toExecutionEvent(appended);
   }
 
-  /** Les événements d'une tâche, dans l'ordre où ils se sont produits. */
+  /**
+   * Les événements d'une tâche, dans l'ordre où ils se sont produits.
+   *
+   * `order by "seq"`, et surtout **pas** `created_at` : celui-ci vaut `now()`, c'est-à-dire
+   * l'heure de DÉBUT DE TRANSACTION. Tous les événements écrits par un même pas de run le
+   * partagent à la microseconde près, et l'ordre retombait alors sur l'ordre physique des
+   * lignes — c'est-à-dire sur rien. Une reprise après interruption pouvait relire « action
+   * exécutée » avant « action décidée » (EXEC-02).
+   */
   async forTask(taskId: string): Promise<ExecutionEvent[]> {
     const rows = await this.sql.query<Record<string, unknown>>(
       `select * from "execution_event"
        where "tenant_id" = $1 and "task_id" = $2
-       order by "created_at" asc`,
+       order by "seq" asc`,
       [this.scope.tenantId, taskId],
     );
-    return rows.map((row) => rowToDomain<ExecutionEvent>(row));
+    return rows.map(toExecutionEvent);
   }
 }

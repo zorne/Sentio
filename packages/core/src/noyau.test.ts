@@ -98,39 +98,60 @@ describe("Clé d'idempotence", () => {
 });
 
 describe("Reconstruction de trace", () => {
-  const entry = (over: Partial<JournalEntry> & { id: string; kind: string }): JournalEntry => ({
+  // `createdAt` est IDENTIQUE partout, à dessein : c'est ce que fait la base, où `now()` vaut
+  // l'heure de début de transaction. Un test qui échelonnerait les horodatages laisserait
+  // croire qu'ils ordonnent quelque chose (EXEC-02).
+  const MEME_INSTANT = new Date("2026-07-29T10:00:00Z");
+  const entry = (over: Partial<JournalEntry> & { id: string; kind: string; seq: number }): JournalEntry => ({
     payload: {},
     idempotencyKey: null,
-    createdAt: new Date("2026-07-29T10:00:00Z"),
+    createdAt: MEME_INSTANT,
     ...over,
   });
 
   it("rétablit l'ordre du journal quel que soit l'ordre reçu", () => {
     const trace = reconstructTrace([
-      entry({ id: "b", kind: "second", createdAt: new Date("2026-07-29T10:05:00Z") }),
-      entry({ id: "a", kind: "premier" }),
+      entry({ id: "b", seq: 2, kind: "second" }),
+      entry({ id: "a", seq: 1, kind: "premier" }),
     ]);
 
     expect(trace.steps.map((s) => s.kind)).toEqual(["premier", "second"]);
     expect(trace.last?.kind).toBe("second");
   });
 
+  it("ordonne sur le rang, jamais sur l'identifiant — un UUID v4 n'ordonne rien", () => {
+    // `id` décroissant, `seq` croissant : si le tri retombait sur `id`, l'ordre s'inverserait.
+    const trace = reconstructTrace([
+      entry({ id: "zzz", seq: 1, kind: "premier" }),
+      entry({ id: "aaa", seq: 2, kind: "second" }),
+    ]);
+    expect(trace.steps.map((s) => s.kind)).toEqual(["premier", "second"]);
+  });
+
   it("sait ce qui a déjà produit son effet", () => {
-    const trace = reconstructTrace([entry({ id: "a", kind: "message_envoye", idempotencyKey: "k1" })]);
+    const trace = reconstructTrace([entry({ id: "a", seq: 1, kind: "message_envoye", idempotencyKey: "k1" })]);
 
     expect(alreadyDone(trace, "k1")).toBe(true);
     expect(alreadyDone(trace, "k2")).toBe(false);
   });
 
   it("déduit l'attente d'un accord humain du seul journal", () => {
-    const suspendu = reconstructTrace([entry({ id: "a", kind: "politique_suspend" })]);
+    const suspendu = reconstructTrace([entry({ id: "a", seq: 1, kind: "politique_suspend" })]);
     expect(suspendu.awaitingApproval).toBe(true);
 
     const repris = reconstructTrace([
-      entry({ id: "a", kind: "politique_suspend" }),
-      entry({ id: "b", kind: "accord_accorde", createdAt: new Date("2026-07-29T11:00:00Z") }),
+      entry({ id: "a", seq: 1, kind: "politique_suspend" }),
+      entry({ id: "b", seq: 2, kind: "accord_accorde" }),
     ]);
     expect(repris.awaitingApproval).toBe(false);
+  });
+
+  it("referme aussi l'attente sur un refus — un run refusé n'attend plus rien", () => {
+    const refuse = reconstructTrace([
+      entry({ id: "a", seq: 1, kind: "politique_suspend" }),
+      entry({ id: "b", seq: 2, kind: "accord_refuse" }),
+    ]);
+    expect(refuse.awaitingApproval).toBe(false);
   });
 });
 

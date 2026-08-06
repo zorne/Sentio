@@ -184,7 +184,9 @@ describe("ExecutionJournal", () => {
   });
 
   it("porte l'entreprise et la clé d'idempotence sur un ajout", async () => {
-    const sql = new RecordingClient([{ id: "e-1" }]);
+    // `seq` fait partie de ce que la base rend TOUJOURS : une doublure qui l'omettrait
+    // ferait passer un test que la réalité contredirait (le rang est obligatoire depuis EXEC-02).
+    const sql = new RecordingClient([{ id: "e-1", seq: "1" }]);
     await new ExecutionJournal(sql, scope).append({
       taskId: "t-1",
       employeeId: "emp-1",
@@ -197,7 +199,7 @@ describe("ExecutionJournal", () => {
   });
 
   it("accepte une absence de clé, mais seulement explicite", async () => {
-    const sql = new RecordingClient([{ id: "e-2" }]);
+    const sql = new RecordingClient([{ id: "e-2", seq: "2" }]);
     await new ExecutionJournal(sql, scope).append({
       taskId: null,
       employeeId: null,

@@ -17,7 +17,7 @@
 
 ## Avancement
 
-**95 tâches sur 181** portent une preuve dans le dépôt.
+**96 tâches sur 181** portent une preuve dans le dépôt.
 
 | Lot | Fait | Total | |
 |---|---|---|---|
@@ -27,7 +27,7 @@
 | Acquisition (Lot 4) | 7 | 24 | `██████··············` |
 | Recrutement & Paiement (Lot 5) | 0 | 10 | `····················` |
 | Dashboard (Lot 6) | 0 | 21 | `····················` |
-| Exécution autonome (Lot 3) | 1 | 15 | `█···················` |
+| Exécution autonome (Lot 3) | 2 | 15 | `███·················` |
 | Évolution (Lot 7) | 0 | 8 | `····················` |
 | Conformité & Lancement (Lot 8) | 1 | 10 | `██··················` |
 | Vérification (transverse) | 7 | 9 | `████████████████····` |
@@ -219,7 +219,7 @@
 | | Tâche | Priorité | Preuve dans le dépôt |
 |---|---|---|---|
 | ✅ | **EXEC-01** Point d'entrée signé déclenché par un battement planifié | P0 | [`apps/worker/src/heartbeat/index.ts`](../apps/worker/src/heartbeat/index.ts) · [`apps/worker/src/heartbeat/signature.ts`](../apps/worker/src/heartbeat/signature.ts) |
-| ☐ | **EXEC-02** Runtime : charger l'état persisté d'un run | P0 | — |
+| ✅ | **EXEC-02** Runtime : charger l'état persisté d'un run | P0 | [`packages/core/src/journal/run-state.ts`](../packages/core/src/journal/run-state.ts) · [`packages/core/src/journal/vocabulaire.ts`](../packages/core/src/journal/vocabulaire.ts) |
 | ☐ | **EXEC-03** Runtime : appeler l'assemblage de contexte pour le pas courant | P0 | — |
 | ☐ | **EXEC-04** Runtime : demander la prochaine action au Model Gateway | P0 | — |
 | ☐ | **EXEC-05** Runtime : soumettre l'action au Policy Engine | P0 | — |
