@@ -12,6 +12,12 @@ import { PostgresUsageLedger, periodFor } from "./ledger.js";
 import { PostgresDeliveryFeedback } from "./reputation.js";
 import { PostgresOutboundMessages, PostgresSendingGuard } from "./sending.js";
 
+/** Versions et clés uniques par appel. `Date.now()` collisionne dès que deux fixtures naissent
+ *  dans la même milliseconde — ce qui arrive tout le temps entre deux suites. */
+let compteurUnique = Math.floor(Math.random() * 1_000_000);
+const versionUnique = (): number => (compteurUnique = (compteurUnique + 1) % 2_000_000_000);
+
+
 /**
  * Le lot 1 branché sur une **vraie** base.
  *
@@ -66,7 +72,7 @@ describeIfDatabase("Le noyau contre un vrai Postgres", () => {
     const [definition] = await sql.query<{ id: string }>(
       `insert into employee_definition (profession, version, dna)
        values ('commercial', $1, '{}'::jsonb) returning id`,
-      [Date.now() % 100000],
+      [versionUnique()],
     );
     const [identity] = await sql.query<{ id: string }>("select * from reserve_identity($1)", [
       "commercial",
@@ -111,7 +117,7 @@ describeIfDatabase("Le noyau contre un vrai Postgres", () => {
     const [definition] = await sql.query<{ id: string }>(
       `insert into employee_definition (profession, version, dna)
        values ('commercial', $1, '{}'::jsonb) returning id`,
-      [(Date.now() % 100000) + Math.floor(Math.random() * 1000) + 100000],
+      [versionUnique()],
     );
     const [identity] = await sql.query<{ id: string }>("select * from reserve_identity($1)", [
       "commercial",
@@ -300,11 +306,19 @@ describeIfDatabase("Le noyau contre un vrai Postgres", () => {
     );
     expect(pending).toHaveLength(1);
 
+    // L'accord NOMME la capacité : depuis EXEC-05, il n'existe plus d'accord par classe d'effet,
+    // qui autorisait tout un genre d'actions d'un seul geste.
     await sql.query(
-      "insert into standing_approval (tenant_id, employee_id, effect_class) values ($1, $2, $3)",
-      [tenantId, employeeId, "external_irreversible"],
+      `insert into standing_approval (tenant_id, employee_id, effect_class, capability_key)
+       values ($1, $2, $3, $4)`,
+      [tenantId, employeeId, "external_irreversible", "envoyer_message"],
     );
     expect((await engine.decide(request)).outcome).toBe("allow");
+
+    // Et il ne déborde pas : une autre capacité, même classe d'effet, reste suspendue.
+    expect(
+      (await engine.decide({ ...request, capabilityKey: "supprimer_donnees" })).outcome,
+    ).toBe("suspend");
 
     // Révocation : effet immédiat, sans redémarrage.
     await sql.query(

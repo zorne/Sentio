@@ -6,6 +6,12 @@ import { ExecutionJournal, TenantScope, createPostgresClient, type PostgresClien
 
 import { loadStepContext } from "./step-context.js";
 
+/** Versions et clés uniques par appel. `Date.now()` collisionne dès que deux fixtures naissent
+ *  dans la même milliseconde — ce qui arrive tout le temps entre deux suites. */
+let compteurUnique = Math.floor(Math.random() * 1_000_000);
+const versionUnique = (): number => (compteurUnique = (compteurUnique + 1) % 2_000_000_000);
+
+
 /**
  * EXEC-03 — le contexte du pas courant, contre un **vrai** Postgres.
  *
@@ -42,14 +48,19 @@ describeIfDatabase("Le contexte du pas courant, sur un vrai Postgres", () => {
   let employeB: string;
   let tacheA: string;
   let tacheB: string;
-  let secteurId: string;
+  // Secteur UNIQUE à cette exécution. `sector_profile` est immuable par trigger : un profil
+  // publié ne peut être ni modifié ni supprimé — c'est voulu (on publie, on ne corrige pas), et
+  // ça rend tout nettoyage impossible. Un nom fixe fuirait donc d'une exécution à la suivante et
+  // ferait échouer le test d'ABSENCE de secteur. Découvert en rejouant la suite deux fois sur la
+  // même base.
+  const secteur = `menuiserie-${randomUUID().slice(0, 8)}`;
 
   async function creerEntreprise(tenantId: string, nom: string) {
     await sql.query("insert into tenant (id, name) values ($1, $2)", [tenantId, nom]);
     const [definition] = await sql.query<{ id: string }>(
       `insert into employee_definition (profession, version, dna) values ('commercial', $1, $2::jsonb) returning id`,
       [
-        Date.now() % 100000,
+        versionUnique(),
         JSON.stringify({
           profession: "commercial",
           mission: "trouver des entreprises à qui vendre",
@@ -97,7 +108,7 @@ describeIfDatabase("Le contexte du pas courant, sur un vrai Postgres", () => {
       "insert into objective (tenant_id, metric, target_value, horizon) values ($1, $2, $3, $4)",
       [tenantA, "rendez_vous_qualifies", 10, "ce mois"],
     );
-    await poserProfil(tenantA, "secteur", "menuiserie");
+    await poserProfil(tenantA, "secteur", secteur);
     await poserProfil(tenantA, "cible", "architectes en Bretagne");
     await poserFait(tenantA, employeA, "Marc préfère être appelé le matin");
 
@@ -119,9 +130,9 @@ describeIfDatabase("Le contexte du pas courant, sur un vrai Postgres", () => {
       await tx.query("delete from execution_event where tenant_id = any($1)", [[tenantA, tenantB]]);
       await tx.query("delete from tenant where id = any($1)", [[tenantA, tenantB]]);
     });
-    if (secteurId !== undefined) {
-      await sql.query("delete from sector_profile where id = $1", [secteurId]).catch(() => undefined);
-    }
+    // Aucun nettoyage de `sector_profile` : la table refuse la suppression (trigger
+    // `sector_profile_immutable`). Le secteur est unique par exécution, ce qui rend le nettoyage
+    // inutile plutôt qu'impossible.
     await sql.close();
   });
 
@@ -166,17 +177,16 @@ describeIfDatabase("Le contexte du pas courant, sur un vrai Postgres", () => {
   });
 
   it("injecte le profil sectoriel dès qu'il est publié pour le secteur déclaré", async () => {
-    const [publie] = await sql.query<{ id: string }>(
-      `insert into sector_profile (sector, version, content) values ('menuiserie', $1, $2::jsonb) returning id`,
-      [Date.now() % 100000, JSON.stringify({ secteur: "menuiserie", vocabulaire: ["métré", "pose"] })],
+    await sql.query(
+      `insert into sector_profile (sector, version, content) values ($1, $2, $3::jsonb)`,
+      [secteur, versionUnique(), JSON.stringify({ secteur, vocabulaire: ["métré", "pose"] })],
     );
-    secteurId = publie?.id as string;
 
     const resultat = await loadStepContext(sql, { tenantId: tenantA, taskId: tacheA });
     if (!resultat.ok) throw new Error("contexte attendu");
 
     const texte = textOf(resultat.contexte.turns);
-    expect(texte).toContain("secteur « menuiserie »");
+    expect(texte).toContain(`secteur « ${secteur} »`);
     expect(texte).toContain("métré");
     expect(resultat.couchesAbsentes).not.toContain("secteur");
     // Et rien n'a été inventé pour les rubriques absentes du profil publié.

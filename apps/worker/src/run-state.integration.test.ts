@@ -16,6 +16,11 @@ import {
   type PostgresClient,
 } from "@sentio/db";
 
+/** Versions et clés uniques par appel. `Date.now()` collisionne dès que deux fixtures naissent
+ *  dans la même milliseconde — ce qui arrive tout le temps entre deux suites. */
+let compteurUnique = Math.floor(Math.random() * 1_000_000);
+const versionUnique = (): number => (compteurUnique = (compteurUnique + 1) % 2_000_000_000);
+
 /**
  * EXEC-02 — la reconstruction d'un run contre un **vrai** Postgres.
  *
@@ -66,7 +71,7 @@ describeIfDatabase("Le journal et la reconstruction d'un run, sur un vrai Postgr
     const [definition] = await sql.query<{ id: string }>(
       `insert into employee_definition (profession, version, dna)
        values ('commercial', $1, '{}'::jsonb) returning id`,
-      [Date.now() % 100000],
+      [versionUnique()],
     );
     const [identity] = await sql.query<{ id: string }>("select * from reserve_identity($1)", ["commercial"]);
     const [employee] = await sql.query<{ id: string }>(

@@ -33,8 +33,19 @@ export interface PolicyRequest {
   readonly autonomy: AutonomyLevel;
 }
 
+/**
+ * Sur quoi repose une autorisation. Distinguer les deux n'est pas cosmétique : un client doit
+ * pouvoir savoir ce que son employé a fait **parce qu'il l'avait autorisé une fois**, et le
+ * retirer. Une autorisation dont on ne sait plus d'où elle vient ne se révoque pas.
+ */
+export type AllowBasis =
+  /** Ni effet extérieur, ni irréversibilité : l'action n'a jamais eu besoin d'un accord. */
+  | "sans_effet_exterieur"
+  /** Un accord permanent en vigueur couvre CETTE capacité (« confirmer une fois »). */
+  | "accord_permanent";
+
 export type PolicyDecision =
-  | { readonly outcome: "allow"; readonly notify: boolean }
+  | { readonly outcome: "allow"; readonly notify: boolean; readonly basis: AllowBasis }
   | { readonly outcome: "suspend"; readonly approvalId: string; readonly clientMessage: string }
   | { readonly outcome: "refuse"; readonly reason: string };
 
@@ -65,6 +76,7 @@ export class PolicyEngine {
       const decision: PolicyDecision = {
         outcome: "allow",
         notify: request.autonomy === "notify",
+        basis: "sans_effet_exterieur",
       };
       await this.trace(request, decision);
       return decision;
@@ -78,14 +90,17 @@ export class PolicyEngine {
       return decision;
     }
 
+    // ⚠️ L'accord est cherché pour CETTE capacité, jamais pour sa classe d'effet. Un accord par
+    // classe autoriserait tout un genre d'actions d'un seul geste — voir la migration
+    // `20260806120002`, qui a retiré cette possibilité de la base elle-même.
     const standing = await this.approvals.hasStandingApproval(
       request.tenantId,
       request.employeeId,
-      request.effectClass,
+      request.capabilityKey,
     );
 
     const decision: PolicyDecision = standing
-      ? { outcome: "allow", notify: request.autonomy === "notify" }
+      ? { outcome: "allow", notify: request.autonomy === "notify", basis: "accord_permanent" }
       : await this.suspend(request);
 
     await this.trace(request, decision);
@@ -112,6 +127,9 @@ export class PolicyEngine {
       taskId: request.taskId,
       employeeId: request.employeeId,
       effectClass: request.effectClass,
+      // La capacité voyage avec la demande : c'est elle que le client accordera, et un accord
+      // permanent accordé depuis cette demande ne doit couvrir qu'elle.
+      capabilityKey: request.capabilityKey,
     });
     return { outcome: "suspend", approvalId, clientMessage: APPROVAL_REQUEST_MESSAGE };
   }
@@ -130,7 +148,12 @@ export class PolicyEngine {
       payload: {
         capacite: request.capabilityKey,
         classe_effet: request.effectClass,
+        // Le niveau d'autonomie EFFECTIVEMENT appliqué. Journalisé pour qu'on puisse répondre,
+        // des mois plus tard, à « pourquoi mon employé a-t-il fait ça sans me demander ? ».
         autonomie: request.autonomy,
+        // Sur quoi repose une autorisation — sans quoi une action autorisée par un accord
+        // permanent est indistinguable d'une action qui n'en avait pas besoin.
+        ...(decision.outcome === "allow" && { fondement: decision.basis }),
       },
     });
   }

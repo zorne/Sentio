@@ -13,8 +13,10 @@
 
 export * from "./heartbeat/index.js";
 export * from "./step-context.js";
+export * from "./next-step.js";
 export * from "./adapters/ledger.js";
 export * from "./adapters/approvals.js";
+export * from "./adapters/autonomy.js";
 export * from "./adapters/journal.js";
 export * from "./adapters/sending.js";
 export * from "./adapters/reputation.js";

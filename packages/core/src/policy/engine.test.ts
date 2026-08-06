@@ -6,14 +6,16 @@ import type { ApprovalStore, JournalWriter } from "../ports.js";
 import { PolicyEngine, refuseOutOfScope, type PolicyRequest } from "./engine.js";
 
 class FakeApprovals implements ApprovalStore {
+  /** Indexé par CAPACITÉ, comme la vraie table : un accord ne couvre jamais une classe entière
+   *  (EXEC-05, migration `20260806120002`). */
   standing = new Set<string>();
-  requested: { effectClass: string }[] = [];
+  requested: { effectClass: string; capabilityKey: string }[] = [];
 
-  async hasStandingApproval(_t: string, _e: string, effectClass: string): Promise<boolean> {
-    return this.standing.has(effectClass);
+  async hasStandingApproval(_t: string, _e: string, capabilityKey: string): Promise<boolean> {
+    return this.standing.has(capabilityKey);
   }
-  async requestApproval(input: { effectClass: string }): Promise<string> {
-    this.requested.push({ effectClass: input.effectClass });
+  async requestApproval(input: { effectClass: string; capabilityKey: string }): Promise<string> {
+    this.requested.push({ effectClass: input.effectClass, capabilityKey: input.capabilityKey });
     return `approval-${this.requested.length}`;
   }
 }
@@ -82,13 +84,13 @@ describe("Policy Engine — l'irréversible n'est jamais automatique par défaut
 
     expect((await engine.decide(request())).outcome).toBe("suspend");
 
-    approvals.standing.add("external_irreversible");
+    approvals.standing.add("envoyer_message");
     expect((await engine.decide(request())).outcome).toBe("allow");
   });
 
   it("« confirmer » demande à chaque fois, même avec un accord permanent", async () => {
     const { engine, approvals } = build();
-    approvals.standing.add("external_irreversible");
+    approvals.standing.add("envoyer_message");
 
     const decision = await engine.decide(request({ autonomy: "confirm" }));
 
@@ -97,10 +99,10 @@ describe("Policy Engine — l'irréversible n'est jamais automatique par défaut
 
   it("la révocation ramène immédiatement à la suspension", async () => {
     const { engine, approvals } = build();
-    approvals.standing.add("external_irreversible");
+    approvals.standing.add("envoyer_message");
     expect((await engine.decide(request())).outcome).toBe("allow");
 
-    approvals.standing.delete("external_irreversible");
+    approvals.standing.delete("envoyer_message");
 
     expect((await engine.decide(request())).outcome).toBe("suspend");
   });

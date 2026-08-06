@@ -68,7 +68,15 @@ export interface ApprovalStore {
   hasStandingApproval(
     tenantId: TenantId,
     employeeId: EmployeeId,
-    effectClass: string,
+    /**
+     * ⚠️ La capacité **nommée**, jamais une classe d'effet. Un accord par classe signifierait
+     * « cet employé peut faire toutes les actions irréversibles » — le client croirait autoriser
+     * un envoi, il autoriserait le genre entier (migration `20260806120002`).
+     *
+     * L'implémentation doit aussi écarter les accords **révoqués** et **expirés** : ici, seul un
+     * accord en vigueur maintenant vaut `true`.
+     */
+    capabilityKey: string,
   ): Promise<boolean>;
 
   /** Demande d'accord ponctuel. Renvoie l'identifiant de la demande créée. */
@@ -77,5 +85,6 @@ export interface ApprovalStore {
     taskId: TaskId;
     employeeId: EmployeeId;
     effectClass: string;
+    capabilityKey: string;
   }): Promise<string>;
 }

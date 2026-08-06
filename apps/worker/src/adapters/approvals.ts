@@ -15,20 +15,37 @@ export class PostgresApprovalStore implements ApprovalStore {
   constructor(private readonly sql: SqlClient) {}
 
   /**
-   * ⚠️ `revoked_at is null` est le cœur de la révocation : le client doit pouvoir revenir en
-   * arrière à tout moment, et l'effet doit être immédiat. Une révocation qui ne prendrait effet
-   * qu'au prochain redémarrage ne serait pas une révocation.
+   * Un accord permanent ne vaut que s'il est **en vigueur, ici, maintenant, pour cette
+   * capacité**. Quatre conditions, et chacune ferme une porte distincte :
+   *
+   *   · `tenant_id` — un accord d'une autre entreprise n'autorise rien ici. La condition est
+   *     redondante avec `employee_id` (un employé n'appartient qu'à une entreprise), et elle
+   *     reste : une redondance qui coûte un index et ferme une fuite est un bon marché.
+   *   · `capability_key` — l'accord porte sur UNE capacité nommée. Accorder « écrire à un
+   *     prospect » n'autorise pas « supprimer des données » (migration `20260806120002`).
+   *   · `revoked_at is null` — la révocation est immédiate. Une révocation qui ne prendrait
+   *     effet qu'au prochain redémarrage ne serait pas une révocation.
+   *   · `expires_at` — une échéance passée ne vaut plus accord. Comparée par la BASE (`now()`),
+   *     jamais par l'horloge du processus : deux workers sur des machines désynchronisées
+   *     n'auraient pas la même idée de « expiré ».
+   *
+   * Aucune de ces conditions n'est facultative, et l'absence de ligne vaut refus — c'est le
+   * comportement sûr par défaut : sans accord, on suspend, on n'agit pas.
    */
   async hasStandingApproval(
     tenantId: TenantId,
     employeeId: EmployeeId,
-    effectClass: string,
+    capabilityKey: string,
   ): Promise<boolean> {
     const rows = await this.sql.query<{ id: string }>(
       `select id from standing_approval
-        where tenant_id = $1 and employee_id = $2 and effect_class = $3 and revoked_at is null
+        where tenant_id = $1
+          and employee_id = $2
+          and capability_key = $3
+          and revoked_at is null
+          and (expires_at is null or expires_at > now())
         limit 1`,
-      [tenantId, employeeId, effectClass],
+      [tenantId, employeeId, capabilityKey],
     );
     return rows.length > 0;
   }
@@ -38,6 +55,7 @@ export class PostgresApprovalStore implements ApprovalStore {
     taskId: TaskId;
     employeeId: EmployeeId;
     effectClass: string;
+    capabilityKey: string;
   }): Promise<string> {
     // Une demande déjà en attente pour la même tâche ne se duplique pas : le client verrait deux
     // fois la même question, et deux réponses contradictoires deviendraient possibles.
