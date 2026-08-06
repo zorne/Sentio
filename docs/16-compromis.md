@@ -159,3 +159,32 @@ nombre.
 **Limite à ne pas franchir :** ne jamais présenter le volume comme un argument de vente, et ne pas
 chercher à « rattraper » le volume le jour où le budget d'inférence le permettra. La contrainte a
 imposé la bonne stratégie ; la lever ne doit pas faire perdre la stratégie.
+
+---
+
+## C14 — Le « dernier objectif » n'est pas déterminable de façon fiable — **dette assumée, à résoudre**
+
+**Ce qui est en place.** `loadStepContext` (EXEC-03) injecte l'objectif courant dans la couche 5 du
+contexte. « Courant » y est défini comme *le dernier déclaré* : `created_at` décroissant, départagé
+par identifiant.
+
+**Pourquoi ce n'est pas fiable.** `created_at` vaut `now()`, c'est-à-dire l'heure de **début de
+transaction**. Deux objectifs insérés dans une même transaction portent donc un horodatage
+identique, et le départage retombe sur un UUID v4 — un ordre stable, mais **arbitraire**. C'est
+exactement le défaut corrigé sur `execution_event` par EXEC-02 (colonne `seq`), et il reste ouvert
+sur `objective`.
+
+**Pourquoi ça ne fait de mal à personne aujourd'hui.** Aucune entreprise n'a plus d'un objectif : le
+tri ne départage rien, et l'objectif rendu est le bon quoi qu'il arrive. La dette est réelle, son
+effet est nul tant que cette condition tient.
+
+**Ce que ça interdit, et c'est le point.** Tant que ce n'est pas résolu, **la gestion de plusieurs
+objectifs simultanés ne peut pas être considérée comme fiable** — ni construite, ni promise à un
+client. Un employé qui viserait un objectif choisi au hasard parmi ceux de son client travaillerait
+sur le mauvais but sans que rien n'échoue.
+
+**Résolution prévue :** `EXEC-16` (backlog). Deux voies, à trancher au moment de la faire — un ordre
+total sur `objective` comme pour le journal, ou un marqueur explicite d'objectif actif, qui dirait
+*lequel* compte plutôt que *lequel est arrivé en dernier*. La seconde est probablement la bonne :
+« le dernier déclaré » est une approximation de « celui qui compte », et c'est l'approximation qui
+crée la dette.

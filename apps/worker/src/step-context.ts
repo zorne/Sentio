@@ -212,6 +212,12 @@ export async function loadStepContext(
   // coquetterie : deux objectifs posés dans la même transaction partagent `created_at` (le même
   // piège qu'EXEC-02 sur le journal), et sans lui deux chargements du même état pourraient
   // rendre deux objectifs différents.
+  //
+  // ⚠️ DETTE CONNUE — `docs/16-compromis.md` C14, résolution `EXEC-16`. Le départage rend le
+  // choix STABLE, il ne le rend pas JUSTE : entre deux objectifs du même instant, celui qui
+  // gagne est celui dont l'UUID trie en premier. Sans effet aujourd'hui — aucune entreprise n'a
+  // plus d'un objectif — mais **la gestion de plusieurs objectifs simultanés ne peut pas être
+  // considérée comme fiable tant que ce n'est pas résolu**, ni construite, ni promise.
   const objectif = objectifs
     .slice()
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || a.id.localeCompare(b.id))[0]!;

@@ -267,11 +267,55 @@ async function verifierDomainePur() {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 5. Le Model Gateway est le SEUL chemin vers un fournisseur d'inférence.
+//
+// `NOYAU-04` : « aucun appel ne se fait ailleurs ». C'est le Gateway qui tient le routage par
+// classe de données, les plafonds par entreprise, le découpage en enveloppes et le comptage du
+// coût. Un appel qui le contourne ne contourne pas une couche technique : il contourne
+// l'invariant 5 d'`AGENTS.md` — une donnée réelle qui part chez un fournisseur non prouvé
+// « sans entraînement ».
+//
+// La règle vise l'exécution (`apps/worker`) et les adaptateurs de fournisseur eux-mêmes sont
+// dans `packages/core/src/model/`, seul endroit autorisé à parler HTTP à un modèle.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TRACES_FOURNISSEUR = [
+  { motif: /\bfetch\s*\(/, quoi: "un appel réseau direct" },
+  { motif: /["'`]https?:\/\/[^"'`]*\b(openai|anthropic|googleapis|generativelanguage|groq|mistral|cohere)\b/i, quoi: "une adresse de fournisseur d'inférence" },
+  { motif: /from\s+["'](openai|@anthropic-ai\/|@google\/gen|@google-cloud\/vertex|groq-sdk|@mistralai\/|cohere-ai)/, quoi: "un SDK de fournisseur d'inférence" },
+  { motif: /\b(OPENAI|ANTHROPIC|GEMINI|GOOGLE_API|GROQ|MISTRAL|COHERE)_[A-Z_]*KEY\b/, quoi: "une clé de fournisseur d'inférence" },
+];
+
+async function verifierAppelsModele() {
+  const fichiers = await fichiersDe(join(REPO_ROOT, "apps", "worker", "src"), [".ts"]);
+
+  for (const fichier of fichiers) {
+    const contenu = await readFile(fichier, "utf8");
+    for (const { texte, numero } of lignesDe(contenu)) {
+      if (texte.trimStart().startsWith("*") || texte.trimStart().startsWith("//")) continue;
+      for (const { motif, quoi } of TRACES_FOURNISSEUR) {
+        if (motif.test(texte)) {
+          signaler(
+            fichier,
+            numero,
+            "le Gateway est le seul chemin vers un fournisseur",
+            `contient ${quoi}. L'exécution passe par \`ModelGateway.complete()\`, jamais par un ` +
+              `fournisseur en direct : lui seul tient le routage par classe de données, les ` +
+              `plafonds, les enveloppes et le comptage du coût (NOYAU-04, AGENTS.md invariant 5).`,
+          );
+        }
+      }
+    }
+  }
+}
+
 async function main() {
   await verifierFonctions();
   await verifierInterface();
   await verifierTextesVisibles();
   await verifierDomainePur();
+  await verifierAppelsModele();
 
   if (manquements.length === 0) {
     process.stdout.write("Frontières d'architecture : rien à signaler.\n");

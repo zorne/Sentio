@@ -17,7 +17,7 @@
 
 ## Avancement
 
-**97 tâches sur 181** portent une preuve dans le dépôt.
+**98 tâches sur 182** portent une preuve dans le dépôt.
 
 | Lot | Fait | Total | |
 |---|---|---|---|
@@ -27,7 +27,7 @@
 | Acquisition (Lot 4) | 7 | 24 | `██████··············` |
 | Recrutement & Paiement (Lot 5) | 0 | 10 | `····················` |
 | Dashboard (Lot 6) | 0 | 21 | `····················` |
-| Exécution autonome (Lot 3) | 3 | 15 | `████················` |
+| Exécution autonome (Lot 3) | 4 | 16 | `█████···············` |
 | Évolution (Lot 7) | 0 | 8 | `····················` |
 | Conformité & Lancement (Lot 8) | 1 | 10 | `██··················` |
 | Vérification (transverse) | 7 | 9 | `████████████████····` |
@@ -221,7 +221,7 @@
 | ✅ | **EXEC-01** Point d'entrée signé déclenché par un battement planifié | P0 | [`apps/worker/src/heartbeat/index.ts`](../apps/worker/src/heartbeat/index.ts) · [`apps/worker/src/heartbeat/signature.ts`](../apps/worker/src/heartbeat/signature.ts) |
 | ✅ | **EXEC-02** Runtime : charger l'état persisté d'un run | P0 | [`packages/core/src/journal/run-state.ts`](../packages/core/src/journal/run-state.ts) · [`packages/core/src/journal/vocabulaire.ts`](../packages/core/src/journal/vocabulaire.ts) |
 | ✅ | **EXEC-03** Runtime : appeler l'assemblage de contexte pour le pas courant | P0 | [`apps/worker/src/step-context.ts`](../apps/worker/src/step-context.ts) |
-| ☐ | **EXEC-04** Runtime : demander la prochaine action au Model Gateway | P0 | — |
+| ✅ | **EXEC-04** Runtime : demander la prochaine action au Model Gateway | P0 | [`packages/core/src/runtime/next-action.ts`](../packages/core/src/runtime/next-action.ts) |
 | ☐ | **EXEC-05** Runtime : soumettre l'action au Policy Engine | P0 | — |
 | ☐ | **EXEC-06** Runtime : exécuter l'action ou suspendre selon la décision de politique | P0 | — |
 | ☐ | **EXEC-07** Runtime : écrire l'événement d'exécution au journal | P0 | — |
@@ -233,6 +233,7 @@
 | ☐ | **EXEC-13** Priorité d'exécution pilotée par la formule du client | P1 | — |
 | ☐ | **EXEC-14** Notifications de travail émises depuis les outcomes journalisés | P0 | — |
 | ☐ | **EXEC-15** Réflexion après run, tolérante aux erreurs (jamais bloquante) | P1 | — |
+| ☐ | **EXEC-16** Ordre total sur objective : le dernier objectif ne se déduit pas de created_at (identique dans une même transaction) | P1 | — |
 
 ---
 
