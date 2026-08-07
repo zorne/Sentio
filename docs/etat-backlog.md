@@ -17,7 +17,7 @@
 
 ## Avancement
 
-**101 tâches sur 182** portent une preuve dans le dépôt.
+**105 tâches sur 184** portent une preuve dans le dépôt.
 
 | Lot | Fait | Total | |
 |---|---|---|---|
@@ -27,7 +27,7 @@
 | Acquisition (Lot 4) | 7 | 24 | `██████··············` |
 | Recrutement & Paiement (Lot 5) | 0 | 10 | `····················` |
 | Dashboard (Lot 6) | 0 | 21 | `····················` |
-| Exécution autonome (Lot 3) | 7 | 16 | `█████████···········` |
+| Exécution autonome (Lot 3) | 11 | 18 | `████████████········` |
 | Évolution (Lot 7) | 0 | 8 | `····················` |
 | Conformité & Lancement (Lot 8) | 1 | 10 | `██··················` |
 | Vérification (transverse) | 7 | 9 | `████████████████····` |
@@ -225,15 +225,17 @@
 | ✅ | **EXEC-05** Runtime : soumettre l'action au Policy Engine | P0 | [`apps/worker/src/next-step.ts`](../apps/worker/src/next-step.ts) · [`supabase/migrations/20260806120002_autonomie_et_accords.sql`](../supabase/migrations/20260806120002_autonomie_et_accords.sql) |
 | ✅ | **EXEC-06** Runtime : exécuter l'action ou suspendre selon la décision de politique | P0 | [`packages/core/src/runtime/execute-action.ts`](../packages/core/src/runtime/execute-action.ts) |
 | ✅ | **EXEC-07** Runtime : écrire l'événement d'exécution au journal | P0 | [`packages/core/src/journal/trace-du-pas.ts`](../packages/core/src/journal/trace-du-pas.ts) · [`supabase/migrations/20260806120003_pas_de_run.sql`](../supabase/migrations/20260806120003_pas_de_run.sql) |
-| ☐ | **EXEC-08** Runtime : replanifier le pas suivant ou terminer le run | P0 | — |
+| ✅ | **EXEC-08** Runtime : replanifier le pas suivant ou terminer le run | P0 | [`packages/core/src/ports.ts`](../packages/core/src/ports.ts) · [`apps/worker/src/suite-du-run.ts`](../apps/worker/src/suite-du-run.ts) |
 | ☐ | **EXEC-09** Reprise après interruption (reconstruction d'état depuis le journal) | P0 | — |
 | ☐ | **EXEC-10** Suspension d'un run en attente d'accord humain | P0 | — |
 | ☐ | **EXEC-11** Reprise après validation humaine (approve/reject/trustFuture) | P0 | — |
-| ☐ | **EXEC-12** Verrouillage par ligne de la file job + saut des lignes verrouillées | P0 | — |
+| ✅ | **EXEC-12** Verrouillage par ligne de la file job + saut des lignes verrouillées | P0 | [`apps/worker/src/boucle.ts`](../apps/worker/src/boucle.ts) · [`apps/worker/src/adapters/moteurs.ts`](../apps/worker/src/adapters/moteurs.ts) |
 | ☐ | **EXEC-13** Priorité d'exécution pilotée par la formule du client | P1 | — |
 | ☐ | **EXEC-14** Notifications de travail émises depuis les outcomes journalisés | P0 | — |
 | ☐ | **EXEC-15** Réflexion après run, tolérante aux erreurs (jamais bloquante) | P1 | — |
 | ☐ | **EXEC-16** Ordre total sur objective : le dernier objectif ne se déduit pas de created_at (identique dans une même transaction) | P1 | — |
+| ✅ | **EXEC-17** Approvisionnement : ouvrir les nouvelles missions du jour, de façon déterministe et bornée | P0 | [`packages/core/src/ports.ts`](../packages/core/src/ports.ts) · [`apps/worker/src/battement.ts`](../apps/worker/src/battement.ts) |
+| ✅ | **EXEC-18** Racine de composition du worker : environnement validé, adaptateurs assemblés, battement signé servi | P0 | [`apps/worker/src/main.ts`](../apps/worker/src/main.ts) · [`apps/worker/src/serveur.ts`](../apps/worker/src/serveur.ts) |
 
 ---
 

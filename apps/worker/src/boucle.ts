@@ -1,0 +1,331 @@
+/**
+ * EXEC-12 — la boucle complète : de la file au journal, un pas à la fois.
+ *
+ * C'est ici que toutes les pièces écrites depuis `EXEC-01` deviennent **une machine qui tourne** :
+ *
+ *     file (verrou) → état relu → contexte → proposition → politique → effet → journal → suite
+ *
+ * ══ CE QUE CE MODULE GARANTIT, ET COMMENT ══
+ *
+ * | Garantie | Ce qui la tient — jamais ce module |
+ * |---|---|
+ * | deux exécutants ne prennent pas le même travail | `for update skip locked` (`file-de-travaux.ts`) |
+ * | aucun effet extérieur produit deux fois | `unique (tenant_id, idempotency_key)` (EXEC-06) |
+ * | un exécutant mort ne bloque pas un travail | le bail sur `locked_at` |
+ * | aucune donnée ne franchit une entreprise | `TenantScope` sur chaque lecture (`adr/0013`) |
+ *
+ * Ce module ne défend aucune de ces propriétés lui-même. Il les **utilise**. C'est délibéré : une
+ * garantie tenue par du JavaScript est une garantie qui tombe à la première course.
+ *
+ * ══ RIEN N'EST GARDÉ EN MÉMOIRE ENTRE DEUX PAS ══
+ *
+ * L'état est relu depuis le journal au début du pas, et **relu à nouveau** après, pour que la
+ * décision de suite porte sur ce qui a réellement été écrit. Le recalculer de tête — « c'était 3,
+ * j'ai fait un pas, donc 4 » — ferait diverger la mémoire du processus et la vérité du journal au
+ * premier chemin oublié.
+ *
+ * Réalise : EXEC-12
+ */
+
+import { REGLAGES_RUNTIME_PAR_DEFAUT, type ReglagesRuntime } from "@sentio/config";
+import {
+  ATTENTION_REQUISE,
+  RUN_DEMARRE,
+  deciderLaSuite,
+  executeDecidedAction,
+  issueDepuisErreur,
+  peutReprendre,
+  reconstruireEtatRun,
+  type CapabilityRegistry,
+  type EffectLedger,
+  type EtatRun,
+  type FileDeTravaux,
+  type IssueDuPas,
+  type JournalWriter,
+  type ModelGateway,
+  type PolicyEngine,
+  type ResultatExecution,
+  type TravailPris,
+} from "@sentio/core";
+import { ExecutionJournal, TenantScope, type SqlClient } from "@sentio/db";
+import type { TaskId, TenantId } from "@sentio/domain";
+
+import type { HeartbeatReport } from "./heartbeat/index.js";
+import { decideNextStep } from "./next-step.js";
+import { appliquerLaSuite } from "./suite-du-run.js";
+
+export interface BoucleDeps {
+  readonly sql: SqlClient;
+  readonly file: FileDeTravaux;
+  readonly journal: JournalWriter;
+  readonly gateway: ModelGateway;
+  readonly policy: PolicyEngine;
+  readonly registry: CapabilityRegistry;
+  readonly ledger: EffectLedger;
+  /** Résout le moteur d'une capacité pour CETTE entreprise (`capability_binding`, NOYAU-18). */
+  readonly moteurPour: (
+    tenantId: TenantId,
+    capabilityKey: string,
+  ) => Promise<{ execute: (input: unknown) => Promise<unknown> }>;
+  readonly reglages?: ReglagesRuntime;
+}
+
+export interface OptionsDeBoucle {
+  /** Qui prend le travail. Sert au diagnostic : « quel exécutant tenait ce verrou ? ». */
+  readonly prisPar: string;
+  readonly maintenant: Date;
+  /** Borne d'un battement. Sans elle, un battement pourrait tourner sans fin. */
+  readonly maxTravaux?: number;
+  /** Classe de données. `real` en production ; les tests utilisent `synthetic`. */
+  readonly dataClass?: "real" | "synthetic";
+  readonly envelope?: string;
+}
+
+/**
+ * Vide la file, un travail à la fois, jusqu'à épuisement ou jusqu'à la borne du battement.
+ *
+ * **Un travail cassé n'arrête pas les autres.** Une exception est comptée, journalisée, et la
+ * boucle continue : un battement qui s'interromprait au premier incident laisserait tous les
+ * travaux suivants à l'arrêt, et l'incident d'une entreprise deviendrait la panne de toutes.
+ */
+export async function executerLesTravauxDus(
+  deps: BoucleDeps,
+  options: OptionsDeBoucle,
+): Promise<HeartbeatReport> {
+  const reglages = deps.reglages ?? REGLAGES_RUNTIME_PAR_DEFAUT;
+  const maxTravaux = options.maxTravaux ?? reglages.travauxMaxParBattement;
+  let traites = 0;
+  let echoues = 0;
+
+  for (let i = 0; i < maxTravaux; i++) {
+    const travail = await deps.file.prendre({
+      pris_par: options.prisPar,
+      maintenant: options.maintenant,
+    });
+    // Plus rien de dû : le cas le plus fréquent, et pas une erreur.
+    if (travail === null) break;
+
+    try {
+      await executerUnPas(deps, options, travail);
+      traites += 1;
+    } catch (erreur) {
+      echoues += 1;
+      // ⚠️ Le travail n'est PAS remis en file ici. Son bail expirera, et un exécutant le
+      // reprendra — en comptant la reprise. Le remettre tout de suite ferait tourner en boucle
+      // serrée une mission qui échoue à chaque fois, sans que le compteur de reprises ne bouge.
+      await deps.journal.append({
+        tenantId: travail.tenantId,
+        taskId: travail.taskId,
+        employeeId: travail.employeeId,
+        kind: ATTENTION_REQUISE,
+        payload: { motif: "pas_interrompu", detail: String(erreur) },
+      });
+    }
+  }
+
+  return { traites, echoues };
+}
+
+/** L'état du run, relu depuis le journal. Jamais gardé, jamais recalculé de tête. */
+async function relire(
+  sql: SqlClient,
+  tenantId: TenantId,
+  taskId: TaskId,
+): Promise<{ ok: true; etat: EtatRun } | { ok: false; detail: string }> {
+  const journal = new ExecutionJournal(sql, TenantScope.of(tenantId));
+  const reconstruction = reconstruireEtatRun(await journal.forTask(taskId));
+  if (reconstruction.ok) return { ok: true, etat: reconstruction.etat };
+  return {
+    ok: false,
+    detail: reconstruction.anomalies.map((anomalie) => anomalie.detail).join(" | "),
+  };
+}
+
+/**
+ * Un pas, sur un travail déjà pris.
+ *
+ * L'ordre des trois contrôles d'entrée n'est pas indifférent : chacun coûte moins cher que le
+ * suivant, et surtout, aucun n'appelle le modèle. Un travail incohérent, à l'arrêt, ou empoisonné
+ * ne doit pas consommer une seule requête payante avant d'être écarté.
+ */
+async function executerUnPas(
+  deps: BoucleDeps,
+  options: OptionsDeBoucle,
+  travail: TravailPris,
+): Promise<void> {
+  const reglages = deps.reglages ?? REGLAGES_RUNTIME_PAR_DEFAUT;
+  const { tenantId, taskId, employeeId } = travail;
+
+  // ── 1. Une mission qui tue l'exécutant le tuera aussi la fois suivante.
+  if (travail.reprises >= reglages.repriseMaxApresInterruption) {
+    await arreterPourHumain(
+      deps,
+      travail,
+      "reprises_epuisees",
+      `Cette mission a été reprise ${travail.reprises} fois sans aboutir : elle n'est plus rejouée.`,
+    );
+    return;
+  }
+
+  // ── 2. Un journal incohérent ne rend pas un état, et on ne devine pas à sa place (EXEC-02).
+  const avant = await relire(deps.sql, tenantId, taskId);
+  if (!avant.ok) {
+    await arreterPourHumain(deps, travail, "journal_incoherent", avant.detail);
+    return;
+  }
+
+  // ── 3. Le journal fait foi : s'il dit que ce run ne peut pas reprendre, la file avait tort.
+  //    On la remet d'accord avec lui plutôt que de travailler sur un état que personne n'assume.
+  if (!peutReprendre(avant.etat)) {
+    await remettreLaFileDaccord(deps, travail, avant.etat);
+    return;
+  }
+
+  // ── Le premier événement de toute mission, sans exception. Sans lui, la reconstruction du pas
+  //    suivant refuse le journal entier (« un événement survient avant tout démarrage »).
+  if (avant.etat.phase === "jamais_demarre") {
+    await deps.journal.append({
+      tenantId,
+      taskId,
+      employeeId,
+      kind: RUN_DEMARRE,
+      payload: { prisPar: options.prisPar },
+    });
+  }
+
+  const issue = await unPasDeDecision(deps, options, travail);
+
+  // ── L'état relu APRÈS le pas : c'est lui qui porte le pas qu'on vient d'écrire, donc le budget
+  //    réellement consommé. Le déduire ferait diverger la mémoire du processus et le journal.
+  const apres = await relire(deps.sql, tenantId, taskId);
+  if (!apres.ok) {
+    await arreterPourHumain(deps, travail, "journal_incoherent", apres.detail);
+    return;
+  }
+
+  const suite = deciderLaSuite({
+    issue,
+    etat: apres.etat,
+    reglages,
+    maintenant: options.maintenant,
+  });
+
+  await appliquerLaSuite(
+    { journal: deps.journal, file: deps.file },
+    { tenantId, taskId, employeeId, suite },
+  );
+}
+
+/**
+ * Le pas lui-même : proposer, décider, exécuter.
+ *
+ * `TaskDeferred` est la seule erreur rattrapée — un plafond atteint est un **report**, pas une
+ * panne (NOYAU-07). Tout le reste remonte : avaler une erreur de fournisseur ou un routage non
+ * conforme les transformerait en « le modèle n'a rien proposé », c'est-à-dire en travail
+ * silencieusement non fait.
+ */
+async function unPasDeDecision(
+  deps: BoucleDeps,
+  options: OptionsDeBoucle,
+  travail: TravailPris,
+): Promise<IssueDuPas> {
+  try {
+    const resultat = await decideNextStep(
+      deps.sql,
+      {
+        gateway: deps.gateway,
+        policy: deps.policy,
+        registry: deps.registry,
+        journal: deps.journal as Parameters<typeof decideNextStep>[1]["journal"],
+      },
+      {
+        tenantId: travail.tenantId,
+        taskId: travail.taskId,
+        employeeId: travail.employeeId,
+        dataClass: options.dataClass ?? "real",
+        envelope: options.envelope ?? "sold_employees",
+      },
+    );
+
+    if (!resultat.ok) {
+      return {
+        kind: "contexte_incomplet",
+        detail: resultat.manques.map((manque) => `${manque.quoi} : ${manque.detail}`).join(" | "),
+      };
+    }
+
+    let execution: ResultatExecution | null = null;
+    if (resultat.decision.kind === "agir") {
+      execution = await executeDecidedAction(
+        {
+          registry: deps.registry,
+          ledger: deps.ledger,
+          engineFor: (capabilityKey) => deps.moteurPour(travail.tenantId, capabilityKey),
+        },
+        {
+          tenantId: travail.tenantId,
+          taskId: travail.taskId,
+          employeeId: travail.employeeId,
+          decision: resultat.decision,
+          stepId: resultat.stepId,
+        },
+      );
+    }
+
+    return { kind: "decision", decision: resultat.decision, execution };
+  } catch (erreur) {
+    const report = issueDepuisErreur(erreur);
+    if (report !== null) return report;
+    throw erreur;
+  }
+}
+
+/** Arrête la mission et appelle une personne, sans jamais laisser le travail verrouillé. */
+async function arreterPourHumain(
+  deps: BoucleDeps,
+  travail: TravailPris,
+  motif: string,
+  detail: string,
+): Promise<void> {
+  await deps.journal.append({
+    tenantId: travail.tenantId,
+    taskId: travail.taskId,
+    employeeId: travail.employeeId,
+    kind: ATTENTION_REQUISE,
+    payload: { motif, detail },
+  });
+  await deps.file.mettreDeCote({
+    tenantId: travail.tenantId,
+    taskId: travail.taskId,
+    motif: "attention_requise",
+  });
+}
+
+/**
+ * Le journal dit que ce run est fini, refusé, ou en attente ; la file le croyait dû.
+ *
+ * Ça arrive légitimement — un exécutant tué juste après avoir écrit le journal et avant d'avoir
+ * touché la file (`suite-du-run.ts` documente précisément cet état). Le réparer ici est ce qui
+ * rend cette interruption **réparable par répétition** : le battement suivant retombe sur la même
+ * décision et la réapplique, au lieu de rejouer un travail que le journal a déjà refermé.
+ */
+async function remettreLaFileDaccord(
+  deps: BoucleDeps,
+  travail: TravailPris,
+  etat: EtatRun,
+): Promise<void> {
+  const { tenantId, taskId } = travail;
+  if (etat.phase === "attente_accord") {
+    await deps.file.mettreDeCote({ tenantId, taskId, motif: "accord_attendu" });
+    return;
+  }
+  if (etat.phase === "attention_requise") {
+    await deps.file.mettreDeCote({ tenantId, taskId, motif: "attention_requise" });
+    return;
+  }
+  await deps.file.retirer({
+    tenantId,
+    taskId,
+    issue: etat.phase === "echoue" ? "echoue" : "termine",
+  });
+}

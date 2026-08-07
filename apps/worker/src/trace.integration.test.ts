@@ -67,7 +67,8 @@ describeIfDatabase("La chaîne explicative d'un pas, sur un vrai Postgres", () =
     employeeId = employee?.id as EmployeeId;
 
     const [task] = await sql.query<{ id: string }>(
-      "insert into task (tenant_id, employee_id) values ($1, $2) returning id",
+      "insert into task (tenant_id, employee_id, subject_kind, subject_id) " +
+        "values ($1, $2, 'lead', gen_random_uuid()) returning id",
       [tenantId, employeeId],
     );
     taskId = task?.id as string;

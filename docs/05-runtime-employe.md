@@ -37,6 +37,78 @@ replanifier le pas suivant, ou terminer
 
 Rien n'est conservé en mémoire entre deux pas. L'état complet se reconstruit depuis la base.
 
+### D'où vient le travail
+
+Trois niveaux, et ne pas les confondre est ce qui rend le reste lisible
+([`adr/0027`](adr/0027-approvisionnement-du-travail.md)) :
+
+| | Ce que c'est | Durée |
+|---|---|---|
+| **mission** (`task`) | un sujet durable — un prospect pour le Commercial | des jours, des semaines |
+| **cycle** | une session de travail quotidienne sur cette mission | une journée |
+| **pas** | une action individuelle | quelques secondes |
+
+**Les missions déjà ouvertes se réveillent toutes seules** : `run_reporte` leur repose une
+échéance à la cadence. L'approvisionnement n'a donc qu'un seul travail — **ouvrir du neuf** —, au
+plus dix par jour et par employé, et il est **déterministe** : aucun modèle ne décide du volume de
+travail à créer.
+
+Les trois garde-fous sont dans la base, jamais dans un `if` : un index unique sur le sujet
+(jamais deux missions sur le même prospect), une clé primaire par employé et par jour (un
+battement rejoué n'ouvre rien), et un déclencheur qui refuse toute mission au-delà du quota de la
+formule — y compris insérée à la main.
+
+L'objectif du client dit **quand cesser d'ouvrir**, jamais combien ouvrir. Un objectif atteint
+arrête l'ouverture de missions neuves ; il n'abandonne aucune mission engagée.
+
+### La file : un travail à la fois, verrouillé, jamais deux fois
+
+Le battement prend les travaux dus **un par un**, avec `for update skip locked` : l'exécutant qui
+arrive second passe à la ligne suivante au lieu d'attendre. Le verrou Postgres n'est tenu que le
+temps de la prise ; pendant le pas, c'est un **bail** (`locked_at`) qui protège — sans quoi un
+exécutant qui meurt rendrait un travail invisible pour toujours.
+
+Une mission reprise trop souvent après interruption n'est plus rejouée : elle est confiée à une
+personne. Une mission qui fait tomber l'exécutant à chaque tentative le fera tomber la fois
+suivante aussi.
+
+**Le journal fait foi, y compris contre la file.** S'il dit qu'un run est terminé, refusé ou en
+attente alors que la file le croyait dû, c'est la file qu'on remet d'accord — jamais l'inverse.
+C'est ce qui rend réparable l'interruption entre l'écriture du journal et celle de la file.
+
+### Le rythme : un cycle par jour, dix pas par cycle
+
+Décision produit, [`adr/0026`](adr/0026-cadence-et-borne-de-pas.md) : **un employé travaille
+chaque jour**, et un cycle de travail vaut au plus **dix pas**. Les deux valeurs vivent en
+configuration (`@sentio/config`, `ReglagesRuntime`), pas dans le code d'exécution.
+
+Au dixième pas, le run **ne tombe pas en panne** : il se referme proprement (`run_reporte` au
+journal) et reprend au cycle suivant, budget neuf, sans rien perdre. Un pas est compté quand son
+contexte est assemblé, pas quand une action aboutit — un pas qui finit sur un refus a coûté un
+appel de modèle comme les autres.
+
+Le dernier maillon de la boucle a donc quatre issues, et pas une de plus :
+
+| Issue | Ce que fait le système | Journal |
+|---|---|---|
+| **poursuivre** | le pas suivant est dû tout de suite, le verrou est rendu | — |
+| **reporter** | le travail garde sa place dans la file, avec une échéance | `run_reporte` / `pas_reporte` |
+| **terminer** | le travail quitte la file | `run_termine` / `run_echoue` |
+| **attendre un humain** | le travail quitte la file **sans échéance** | `politique_suspend` / `attention_requise` |
+
+⚠️ La quatrième ligne est la seule dont on ne sort pas tout seul, et c'est délibéré : donner une
+échéance de repli à un run qui attend un accord le ferait repartir sans réponse du client.
+
+### Quand le client est prévenu — et quand il ne l'est pas
+
+**Jamais après un run réussi.** Un fil qu'on reçoit tous les jours est un fil qu'on cesse de lire.
+Le client est prévenu quand son employé est **bloqué** : une demande d'accord (`politique_suspend`)
+ou un constat que personne ne peut faire à sa place (`attention_requise`).
+
+La vue `intervention_requise` rend cet état interrogeable. Elle est **dérivée du journal** — le
+dernier événement de chaque tâche —, jamais tenue à jour à la main : un accord ou une reprise fait
+sortir la ligne par construction. C'est la seule source des notifications de blocage (`EXEC-14`).
+
 ---
 
 ## Idempotence — obligatoire, dès le premier envoi

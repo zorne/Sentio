@@ -65,7 +65,8 @@ describeIfDatabase("Accords permanents et autonomie, sur un vrai Postgres", () =
       [tenantId, definition?.id, identity?.id],
     );
     const [task] = await sql.query<{ id: string }>(
-      "insert into task (tenant_id, employee_id) values ($1, $2) returning id",
+      "insert into task (tenant_id, employee_id, subject_kind, subject_id) " +
+        "values ($1, $2, 'lead', gen_random_uuid()) returning id",
       [tenantId, employee?.id],
     );
     return { employeeId: employee?.id as EmployeeId, taskId: task?.id as string };

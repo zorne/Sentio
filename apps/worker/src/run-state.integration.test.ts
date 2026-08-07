@@ -82,7 +82,8 @@ describeIfDatabase("Le journal et la reconstruction d'un run, sur un vrai Postgr
     employeeId = employee?.id as string;
 
     const [task] = await sql.query<{ id: string }>(
-      "insert into task (tenant_id, employee_id) values ($1, $2) returning id",
+      "insert into task (tenant_id, employee_id, subject_kind, subject_id) " +
+        "values ($1, $2, 'lead', gen_random_uuid()) returning id",
       [tenantId, employeeId],
     );
     taskId = task?.id as string;
@@ -147,7 +148,8 @@ describeIfDatabase("Le journal et la reconstruction d'un run, sur un vrai Postgr
   // (celle qui a commencé le plus tôt peut écrire en dernier).
   it("rend l'ordre d'écriture même quand les horodatages disent l'inverse", async () => {
     const [tache] = await sql.query<{ id: string }>(
-      "insert into task (tenant_id, employee_id) values ($1, $2) returning id",
+      "insert into task (tenant_id, employee_id, subject_kind, subject_id) " +
+        "values ($1, $2, 'lead', gen_random_uuid()) returning id",
       [tenantId, employeeId],
     );
     const contradictoire = tache?.id as string;
@@ -232,7 +234,8 @@ describeIfDatabase("Le journal et la reconstruction d'un run, sur un vrai Postgr
 
   it("ne mélange jamais deux tâches : chaque run se reconstruit sur son seul journal", async () => {
     const [autre] = await sql.query<{ id: string }>(
-      "insert into task (tenant_id, employee_id) values ($1, $2) returning id",
+      "insert into task (tenant_id, employee_id, subject_kind, subject_id) " +
+        "values ($1, $2, 'lead', gen_random_uuid()) returning id",
       [tenantId, employeeId],
     );
     const autreTaskId = autre?.id as string;

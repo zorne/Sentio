@@ -44,9 +44,9 @@ select 'ffffffff-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-00000000
        'dddddddd-0000-0000-0000-000000000001', id
 from public.reserve_identity('commercial');
 
-insert into public.task (id, tenant_id, employee_id) values
+insert into public.task (id, tenant_id, employee_id, subject_kind, subject_id) values
   ('99999999-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001',
-   'ffffffff-0000-0000-0000-000000000001');
+   'ffffffff-0000-0000-0000-000000000001', 'lead', gen_random_uuid());
 
 
 -- ── Invariant 1 — l'ADN n'est jamais modifiable ─────────────────────────────────────────────
@@ -500,9 +500,9 @@ select '0c000000-0000-0000-0000-0000000000ce', 'c0000000-0000-0000-0000-00000000
        'dddddddd-0000-0000-0000-000000000001', id
 from public.reserve_identity('commercial');
 
-insert into public.task (id, tenant_id, employee_id) values
+insert into public.task (id, tenant_id, employee_id, subject_kind, subject_id) values
   ('0c000000-0000-0000-0000-0000000000ca', 'c0000000-0000-0000-0000-00000000000c',
-   '0c000000-0000-0000-0000-0000000000ce');
+   '0c000000-0000-0000-0000-0000000000ce', 'lead', gen_random_uuid());
 
 insert into public.notification (tenant_id, employee_id, kind, message) values
   ('c0000000-0000-0000-0000-00000000000c', '0c000000-0000-0000-0000-0000000000ce',
@@ -693,9 +693,9 @@ select '0d000000-0000-0000-0000-0000000000de', 'd0000000-0000-0000-0000-00000000
        'dddddddd-0000-0000-0000-000000000001', id
 from public.reserve_identity('commercial');
 
-insert into public.task (id, tenant_id, employee_id) values
+insert into public.task (id, tenant_id, employee_id, subject_kind, subject_id) values
   ('0d000000-0000-0000-0000-0000000000da', 'd0000000-0000-0000-0000-00000000000d',
-   '0d000000-0000-0000-0000-0000000000de');
+   '0d000000-0000-0000-0000-0000000000de', 'lead', gen_random_uuid());
 
 do $$
 declare

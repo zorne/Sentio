@@ -24,4 +24,6 @@ export * from "./journal/run-state.js";
 export * from "./journal/trace-du-pas.js";
 export * from "./runtime/next-action.js";
 export * from "./runtime/execute-action.js";
+export * from "./runtime/suite-du-run.js";
+export * from "./runtime/approvisionnement.js";
 export * from "./idempotency.js";

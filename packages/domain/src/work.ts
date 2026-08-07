@@ -20,12 +20,39 @@ export interface Objective {
   createdAt: Date;
 }
 
-export type TaskState = "pending" | "in_progress" | "waiting_approval" | "done" | "failed";
+/**
+ * L'état mécanique d'une mission, du point de vue de la file.
+ *
+ * ⚠️ `needs_attention` n'est pas `waiting_approval`, et les confondre afficherait au client une
+ * question qui n'existe pas : `waiting_approval` attend une **réponse** sur une action précise ;
+ * `needs_attention` attend un **constat** que personne ne peut faire à sa place — un effet
+ * irréversible engagé d'issue inconnue, un contexte incomplet (`adr/0026`).
+ *
+ * Cette liste est la copie TypeScript de la contrainte `task_state_check` (migration
+ * `20260807120001`). Un test d'intégration compare les deux.
+ */
+export type TaskState =
+  | "pending"
+  | "in_progress"
+  | "waiting_approval"
+  | "needs_attention"
+  | "done"
+  | "failed";
 
+/**
+ * Une mission durable confiée à un employé, sur **un sujet** — un prospect pour le métier
+ * Commercial, autre chose pour un métier futur (`adr/0027`).
+ *
+ * Le sujet n'est pas une décoration : c'est lui qui rend « ce travail existe déjà » décidable.
+ * Sans lui, deux missions du même employé étaient strictement indiscernables.
+ */
 export interface Task {
   id: TaskId;
   tenantId: TenantId;
   employeeId: EmployeeId;
+  /** La NATURE du sujet (`lead`, …). Jamais une table : le domaine ne connaît pas le schéma. */
+  subjectKind: string;
+  subjectId: string;
   state: TaskState;
   createdAt: Date;
 }

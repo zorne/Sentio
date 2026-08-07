@@ -292,9 +292,21 @@ async function verifierAppelsModele() {
 
   for (const fichier of fichiers) {
     const contenu = await readFile(fichier, "utf8");
+    // ⚠️ NUANCE ASSUMÉE, ajoutée le 2026-08-07 en écrivant la racine de composition.
+    //
+    // `fetch(` n'est qu'un INDICE d'appel de fournisseur, pas la faute elle-même. Le test
+    // d'intégration du worker parle HTTP à SON PROPRE serveur, sur la boucle locale — il n'y a
+    // là aucun fournisseur, et le contrôle criait sur le seul test qui prouve que Sentio démarre.
+    //
+    // On ne le contourne pas, on le resserre : l'indice générique ne s'applique plus aux
+    // fichiers de test, mais les trois motifs qui désignent RÉELLEMENT un fournisseur — adresse,
+    // SDK, clé — continuent de s'appliquer partout, tests compris. Une clé de fournisseur ou une
+    // adresse d'API dans un test reste donc refusée, ce qui est le cas qui compte.
+    const estUnTest = fichier.endsWith(".test.ts");
     for (const { texte, numero } of lignesDe(contenu)) {
       if (texte.trimStart().startsWith("*") || texte.trimStart().startsWith("//")) continue;
       for (const { motif, quoi } of TRACES_FOURNISSEUR) {
+        if (estUnTest && quoi === "un appel réseau direct") continue;
         if (motif.test(texte)) {
           signaler(
             fichier,
@@ -310,12 +322,52 @@ async function verifierAppelsModele() {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 6. Recruter un employé, c'est choisir son autonomie — explicitement.
+//
+// Décision produit du fondateur (2026-08-07, `docs/adr/0026`) : le mode vendu est
+// « confirmer une fois ». La colonne `employee.autonomy` a pour défaut `confirm`, volontairement
+// PLUS strict : un défaut permissif ferait de l'oubli de réglage une autorisation, et la sécurité
+// ne se décide pas par omission (AGENTS.md, invariant 6).
+//
+// Les deux ne se contredisent que si personne ne pose la valeur au moment du recrutement. C'est
+// exactement ce que cette règle attrape : une insertion d'employé qui ne nomme pas `autonomy`
+// livre au client un employé qui redemandera son accord à chaque envoi, sans que quiconque l'ait
+// décidé. Les fixtures de test en sont exclues : le défaut prudent leur convient.
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function verifierAutonomieAuRecrutement() {
+  const racines = [join(REPO_ROOT, "apps"), join(REPO_ROOT, "packages"), join(REPO_ROOT, "supabase", "functions")];
+
+  for (const racine of racines) {
+    const fichiers = await fichiersDe(racine, [".ts"], [".test.ts", "_generated"]);
+    for (const fichier of fichiers) {
+      const contenu = await readFile(fichier, "utf8");
+      // Les colonnes d'un `insert into employee (…)`, y compris écrites sur plusieurs lignes.
+      for (const trouve of contenu.matchAll(/insert\s+into\s+"?employee"?\s*\(([^)]*)\)/gi)) {
+        const colonnes = (trouve[1] ?? "").toLowerCase();
+        if (colonnes.includes("autonomy")) continue;
+        const numero = contenu.slice(0, trouve.index).split("\n").length;
+        signaler(
+          fichier,
+          numero,
+          "l'autonomie se choisit au recrutement",
+          "insère un employé sans nommer `autonomy`. Le mode vendu est « confirmer une fois » " +
+            "(adr/0026) ; le défaut de la base est `confirm`, plus strict à dessein. Sans choix " +
+            "explicite ici, le client reçoit un employé dont personne n'a réglé l'autonomie.",
+        );
+      }
+    }
+  }
+}
+
 async function main() {
   await verifierFonctions();
   await verifierInterface();
   await verifierTextesVisibles();
   await verifierDomainePur();
   await verifierAppelsModele();
+  await verifierAutonomieAuRecrutement();
 
   if (manquements.length === 0) {
     process.stdout.write("Frontières d'architecture : rien à signaler.\n");

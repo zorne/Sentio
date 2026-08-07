@@ -5,9 +5,13 @@ import {
   ACCORD_REFUSE,
   ACTION_DECIDEE,
   ACTION_EXECUTEE,
+  ATTENTION_REQUISE,
+  CONTEXTE_ASSEMBLE,
+  PAS_REPORTE,
   POLITIQUE_SUSPEND,
   RUN_DEMARRE,
   RUN_ECHOUE,
+  RUN_REPORTE,
   RUN_TERMINE,
 } from "./vocabulaire.js";
 import { peutReprendre, reconstruireEtatRun, type Anomalie, type EtatRun } from "./run-state.js";
@@ -59,6 +63,7 @@ describe("l'état métier d'un run, projeté depuis le journal", () => {
     expect(etatDe([])).toEqual({
       phase: "jamais_demarre",
       actionsExecutees: 0,
+      pasDuCycle: 0,
       reprendreApres: null,
       actionEnAttente: null,
       effetsDejaProduits: new Set(),
@@ -282,5 +287,96 @@ describe("reprise après interruption — rien ne survit en mémoire", () => {
     expect(etatDe(apres).reprendreApres).toBe(3);
     expect(etatDe(apres).effetsDejaProduits.has("mail:prospect-1")).toBe(true);
     expect(etatDe(apres).actionsExecutees).toBe(2);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXEC-08 — le budget de pas d'un cycle, et l'arrêt qui appelle un humain.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("le budget de pas d'un cycle", () => {
+  it("compte les pas TENTÉS, pas les seuls pas qui ont abouti", () => {
+    // Trois contextes assemblés, une seule action exécutée : un employé dont les propositions
+    // sont refusées consomme du modèle exactement comme un employé qui réussit. Compter les
+    // succès le laisserait tourner sans borne — c'est précisément le cas que la borne existe
+    // pour attraper.
+    const etat = etatDe([
+      evenement(1, RUN_DEMARRE),
+      evenement(2, CONTEXTE_ASSEMBLE),
+      evenement(3, CONTEXTE_ASSEMBLE),
+      evenement(4, CONTEXTE_ASSEMBLE),
+      evenement(5, ACTION_EXECUTEE, { cle: "mail:prospect-1" }),
+    ]);
+
+    expect(etat.pasDuCycle).toBe(3);
+    expect(etat.actionsExecutees).toBe(1);
+  });
+
+  it("repart de zéro après un report de run, sans oublier ce qui a été fait", () => {
+    const etat = etatDe([
+      evenement(1, RUN_DEMARRE),
+      evenement(2, CONTEXTE_ASSEMBLE),
+      evenement(3, ACTION_EXECUTEE, { cle: "mail:prospect-1" }),
+      evenement(4, RUN_REPORTE),
+      evenement(5, CONTEXTE_ASSEMBLE),
+    ]);
+
+    expect(etat.phase).toBe("en_cours"); // un report n'est ni une fin ni un échec
+    expect(etat.pasDuCycle).toBe(1);
+    expect(etat.actionsExecutees).toBe(1);
+    expect(etat.effetsDejaProduits.has("mail:prospect-1")).toBe(true);
+  });
+
+  it("ne rouvre AUCUN budget quand c'est le pas, et non le run, qui est reporté", () => {
+    // Sinon un fournisseur qui répond « réessayez » ferait tourner l'employé indéfiniment dans
+    // la même journée, chaque échec passager remettant le compteur à zéro.
+    const etat = etatDe([
+      evenement(1, RUN_DEMARRE),
+      evenement(2, CONTEXTE_ASSEMBLE),
+      evenement(3, PAS_REPORTE),
+      evenement(4, CONTEXTE_ASSEMBLE),
+      evenement(5, PAS_REPORTE),
+    ]);
+
+    expect(etat.pasDuCycle).toBe(2);
+  });
+
+  it("refuse un report sur un run qui ne travaillait pas", () => {
+    const anomalies = anomaliesDe([
+      evenement(1, RUN_DEMARRE),
+      evenement(2, POLITIQUE_SUSPEND, { payload: {} }),
+      evenement(3, RUN_REPORTE),
+    ]);
+
+    expect(anomalies.map((a) => a.nature)).toContain("report_hors_travail");
+  });
+});
+
+describe("l'arrêt qui appelle un humain", () => {
+  it("passe en attention requise, et le run ne peut plus reprendre seul", () => {
+    const etat = etatDe([
+      evenement(1, RUN_DEMARRE),
+      evenement(2, CONTEXTE_ASSEMBLE),
+      evenement(3, ATTENTION_REQUISE, { payload: { motif: "verification_humaine" } }),
+    ]);
+
+    expect(etat.phase).toBe("attention_requise");
+    expect(peutReprendre(etat)).toBe(false);
+  });
+
+  it("se distingue d'une attente d'accord : ce n'est pas la même question posée au client", () => {
+    const attention = etatDe([
+      evenement(1, RUN_DEMARRE),
+      evenement(2, ATTENTION_REQUISE, { payload: {} }),
+    ]);
+    const accord = etatDe([
+      evenement(1, RUN_DEMARRE),
+      evenement(2, POLITIQUE_SUSPEND, { payload: { outil: "mail.send" } }),
+    ]);
+
+    expect(attention.phase).not.toBe(accord.phase);
+    // Une attention requise n'a pas d'action en attente : il n'y a rien à approuver.
+    expect(attention.actionEnAttente).toBeNull();
+    expect(accord.actionEnAttente).not.toBeNull();
   });
 });

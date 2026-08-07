@@ -48,10 +48,18 @@ import {
   ACTION_ECHOUEE,
   ACTION_ENGAGEE,
   ACTION_EXECUTEE,
+  ATTENTION_REQUISE,
+  CONTEXTE_ASSEMBLE,
   NATURES_TERMINALES,
+  PAS_REPORTE,
+  POLITIQUE_ALLOW,
+  POLITIQUE_REFUSE,
   POLITIQUE_SUSPEND,
+  PROPOSITION_ILLISIBLE,
+  PROPOSITION_RECUE,
   RUN_DEMARRE,
   RUN_ECHOUE,
+  RUN_REPORTE,
   RUN_TERMINE,
   estNatureConnue,
 } from "./vocabulaire.js";
@@ -62,6 +70,12 @@ export type PhaseRun =
   | "jamais_demarre"
   | "en_cours"
   | "attente_accord"
+  /**
+   * Le run est arrêté et attend un humain, sans qu'aucune question ne lui ait été posée : un
+   * effet engagé d'issue inconnue, un contexte incomplet. Aucune échéance ne le réveillera —
+   * c'est délibéré (EXEC-08).
+   */
+  | "attention_requise"
   | "termine"
   | "echoue";
 
@@ -69,6 +83,16 @@ export interface EtatRun {
   readonly phase: PhaseRun;
   /** Nombre d'actions réellement exécutées. Sert les bornes de pas, pas l'affichage client. */
   readonly actionsExecutees: number;
+  /**
+   * Pas déjà consommés **dans le cycle en cours** — c'est-à-dire depuis le dernier `run_reporte`,
+   * ou depuis le démarrage s'il n'y en a pas eu.
+   *
+   * Un pas est compté au moment où son contexte est assemblé (`contexte_assemble`, écrit une fois
+   * et une seule par pas), et non au moment où une action aboutit : un pas qui s'achève sur un
+   * refus de politique ou une réponse illisible a coûté un appel de modèle exactement comme les
+   * autres. Compter les succès laisserait un employé bloqué tourner sans borne (EXEC-08).
+   */
+  readonly pasDuCycle: number;
   /** Rang du dernier événement pris en compte. C'est le point de reprise : le battement suivant
    *  n'a rien à relire avant lui. `null` si le journal est vide. */
   readonly reprendreApres: number | null;
@@ -105,6 +129,8 @@ export type NatureAnomalie =
   | "double_suspension"
   /** Un accord — accordé ou refusé — sans suspension qui l'attendait. */
   | "accord_sans_suspension"
+  /** Un report alors que le run ne travaillait pas : il n'y avait rien à reporter. */
+  | "report_hors_travail"
   /** La même clé d'idempotence deux fois : l'effet a pu être produit deux fois. */
   | "effet_duplique";
 
@@ -129,6 +155,7 @@ export type Reconstruction =
 const ETAT_VIDE: EtatRun = {
   phase: "jamais_demarre",
   actionsExecutees: 0,
+  pasDuCycle: 0,
   reprendreApres: null,
   actionEnAttente: null,
   effetsDejaProduits: new Set(),
@@ -189,6 +216,7 @@ export function reconstruireEtatRun(entrees: readonly JournalEntry[]): Reconstru
   // ── Lecture des transitions.
   let phase: PhaseRun = "jamais_demarre";
   let actionsExecutees = 0;
+  let pasDuCycle = 0;
   let actionEnAttente: unknown = null;
   const effets = new Set<string>();
   // Engagés, puis refermés par un résultat ou un échec. Ce qui reste à la fin est ce dont on ne
@@ -250,7 +278,20 @@ export function reconstruireEtatRun(entrees: readonly JournalEntry[]): Reconstru
         phase = "en_cours";
         break;
 
+      case CONTEXTE_ASSEMBLE:
+        // Écrit une fois par pas, avant tout appel de modèle : c'est le seul repère qui compte
+        // les pas TENTÉS, et non les seuls pas qui ont abouti.
+        pasDuCycle += 1;
+        break;
+
+      // Le raisonnement se raconte, il ne fait pas avancer l'état : seuls un effet engagé ou
+      // exécuté comptent. Elles doivent malgré tout être DÉCLARÉES — une nature écrite par le
+      // runtime et absente d'ici fait échouer la reconstruction du journal entier.
       case ACTION_DECIDEE:
+      case PROPOSITION_RECUE:
+      case PROPOSITION_ILLISIBLE:
+      case POLITIQUE_ALLOW:
+      case POLITIQUE_REFUSE:
         break;
 
       case ACTION_ENGAGEE:
@@ -298,6 +339,33 @@ export function reconstruireEtatRun(entrees: readonly JournalEntry[]): Reconstru
         actionEnAttente = null;
         break;
 
+      case RUN_REPORTE:
+      case PAS_REPORTE: {
+        // Un report suppose un run qui travaille. Reporter un run suspendu ou fini remettrait une
+        // échéance sur quelque chose qui n'attend pas d'échéance — et un run en attente d'accord
+        // repartirait tout seul, sans que personne n'ait répondu.
+        if (phase !== "en_cours") {
+          anomalies.push({
+            nature: "report_hors_travail",
+            rang: etape.seq,
+            detail: `« ${etape.kind} » survient alors que le run est « ${phase} » : rien ne travaillait.`,
+          });
+          continue;
+        }
+        // Seul le report du RUN rouvre un budget de pas. Le report d'un pas après un échec
+        // passager n'en rouvre aucun : sinon une panne qui se répète ferait tourner l'employé
+        // sans borne dans la même journée.
+        if (etape.kind === RUN_REPORTE) pasDuCycle = 0;
+        break;
+      }
+
+      case ATTENTION_REQUISE:
+        // Ni fin ni échec : le run est **arrêté**, et seul un geste humain le rouvrira. Aucune
+        // échéance ne le réveillera — `peutReprendre` le refuse, et la file ne le porte plus.
+        phase = "attention_requise";
+        actionEnAttente = null;
+        break;
+
       case RUN_TERMINE:
         phase = "termine";
         actionEnAttente = null;
@@ -319,6 +387,7 @@ export function reconstruireEtatRun(entrees: readonly JournalEntry[]): Reconstru
     etat: {
       phase,
       actionsExecutees,
+      pasDuCycle,
       reprendreApres: dernierRang,
       actionEnAttente,
       effetsDejaProduits: effets,

@@ -78,7 +78,8 @@ describeIfDatabase("Repositories sur un vrai Postgres", () => {
     employeeId = employee?.id as string;
 
     const [task] = await sql.query<{ id: string }>(
-      "insert into task (tenant_id, employee_id) values ($1, $2) returning id",
+      "insert into task (tenant_id, employee_id, subject_kind, subject_id) " +
+        "values ($1, $2, 'lead', gen_random_uuid()) returning id",
       [tenantA, employeeId],
     );
     taskId = task?.id as string;
@@ -251,7 +252,8 @@ describeIfDatabase("Repositories sur un vrai Postgres", () => {
       [tenantB, source?.employee_definition_id, identity?.id],
     );
     const [taskB] = await sql.query<{ id: string }>(
-      "insert into task (tenant_id, employee_id) values ($1, $2) returning id",
+      "insert into task (tenant_id, employee_id, subject_kind, subject_id) " +
+        "values ($1, $2, 'lead', gen_random_uuid()) returning id",
       [tenantB, employeeB?.id],
     );
 

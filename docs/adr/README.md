@@ -63,6 +63,11 @@ pas compris ce que la décision coûte — cherche encore.
 | [0020](0020-ordre-des-lots-produit-complet.md) | L'ordre des lots devient `0→1→2→4→5→6→3` (D10 rouverte) | acceptée |
 | [0021](0021-execution-serveur-en-ue.md) | Le serveur s'exécute en UE chez Supabase, et reste remplaçable (D12) | acceptée |
 | [0022](0022-interface-sveltekit.md) | SvelteKit : sortie statique aujourd'hui, sortie Node à la migration | acceptée |
+| [0023](0023-code-partage-vers-les-fonctions.md) | Le code partagé descend vers les fonctions, il ne s'y recopie pas | acceptée |
+| [0024](0024-verification-automatique.md) | ⭐ Tout ce qui peut être vérifié automatiquement doit l'être | acceptée |
+| [0025](0025-un-seul-sentio.md) | ⭐ Un seul Sentio : cerveau unique, offre unique, métiers ouverts | acceptée |
+| [0026](0026-cadence-et-borne-de-pas.md) | Un cycle de travail par jour, dix pas par cycle, on ne dérange qu'un employé bloqué | acceptée |
+| [0027](0027-approvisionnement-du-travail.md) | Une mission par sujet, approvisionnée chaque jour, bornée par la base | acceptée |
 
 ---
 

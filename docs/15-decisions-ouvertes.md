@@ -158,6 +158,49 @@ pour zéro bénéfice.
 
 ---
 
+## D16 — Où s'exécute le worker, et comment il est empaqueté
+
+**Ouverte depuis le 2026-08-07, découverte en écrivant la racine de composition (`EXEC-18`).**
+
+La racine existe : `apps/worker` lit son environnement, le valide, monte tous les adaptateurs et
+sert un battement signé — vérifié par un test qui ouvre un vrai port et parle HTTP. Ce qui manque
+n'est pas du code métier, c'est une **décision d'hébergement**, et elle a deux faces :
+
+1. **Où.** [`adr/0021`](adr/0021-execution-serveur-en-ue.md) décide que tout code serveur touchant
+   une donnée personnelle s'exécute **dans les fonctions Supabase, sous Deno**. Or `apps/worker`
+   est du Node : il utilise le pilote `pg`, et le contrôle de frontières interdit à une fonction
+   d'importer autre chose que `@sentio/domain` et `@sentio/config`. Les deux ne peuvent pas être
+   vrais en même temps. L'ADR l'avait d'ailleurs anticipé (règle 3 : « le pilote Postgres utilisé
+   côté Node n'est pas celui qui tournera côté Deno »), sans trancher qui écrit le second
+   adaptateur, ni quand.
+
+2. **Comment.** Il n'existe aucune étape de construction : les paquets s'exportent en TypeScript
+   source (`main: ./src/index.ts`), et Node 20 ne sait pas exécuter du TypeScript. Un script
+   `start` aurait donc été une promesse cassée — il n'y en a volontairement pas.
+
+**Ce que ça coûte tant que ce n'est pas tranché :** Sentio est complet et vérifié, et ne tourne
+nulle part.
+
+**Les deux voies, et ce qu'elles impliquent :**
+
+| | Fonction Supabase (Deno) | Service Node en UE (Clever Cloud, Scaleway) |
+|---|---|---|
+| Fidèle à `adr/0021` | oui | non — l'ADR devrait être remplacée |
+| À écrire | un adaptateur `SqlClient` Deno, et assouplir la règle de frontière | une étape de construction (regroupement des paquets) |
+| Durée d'un battement | bornée par l'hébergeur | libre |
+| Coût | €0 | à partir de quelques euros |
+| Sous-traitants au registre | inchangé | un de plus à documenter |
+
+**Recommandation :** commencer par la fonction Supabase, qui ne change ni l'ADR ni le registre des
+traitements — mais **ne pas s'y engager sans avoir mesuré la durée réelle d'un battement**, parce
+que c'est précisément le risque que `adr/0021` signale (« le battement du lot 3 s'il tentait de
+traiter plusieurs runs d'affilée »). Un battement qui dépasse la durée autorisée se découvrirait
+en production, sur le premier client.
+
+**Bloque :** la mise en service. Rien d'autre — le développement continue sans elle.
+
+---
+
 ## Comment trancher
 
 Pour chaque décision : écrire **ce qu'on gagne, ce qu'on perd, et à quelle condition on

@@ -75,7 +75,8 @@ describeIfDatabase("Le contexte du pas courant, sur un vrai Postgres", () => {
       [tenantId, definition?.id, identity?.id],
     );
     const [task] = await sql.query<{ id: string }>(
-      "insert into task (tenant_id, employee_id) values ($1, $2) returning id",
+      "insert into task (tenant_id, employee_id, subject_kind, subject_id) " +
+        "values ($1, $2, 'lead', gen_random_uuid()) returning id",
       [tenantId, employee?.id],
     );
     return { employeeId: employee?.id as string, taskId: task?.id as string };
@@ -239,7 +240,8 @@ describeIfDatabase("Le contexte du pas courant, sur un vrai Postgres", () => {
 
   it("refuse un contexte quand le journal du run est incohérent", async () => {
     const [tache] = await sql.query<{ id: string }>(
-      "insert into task (tenant_id, employee_id) values ($1, $2) returning id",
+      "insert into task (tenant_id, employee_id, subject_kind, subject_id) " +
+        "values ($1, $2, 'lead', gen_random_uuid()) returning id",
       [tenantA, employeA],
     );
     const incoherente = tache?.id as string;
