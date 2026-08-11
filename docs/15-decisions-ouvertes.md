@@ -158,46 +158,39 @@ pour zéro bénéfice.
 
 ---
 
-## D16 — Où s'exécute le worker, et comment il est empaqueté
+## ✅ D16 — Où s'exécute le worker — TRANCHÉE (sous condition levée)
 
-**Ouverte depuis le 2026-08-07, découverte en écrivant la racine de composition (`EXEC-18`).**
+**Décision du fondateur, 2026-08-07 : les fonctions Supabase, sous Deno**, à la condition —
+qu'il avait posée lui-même — de **mesurer d'abord la durée réelle d'un battement**. La mesure a
+été faite, la condition est levée. → [`adr/0028`](adr/0028-executant-en-fonction-serveur.md)
 
-La racine existe : `apps/worker` lit son environnement, le valide, monte tous les adaptateurs et
-sert un battement signé — vérifié par un test qui ouvre un vrai port et parle HTTP. Ce qui manque
-n'est pas du code métier, c'est une **décision d'hébergement**, et elle a deux faces :
+**La mesure, sur Postgres local, données de test réelles :**
 
-1. **Où.** [`adr/0021`](adr/0021-execution-serveur-en-ue.md) décide que tout code serveur touchant
-   une donnée personnelle s'exécute **dans les fonctions Supabase, sous Deno**. Or `apps/worker`
-   est du Node : il utilise le pilote `pg`, et le contrôle de frontières interdit à une fonction
-   d'importer autre chose que `@sentio/domain` et `@sentio/config`. Les deux ne peuvent pas être
-   vrais en même temps. L'ADR l'avait d'ailleurs anticipé (règle 3 : « le pilote Postgres utilisé
-   côté Node n'est pas celui qui tournera côté Deno »), sans trancher qui écrit le second
-   adaptateur, ni quand.
+| | |
+|---|---|
+| battement à vide (rien de dû) | **28 ms** |
+| approvisionnement de 10 missions | **33 ms** |
+| 10 pas complets, modèle instantané | **79 ms** (≈ 8 ms par pas) |
+| connexion Postgres depuis Deno | **2 à 13 ms** |
+| prise de travail (`for update skip locked`) depuis Deno | **1 à 17 ms** |
 
-2. **Comment.** Il n'existe aucune étape de construction : les paquets s'exportent en TypeScript
-   source (`main: ./src/index.ts`), et Node 20 ne sait pas exécuter du TypeScript. Un script
-   `start` aurait donc été une promesse cassée — il n'y en a volontairement pas.
+**Ce que la mesure a réellement montré, et qui n'était pas la question posée :** notre code ne
+coûte rien. Ce qui remplit un battement, c'est le **lissage de débit que le Gateway s'impose
+lui-même** pour ne pas dépasser le quota du fournisseur — 2 requêtes par minute, donc **30
+secondes entre deux appels de modèle**. Dix pas dans un même battement, ce sont **4 min 30 d'attente
+pure**, et aucune optimisation de notre code ne l'enlèvera.
 
-**Ce que ça coûte tant que ce n'est pas tranché :** Sentio est complet et vérifié, et ne tourne
-nulle part.
+**Conséquence, et c'est elle qui rend la voie viable :** la contrainte ne porte pas sur
+l'hébergement, elle porte sur le **nombre d'appels de modèle par invocation**. Un battement borné
+à un appel tient largement dans n'importe quelle limite de fonction serveur ; un battement qui en
+enchaîne dix ne tiendrait dans aucune, Node ou Deno. C'est un réglage
+(`travauxMaxParBattement`), pas une architecture — et le runtime était déjà construit pour ça :
+« un pas borné de quelques secondes, puis on rend la main » ([`adr/0004`](adr/0004-run-machine-a-etats.md)).
 
-**Les deux voies, et ce qu'elles impliquent :**
-
-| | Fonction Supabase (Deno) | Service Node en UE (Clever Cloud, Scaleway) |
-|---|---|---|
-| Fidèle à `adr/0021` | oui | non — l'ADR devrait être remplacée |
-| À écrire | un adaptateur `SqlClient` Deno, et assouplir la règle de frontière | une étape de construction (regroupement des paquets) |
-| Durée d'un battement | bornée par l'hébergeur | libre |
-| Coût | €0 | à partir de quelques euros |
-| Sous-traitants au registre | inchangé | un de plus à documenter |
-
-**Recommandation :** commencer par la fonction Supabase, qui ne change ni l'ADR ni le registre des
-traitements — mais **ne pas s'y engager sans avoir mesuré la durée réelle d'un battement**, parce
-que c'est précisément le risque que `adr/0021` signale (« le battement du lot 3 s'il tentait de
-traiter plusieurs runs d'affilée »). Un battement qui dépasse la durée autorisée se découvrirait
-en production, sur le premier client.
-
-**Bloque :** la mise en service. Rien d'autre — le développement continue sans elle.
+**Prototype vérifié** (`supabase/functions/battement/`, non déployé) : un en-tête signé côté Node
+se vérifie sous Deno sans recopie de code, le port `SqlClient` s'implémente sous Deno, et la
+requête de prise de travail s'exécute **au mot près**. La frontière de sécurité est tenue sous
+Deno comme sous Node — vérifié en la neutralisant : deux tests passent au rouge.
 
 ---
 

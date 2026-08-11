@@ -394,6 +394,14 @@ deno_version = 2
 # le drapeau `SENTIO_PUBLIC_DIAGNOSTIC_ENABLED` (fermé par défaut), la limitation par visiteur et
 # par adresse (`ACQUIS-17`), et la borne de taille du corps.
 # → docs/adr/0021-execution-serveur-en-ue.md
+# PROTOTYPE D16 — l'exécutant sous Deno. Non déployé : il sert à mesurer la viabilité de
+# l'hébergement en fonction serveur (docs/15-decisions-ouvertes.md, D16). Le worker Node reste
+# la référence tant que D16 n'est pas finalisée.
+[functions.battement]
+enabled = false
+verify_jwt = false
+import_map = "./functions/deno.json"
+
 [functions.diagnostic]
 enabled = true
 verify_jwt = false

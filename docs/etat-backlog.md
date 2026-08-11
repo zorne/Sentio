@@ -17,7 +17,7 @@
 
 ## Avancement
 
-**105 tâches sur 184** portent une preuve dans le dépôt.
+**106 tâches sur 185** portent une preuve dans le dépôt.
 
 | Lot | Fait | Total | |
 |---|---|---|---|
@@ -27,7 +27,7 @@
 | Acquisition (Lot 4) | 7 | 24 | `██████··············` |
 | Recrutement & Paiement (Lot 5) | 0 | 10 | `····················` |
 | Dashboard (Lot 6) | 0 | 21 | `····················` |
-| Exécution autonome (Lot 3) | 11 | 18 | `████████████········` |
+| Exécution autonome (Lot 3) | 12 | 19 | `█████████████·······` |
 | Évolution (Lot 7) | 0 | 8 | `····················` |
 | Conformité & Lancement (Lot 8) | 1 | 10 | `██··················` |
 | Vérification (transverse) | 7 | 9 | `████████████████····` |
@@ -218,7 +218,7 @@
 
 | | Tâche | Priorité | Preuve dans le dépôt |
 |---|---|---|---|
-| ✅ | **EXEC-01** Point d'entrée signé déclenché par un battement planifié | P0 | [`apps/worker/src/heartbeat/index.ts`](../apps/worker/src/heartbeat/index.ts) · [`apps/worker/src/heartbeat/signature.ts`](../apps/worker/src/heartbeat/signature.ts) |
+| ✅ | **EXEC-01** Point d'entrée signé déclenché par un battement planifié | P0 | [`apps/worker/src/heartbeat/index.ts`](../apps/worker/src/heartbeat/index.ts) · [`packages/domain/src/heartbeat-signature.ts`](../packages/domain/src/heartbeat-signature.ts) |
 | ✅ | **EXEC-02** Runtime : charger l'état persisté d'un run | P0 | [`packages/core/src/journal/run-state.ts`](../packages/core/src/journal/run-state.ts) · [`packages/core/src/journal/vocabulaire.ts`](../packages/core/src/journal/vocabulaire.ts) |
 | ✅ | **EXEC-03** Runtime : appeler l'assemblage de contexte pour le pas courant | P0 | [`apps/worker/src/step-context.ts`](../apps/worker/src/step-context.ts) |
 | ✅ | **EXEC-04** Runtime : demander la prochaine action au Model Gateway | P0 | [`packages/core/src/runtime/next-action.ts`](../packages/core/src/runtime/next-action.ts) |
@@ -236,6 +236,7 @@
 | ☐ | **EXEC-16** Ordre total sur objective : le dernier objectif ne se déduit pas de created_at (identique dans une même transaction) | P1 | — |
 | ✅ | **EXEC-17** Approvisionnement : ouvrir les nouvelles missions du jour, de façon déterministe et bornée | P0 | [`packages/core/src/ports.ts`](../packages/core/src/ports.ts) · [`apps/worker/src/battement.ts`](../apps/worker/src/battement.ts) |
 | ✅ | **EXEC-18** Racine de composition du worker : environnement validé, adaptateurs assemblés, battement signé servi | P0 | [`apps/worker/src/main.ts`](../apps/worker/src/main.ts) · [`apps/worker/src/serveur.ts`](../apps/worker/src/serveur.ts) |
+| ✅ | **EXEC-19** Prototype d'exécutant en fonction serveur (Deno) : mesure de durée et viabilité de D16 | P0 | [`supabase/functions/battement/index.ts`](../supabase/functions/battement/index.ts) |
 
 ---
 

@@ -68,6 +68,7 @@ pas compris ce que la décision coûte — cherche encore.
 | [0025](0025-un-seul-sentio.md) | ⭐ Un seul Sentio : cerveau unique, offre unique, métiers ouverts | acceptée |
 | [0026](0026-cadence-et-borne-de-pas.md) | Un cycle de travail par jour, dix pas par cycle, on ne dérange qu'un employé bloqué | acceptée |
 | [0027](0027-approvisionnement-du-travail.md) | Une mission par sujet, approvisionnée chaque jour, bornée par la base | acceptée |
+| [0028](0028-executant-en-fonction-serveur.md) | L'exécutant en fonction serveur ; ce qui le borne est le débit du modèle, pas l'hébergeur | acceptée |
 
 ---
 

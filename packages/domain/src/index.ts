@@ -10,3 +10,4 @@ export * from "./acquisition.js";
 export * from "./recommendation.js";
 export * from "./diagnostic-request.js";
 export * from "./optout.js";
+export * from "./heartbeat-signature.js";

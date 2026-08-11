@@ -1,7 +1,8 @@
 {
   "imports": {
     "@sentio/domain": "./_generated/domain/index.ts",
-    "@sentio/config": "./_generated/config/index.ts"
+    "@sentio/config": "./_generated/config/index.ts",
+    "@db/postgres": "jsr:@db/postgres@^0.19.5"
   },
   "compilerOptions": {
     "strict": true,

@@ -17,7 +17,7 @@
  */
 
 import { readdir, readFile } from "node:fs/promises";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -71,6 +71,22 @@ const IMPORT = /(?:^|\s)(?:import|export)\s[^;]*?["']([^"']+)["']|import\s*\(\s*
 
 const IMPORTS_AUTORISES_FONCTIONS = ["@sentio/domain", "@sentio/config"];
 
+/**
+ * ⚠️ EXCEPTION NOMMÉE, ET UNE SEULE — le prototype d'exécutant Deno (`D16`).
+ *
+ * La règle générale reste entière : une fonction valide, appelle le domaine, répond. Mais
+ * l'exécutant n'est pas un adaptateur d'entrée — c'est un adaptateur de SORTIE, comme
+ * `apps/worker`, et un adaptateur de sortie a besoin d'un pilote de base. `adr/0021` l'avait
+ * prévu (règle 3, « l'adaptateur se double ») sans dire qui le porterait.
+ *
+ * L'exception est **par fonction et par module**, pas par dossier : c'est ce qui empêche qu'elle
+ * s'élargisse en silence. Une seconde fonction qui importerait un pilote serait refusée, et il
+ * faudrait revenir ici — donc en discuter.
+ */
+const DEROGATIONS_PAR_FONCTION = {
+  battement: ["@db/postgres"],
+};
+
 async function verifierFonctions() {
   const fichiers = await fichiersDe(join(REPO_ROOT, "supabase", "functions"), [".ts"], [
     "_generated",
@@ -78,12 +94,15 @@ async function verifierFonctions() {
 
   for (const fichier of fichiers) {
     const contenu = await readFile(fichier, "utf8");
+    const fonction = relative(join(REPO_ROOT, "supabase", "functions"), fichier).split(sep)[0];
+    const derogations = DEROGATIONS_PAR_FONCTION[fonction] ?? [];
     for (const { texte, numero } of lignesDe(contenu)) {
       const trouve = IMPORT.exec(texte);
       const specificateur = trouve?.[1] ?? trouve?.[2];
       if (specificateur === undefined) continue;
       if (specificateur.startsWith("./") || specificateur.startsWith("../")) continue;
       if (IMPORTS_AUTORISES_FONCTIONS.includes(specificateur)) continue;
+      if (derogations.includes(specificateur)) continue;
 
       signaler(
         fichier,

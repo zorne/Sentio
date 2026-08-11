@@ -16,7 +16,7 @@
     "backlog:etat": "node scripts/etat-du-backlog.mjs",
     "backlog:verifier": "node scripts/etat-du-backlog.mjs --verifier",
     "functions:sync": "node scripts/sync-shared-to-functions.mjs",
-    "functions:verify": "pnpm run functions:sync && deno lint --config supabase/functions/deno.json supabase/functions/diagnostic supabase/functions/desinscription supabase/functions/_shared && deno check --config supabase/functions/deno.json supabase/functions/diagnostic/index.ts supabase/functions/desinscription/index.ts supabase/functions/desinscription/index.test.ts && deno test --config supabase/functions/deno.json --allow-env supabase/functions/diagnostic/ supabase/functions/desinscription/",
+    "functions:verify": "pnpm run functions:sync && deno lint --config supabase/functions/deno.json supabase/functions/diagnostic supabase/functions/desinscription supabase/functions/battement supabase/functions/_shared && deno check --config supabase/functions/deno.json supabase/functions/diagnostic/index.ts supabase/functions/desinscription/index.ts supabase/functions/desinscription/index.test.ts supabase/functions/battement/index.ts supabase/functions/battement/index.test.ts && deno test --config supabase/functions/deno.json --allow-env --allow-net --allow-read supabase/functions/diagnostic/ supabase/functions/desinscription/ supabase/functions/battement/",
     "functions:deploy": "pnpm run functions:verify && supabase functions deploy diagnostic",
     "prepare": "git config core.hooksPath .githooks"
   },

@@ -218,7 +218,7 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     return { tenantId: tenantId as TenantId, employeeId: employee?.id as EmployeeId };
   }
 
-  async function approvisionner(tenantId: TenantId): Promise<void> {
+  async function approvisionner(...tenantIds: TenantId[]): Promise<void> {
     await approvisionnerLeJour(
       {
         store: new PostgresApprovisionnementStore(sql),
@@ -227,10 +227,21 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
       },
       new Date(),
     );
+    // ⚠️ L'approvisionnement est GLOBAL : il ouvre du travail pour tous les employés, y compris
+    // ceux laissés par une autre suite. La file l'est aussi, et `prendre()` ne connaît pas les
+    // entreprises — c'est le comportement voulu en production, et une source d'intermittence en
+    // test : « quelle mission a été prise ? » cessait d'être déterministe une fois sur trois.
+    // On ne garde donc dans la file que le travail de CETTE entreprise.
+    await sql.query(
+      `delete from job where task_id in (select id from task where tenant_id <> all($1::uuid[]))`,
+      [tenantIds],
+    );
+
     // Garde-fou du test lui-même : sans mission, tout ce qui suit ne prouverait rien.
-    const [n] = await sql.query<{ n: string }>("select count(*) as n from task where tenant_id = $1", [
-      tenantId,
-    ]);
+    const [n] = await sql.query<{ n: string }>(
+      "select count(*) as n from task where tenant_id = any($1::uuid[])",
+      [tenantIds],
+    );
     expect(Number(n?.n)).toBeGreaterThan(0);
   }
 
@@ -558,8 +569,8 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     effets = [];
     const a = await entreprise({ prospects: 2 });
     const b = await entreprise({ prospects: 2 });
-    await approvisionner(a.tenantId);
-    await approvisionner(b.tenantId);
+    // Un seul appel : l'approvisionnement est global, il sert les deux entreprises à la fois.
+    await approvisionner(a.tenantId, b.tenantId);
     proposerUneAction(8);
 
     await executerLesTravauxDus(deps(), {
