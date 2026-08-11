@@ -95,11 +95,15 @@ les deux runtimes (vérifié en la neutralisant : deux tests passent au rouge).
 
 ## Compromis assumé
 
-- **Deux exécutants coexistent pendant la transition.** Le worker Node reste la référence testée
-  tant que la fonction Deno n'exécute pas de pas réel. C'est du code en double, assumé le temps de
-  la bascule — et le prototype ne travaille pas : il prend un verrou et le repose aussitôt.
-- **Le prototype n'a ni pool, ni délai maximal, ni reconnexion.** Il ouvre une connexion, sert une
-  invocation, referme. C'est suffisant pour une fonction serveur, insuffisant pour tout le reste.
+- **Deux hôtes coexistent.** Le worker Node reste en place et vert tant que la bascule n'est pas
+  décidée. Ce n'est **pas** du code en double : les deux hôtes partagent `@sentio/runtime` et
+  n'ajoutent qu'un pilote, un serveur et une lecture d'environnement. Ce qui est doublé tient en
+  une soixantaine de lignes.
+- **Le pool Deno est paresseux et refermé à chaque invocation.** C'est le bon modèle pour une
+  fonction serveur, qui ne vit pas entre deux requêtes — et le mauvais pour un processus long. Un
+  hôte Node qui reprendrait ce pilote devrait le revoir.
+- **Aucun moteur métier n'est enregistré**, ici comme côté Node : une proposition d'action est
+  refusée. Les deux hôtes approvisionnent, décident et journalisent ; aucun n'agit encore.
 - **La dérogation de frontière est une entaille dans une règle nette.** Elle est nommée par
   fonction et par module pour qu'elle ne s'élargisse pas en silence : une seconde fonction qui
   importerait un pilote serait refusée, et il faudrait revenir en discuter.
