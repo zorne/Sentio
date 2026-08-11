@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { REGLAGES_RUNTIME_PAR_DEFAUT } from "@sentio/config";
-import { createPostgresClient, type PostgresClient } from "@sentio/db";
+import { createPostgresClient, type PostgresClient } from "./adapters/postgres-node.js";
 import type { EmployeeId, TenantId } from "@sentio/domain";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
@@ -9,9 +9,9 @@ import {
   GisementDeProspects,
   PostgresApprovisionnementStore,
   RegistreDeGisementsParMetier,
-} from "./adapters/approvisionnement.js";
-import { PostgresJournalWriter } from "./adapters/journal.js";
-import { approvisionnerLeJour, jourUtc } from "./battement.js";
+} from "@sentio/runtime";
+import { PostgresJournalWriter } from "@sentio/runtime";
+import { approvisionnerLeJour, jourUtc } from "@sentio/runtime";
 
 /**
  * EXEC-17 — l'approvisionnement contre un **vrai** Postgres.

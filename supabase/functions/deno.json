@@ -2,7 +2,11 @@
   "imports": {
     "@sentio/domain": "./_generated/domain/index.ts",
     "@sentio/config": "./_generated/config/index.ts",
-    "@db/postgres": "jsr:@db/postgres@^0.19.5"
+    "@db/postgres": "jsr:@db/postgres@^0.19.5",
+    "@sentio/core": "./_generated/core/index.ts",
+    "@sentio/db": "./_generated/db/index.ts",
+    "@sentio/runtime": "./_generated/runtime/index.ts",
+    "@sentio/capabilities": "./_generated/capabilities/index.ts"
   },
   "compilerOptions": {
     "strict": true,

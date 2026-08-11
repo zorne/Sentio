@@ -13,18 +13,14 @@ import {
   reconstruireEtatRun,
   type EtatRun,
 } from "@sentio/core";
-import {
-  ExecutionJournal,
-  TenantScope,
-  createPostgresClient,
-  type PostgresClient,
-} from "@sentio/db";
+import { ExecutionJournal, TenantScope } from "@sentio/db";
+import { createPostgresClient, type PostgresClient } from "./adapters/postgres-node.js";
 import type { EmployeeId, TaskId, TenantId } from "@sentio/domain";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { PostgresFileDeTravaux } from "./adapters/file-de-travaux.js";
-import { PostgresJournalWriter } from "./adapters/journal.js";
-import { appliquerLaSuite } from "./suite-du-run.js";
+import { PostgresFileDeTravaux } from "@sentio/runtime";
+import { PostgresJournalWriter } from "@sentio/runtime";
+import { appliquerLaSuite } from "@sentio/runtime";
 
 /**
  * EXEC-08 — la suite d'un run contre un **vrai** Postgres.

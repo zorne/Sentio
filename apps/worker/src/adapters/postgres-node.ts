@@ -1,6 +1,6 @@
 import { Pool, type PoolConfig } from "pg";
 
-import type { SqlClient } from "./client.js";
+import type { SqlClient, TransactionalSqlClient } from "@sentio/db";
 
 /**
  * Implémentation de `SqlClient` sur Postgres.
@@ -12,7 +12,7 @@ import type { SqlClient } from "./client.js";
  * Rien ici ne sait ce qu'est une entreprise, un employé ou une capacité. L'isolation appartient
  * aux repositories (`docs/adr/0013`).
  */
-export class PostgresClient implements SqlClient {
+export class PostgresClient implements TransactionalSqlClient {
   constructor(private readonly pool: Pool) {}
 
   async query<Row>(text: string, params: readonly unknown[]): Promise<Row[]> {

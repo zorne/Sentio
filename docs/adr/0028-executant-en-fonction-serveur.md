@@ -46,9 +46,26 @@ de modèle**. Dix pas dans une même invocation : **4 min 30 d'attente pure**.
 contrainte ne vient pas de l'hébergeur — un service Node aurait exactement la même — elle vient du
 fournisseur d'inférence.
 
-**Un prototype vérifié, non déployé** (`supabase/functions/battement/`, `enabled = false`) établit
-que la voie fonctionne : la signature écrite côté Node se vérifie sous Deno **sans recopie de
-code**, le port `SqlClient` s'implémente sous Deno, et la requête d'`EXEC-12` s'exécute au mot près.
+**L'exécutant Deno est écrit et tourne** (`supabase/functions/battement/`, `enabled = false` tant
+que la bascule n'est pas décidée). Il exécute la **boucle complète** : approvisionnement, prise de
+travail verrouillée, reconstruction d'état, contexte, proposition, Policy Engine, idempotence,
+journal, suite. Vérifié en base : un battement signé ouvre réellement une mission et écrit
+`run_demarre`.
+
+**Aucune logique métier n'a été dupliquée.** Ce qui était `apps/worker` est devenu
+`@sentio/runtime`, un paquet qui ne connaît **aucun runtime** : ni `process`, ni `Deno`, ni serveur
+HTTP, ni pilote. Les deux hôtes montent les mêmes pièces et n'ajoutent que ce qui leur est propre —
+`pg` + `node:http` + `process.env` d'un côté, le pilote Deno + `Deno.serve` + `Deno.env` de l'autre.
+
+**Ce que le port a réellement coûté**, mesuré en fichiers : deux hôtes de ~30 lignes chacun. Tout
+le reste est partagé.
+
+**Deux différences de runtime trouvées en exécutant, qu'aucune relecture n'aurait vues :**
+
+1. le pilote Deno rend des **tableaux** par défaut — il faut `queryObject`, sinon le domaine lit
+   des colonnes vides ;
+2. il **verrouille la connexion** au profit d'une transaction : une requête passée à la connexion
+   pendant une transaction lève « This connection is currently locked ». `pg` ne l'impose pas.
 
 **Deux ajustements que cette décision rend nécessaires :**
 

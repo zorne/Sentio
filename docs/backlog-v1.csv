@@ -101,7 +101,7 @@ EXEC-15;Réflexion après run, tolérante aux erreurs (jamais bloquante);Exécut
 EXEC-16;Ordre total sur objective : le dernier objectif ne se déduit pas de created_at (identique dans une même transaction);Exécution autonome (Lot 3);45 min;P1
 EXEC-17;Approvisionnement : ouvrir les nouvelles missions du jour, de façon déterministe et bornée;Exécution autonome (Lot 3);2h;P0
 EXEC-18;Racine de composition du worker : environnement validé, adaptateurs assemblés, battement signé servi;Exécution autonome (Lot 3);1h30;P0
-EXEC-19;Prototype d'exécutant en fonction serveur (Deno) : mesure de durée et viabilité de D16;Exécution autonome (Lot 3);2h;P0
+EXEC-19;Exécutant en fonction serveur (Deno) : runtime partagé, pilote, boucle complète et parité avec Node;Exécution autonome (Lot 3);4h;P0
 ACQUIS-01;Layout de la vitrine + navigation;Acquisition (Lot 4);1h;P0
 ACQUIS-02;Section Hero de la vitrine;Acquisition (Lot 4);45 min;P1
 ACQUIS-03;Section Mission de la vitrine;Acquisition (Lot 4);45 min;P1

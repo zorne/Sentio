@@ -1,114 +1,83 @@
 /**
- * PROTOTYPE D16 — le battement, sous Deno.
+ * L'hôte **Deno** de l'exécutant — jumeau de `apps/worker`.
  *
- * ══ CE QU'IL PROUVE ══
+ * ══ CE QUI EST ICI, ET CE QUI N'Y EST PAS ══
  *
- *   1. la **signature** écrite côté Node se vérifie ici, sans recopie — le module vit dans
- *      `packages/domain`, que `pnpm run functions:sync` descend vers `_generated/` ;
- *   2. le port `SqlClient` s'implémente sous Deno (`sql.ts`) ;
- *   3. la requête de prise de travail — `for update skip locked`, le cœur d'`EXEC-12` — s'exécute
- *      **à l'identique** : c'est du SQL, il ne connaît pas le runtime qui l'envoie.
+ * Ici : `Deno.env`, `Deno.serve`, et le pilote Postgres de Deno. **Rien d'autre.**
+ * Pas une ligne de logique métier, pas une décision, pas une requête — tout cela vit dans
+ * `@sentio/runtime`, que les deux hôtes montent à l'identique. Un test de parité le vérifie sur
+ * les comportements qui comptent.
  *
- * ══ CE QU'IL NE FAIT PAS, VOLONTAIREMENT ══
+ * C'est la promesse de [`adr/0021`](../../../docs/adr/0021-execution-serveur-en-ue.md) (règle 4)
+ * tenue jusqu'au bout : migrer, c'est réécrire un adaptateur, jamais le cœur.
  *
- * Il n'exécute aucun pas, n'appelle aucun modèle, ne produit aucun effet. Un prototype qui ferait
- * travailler un employé ne serait plus un prototype : ce serait un second exécutant, capable
- * d'écrire à de vrais prospects, et il faudrait le traiter comme tel. Ici on relâche le verrou
- * aussitôt pris — la file ressort exactement comme elle est entrée.
+ * ══ UN SEUL TRAVAIL PAR INVOCATION ══
  *
- * ⚠️ **Le worker Node reste la référence.** Ce fichier ne le remplace pas, il mesure si on
- * pourrait le remplacer.
+ * `travauxMaxParBattement = 1`, et c'est le résultat direct de la mesure de `D16` : ce n'est pas
+ * notre code qui remplit un battement, c'est le lissage de débit du fournisseur — 30 secondes
+ * entre deux appels de modèle. Un battement qui enchaînerait dix pas dormirait 4 min 30 et
+ * dépasserait la durée autorisée. Un travail par invocation, et le planificateur bat plus souvent
+ * ([`adr/0028`](../../../docs/adr/0028-executant-en-fonction-serveur.md)).
+ *
+ * ⚠️ **Aucun moteur métier n'est enregistré**, comme côté Node : une proposition d'action est
+ * refusée tant qu'il n'y en a pas. L'exécutant approvisionne, décide et journalise ; il n'agit
+ * pas encore.
  *
  * Réalise : EXEC-19
  */
 
-import { HEARTBEAT_HEADER, verifyHeartbeat } from "@sentio/domain";
+import {
+  ConfigurationInvalide,
+  composerLExecutant,
+  lireLaConfiguration,
+  type ExecutantMonte,
+} from "@sentio/runtime";
 
 import { PostgresDeno } from "./sql.ts";
 
-/** Ce qu'un battement de prototype rapporte : de quoi juger la viabilité, rien d'autre. */
-export interface RapportPrototype {
-  readonly disponibles: number;
-  readonly msConnexion: number;
-  readonly msRequete: number;
+/** Journal d'exploitation : JSON sur la sortie standard, comme les autres fonctions. */
+function journaliser(record: Record<string, unknown>): void {
+  console.log(JSON.stringify(record));
 }
 
 /**
- * Prend un travail dû, puis **rend le verrou immédiatement**.
+ * Monte l'exécutant pour **une invocation**.
  *
- * La requête est celle d'`EXEC-12`, au mot près. Si elle s'exécute ici, c'est que la migration
- * n'aura rien à réécrire du SQL — seulement du câblage.
+ * Une fonction serveur ne vit pas entre deux requêtes : monter à chaque appel n'est pas un
+ * gaspillage, c'est le modèle. Le pool est paresseux — une invocation refusée à la signature
+ * n'ouvre aucune connexion.
  */
-export async function sonder(sql: PostgresDeno, maintenant: Date): Promise<number> {
-  const lignes = await sql.query<{ task_id: string }>(
-    `with candidat as (
-       select j.id
-         from job j
-        where j.next_run_at <= $1
-          and j.locked_at is null
-        order by j.priority desc, j.next_run_at, j.id
-        for update of j skip locked
-        limit 1
-     )
-     update job
-        set locked_at = $1, locked_by = 'prototype-deno'
-       from candidat
-      where job.id = candidat.id
-     returning job.task_id`,
-    [maintenant],
-  );
-
-  // On repose le verrou : ce prototype observe, il ne travaille pas.
-  if (lignes.length > 0) {
-    await sql.query(`update job set locked_at = null, locked_by = null where task_id = $1`, [
-      lignes[0]?.task_id,
-    ]);
-  }
-  return lignes.length;
-}
-
-/**
- * Le gestionnaire, aux standards du web — comme côté Node.
- *
- * L'ordre est le même : méthode, puis signature, puis travail. Rien n'ouvre de connexion avant
- * que la signature ne soit vérifiée : une requête non signée ne doit pas coûter une connexion à
- * la base, sinon le refus devient lui-même un levier de saturation.
- */
-export async function repondre(requete: Request): Promise<Response> {
-  const json = (corps: unknown, statut: number) =>
-    new Response(JSON.stringify(corps), {
-      status: statut,
-      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
-    });
-
-  if (requete.method !== "POST") return json({ erreur: "Méthode non autorisée." }, 405);
-
-  const verdict = await verifyHeartbeat({
-    header: requete.headers.get(HEARTBEAT_HEADER),
-    secret: Deno.env.get("SENTIO_HEARTBEAT_SECRET"),
-    now: new Date(),
+export function monter(env: Record<string, string | undefined>): ExecutantMonte {
+  const config = lireLaConfiguration(env);
+  return composerLExecutant(config, {
+    sql: PostgresDeno.ouvrir(config.databaseUrl),
+    log: journaliser,
+    // ⚠️ La conclusion de D16, en une ligne.
+    travauxMaxParBattement: 1,
   });
-  if (!verdict.ok) return json({ erreur: "Battement refusé." }, 401);
+}
 
-  const url = Deno.env.get("DATABASE_URL");
-  if (url === undefined || url === "") return json({ erreur: "Erreur interne." }, 500);
-
-  const debutConnexion = performance.now();
-  const sql = await PostgresDeno.connecter(url);
-  const msConnexion = performance.now() - debutConnexion;
+export async function repondre(requete: Request): Promise<Response> {
+  let executant: ExecutantMonte;
   try {
-    const debutRequete = performance.now();
-    const disponibles = await sonder(sql, new Date());
-    const rapport: RapportPrototype = {
-      disponibles,
-      msConnexion,
-      msRequete: performance.now() - debutRequete,
-    };
-    return json(rapport, 200);
+    executant = monter(Deno.env.toObject());
+  } catch (erreur) {
+    if (erreur instanceof ConfigurationInvalide) {
+      // Les noms des variables manquantes, jamais leurs valeurs. Ce journal est lu par un tiers.
+      journaliser({ evenement: "demarrage_refuse", manquements: erreur.manquements });
+      return new Response(JSON.stringify({ erreur: "Erreur interne." }), {
+        status: 500,
+        headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+      });
+    }
+    throw erreur;
+  }
+
+  try {
+    return await executant.battement(requete);
   } finally {
-    await sql.fermer();
+    await executant.fermer();
   }
 }
 
-// Ne sert que si ce fichier est le point d'entrée : à l'import (dans un test), rien n'écoute.
 if (import.meta.main) Deno.serve(repondre);

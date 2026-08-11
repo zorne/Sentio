@@ -2,9 +2,10 @@ import { randomUUID } from "node:crypto";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { RUN_DEMARRE, textOf } from "@sentio/core";
-import { ExecutionJournal, TenantScope, createPostgresClient, type PostgresClient } from "@sentio/db";
+import { ExecutionJournal, TenantScope } from "@sentio/db";
+import { createPostgresClient, type PostgresClient } from "./adapters/postgres-node.js";
 
-import { loadStepContext } from "./step-context.js";
+import { loadStepContext } from "@sentio/runtime";
 
 /** Versions et clés uniques par appel. `Date.now()` collisionne dès que deux fixtures naissent
  *  dans la même milliseconde — ce qui arrive tout le temps entre deux suites. */

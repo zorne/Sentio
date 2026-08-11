@@ -5,7 +5,7 @@ import {
   LONGUEUR_MINIMALE_DU_SECRET,
   VARIABLES,
   lireLaConfiguration,
-} from "./configuration.js";
+} from "@sentio/runtime";
 
 const SECRET = "s".repeat(LONGUEUR_MINIMALE_DU_SECRET);
 

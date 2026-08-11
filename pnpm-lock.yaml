@@ -99,7 +99,16 @@ importers:
       '@sentio/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@sentio/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      pg:
+        specifier: ^8.22.0
+        version: 8.22.0
     devDependencies:
+      '@types/pg':
+        specifier: ^8.20.0
+        version: 8.20.0
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
@@ -156,13 +165,7 @@ importers:
       '@sentio/domain':
         specifier: workspace:*
         version: link:../domain
-      pg:
-        specifier: ^8.22.0
-        version: 8.22.0
     devDependencies:
-      '@types/pg':
-        specifier: ^8.20.0
-        version: 8.20.0
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
@@ -171,6 +174,31 @@ importers:
         version: 2.1.9(@types/node@26.1.2)
 
   packages/domain:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@26.1.2)
+
+  packages/runtime:
+    dependencies:
+      '@sentio/capabilities':
+        specifier: workspace:*
+        version: link:../capabilities
+      '@sentio/config':
+        specifier: workspace:*
+        version: link:../config
+      '@sentio/core':
+        specifier: workspace:*
+        version: link:../core
+      '@sentio/db':
+        specifier: workspace:*
+        version: link:../db
+      '@sentio/domain':
+        specifier: workspace:*
+        version: link:../domain
     devDependencies:
       typescript:
         specifier: ^5.7.2

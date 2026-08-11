@@ -61,6 +61,26 @@ formule — y compris insérée à la main.
 L'objectif du client dit **quand cesser d'ouvrir**, jamais combien ouvrir. Un objectif atteint
 arrête l'ouverture de missions neuves ; il n'abandonne aucune mission engagée.
 
+### Deux hôtes, un seul runtime
+
+L'exécution vit dans `@sentio/runtime`, qui ne connaît **aucun runtime**. Deux hôtes le montent :
+
+| | `apps/worker` (Node) | `supabase/functions/battement` (Deno) |
+|---|---|---|
+| pilote | `pg` | pilote Deno, pool paresseux |
+| serveur | `node:http` | `Deno.serve` |
+| environnement | `process.env` | `Deno.env` |
+| travaux par battement | 25 | **1** |
+
+Le « 1 » n'est pas une limite de Deno : c'est la conséquence du **lissage de débit** du fournisseur
+d'inférence — 30 secondes entre deux appels de modèle. Un battement qui enchaînerait dix pas
+dormirait 4 min 30, sur n'importe quel hébergeur
+([`adr/0028`](adr/0028-executant-en-fonction-serveur.md)).
+
+Un test de parité vérifie que les deux hôtes se comportent pareil sur ce qui compte : battement
+signé accepté, signature invalide refusée **avant toute écriture**, secret absent qui refuse tout,
+`GET` sans effet, et aucun secret dans un message d'erreur.
+
 ### La file : un travail à la fois, verrouillé, jamais deux fois
 
 Le battement prend les travaux dus **un par un**, avec `for update skip locked` : l'exécutant qui

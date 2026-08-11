@@ -27,7 +27,25 @@ import { fileURLToPath } from "node:url";
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** Les paquets que les fonctions ont le droit d'importer. Aucun ne fait d'entrée/sortie. */
-const SHARED_PACKAGES = ["domain", "config"];
+const SHARED_PACKAGES = ["domain", "config", "core", "db", "capabilities", "runtime"];
+
+/**
+ * Les imports « nus » tolérés dans un paquet partagé.
+ *
+ * ⚠️ Cette liste s'est ouverte le 2026-08-07, quand l'exécutant a dû tourner sous Deno
+ * (`adr/0028`). Deux catégories, et rien d'autre :
+ *
+ *   · **les paquets partagés eux-mêmes** — ils sont résolus par l'import map de `deno.json`, donc
+ *     Deno les trouve ;
+ *   · **les modules `node:`** — Deno les implémente nativement. `packages/core` en utilise un
+ *     seul, `node:crypto` pour un hachage.
+ *
+ * Toute autre dépendance externe arrête toujours le script : c'est elle qu'on ne découvrirait
+ * qu'au déploiement.
+ */
+const IMPORTS_NUS_TOLERES = (specificateur) =>
+  SHARED_PACKAGES.some((nom) => specificateur === `@sentio/${nom}`) ||
+  specificateur.startsWith("node:");
 
 const DESTINATION_ROOT = join(REPO_ROOT, "supabase", "functions", "_generated");
 
@@ -69,7 +87,7 @@ function rewriteSpecifiers(source, filePath, packageName) {
 
 function assertNoExternalDependency(source, filePath, packageName) {
   const bareImport = /(?:from\s+|import\s*\(\s*)["'](?![./])([^"']+)["']/.exec(source);
-  if (bareImport !== null) {
+  if (bareImport !== null && !IMPORTS_NUS_TOLERES(bareImport[1])) {
     throw new Error(
       `${packageName}/${filePath} importe « ${bareImport[1]} ». Un paquet partagé avec les ` +
         `fonctions ne dépend de rien : cette dépendance ne serait pas résolue sous Deno. ` +

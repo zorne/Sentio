@@ -1,9 +1,10 @@
 {
-  "name": "@sentio/worker",
+  "name": "@sentio/runtime",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests"
@@ -13,13 +14,10 @@
     "@sentio/db": "workspace:*",
     "@sentio/config": "workspace:*",
     "@sentio/domain": "workspace:*",
-    "@sentio/capabilities": "workspace:*",
-    "@sentio/runtime": "workspace:*",
-    "pg": "^8.22.0"
+    "@sentio/capabilities": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8",
-    "@types/pg": "^8.20.0"
+    "vitest": "^2.1.8"
   }
 }

@@ -9,7 +9,8 @@ import {
   expliquerLePas,
   raconterLePas,
 } from "@sentio/core";
-import { ExecutionJournal, TenantScope, createPostgresClient, type PostgresClient } from "@sentio/db";
+import { ExecutionJournal, TenantScope } from "@sentio/db";
+import { createPostgresClient, type PostgresClient } from "./adapters/postgres-node.js";
 import type { EmployeeId, TenantId } from "@sentio/domain";
 
 /** Versions uniques par appel : `Date.now()` collisionne entre deux fixtures de la même ms. */

@@ -2,18 +2,18 @@ import { randomUUID } from "node:crypto";
 
 import { DEFAULT_FEATURE_FLAGS, INFERENCE_PROVIDER_LIMITS, REGLAGES_RUNTIME_PAR_DEFAUT } from "@sentio/config";
 import { CapabilityRegistry, ModelGateway, PolicyEngine, type ModelProvider } from "@sentio/core";
-import { createPostgresClient, type PostgresClient } from "@sentio/db";
+import { createPostgresClient, type PostgresClient } from "./adapters/postgres-node.js";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { PostgresApprovisionnementStore, RegistreDeGisementsParMetier } from "./adapters/approvisionnement.js";
-import { PostgresApprovalStore } from "./adapters/approvals.js";
-import { PostgresEffectLedger } from "./adapters/effects.js";
-import { PostgresFileDeTravaux } from "./adapters/file-de-travaux.js";
-import { PostgresJournalWriter } from "./adapters/journal.js";
-import { PostgresUsageLedger } from "./adapters/ledger.js";
-import { PostgresMoteurs } from "./adapters/moteurs.js";
-import { approvisionnerLeJour } from "./battement.js";
-import { executerLesTravauxDus, type BoucleDeps } from "./boucle.js";
+import { PostgresApprovisionnementStore, RegistreDeGisementsParMetier } from "@sentio/runtime";
+import { PostgresApprovalStore } from "@sentio/runtime";
+import { PostgresEffectLedger } from "@sentio/runtime";
+import { PostgresFileDeTravaux } from "@sentio/runtime";
+import { PostgresJournalWriter } from "@sentio/runtime";
+import { PostgresUsageLedger } from "@sentio/runtime";
+import { PostgresMoteurs } from "@sentio/runtime";
+import { approvisionnerLeJour } from "@sentio/runtime";
+import { executerLesTravauxDus, type BoucleDeps } from "@sentio/runtime";
 
 /**
  * D16 — combien de temps dure un battement, pour de vrai.

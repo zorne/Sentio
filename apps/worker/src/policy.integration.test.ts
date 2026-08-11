@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createPostgresClient, type PostgresClient } from "@sentio/db";
+import { createPostgresClient, type PostgresClient } from "./adapters/postgres-node.js";
 import type { EmployeeId, TenantId } from "@sentio/domain";
 
-import { PostgresApprovalStore } from "./adapters/approvals.js";
-import { AUTONOMIE_PRUDENTE, PostgresAutonomyResolver } from "./adapters/autonomy.js";
-import { capacitesActivees } from "./next-step.js";
+import { PostgresApprovalStore } from "@sentio/runtime";
+import { AUTONOMIE_PRUDENTE, PostgresAutonomyResolver } from "@sentio/runtime";
+import { capacitesActivees } from "@sentio/runtime";
 
 /** Versions et clés uniques par appel. `Date.now()` collisionne dès que deux fixtures naissent
  *  dans la même milliseconde — ce qui arrive tout le temps entre deux suites. */

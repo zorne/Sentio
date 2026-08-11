@@ -84,7 +84,10 @@ const IMPORTS_AUTORISES_FONCTIONS = ["@sentio/domain", "@sentio/config"];
  * faudrait revenir ici — donc en discuter.
  */
 const DEROGATIONS_PAR_FONCTION = {
-  battement: ["@db/postgres"],
+  // L'exécutant est un adaptateur de SORTIE : il monte le runtime et lui fournit un pilote.
+  // Ce sont les mêmes pièces que `apps/worker` — c'est précisément ce qui interdit de dupliquer
+  // la logique métier pour Deno (`adr/0028`).
+  battement: ["@db/postgres", "@sentio/core", "@sentio/db", "@sentio/runtime"],
 };
 
 async function verifierFonctions() {

@@ -2,15 +2,15 @@ import { randomUUID } from "node:crypto";
 
 import { INFERENCE_ENVELOPES, USAGE_METRICS, type FeatureFlags } from "@sentio/config";
 import { ModelGateway, PolicyEngine, TaskDeferred, type ModelProvider } from "@sentio/core";
-import { createPostgresClient, type PostgresClient } from "@sentio/db";
+import { createPostgresClient, type PostgresClient } from "../adapters/postgres-node.js";
 import type { EmployeeId, TaskId, TenantId } from "@sentio/domain";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { PostgresApprovalStore } from "./approvals.js";
-import { PostgresJournalWriter } from "./journal.js";
-import { PostgresUsageLedger, periodFor } from "./ledger.js";
-import { PostgresDeliveryFeedback } from "./reputation.js";
-import { PostgresOutboundMessages, PostgresSendingGuard } from "./sending.js";
+import { PostgresApprovalStore } from "@sentio/runtime";
+import { PostgresJournalWriter } from "@sentio/runtime";
+import { PostgresUsageLedger, periodFor } from "@sentio/runtime";
+import { PostgresDeliveryFeedback } from "@sentio/runtime";
+import { PostgresOutboundMessages, PostgresSendingGuard } from "@sentio/runtime";
 
 /** Versions et clés uniques par appel. `Date.now()` collisionne dès que deux fixtures naissent
  *  dans la même milliseconde — ce qui arrive tout le temps entre deux suites. */

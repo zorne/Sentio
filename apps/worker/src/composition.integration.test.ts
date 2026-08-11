@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
 
-import { createPostgresClient, type PostgresClient } from "@sentio/db";
+import { createPostgresClient, type PostgresClient } from "./adapters/postgres-node.js";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { composerLeWorker } from "./composition.js";
 import { demarrer } from "./main.js";
-import { LONGUEUR_MINIMALE_DU_SECRET, VARIABLES, lireLaConfiguration } from "./configuration.js";
-import { HEARTBEAT_HEADER, signHeartbeat } from "./heartbeat/index.js";
+import { LONGUEUR_MINIMALE_DU_SECRET, VARIABLES, lireLaConfiguration } from "@sentio/runtime";
+import { HEARTBEAT_HEADER, signHeartbeat } from "@sentio/runtime";
 import { ROUTE_DU_BATTEMENT, demarrerLeServeur } from "./serveur.js";
 
 /**

@@ -2,10 +2,10 @@ import { randomUUID } from "node:crypto";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { createPostgresClient, type PostgresClient } from "./postgres-client.js";
-import { GlobalReadRepository, TenantScopedRepository } from "./repository.js";
-import { ExecutionJournal } from "./journal.js";
-import { TenantScope } from "./tenant-scope.js";
+import { createPostgresClient, type PostgresClient } from "./adapters/postgres-node.js";
+import { GlobalReadRepository, TenantScopedRepository } from "@sentio/db";
+import { ExecutionJournal } from "@sentio/db";
+import { TenantScope } from "@sentio/db";
 
 /**
  * Tests d'intégration : les repositories contre un **vrai** Postgres, sur le vrai schéma.

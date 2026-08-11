@@ -19,7 +19,7 @@
  * Réalise : EXEC-18
  */
 
-import { ConfigurationInvalide, lireLaConfiguration } from "./configuration.js";
+import { ConfigurationInvalide, lireLaConfiguration } from "@sentio/runtime";
 import { composerLeWorker } from "./composition.js";
 import { ROUTE_DU_BATTEMENT, demarrerLeServeur, type ServeurEnMarche } from "./serveur.js";
 

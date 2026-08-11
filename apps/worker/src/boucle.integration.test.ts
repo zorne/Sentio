@@ -11,19 +11,20 @@ import {
   RUN_REPORTE,
   type ModelProvider,
 } from "@sentio/core";
-import { ExecutionJournal, TenantScope, createPostgresClient, type PostgresClient } from "@sentio/db";
+import { ExecutionJournal, TenantScope } from "@sentio/db";
+import { createPostgresClient, type PostgresClient } from "./adapters/postgres-node.js";
 import type { EmployeeId, TenantId } from "@sentio/domain";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { PostgresApprovisionnementStore, RegistreDeGisementsParMetier } from "./adapters/approvisionnement.js";
-import { PostgresApprovalStore } from "./adapters/approvals.js";
-import { PostgresEffectLedger } from "./adapters/effects.js";
-import { PostgresFileDeTravaux } from "./adapters/file-de-travaux.js";
-import { PostgresJournalWriter } from "./adapters/journal.js";
-import { PostgresUsageLedger } from "./adapters/ledger.js";
-import { PostgresMoteurs } from "./adapters/moteurs.js";
-import { approvisionnerLeJour } from "./battement.js";
-import { executerLesTravauxDus, type BoucleDeps } from "./boucle.js";
+import { PostgresApprovisionnementStore, RegistreDeGisementsParMetier } from "@sentio/runtime";
+import { PostgresApprovalStore } from "@sentio/runtime";
+import { PostgresEffectLedger } from "@sentio/runtime";
+import { PostgresFileDeTravaux } from "@sentio/runtime";
+import { PostgresJournalWriter } from "@sentio/runtime";
+import { PostgresUsageLedger } from "@sentio/runtime";
+import { PostgresMoteurs } from "@sentio/runtime";
+import { approvisionnerLeJour } from "@sentio/runtime";
+import { executerLesTravauxDus, type BoucleDeps } from "@sentio/runtime";
 
 /**
  * EXEC-12 — la boucle complète, contre un **vrai** Postgres.

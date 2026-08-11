@@ -16,7 +16,7 @@
  */
 
 import type { ApprovisionnementStore, GisementDeMissions, RegistreDeGisements } from "@sentio/core";
-import type { PostgresClient, SqlClient } from "@sentio/db";
+import type { SqlClient, TransactionalSqlClient } from "@sentio/db";
 import type { EmployeeId, TenantId } from "@sentio/domain";
 
 /**
@@ -91,7 +91,7 @@ export class RegistreDeGisementsParMetier implements RegistreDeGisements {
 }
 
 export class PostgresApprovisionnementStore implements ApprovisionnementStore {
-  constructor(private readonly sql: PostgresClient) {}
+  constructor(private readonly sql: TransactionalSqlClient) {}
 
   /**
    * Tous les employés recrutés, avec leur métier.

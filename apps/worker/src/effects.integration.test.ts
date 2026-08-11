@@ -8,10 +8,10 @@ import {
   idempotencyKeyFor,
   type DecisionPas,
 } from "@sentio/core";
-import { createPostgresClient, type PostgresClient } from "@sentio/db";
+import { createPostgresClient, type PostgresClient } from "./adapters/postgres-node.js";
 import type { EmployeeId, TaskId, TenantId } from "@sentio/domain";
 
-import { PostgresEffectLedger } from "./adapters/effects.js";
+import { PostgresEffectLedger } from "@sentio/runtime";
 
 /** Versions uniques par appel : `Date.now()` collisionne entre deux fixtures de la même ms. */
 let compteurUnique = Math.floor(Math.random() * 1_000_000);
