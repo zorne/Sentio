@@ -12,8 +12,7 @@
  */
 
 import {
-  INFERENCE_ENVELOPE_SHARE,
-  INFERENCE_PROVIDER_LIMITS,
+  inferenceEnvelopeBudget,
   type InferenceEnvelope,
   type UsageMetric,
 } from "@sentio/config";
@@ -172,7 +171,9 @@ export class PostgresUsageLedger implements UsageLedger {
   }
 }
 
-/** La part de l'enveloppe dans le quota du fournisseur — la même valeur que celle du Gateway. */
+/** La part de l'enveloppe dans le quota du fournisseur — la même valeur que celle du Gateway.
+ *  La formule vit dans `@sentio/config` : deux copies dériveraient, et la colonne `quota_limit`
+ *  finirait par contredire la garde qui la fait respecter. */
 export function envelopeBudget(envelope: InferenceEnvelope): number {
-  return Math.floor(INFERENCE_PROVIDER_LIMITS.tokensPerMonth * INFERENCE_ENVELOPE_SHARE[envelope]);
+  return inferenceEnvelopeBudget(envelope);
 }

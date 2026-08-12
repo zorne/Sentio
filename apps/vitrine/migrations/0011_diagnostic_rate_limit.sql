@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════════════════
 -- Migration 0011 — Limitation par visiteur et par adresse sur le
--- diagnostic public (ACQUIS-17 ; ACQUIS-18, l'enveloppe d'inférence
--- dédiée avec son propre plafond global, reste à faire séparément).
+-- diagnostic public (ACQUIS-17 ; l'enveloppe d'inférence avec son
+-- plafond global est la migration 0013, ACQUIS-18).
 --
 -- Le diagnostic manipule de l'inférence dès le premier échange, sans
 -- authentification : sans plafond, un script peut consommer le quota

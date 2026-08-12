@@ -134,10 +134,12 @@ jobs:
           PGPASSWORD: postgres
         run: psql -h 127.0.0.1 -U postgres -c 'create database vitrine_test'
 
-      # Deux invariants qu'aucun autre test ne tient : le chemin complet entre ce que le client
-      # dit après l'achat et le prompt que son employé relit (fusion jsonb comprise), et le fait
-      # que le journal d'exécution ne soit jamais lisible sans session.
-      - name: Profil d'entreprise et RLS du journal, contre une vraie base
+      # Trois invariants qu'aucun autre test ne tient : le chemin complet entre ce que le client
+      # dit après l'achat et le prompt que son employé relit (fusion jsonb comprise), le fait
+      # que le journal d'exécution ne soit jamais lisible sans session, et le plafond global de
+      # l'enveloppe du diagnostic public (ACQUIS-18) — dont tout ce qui peut casser est du SQL :
+      # la fenêtre comptée, l'incrément atomique, la somme sur la fenêtre en cours.
+      - name: Profil d'entreprise, RLS du journal et enveloppe d'inférence, contre une vraie base
         env:
           DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/vitrine_test
           SENTIO_REQUIRE_DB_TESTS: "1"

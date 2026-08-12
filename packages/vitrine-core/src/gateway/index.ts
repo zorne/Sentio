@@ -82,6 +82,15 @@ export interface CredentialResolver {
 
 export class GatewayError extends Error {}
 
+export {
+  ENVELOPE_EXHAUSTED_MESSAGE,
+  EnvelopeExhausted,
+  EnvelopeGuard,
+  PostgresEnvelopeLedger,
+  type InferenceEnvelopeLedger,
+} from "./envelope.js";
+import type { EnvelopeGuard } from "./envelope.js";
+
 // LA RÈGLE D'OR (ADR-004/005) — des données réelles ne partent JAMAIS vers
 // un provider qui peut entraîner dessus — est appliquée dans generate() et
 // generateStream() ci-dessous, au moment de parcourir les identifiants.
@@ -93,7 +102,18 @@ export class GatewayError extends Error {}
 export class ModelGateway {
   private readonly providers = new Map<ProviderName, ModelProvider>();
 
-  constructor(private readonly credentials: CredentialResolver) {}
+  /**
+   * `envelope` — la garde d'enveloppe d'inférence (ACQUIS-18), quand l'usage en dépend.
+   *
+   * Elle est **optionnelle ici et obligatoire à l'appelant** qui en a besoin : c'est
+   * `buildDiagnosticGateway(ledger)` qui exige un compteur, parce que le chemin public est celui
+   * qu'une enveloppe protège. Le rendre obligatoire pour tous les usages ferait porter à cette
+   * tâche le câblage du conseiller et du briefing, qui ont leur propre enveloppe à décider.
+   */
+  constructor(
+    private readonly credentials: CredentialResolver,
+    private readonly envelope?: EnvelopeGuard,
+  ) {}
 
   /** Branche un provider. Ajouter un fournisseur = un register(), zéro autre changement. */
   register(provider: ModelProvider): this {
@@ -102,6 +122,10 @@ export class ModelGateway {
   }
 
   async generate(req: GenerateRequest): Promise<GenerateResult> {
+    // AVANT tout le reste : l'enveloppe est un coupe-circuit, pas un arbitrage entre
+    // fournisseurs. Une requête refusée par le plafond ne doit pas d'abord être payée.
+    await this.envelope?.assertHasRoom();
+
     const creds = await this.credentials.resolve(req.tenantId);
     if (creds.length === 0) {
       throw new GatewayError(
@@ -124,8 +148,9 @@ export class ModelGateway {
         errors.push(`${cred.provider}: non branché`);
         continue;
       }
+      let result: GenerateResult;
       try {
-        return await provider.generate(req, cred);
+        result = await provider.generate(req, cred);
       } catch (err) {
         const e = err instanceof Error ? err : new Error(String(err));
         errors.push(`${cred.provider}: ${e.message.slice(0, 200)}`);
@@ -133,7 +158,18 @@ export class ModelGateway {
         // non transitoires (4xx logique) sont déjà filtrées provider-side
         // (voir gemini.ts isRetryableError), donc une erreur ici mérite
         // un vrai fallback plutôt que d'être masquée en silence.
+        continue;
       }
+
+      // Le comptage vit HORS du `try` : une panne du compteur n'est pas une panne de fournisseur.
+      // Si elle l'était, on rappellerait le fournisseur suivant — donc on paierait deux fois un
+      // appel déjà réussi. Et elle ne s'avale pas non plus : un comptage perdu en silence rend le
+      // plafond décoratif, ce que cette enveloppe existe précisément pour empêcher.
+      await this.envelope?.record(
+        cred.provider,
+        result.usage.inputTokens + result.usage.outputTokens,
+      );
+      return result;
     }
 
     throw new GatewayError(
@@ -149,6 +185,11 @@ export class ModelGateway {
    * réponse complète.
    */
   async *stream(req: GenerateRequest): AsyncIterable<string> {
+    // Même coupe-circuit qu'en `generate`. ⚠️ Ce chemin CONSOMME sans compter : un flux ne rend
+    // pas d'usage. Il refuse donc quand l'enveloppe est pleine, mais il ne la remplit pas — un
+    // usage qui streame et qui doit être plafonné devra d'abord savoir compter ses tours.
+    await this.envelope?.assertHasRoom();
+
     const creds = await this.credentials.resolve(req.tenantId);
     const errors: string[] = [];
 

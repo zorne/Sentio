@@ -8,13 +8,21 @@
 // réelle. C'est un plafond de coût : borner ce qu'un visiteur unique ou
 // une adresse peut consommer d'inférence par jour.
 //
-// ⚠️ Ce que ceci NE fait PAS : ACQUIS-18 (« enveloppe d'inférence dédiée
-// au diagnostic public, plafond appliqué ») demande une clé/un budget
-// Groq SÉPARÉ de celui de l'advisor, avec un plafond global — un
+// ⚠️ Ce que ceci NE fait PAS, et qui est fait ailleurs : le plafond
+// GLOBAL de l'enveloppe `public_diagnostic` (ACQUIS-18), un
 // coupe-circuit pour toute la fonctionnalité, indépendant du comptage
-// par visiteur. `buildDiagnosticGateway()` lit aujourd'hui la même
-// variable `GROQ_API_KEY` que l'advisor : les deux usages partagent le
-// même budget. Reste à faire, pas encore commencé.
+// par visiteur. Il vit dans
+// `packages/vitrine-core/src/gateway/envelope.ts` et se branche dans
+// `buildDiagnosticGateway()`. Les deux plafonds sont nécessaires : un
+// plafond par visiteur ne borne rien face à mille visiteurs, un plafond
+// global ne protège pas des mille requêtes d'un seul.
+//
+// Ce qui reste vrai et non résolu : `buildDiagnosticGateway()` lit la
+// même variable `GROQ_API_KEY` que le conseiller. Le budget est
+// désormais découpé et appliqué par enveloppe ; la CLÉ, elle, reste
+// partagée — donc une limite de débit atteinte par un usage se voit
+// encore chez l'autre. Séparer les comptes est une décision
+// d'exploitation, pas de code.
 //
 // Réalise : ACQUIS-17
 // ════════════════════════════════════════════════════════════════════

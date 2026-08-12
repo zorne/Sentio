@@ -14,14 +14,30 @@
 // un faux modèle, sans clé d'API ni réseau.
 // ════════════════════════════════════════════════════════════════════
 
+import { INFERENCE_ENVELOPES } from "@sentio/config";
 import { parseDiagnosticProfile, recommend, type RecommendationDecision } from "@sentio/domain";
-import { ModelGateway } from "../gateway/index.js";
-import type { ConversationTurn, CredentialResolver, TenantCredential } from "../gateway/index.js";
+import { EnvelopeGuard, ModelGateway } from "../gateway/index.js";
+import type {
+  ConversationTurn,
+  CredentialResolver,
+  InferenceEnvelopeLedger,
+  TenantCredential,
+} from "../gateway/index.js";
 import { GroqProvider } from "../gateway/providers/groq.js";
 import { buildDiagnosticSystemPrompt, EXTRACTION_TOOL } from "./prompt.js";
 import { buildPresentationPrompt, PRESENTATION_TOOL, type PresentEmployeeDeps } from "./presentation.js";
 
 export { presentEmployee, type EmployeePresentation } from "./presentation.js";
+
+/** L'enveloppe d'inférence du chemin public (ACQUIS-18), ré-exportée ici : l'appelant du
+ *  diagnostic n'a qu'une porte à connaître, et il ne peut pas construire le gateway sans passer
+ *  par le compteur. */
+export {
+  ENVELOPE_EXHAUSTED_MESSAGE,
+  EnvelopeExhausted,
+  PostgresEnvelopeLedger,
+  type InferenceEnvelopeLedger,
+} from "../gateway/index.js";
 
 const PLATFORM_TENANT = "platform-diagnostic";
 
@@ -104,8 +120,13 @@ export async function stepDiagnostic(
 
 /** Construit le gateway du diagnostic — même schéma que `buildAdvisorGateway` (advisor/index.ts) :
  *  clé lue à l'appel, jamais capturée au chargement du module, données de classe `test` puisque
- *  aucun tenant n'existe encore à ce stade de la conversation. */
-export function buildDiagnosticGateway(): ModelGateway {
+ *  aucun tenant n'existe encore à ce stade de la conversation.
+ *
+ *  `ledger` est **obligatoire** (ACQUIS-18). Le diagnostic public consomme le quota partagé de la
+ *  plateforme sans qu'aucun client n'ait rien signé : il ne peut pas exister de chemin qui le
+ *  construise sans plafond. Un paramètre facultatif aurait rendu l'oubli possible, et l'oubli
+ *  aurait rendu le découpage en enveloppes décoratif (`docs/11-exploitation.md`). */
+export function buildDiagnosticGateway(ledger: InferenceEnvelopeLedger): ModelGateway {
   const resolver: CredentialResolver = {
     async resolve(): Promise<TenantCredential[]> {
       const key = process.env.GROQ_API_KEY;
@@ -113,7 +134,8 @@ export function buildDiagnosticGateway(): ModelGateway {
       return [{ provider: "groq", dataPolicy: "free", apiKey: key }];
     },
   };
-  return new ModelGateway(resolver).register(new GroqProvider());
+  const guard = new EnvelopeGuard(INFERENCE_ENVELOPES.publicDiagnostic, ledger);
+  return new ModelGateway(resolver, guard).register(new GroqProvider());
 }
 
 /** L'implémentation réelle de `converse` — le seul endroit de ce module qui appelle un modèle.
