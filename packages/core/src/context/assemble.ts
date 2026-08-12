@@ -89,6 +89,12 @@ export function parseDna(raw: unknown): EmployeeDna {
  */
 export interface SectorKnowledge {
   readonly sector: string;
+  /**
+   * Autres noms du même métier, pour le rapprochement fait au diagnostic
+   * (`@sentio/domain`, `selectionnerUnProfilSectoriel`). Ce sont des noms, pas du savoir : ils
+   * n'entrent jamais dans le contexte de l'employé et ne comptent pas comme substance.
+   */
+  readonly alias?: readonly string[];
   readonly vocabulaire?: readonly string[];
   readonly interlocuteurs?: readonly string[];
   readonly cycleAchat?: string;
@@ -150,12 +156,16 @@ export function parseSectorKnowledge(raw: unknown): SectorKnowledge {
   // `vocabulaire: undefined` ferait croire à une rubrique vide là où il n'y a pas de rubrique.
   const connaissance: {
     sector: string;
+    alias?: readonly string[];
     vocabulaire?: readonly string[];
     interlocuteurs?: readonly string[];
     cycleAchat?: string;
     objections?: readonly string[];
     angles?: readonly string[];
   } = { sector: sector.trim() };
+
+  const alias = optionalStrings(record["alias"], "alias");
+  if (alias !== undefined) connaissance.alias = alias;
 
   const vocabulaire = optionalStrings(record["vocabulaire"], "vocabulaire");
   if (vocabulaire !== undefined) connaissance.vocabulaire = vocabulaire;

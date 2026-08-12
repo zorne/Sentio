@@ -58,7 +58,7 @@ begin
       'Profil sectoriel invalide : le secteur est obligatoire — sans lui, on ne sait pas à qui ce savoir s''applique.';
   end if;
 
-  foreach v_champ in array array['vocabulaire', 'interlocuteurs', 'objections', 'angles'] loop
+  foreach v_champ in array array['vocabulaire', 'interlocuteurs', 'objections', 'angles', 'alias'] loop
     v_valeur := p_contenu -> v_champ;
     if v_valeur is not null and jsonb_typeof(v_valeur) <> 'null' then
       if jsonb_typeof(v_valeur) <> 'array'
