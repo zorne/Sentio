@@ -17,13 +17,13 @@
 
 ## Avancement
 
-**109 tâches sur 185** portent une preuve dans le dépôt.
+**110 tâches sur 185** portent une preuve dans le dépôt.
 
 | Lot | Fait | Total | |
 |---|---|---|---|
 | Fondations (Lot 0) | 38 | 38 | `████████████████████` |
 | Noyau (Lot 1) | 22 | 22 | `████████████████████` |
-| Métier Commercial (Lot 2) | 22 | 24 | `██████████████████··` |
+| Métier Commercial (Lot 2) | 23 | 24 | `███████████████████·` |
 | Acquisition (Lot 4) | 7 | 24 | `██████··············` |
 | Recrutement & Paiement (Lot 5) | 0 | 10 | `····················` |
 | Dashboard (Lot 6) | 0 | 21 | `····················` |
@@ -127,7 +127,7 @@
 | ✅ | **METIER-12** Capacité "relancer un prospect" : contrat + moteur | P1 | [`packages/capabilities/src/email/follow-up.ts`](../packages/capabilities/src/email/follow-up.ts) · [`supabase/migrations/20260812120002_relance.sql`](../supabase/migrations/20260812120002_relance.sql) |
 | ✅ | **METIER-13** Capacité "mettre à jour une fiche CRM" : contrat + moteur | P0 | [`packages/capabilities/src/prospects/update-fiche.ts`](../packages/capabilities/src/prospects/update-fiche.ts) |
 | ✅ | **METIER-14** Réflexion post-run spécifique au Commercial (0 à 3 faits par run) | P1 | [`packages/core/src/runtime/reflexion.ts`](../packages/core/src/runtime/reflexion.ts) |
-| ☐ | **METIER-15** Variantes de stratégie du Commercial (angles d'accroche, moments de relance) | P1 | — |
+| ✅ | **METIER-15** Variantes de stratégie du Commercial (angles d'accroche, moments de relance) | P1 | [`packages/core/src/runtime/variantes.ts`](../packages/core/src/runtime/variantes.ts) · [`supabase/migrations/20260812120003_variantes_de_strategie.sql`](../supabase/migrations/20260812120003_variantes_de_strategie.sql) |
 | ✅ | **METIER-16** Migration : table suppression_entry (exclusions par entreprise - clients, concurrents, comptes sensibles) | P0 | [`supabase/migrations/20260729120038_prospection.sql`](../supabase/migrations/20260729120038_prospection.sql) |
 | ✅ | **METIER-17** Garde-fou : vérification des exclusions avant tout envoi (bloquant, pas consultatif) | P0 | [`supabase/migrations/20260729120038_prospection.sql`](../supabase/migrations/20260729120038_prospection.sql) |
 | ✅ | **METIER-18** Vérification de l'authentification du domaine d'envoi (SPF, DKIM, DMARC) à l'onboarding | P0 | [`packages/capabilities/src/email/domain-auth.ts`](../packages/capabilities/src/email/domain-auth.ts) |

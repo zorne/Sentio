@@ -1338,4 +1338,94 @@ begin
 end;
 $$;
 
+
+-- ── METIER-15 — les variantes sont des données, et ce qui a tourné ne se réécrit pas ─────────
+do $$
+declare
+  espace_4_7  uuid;
+  espace_3_10 uuid;
+begin
+  select id into espace_4_7 from public.strategy_variant
+   where profession = 'commercial' and kind = 'moment_de_relance' and key = 'espace_4_7';
+  select id into espace_3_10 from public.strategy_variant
+   where profession = 'commercial' and kind = 'moment_de_relance' and key = 'espace_3_10';
+
+  -- 1. La cadence de relance se LIT dans la variante par défaut : c'est ce qui la rend
+  --    ajustable sans redéploiement.
+  if public.cadence_de_relance(1) <> 4 or public.cadence_de_relance(2) <> 7 then
+    raise exception 'ÉCHEC variantes : la cadence par défaut ne vient pas de la variante (% puis %).',
+      public.cadence_de_relance(1), public.cadence_de_relance(2);
+  end if;
+
+  -- Changer la variante par défaut change la cadence, sans toucher une ligne de code.
+  update public.strategy_variant set par_defaut = false where id = espace_4_7;
+  update public.strategy_variant set par_defaut = true  where id = espace_3_10;
+
+  if public.cadence_de_relance(1) <> 3 or public.cadence_de_relance(2) <> 10 then
+    raise exception
+      'ÉCHEC variantes : changer la variante par défaut n''a pas changé la cadence (% puis %).',
+      public.cadence_de_relance(1), public.cadence_de_relance(2);
+  end if;
+
+  -- Au-delà des rangs déclarés : NULL, et surtout aucun repli sur une valeur écrite en dur.
+  if public.cadence_de_relance(3) is not null then
+    raise exception 'ÉCHEC variantes : un rang non déclaré a reçu une cadence.';
+  end if;
+
+  update public.strategy_variant set par_defaut = false where id = espace_3_10;
+  update public.strategy_variant set par_defaut = true  where id = espace_4_7;
+
+  -- 2. Deux variantes par défaut pour un même genre rendraient le comportement dépendant de
+  --    l'ordre de lecture. L'index unique partiel l'interdit.
+  begin
+    update public.strategy_variant set par_defaut = true where id = espace_3_10;
+    raise exception 'ÉCHEC variantes : deux variantes par défaut ont coexisté.';
+  exception when unique_violation then
+    null;
+  end;
+
+  -- 3. Les leviers bougent : désactiver une variante est un geste normal.
+  update public.strategy_variant set actif = false where id = espace_3_10;
+  if exists (select 1 from public.strategy_variant where id = espace_3_10 and actif) then
+    raise exception 'ÉCHEC variantes : une variante n''a pas pu être désactivée.';
+  end if;
+  update public.strategy_variant set actif = true where id = espace_3_10;
+
+  -- 4. L'identité ne bouge pas : réécrire le contenu d'une variante déjà jouée réattribuerait
+  --    des résultats mesurés à une stratégie qui n'a jamais tourné.
+  begin
+    update public.strategy_variant set content = '{"jours": [1, 2]}'::jsonb where id = espace_4_7;
+    raise exception 'ÉCHEC variantes : le contenu d''une variante a pu être réécrit.';
+  exception when sqlstate 'P0001' then
+    if position('immuable' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  begin
+    update public.strategy_variant set key = 'autre_cle' where id = espace_4_7;
+    raise exception 'ÉCHEC variantes : la clé d''une variante a pu être changée.';
+  exception when sqlstate 'P0001' then
+    if position('immuable' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  -- 5. Et une variante ne se supprime pas : elle orphelinerait les résultats déjà mesurés.
+  begin
+    delete from public.strategy_variant where id = espace_3_10;
+    raise exception 'ÉCHEC variantes : une variante a pu être supprimée.';
+  exception when sqlstate 'P0001' then
+    if position('se supprime pas' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  -- 6. La vue des résultats compte des lignes réelles, et rend zéro tant qu'il n'y en a pas —
+  --    jamais une estimation (AGENTS.md, invariant 4).
+  if not exists (
+    select 1 from public.strategy_variant_resultats
+     where key = 'espace_4_7' and missions = 0 and ventes = 0 and chiffre_affaires = 0
+  ) then
+    raise exception 'ÉCHEC variantes : une variante sans mission ne rend pas des compteurs à zéro.';
+  end if;
+
+  raise notice 'OK  METIER-15 — cadence en données, identité figée, désactivation possible, résultats comptés';
+end;
+$$;
+
 rollback;
