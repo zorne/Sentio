@@ -4,24 +4,8 @@
     {
       "name": "sentia-web",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": [
-        "--filter",
-        "@employes-ia/web",
-        "dev"
-      ],
+      "runtimeArgs": ["--filter", "@employes-ia/web", "dev"],
       "port": 3000
-    },
-    {
-      "name": "sentio-vitrine",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": [
-        "--filter",
-        "vitrine",
-        "dev",
-        "--port",
-        "3100"
-      ],
-      "port": 3100
     }
   ]
 }
