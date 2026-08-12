@@ -19,6 +19,9 @@ import {
   createModelPresent,
   presentEmployee,
   stepDiagnostic,
+  ENVELOPE_EXHAUSTED_MESSAGE,
+  EnvelopeExhausted,
+  PostgresEnvelopeLedger,
   type DiagnosticMessage,
   type EmployeePresentation,
 } from "@sentio/vitrine-core/diagnostic";
@@ -45,7 +48,10 @@ async function runTurn(history: DiagnosticMessage[]): Promise<DiagnosticTurnResu
     return { kind: "limite", message: verdict.reason === "visiteur" ? LIMITE_VISITEUR : LIMITE_ADRESSE };
   }
 
-  const gateway = buildDiagnosticGateway();
+  // ACQUIS-18 — le plafond GLOBAL de l'enveloppe `public_diagnostic`, en plus du plafond par
+  // visiteur vérifié juste au-dessus. Les deux comptent des choses différentes : ce qu'un
+  // visiteur consomme, et ce que tout le monde consomme ensemble.
+  const gateway = buildDiagnosticGateway(new PostgresEnvelopeLedger(pool));
   const step = await stepDiagnostic(history, { converse: createModelConverse(gateway) });
 
   if (step.stage === "conversation") {
@@ -78,6 +84,15 @@ export async function diagnosticTurn(history: DiagnosticMessage[]): Promise<Diag
   try {
     return await runTurn(history);
   } catch (error) {
+    // L'enveloppe pleine n'est PAS une panne : rien n'a échoué, une règle a fermé la porte
+    // (ACQUIS-18). La confondre avec une panne ferait chercher un incident là où il n'y en a
+    // pas, et priverait la surveillance du seul signal qui dit que le plafond a mordu.
+    if (error instanceof EnvelopeExhausted) {
+      console.warn(
+        JSON.stringify({ route: "diagnostic-vitrine", raison: "enveloppe_epuisee", detail: error.detail }),
+      );
+      return { kind: "limite", message: ENVELOPE_EXHAUSTED_MESSAGE };
+    }
     console.error(JSON.stringify({ route: "diagnostic-vitrine", error: String(error) }));
     return { kind: "panne", message: PANNE };
   }

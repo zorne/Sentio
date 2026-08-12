@@ -36,6 +36,20 @@ export const INFERENCE_ENVELOPE_SHARE: Record<InferenceEnvelope, number> = {
 };
 
 /**
+ * Le budget d'une enveloppe, en tokens, sur la période que compte `INFERENCE_PROVIDER_LIMITS` —
+ * le mois. **C'est la seule définition de ce budget dans le dépôt** : le noyau, l'adaptateur de
+ * comptage et la vitrine s'y réfèrent tous, sans quoi trois formules finiraient par diverger et
+ * le plafond ne voudrait plus rien dire.
+ *
+ * ⚠️ Le budget et la fenêtre de comptage doivent parler de la même durée. Comparer la
+ * consommation d'une journée à un budget mensuel ferait une garde trente fois trop lâche —
+ * c'est-à-dire décorative.
+ */
+export function inferenceEnvelopeBudget(envelope: InferenceEnvelope): number {
+  return Math.floor(INFERENCE_PROVIDER_LIMITS.tokensPerMonth * INFERENCE_ENVELOPE_SHARE[envelope]);
+}
+
+/**
  * Seuils d'alerte, exprimés en part du plafond. La documentation donne « 60-70 % » : on alerte au
  * milieu de la fourchette pour laisser le temps d'agir.
  * → `docs/11-exploitation.md`, section « Seuils de rupture du €0 »

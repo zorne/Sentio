@@ -29,6 +29,9 @@ importers:
       '@react-three/fiber':
         specifier: ^9.6.1
         version: 9.7.0(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.185.1)
+      '@sentio/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@sentio/vitrine-core':
         specifier: workspace:*
         version: link:../../packages/vitrine-core
@@ -209,6 +212,9 @@ importers:
 
   packages/vitrine-core:
     dependencies:
+      '@sentio/config':
+        specifier: workspace:*
+        version: link:../config
       '@sentio/domain':
         specifier: workspace:*
         version: link:../domain

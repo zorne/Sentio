@@ -17,14 +17,14 @@
 
 ## Avancement
 
-**112 tâches sur 185** portent une preuve dans le dépôt.
+**113 tâches sur 185** portent une preuve dans le dépôt.
 
 | Lot | Fait | Total | |
 |---|---|---|---|
 | Fondations (Lot 0) | 38 | 38 | `████████████████████` |
 | Noyau (Lot 1) | 22 | 22 | `████████████████████` |
 | Métier Commercial (Lot 2) | 23 | 24 | `███████████████████·` |
-| Acquisition (Lot 4) | 9 | 24 | `████████············` |
+| Acquisition (Lot 4) | 10 | 24 | `████████············` |
 | Recrutement & Paiement (Lot 5) | 0 | 10 | `····················` |
 | Dashboard (Lot 6) | 0 | 21 | `····················` |
 | Exécution autonome (Lot 3) | 12 | 19 | `█████████████·······` |
@@ -163,7 +163,7 @@
 | ✅ | **ACQUIS-24** Sélection du profil sectoriel par le moteur déterministe, message honnête si aucun ne correspond | P0 | [`packages/domain/src/secteur.ts`](../packages/domain/src/secteur.ts) |
 | ☐ | **ACQUIS-16** Cas "besoin hors périmètre détecté" : message honnête + liste d'attente | P0 | — |
 | ✅ | **ACQUIS-17** Limitation par visiteur et par adresse sur le diagnostic public | P0 | [`apps/vitrine/src/lib/diagnostic-rate-limit.ts`](../apps/vitrine/src/lib/diagnostic-rate-limit.ts) |
-| ☐ | **ACQUIS-18** Enveloppe d'inférence dédiée au diagnostic public (plafond appliqué) | P0 | — |
+| ✅ | **ACQUIS-18** Enveloppe d'inférence dédiée au diagnostic public (plafond appliqué) | P0 | [`packages/vitrine-core/src/gateway/envelope.ts`](../packages/vitrine-core/src/gateway/envelope.ts) · [`apps/vitrine/migrations/0013_provider_quota.sql`](../apps/vitrine/migrations/0013_provider_quota.sql) |
 | ✅ | **ACQUIS-19** Jeu de conversations de référence pour le diagnostic | P1 | [`packages/domain/src/recommendation.test.ts`](../packages/domain/src/recommendation.test.ts) |
 | ✅ | **ACQUIS-20** Test de non-régression rejouant le jeu de référence à chaque modification de prompt | P1 | [`packages/domain/src/recommendation.test.ts`](../packages/domain/src/recommendation.test.ts) |
 
