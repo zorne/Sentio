@@ -1,3 +1,8 @@
+/**
+ * Formulaire d'exercice des droits RGPD.
+ *
+ * Réalise : ACQUIS-11
+ */
 "use client";
 
 // Formulaire de demande RGPD — écrit directement en base pour traçabilité.

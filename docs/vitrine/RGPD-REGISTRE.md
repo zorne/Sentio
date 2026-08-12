@@ -97,7 +97,7 @@ avant traitement de données personnelles réelles.
 
 | Sous-traitant | Rôle | Localisation données | DPA signé | Certifications |
 |---|---|---|---|---|
-| Supabase Inc. | DB, auth, storage | UE (eu-west-1) | **À signer** | SOC 2 Type II, HIPAA |
+| Supabase Inc. | DB, auth, storage | UE (eu-north-1) | **À signer** | SOC 2 Type II, HIPAA |
 | Vercel Inc. | Hébergement Next.js | UE privilégiée | **À signer** | SOC 2 Type II |
 | Google (Gemini API) | Modèle IA prod | UE (tier payant) | **À signer** | ISO 27001, SOC 2 |
 | Groq Inc. | Modèle IA conseiller public | US | **À signer** | À vérifier |

@@ -17,14 +17,14 @@
 
 ## Avancement
 
-**113 tâches sur 185** portent une preuve dans le dépôt.
+**118 tâches sur 185** portent une preuve dans le dépôt.
 
 | Lot | Fait | Total | |
 |---|---|---|---|
 | Fondations (Lot 0) | 38 | 38 | `████████████████████` |
 | Noyau (Lot 1) | 22 | 22 | `████████████████████` |
 | Métier Commercial (Lot 2) | 23 | 24 | `███████████████████·` |
-| Acquisition (Lot 4) | 10 | 24 | `████████············` |
+| Acquisition (Lot 4) | 15 | 24 | `█████████████·······` |
 | Recrutement & Paiement (Lot 5) | 0 | 10 | `····················` |
 | Dashboard (Lot 6) | 0 | 21 | `····················` |
 | Exécution autonome (Lot 3) | 12 | 19 | `█████████████·······` |
@@ -148,11 +148,11 @@
 | ☐ | **ACQUIS-04** Section démonstration scriptée (données fixes, présentée comme démonstration) | P0 | — |
 | ☐ | **ACQUIS-05** Section "comment ça marche" | P2 | — |
 | ☐ | **ACQUIS-06** Section tarifs (Start affichée comme achetable, Growth/Scale visibles non actives) | P0 | — |
-| ☐ | **ACQUIS-07** Page légale : mentions légales (contenu provisoire signalé) | P0 | — |
-| ☐ | **ACQUIS-08** Page légale : conditions générales d'utilisation/vente | P0 | — |
-| ☐ | **ACQUIS-09** Page légale : politique de confidentialité | P0 | — |
-| ☐ | **ACQUIS-10** Page légale : politique de cookies | P1 | — |
-| ☐ | **ACQUIS-11** Page légale : formulaire de demande RGPD (accès/effacement/contestation) | P0 | — |
+| ✅ | **ACQUIS-07** Page légale : mentions légales (contenu provisoire signalé) | P0 | [`apps/vitrine/src/app/legal/mentions/page.tsx`](../apps/vitrine/src/app/legal/mentions/page.tsx) |
+| ✅ | **ACQUIS-08** Page légale : conditions générales d'utilisation/vente | P0 | [`apps/vitrine/src/app/legal/cgu/page.tsx`](../apps/vitrine/src/app/legal/cgu/page.tsx) |
+| ✅ | **ACQUIS-09** Page légale : politique de confidentialité | P0 | [`apps/vitrine/src/app/legal/confidentialite/page.tsx`](../apps/vitrine/src/app/legal/confidentialite/page.tsx) |
+| ✅ | **ACQUIS-10** Page légale : politique de cookies | P1 | [`apps/vitrine/src/app/legal/cookies/page.tsx`](../apps/vitrine/src/app/legal/cookies/page.tsx) |
+| ✅ | **ACQUIS-11** Page légale : formulaire de demande RGPD (accès/effacement/contestation) | P0 | [`apps/vitrine/src/components/legal/RgpdRequestForm.tsx`](../apps/vitrine/src/components/legal/RgpdRequestForm.tsx) |
 | ✅ | **ACQUIS-12** Composant de conversation de diagnostic (aller-retour direct au Model Gateway) | P0 | [`apps/vitrine/src/components/diagnostic/DiagnosticExperience.tsx`](../apps/vitrine/src/components/diagnostic/DiagnosticExperience.tsx) |
 | ✅ | **ACQUIS-13** Extraction de profil structuré depuis la conversation de diagnostic | P0 | [`scripts/etat-du-backlog.mjs`](../scripts/etat-du-backlog.mjs) · [`packages/domain/src/diagnostic-request.ts`](../packages/domain/src/diagnostic-request.ts) |
 | ✅ | **ACQUIS-14** Moteur de règles déterministe (frein + situation → calibrage de l'employé) | P0 | [`scripts/etat-du-backlog.mjs`](../scripts/etat-du-backlog.mjs) · [`packages/domain/src/recommendation.ts`](../packages/domain/src/recommendation.ts) |

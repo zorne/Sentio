@@ -1,3 +1,13 @@
+/**
+ * Mentions légales — LCEN article 6-III.
+ *
+ * Contenu PROVISOIRE et signalé comme tel : l'éditeur n'est pas encore immatriculé, et les
+ * champs d'identification restent à compléter. Le signaler dans la page est une obligation
+ * assumée, pas un pense-bête : ouvrir au public avec des mentions incomplètes non signalées
+ * serait pire que de les afficher incomplètes.
+ *
+ * Réalise : ACQUIS-07
+ */
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Mentions légales — Sentio" };
@@ -35,8 +45,8 @@ export default function MentionsPage() {
         Walnut, CA 91789, États-Unis. Exécution privilégiée en régions
         européennes.<br /><br />
         <strong>Base de données :</strong> Supabase Inc., 970 Toa Payoh
-        North #07-04, Singapour. Données hébergées en UE (Irlande, région
-        eu-west-1).
+        North #07-04, Singapour. Données hébergées en UE (Suède, région
+        eu-north-1).
       </p>
 
       <h2>Propriété intellectuelle</h2>

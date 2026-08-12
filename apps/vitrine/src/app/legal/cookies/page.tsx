@@ -1,3 +1,12 @@
+/**
+ * Politique de cookies.
+ *
+ * Aucun cookie non essentiel n'est posé aujourd'hui : la page décrit ce qui existe, et rien
+ * de plus. Le jour où un cookie de mesure apparaîtra, c'est un bandeau de consentement qu'il
+ * faudra ajouter — pas une ligne dans ce tableau.
+ *
+ * Réalise : ACQUIS-10
+ */
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Cookies — Sentio" };

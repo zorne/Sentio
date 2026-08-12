@@ -1,3 +1,11 @@
+/**
+ * Conditions générales d'utilisation et de vente.
+ *
+ * Contenu provisoire signalé : les clauses qui engagent une personne morale (garanties,
+ * juridiction, médiation) attendent l'immatriculation.
+ *
+ * Réalise : ACQUIS-08
+ */
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Conditions générales — Sentio" };

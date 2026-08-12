@@ -1,3 +1,12 @@
+/**
+ * Politique de confidentialité — RGPD articles 13 et 14.
+ *
+ * ⚠️ La localisation des données est une DÉCLARATION OPPOSABLE, pas une formule. Elle doit
+ * désigner la région réellement utilisée par le projet lié, et se re-vérifier à chaque
+ * changement d'hébergement.
+ *
+ * Réalise : ACQUIS-09
+ */
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -87,7 +96,7 @@ export default function ConfidentialitePage() {
       <p>
         <strong>Uniquement en Europe.</strong> La base de données et les
         sauvegardes sont hébergées par Supabase dans l&apos;Union européenne
-        (région eu-west-1, Irlande). L&apos;application est déployée sur
+        (région eu-north-1, Stockholm, Suède). L&apos;application est déployée sur
         Vercel avec exécution privilégiée en région européenne.
       </p>
 
@@ -101,7 +110,7 @@ export default function ConfidentialitePage() {
           <tr><th>Sous-traitant</th><th>Rôle</th><th>Localisation</th></tr>
         </thead>
         <tbody>
-          <tr><td>Supabase Inc.</td><td>Base de données, authentification, stockage</td><td>UE (eu-west-1)</td></tr>
+          <tr><td>Supabase Inc.</td><td>Base de données, authentification, stockage</td><td>UE (eu-north-1, Suède)</td></tr>
           <tr><td>Vercel Inc.</td><td>Hébergement de l&apos;application</td><td>UE (régions privilégiées)</td></tr>
           <tr><td>Google (Gemini)</td><td>Modèle d&apos;IA (traitement des données réelles clients)</td><td>UE — clause no-train du tier payant</td></tr>
           <tr><td>Groq Inc.</td><td>Modèle d&apos;IA (uniquement données de test/conseiller public)</td><td>États-Unis</td></tr>
