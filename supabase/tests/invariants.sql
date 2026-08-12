@@ -1218,4 +1218,124 @@ begin
 end;
 $$;
 
+
+-- ── METIER-12 — la garde de relance : trois conditions de plus, et aucune recopiée ───────────
+-- Même exigence que pour la garde d'envoi : chaque condition doit refuser SEULE. On part d'une
+-- situation en règle et on casse une chose à la fois.
+do $$
+declare
+  t   constant uuid := 'e0000000-0000-0000-0000-00000000001a';
+  emp constant uuid := 'e0000000-0000-0000-0000-00000000001b';
+  dom      uuid;
+  prospect uuid;
+  premier  uuid;
+  second   uuid;
+  verdict  text;
+begin
+  insert into public.tenant (id, name) values (t, 'Entreprise relance');
+  insert into public.employee (id, tenant_id, employee_definition_id, identity_id)
+  select emp, t, 'dddddddd-0000-0000-0000-000000000001', id
+  from public.reserve_identity('commercial');
+
+  insert into public.sending_domain (tenant_id, domain, spf_verified_at, dkim_verified_at,
+                                     dmarc_verified_at, warmup_started_on)
+  values (t, 'relance.fr', now(), now(), now(), current_date) returning id into dom;
+
+  insert into public.lead (tenant_id, company_name, email, source, qualification)
+  values (t, 'Prospect Relance SARL', 'contact@relance-prospect.fr', 'import_client', 'qualifie')
+  returning id into prospect;
+
+  -- 1. Relancer quelqu'un qu'on n'a jamais contacté n'est pas une relance : ce serait un premier
+  --    message qui contourne l'obligation d'annoncer l'origine de la donnée.
+  verdict := public.peut_relancer(t, prospect, dom, 0, 30);
+  if verdict <> 'aucun_message_a_relancer' then
+    raise exception 'ÉCHEC relance : relance acceptée sans message initial (%).', verdict;
+  end if;
+
+  insert into public.outbound_message (tenant_id, lead_id, employee_id, sending_domain_id,
+                                       subject, carried_optout, carried_notice, idempotency_key)
+  values (t, prospect, emp, dom, 'Premier message', true, true, 'relance-test:1')
+  returning id into premier;
+
+  -- 2. L'espacement : un message parti à l'instant interdit la relance du jour.
+  verdict := public.peut_relancer(t, prospect, dom, 0, 30);
+  if verdict <> 'trop_tot_pour_relancer' then
+    raise exception 'ÉCHEC relance : relance acceptée le jour même (%).', verdict;
+  end if;
+
+  update public.outbound_message set sent_at = now() - interval '5 days' where id = premier;
+
+  verdict := public.peut_relancer(t, prospect, dom, 0, 30);
+  if verdict <> 'ok' then
+    raise exception 'ÉCHEC relance : première relance refusée alors que tout est en règle (%).', verdict;
+  end if;
+
+  -- 3. Une réponse arrête tout — constatée sur la fiche…
+  update public.lead set status = 'repondu' where id = prospect;
+  verdict := public.peut_relancer(t, prospect, dom, 0, 30);
+  if verdict <> 'prospect_a_deja_repondu' then
+    raise exception 'ÉCHEC relance : prospect ayant répondu relancé (fiche) (%).', verdict;
+  end if;
+  update public.lead set status = 'contacte' where id = prospect;
+
+  -- … ou constatée sur le message. Un seul des deux chemins suffit à arrêter.
+  update public.outbound_message set status = 'repondu' where id = premier;
+  verdict := public.peut_relancer(t, prospect, dom, 0, 30);
+  if verdict <> 'prospect_a_deja_repondu' then
+    raise exception 'ÉCHEC relance : prospect ayant répondu relancé (message) (%).', verdict;
+  end if;
+  update public.outbound_message set status = 'envoye' where id = premier;
+
+  -- 4. Le rang commande l'espacement, et il croît. Deux messages partis → rang 2 → sept jours.
+  --    Le message initial recule pour que la chronologie reste possible : une relance ne peut pas
+  --    être antérieure au message qu'elle relance, et l'espacement se compte depuis le DERNIER.
+  update public.outbound_message set sent_at = now() - interval '15 days' where id = premier;
+
+  insert into public.outbound_message (tenant_id, lead_id, employee_id, sending_domain_id,
+                                       subject, carried_optout, carried_notice, idempotency_key,
+                                       sent_at)
+  values (t, prospect, emp, dom, 'Relance 1', true, true, 'relance-test:2',
+          now() - interval '5 days')
+  returning id into second;
+
+  verdict := public.peut_relancer(t, prospect, dom, 0, 30);
+  if verdict <> 'trop_tot_pour_relancer' then
+    raise exception
+      'ÉCHEC relance : la seconde relance a réutilisé l''espacement de la première (%).', verdict;
+  end if;
+
+  update public.outbound_message set sent_at = now() - interval '8 days' where id = second;
+  verdict := public.peut_relancer(t, prospect, dom, 0, 30);
+  if verdict <> 'ok' then
+    raise exception 'ÉCHEC relance : seconde relance refusée après huit jours (%).', verdict;
+  end if;
+
+  -- 5. Deux relances, pas trois. C'est l'ADN qui le dit, pas une préférence.
+  insert into public.outbound_message (tenant_id, lead_id, employee_id, sending_domain_id,
+                                       subject, carried_optout, carried_notice, idempotency_key,
+                                       sent_at)
+  values (t, prospect, emp, dom, 'Relance 2', true, true, 'relance-test:3',
+          now() - interval '20 days');
+
+  verdict := public.peut_relancer(t, prospect, dom, 0, 30);
+  if verdict <> 'relances_epuisees' then
+    raise exception 'ÉCHEC relance : une troisième relance a été autorisée (%).', verdict;
+  end if;
+
+  -- 6. Et tout ce qui interdit un envoi interdit une relance, sans que ce soit réécrit ici.
+  delete from public.outbound_message where tenant_id = t and idempotency_key = 'relance-test:3';
+  update public.sending_domain
+     set suspended_at = now(), suspension_reason = 'taux de plainte au-dessus du seuil'
+   where id = dom;
+  verdict := public.peut_relancer(t, prospect, dom, 0, 30);
+  if verdict <> 'domaine_suspendu' then
+    raise exception
+      'ÉCHEC relance : relance autorisée sur un domaine suspendu — la garde d''envoi n''est pas consultée (%).',
+      verdict;
+  end if;
+
+  raise notice 'OK  METIER-12 — garde de relance : réponse, rang, espacement, et les sept d''avant';
+end;
+$$;
+
 rollback;
