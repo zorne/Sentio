@@ -17,13 +17,13 @@
 
 ## Avancement
 
-**106 tâches sur 185** portent une preuve dans le dépôt.
+**107 tâches sur 185** portent une preuve dans le dépôt.
 
 | Lot | Fait | Total | |
 |---|---|---|---|
 | Fondations (Lot 0) | 38 | 38 | `████████████████████` |
 | Noyau (Lot 1) | 22 | 22 | `████████████████████` |
-| Métier Commercial (Lot 2) | 19 | 24 | `████████████████····` |
+| Métier Commercial (Lot 2) | 20 | 24 | `█████████████████···` |
 | Acquisition (Lot 4) | 7 | 24 | `██████··············` |
 | Recrutement & Paiement (Lot 5) | 0 | 10 | `····················` |
 | Dashboard (Lot 6) | 0 | 21 | `····················` |
@@ -114,7 +114,7 @@
 | ✅ | **METIER-01** Rédiger l'ADN v1 du métier Commercial, commun à tous les secteurs (rôle, limites, règles, comportement, sécurité) | P0 | [`supabase/migrations/20260729120039_adn_commercial_v1.sql`](../supabase/migrations/20260729120039_adn_commercial_v1.sql) |
 | ✅ | **METIER-02** Écrire employee_definition v1 Commercial en base | P0 | [`supabase/migrations/20260729120039_adn_commercial_v1.sql`](../supabase/migrations/20260729120039_adn_commercial_v1.sql) |
 | ☐ | **METIER-23** Rédiger le premier profil sectoriel (vocabulaire, interlocuteurs, cycle, objections, angles) | P0 | — |
-| ☐ | **METIER-24** Écrire les profils sectoriels en base et prévoir leur versionnage | P0 | — |
+| ✅ | **METIER-24** Écrire les profils sectoriels en base et prévoir leur versionnage | P0 | [`supabase/migrations/20260812120001_profils_sectoriels.sql`](../supabase/migrations/20260812120001_profils_sectoriels.sql) |
 | ✅ | **METIER-03** Migration : table lead (CRM interne minimal, isolé par entreprise) | P0 | [`supabase/migrations/20260729120038_prospection.sql`](../supabase/migrations/20260729120038_prospection.sql) |
 | ✅ | **METIER-04** Capacité "trouver des prospects" : contrat | P0 | [`supabase/migrations/20260729120039_adn_commercial_v1.sql`](../supabase/migrations/20260729120039_adn_commercial_v1.sql) |
 | ✅ | **METIER-05** Capacité "trouver des prospects" : moteur v1 (donnée fournie par le client) | P0 | [`packages/capabilities/src/prospects/import.ts`](../packages/capabilities/src/prospects/import.ts) |

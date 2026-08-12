@@ -1101,4 +1101,121 @@ begin
 end;
 $$;
 
+
+-- ── METIER-24 — publier un profil sectoriel n'abîme jamais les versions déjà publiées ────────
+-- La garantie tient en une phrase : un employé figé sur une version continue de lire CETTE
+-- version, quoi qu'on publie ensuite. Tout le reste du bloc n'est là que pour la défendre par
+-- la négative — c'est-à-dire en essayant vraiment de la casser.
+do $$
+declare
+  version_publiee integer;
+  contenu         jsonb;
+  lignes          integer;
+begin
+  -- La version est calculée par la base, jamais déclarée par l'appelant.
+  version_publiee := public.publier_profil_sectoriel(
+    'boulangerie',
+    jsonb_build_object('secteur', 'boulangerie',
+                       'vocabulaire', jsonb_build_array('fournée', 'levain')));
+  if version_publiee <> 1 then
+    raise exception 'ÉCHEC : première publication numérotée % au lieu de 1.', version_publiee;
+  end if;
+
+  version_publiee := public.publier_profil_sectoriel(
+    'boulangerie',
+    jsonb_build_object('secteur', 'boulangerie',
+                       'vocabulaire', jsonb_build_array('fournée', 'levain', 'pousse')));
+  if version_publiee <> 2 then
+    raise exception 'ÉCHEC : seconde publication numérotée % au lieu de 2.', version_publiee;
+  end if;
+
+  -- LE test : la v1 est-elle intacte après publication de la v2 ?
+  select content into contenu
+    from public.sector_profile where sector = 'boulangerie' and version = 1;
+  if contenu -> 'vocabulaire' <> jsonb_build_array('fournée', 'levain') then
+    raise exception 'ÉCHEC : publier une v2 a modifié la v1 — le figeage ne tient pas.';
+  end if;
+
+  -- Et une version publiée reste immuable, comme l'ADN.
+  begin
+    update public.sector_profile set content = '{}'::jsonb
+     where sector = 'boulangerie' and version = 1;
+    raise exception 'ÉCHEC : une version publiée a pu être modifiée.';
+  exception when sqlstate 'P0001' then
+    if position('immuable' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  -- La vue rend une seule ligne par secteur, et c'est la plus récente.
+  select count(*) into lignes
+    from public.sector_profile_courant where sector = 'boulangerie';
+  if lignes <> 1 then
+    raise exception 'ÉCHEC : la vue rend % lignes pour un secteur au lieu d''une seule.', lignes;
+  end if;
+
+  select content into contenu
+    from public.sector_profile_courant where sector = 'boulangerie';
+  if jsonb_array_length(contenu -> 'vocabulaire') <> 3 then
+    raise exception 'ÉCHEC : la vue courante ne rend pas la dernière version publiée.';
+  end if;
+
+  -- Un secteur inconnu s'ajoute sans rien demander à personne, et repart à 1.
+  version_publiee := public.publier_profil_sectoriel(
+    'plomberie', jsonb_build_object('secteur', 'plomberie'));
+  if version_publiee <> 1 then
+    raise exception
+      'ÉCHEC : un secteur neuf démarre à la version % au lieu de 1.', version_publiee;
+  end if;
+
+  -- ── Ce que la base doit refuser, exactement comme parseSectorKnowledge le refuse ──────────
+  begin
+    perform public.publier_profil_sectoriel(
+      'boulangerie', jsonb_build_object('vocabulaire', jsonb_build_array('levain')));
+    raise exception 'ÉCHEC : un profil sans secteur a été accepté.';
+  exception when sqlstate 'P0001' then
+    if position('le secteur est obligatoire' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  begin
+    perform public.publier_profil_sectoriel(
+      'boulangerie',
+      jsonb_build_object('secteur', 'boulangerie', 'vocabulaire', 'pas une liste'));
+    raise exception 'ÉCHEC : un vocabulaire qui n''est pas une liste a été accepté.';
+  exception when sqlstate 'P0001' then
+    if position('liste de textes' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  -- Le cas qu'une vérification paresseuse laisse passer : la liste existe, mais un élément
+  -- n'est pas un texte.
+  begin
+    perform public.publier_profil_sectoriel(
+      'boulangerie',
+      jsonb_build_object('secteur', 'boulangerie', 'angles', jsonb_build_array('prix', 42)));
+    raise exception 'ÉCHEC : une liste contenant un nombre a été acceptée.';
+  exception when sqlstate 'P0001' then
+    if position('liste de textes' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  begin
+    perform public.publier_profil_sectoriel(
+      'boulangerie',
+      jsonb_build_object('secteur', 'boulangerie', 'cycleAchat', jsonb_build_array('long')));
+    raise exception 'ÉCHEC : un cycle d''achat non textuel a été accepté.';
+  exception when sqlstate 'P0001' then
+    if position('doit être un texte' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  -- La divergence que le code seul ne peut pas voir : la colonne dit un métier, le contenu
+  -- en dit un autre. La couche de contexte lit le contenu ; la requête filtre sur la colonne.
+  begin
+    insert into public.sector_profile (sector, version, content)
+    values ('plomberie', 99, jsonb_build_object('secteur', 'boulangerie'));
+    raise exception 'ÉCHEC : colonne et contenu ont pu désigner deux secteurs différents.';
+  exception when sqlstate 'P0001' then
+    if position('incohérent' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  raise notice 'OK  METIER-24 — publication versionnée, versions figées, contenu validé à l''écriture';
+end;
+$$;
+
 rollback;

@@ -39,6 +39,18 @@ export interface GlobalRepositories {
   readonly employeeDefinition: GlobalReadRepository<EmployeeDefinition>;
   /** Rédigés par Sentio, jamais dérivés des données d'un client (`docs/adr/0011`). */
   readonly sectorProfile: GlobalReadRepository<SectorProfile>;
+  /**
+   * La dernière version publiée de chaque secteur (METIER-24).
+   *
+   * Deux chemins de lecture, et la distinction est celle du figeage : ce qui démarre aujourd'hui
+   * prend la version courante par ici ; ce qui est déjà figé sur une version la relit par
+   * `sectorProfile` et son identifiant, et doit continuer de le faire. Confondre les deux ferait
+   * dériver un employé vendu au fil des publications suivantes.
+   *
+   * La règle « le plus récent » vit dans la vue `sector_profile_courant`, pas ici : la réécrire
+   * côté appelant, c'est accepter qu'elle soit écrite deux fois et fausse une fois.
+   */
+  readonly sectorProfileCourant: GlobalReadRepository<SectorProfile>;
 }
 
 export function globalRepositories(sql: SqlClient): GlobalRepositories {
@@ -47,6 +59,7 @@ export function globalRepositories(sql: SqlClient): GlobalRepositories {
     capability: new GlobalReadRepository<Capability>(sql, "capability"),
     employeeDefinition: new GlobalReadRepository<EmployeeDefinition>(sql, "employee_definition"),
     sectorProfile: new GlobalReadRepository<SectorProfile>(sql, "sector_profile"),
+    sectorProfileCourant: new GlobalReadRepository<SectorProfile>(sql, "sector_profile_courant"),
   };
 }
 
