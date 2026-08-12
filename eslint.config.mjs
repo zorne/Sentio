@@ -13,8 +13,15 @@ export default [
       "**/.svelte-kit/**",
       "**/build/**",
       "supabase/functions/_generated/**",
-      // Engendré par Next à chaque construction, jamais écrit à la main.
-      "apps/vitrine/next-env.d.ts",
+      // Engendré par Next à chaque construction, jamais écrit à la main. Le motif est global :
+      // le même fichier existe dans chaque copie de travail du dépôt, et un chemin ancré à la
+      // racine ne l'y attrapait pas.
+      "**/next-env.d.ts",
+      // Copies de travail parallèles (`git worktree`) créées sous `.claude/`. Ce sont des
+      // duplicatas COMPLETS du dépôt : les parcourir ferait analyser deux fois chaque fichier,
+      // et surtout ferait échouer la vérification d'une session à cause du travail en cours
+      // d'une autre — un couplage entre deux tâches qui n'ont rien à voir.
+      ".claude/**",
     ],
   },
   {

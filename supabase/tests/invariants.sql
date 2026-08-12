@@ -1428,4 +1428,75 @@ begin
 end;
 $$;
 
+
+-- ── ACQUIS-16 — une adresse ne survit jamais à son consentement ──────────────────────────────
+do $$
+declare
+  restantes integer;
+  politiques integer;
+  rls_active boolean;
+begin
+  -- 1. Le besoin s'enregistre seul. C'est le cas normal, pas le cas dégradé.
+  insert into public.waiting_list_entry (besoin, secteur) values ('support_client', 'boulangerie');
+
+  -- 2. Une adresse sans consentement daté ne peut pas exister — la règle est dans la table, pas
+  --    dans la discipline de l'appelant.
+  begin
+    insert into public.waiting_list_entry (besoin, email) values ('juridique', 'a@b.fr');
+    raise exception 'ÉCHEC liste d''attente : une adresse a été gardée sans consentement.';
+  exception when check_violation then
+    null;
+  end;
+
+  -- 3. Et l'inverse : un consentement sans adresse est une trace sans objet.
+  begin
+    insert into public.waiting_list_entry (besoin, consenti_le)
+    values ('juridique', now());
+    raise exception 'ÉCHEC liste d''attente : un consentement sans adresse a été accepté.';
+  exception when check_violation then
+    null;
+  end;
+
+  -- 4. Le couple complet passe.
+  insert into public.waiting_list_entry (besoin, email, consenti_le)
+  values ('comptabilite', 'dirigeant@entreprise.fr', now());
+
+  -- 5. L'effacement retire l'adresse ET son consentement, mais conserve le besoin : une fois
+  --    l'adresse partie, la ligne n'identifie plus personne et reste un signal produit.
+  if public.oublier_une_adresse_de_liste_attente('DIRIGEANT@ENTREPRISE.FR') <> 1 then
+    raise exception 'ÉCHEC liste d''attente : l''effacement n''a pas trouvé l''adresse.';
+  end if;
+
+  select count(*) into restantes
+    from public.waiting_list_entry
+   where email is not null or consenti_le is not null;
+  if restantes <> 0 then
+    raise exception 'ÉCHEC liste d''attente : % ligne(s) portent encore une adresse.', restantes;
+  end if;
+
+  select count(*) into restantes from public.waiting_list_entry where besoin = 'comptabilite';
+  if restantes <> 1 then
+    raise exception 'ÉCHEC liste d''attente : l''effacement a supprimé le besoin lui-même.';
+  end if;
+
+  -- 6. La table naît fermée : RLS active et AUCUNE politique. L'absence de politique est ici
+  --    l'intention, pas un oubli — la vérifier empêche qu'on en ajoute une par réflexe.
+  select c.relrowsecurity into rls_active
+    from pg_class c join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'public' and c.relname = 'waiting_list_entry';
+  if not rls_active then
+    raise exception 'ÉCHEC liste d''attente : la table est ouverte, RLS n''est pas activée.';
+  end if;
+
+  select count(*) into politiques from pg_policies
+   where schemaname = 'public' and tablename = 'waiting_list_entry';
+  if politiques <> 0 then
+    raise exception
+      'ÉCHEC liste d''attente : % politique(s) exposent la table à un rôle applicatif.', politiques;
+  end if;
+
+  raise notice 'OK  ACQUIS-16 — besoin compté seul, adresse jamais sans consentement, table fermée';
+end;
+$$;
+
 rollback;
