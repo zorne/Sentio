@@ -239,6 +239,44 @@ describeIfDatabase("Le noyau contre un vrai Postgres", () => {
     expect(await ledger.envelopeUsage(INFERENCE_ENVELOPES.soldEmployees)).toBe(avant + 40);
   });
 
+  it("ouvre une fenêtre MENSUELLE — la période du budget auquel le Gateway la compare", async () => {
+    // Ce test existe à cause d'un défaut réel : la fenêtre était journalière alors que
+    // `assertEnvelopeHasRoom` compare à `tokensPerMonth * part`. On mesurait donc la
+    // consommation d'un jour contre le budget d'un mois, et le plafond ne se déclenchait qu'au
+    // trentuple de sa valeur — c'est-à-dire jamais.
+    //
+    // Il ne teste pas une écriture SQL : il teste que les deux bouts parlent de la même période.
+    await sql.query(
+      `insert into provider_credential (provider_key, data_policy) values ('secours-fenetre', 'free')
+       on conflict (provider_key) do nothing`,
+      [],
+    );
+
+    // ⚠️ Sans cet effacement, le test ne prouve rien. `recordEnvelopeUsage` tente d'abord un
+    // UPDATE sur une fenêtre ouverte, et n'ouvre une fenêtre que si elle échoue. Une ligne
+    // laissée par une exécution précédente le ferait donc passer par l'UPDATE, sans jamais
+    // exercer l'écriture qu'on vérifie ici — le test resterait vert même en repassant la
+    // fenêtre au journalier. C'est arrivé, et c'est ce qui a rendu la première version décorative.
+    await sql.query(`delete from provider_quota where provider_key = 'secours-fenetre'`, []);
+
+    await ledger.recordEnvelopeUsage(INFERENCE_ENVELOPES.internal, "secours-fenetre", 7);
+
+    const rows = await sql.query<{ jours: string; debut_du_mois: boolean }>(
+      `select extract(day from (window_end - window_start))::text as jours,
+              (window_start = date_trunc('month', window_start)) as debut_du_mois
+         from provider_quota
+        where provider_key = 'secours-fenetre' and envelope = $1
+          and now() >= window_start and now() < window_end`,
+      [INFERENCE_ENVELOPES.internal],
+    );
+
+    const fenetre = rows[0];
+    expect(fenetre).toBeDefined();
+    // Un mois fait 28 à 31 jours : on vérifie l'ordre de grandeur et l'ancrage, pas une durée fixe.
+    expect(Number(fenetre?.jours)).toBeGreaterThanOrEqual(28);
+    expect(fenetre?.debut_du_mois).toBe(true);
+  });
+
   it("TEST-07 : au plafond réel de sa formule, la tâche est reportée et journalisée", async () => {
     const limit = (await ledger.tenantLimit(tenantId, USAGE_METRICS.inferenceTokensPerDay)) ?? 0;
     const on = new Date();

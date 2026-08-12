@@ -153,16 +153,28 @@ export class PostgresUsageLedger implements UsageLedger {
     );
 
     if (updated.length === 0) {
-      // Pas de fenêtre ouverte : on en ouvre une pour la journée. Perdre le comptage parce que
-      // personne n'avait créé la ligne reviendrait à rendre le plafond décoratif — exactement ce
-      // que cette table existe pour empêcher.
+      // Pas de fenêtre ouverte : on en ouvre une. Perdre le comptage parce que personne n'avait
+      // créé la ligne reviendrait à rendre le plafond décoratif — exactement ce que cette table
+      // existe pour empêcher.
+      //
+      // ⚠️ LA FENÊTRE EST MENSUELLE, ET CE N'EST PAS UN DÉTAIL DE STOCKAGE.
+      //
+      // `ModelGateway.assertEnvelopeHasRoom` compare la consommation rendue par `envelopeUsage`
+      // à `tokensPerMonth * part` — un budget MENSUEL. `envelopeUsage` ne somme que les lignes
+      // dont la fenêtre est ouverte à l'instant. Si cette fenêtre est journalière, on compare
+      // donc la consommation d'un JOUR au budget d'un MOIS : la garde ne se déclenche que si une
+      // seule journée épuise l'enveloppe entière du mois — 700 millions de jetons pour les
+      // employés vendus. Autant dire jamais.
+      //
+      // C'était le cas jusqu'ici. La période de la fenêtre doit être celle du budget auquel on
+      // la compare, sans quoi le plafond existe dans le code et pas dans les faits.
       //
       // La borne inscrite est celle que le Gateway applique : la part de l'enveloppe dans le
       // quota du fournisseur. Écrire 0 ferait de cette colonne un mensonge, et un jour une
       // surveillance lirait ce 0 en croyant lire un plafond.
       await this.sql.query(
         `insert into provider_quota (provider_key, envelope, window_start, window_end, consumed, quota_limit)
-         values ($1, $2, date_trunc('day', now()), date_trunc('day', now()) + interval '1 day', $3, $4)
+         values ($1, $2, date_trunc('month', now()), date_trunc('month', now()) + interval '1 month', $3, $4)
          on conflict (provider_key, envelope, window_start)
          do update set consumed = provider_quota.consumed + excluded.consumed`,
         [providerKey, envelope, amount, envelopeBudget(envelope)],
