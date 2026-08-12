@@ -26,4 +26,5 @@ export * from "./runtime/next-action.js";
 export * from "./runtime/execute-action.js";
 export * from "./runtime/suite-du-run.js";
 export * from "./runtime/approvisionnement.js";
+export * from "./runtime/reflexion.js";
 export * from "./idempotency.js";

@@ -226,8 +226,15 @@ export interface AssembledContext {
   readonly missingLayers: readonly MissingLayer[];
 }
 
-/** Normalise pour comparer : minuscules, sans accents. Le filtre ne doit pas dépendre de la typographie. */
-function normalize(text: string): string {
+/**
+ * Normalise pour comparer : minuscules, sans accents. Le filtre ne doit pas dépendre de la
+ * typographie.
+ *
+ * Exportée parce que la réflexion d'après-run (METIER-14) dédoublonne les faits avec la MÊME
+ * normalisation que celle qui les confronte à l'ADN. Deux normalisations distinctes se
+ * ressembleraient assez pour qu'on les croie identiques, et différeraient sur le cas qui compte.
+ */
+export function normalizeForComparison(text: string): string {
   return text
     .toLowerCase()
     .normalize("NFD")
@@ -248,9 +255,9 @@ function normalize(text: string): string {
  * faillible de la même manière que ce qu'il surveille.
  */
 export function contradictsDna(fact: string, dna: EmployeeDna): string | null {
-  const haystack = normalize(fact);
+  const haystack = normalizeForComparison(fact);
   for (const limite of dna.limites) {
-    const needle = normalize(limite);
+    const needle = normalizeForComparison(limite);
     if (needle !== "" && haystack.includes(needle)) {
       return `heurte une limite de l'ADN : « ${limite} »`;
     }

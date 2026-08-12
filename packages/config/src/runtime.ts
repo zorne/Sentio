@@ -75,6 +75,18 @@ export interface ReglagesRuntime {
    * un délai maximal, et un battement qui le dépasse est tué au milieu d'un pas.
    */
   readonly travauxMaxParBattement: number;
+  /**
+   * Nombre de faits qu'une réflexion d'après-run peut retenir au maximum (METIER-14).
+   *
+   * Un plafond bas est le cœur de la règle, pas une économie. Une réflexion qui retient dix
+   * observations par run remplit la mémoire d'entreprise de banalités en une semaine, et le tri
+   * par usage — celui qui décide quels faits entrent dans le contexte — devient incapable de
+   * distinguer ce qui compte. Contraindre à trois oblige à choisir.
+   *
+   * Zéro est une issue normale, jamais un échec : un run dont on n'apprend rien ne doit rien
+   * inventer pour remplir le quota.
+   */
+  readonly faitsMaxParRun: number;
 }
 
 /**
@@ -89,6 +101,7 @@ export const REGLAGES_RUNTIME_PAR_DEFAUT: ReglagesRuntime = {
   bailDuVerrouMinutes: 10,
   repriseMaxApresInterruption: 3,
   travauxMaxParBattement: 25,
+  faitsMaxParRun: 3,
 };
 
 /** Les variables d'environnement qui peuvent surcharger un réglage, sans redéploiement. */
@@ -100,6 +113,7 @@ export const VARIABLES_RUNTIME = {
   bailDuVerrouMinutes: "SENTIO_BAIL_VERROU_MINUTES",
   repriseMaxApresInterruption: "SENTIO_REPRISE_MAX",
   travauxMaxParBattement: "SENTIO_TRAVAUX_MAX_PAR_BATTEMENT",
+  faitsMaxParRun: "SENTIO_FAITS_MAX_PAR_RUN",
 } as const satisfies Record<keyof ReglagesRuntime, string>;
 
 /**
@@ -146,5 +160,6 @@ export function lireReglagesRuntime(
     bailDuVerrouMinutes: lire("bailDuVerrouMinutes"),
     repriseMaxApresInterruption: lire("repriseMaxApresInterruption"),
     travauxMaxParBattement: lire("travauxMaxParBattement"),
+    faitsMaxParRun: lire("faitsMaxParRun"),
   };
 }
