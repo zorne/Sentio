@@ -1,14 +1,45 @@
 name: Prospection automatique
 
+# ⚠️ PLANIFICATION RETIRÉE le 2026-08-15, et voici pourquoi.
+#
+# Ce workflow tournait toutes les 20 minutes — 72 fois par jour — et échouait à chaque fois en
+# 4 secondes : `SENTIA_APP_URL` et `CRON_SECRET` ne sont pas renseignés, donc `curl -sf` sort en
+# erreur avant même d'atteindre quoi que ce soit. Chaque échec envoyait un email. Plusieurs
+# centaines s'étaient accumulées.
+#
+# Rien n'est perdu : il ne déclenchait aucune prospection et ne pouvait pas en déclencher —
+# l'application n'est pas déployée et l'exécutant est à `enabled = false`.
+#
+# Le vrai coût n'était pas le bruit, c'était l'accoutumance : une alerte qui échoue toujours
+# apprend à ignorer les alertes, et le jour où l'intégration continue casse pour de bon, l'email
+# se perd dans les autres.
+#
+# POUR LE REMETTRE EN SERVICE, le jour où l'application est déployée :
+#   1. poser les secrets `SENTIA_APP_URL` et `CRON_SECRET` dans les réglages du dépôt ;
+#   2. vérifier à la main par « Run workflow » (le déclenchement manuel ci-dessous est conservé) ;
+#   3. seulement ensuite, décommenter les deux lignes `schedule`.
+#
+# Le remettre AVANT d'avoir vérifié à la main rendrait exactement la situation qu'on vient de
+# quitter.
+
 on:
-  schedule:
-    - cron: "*/20 * * * *"
+  # schedule:
+  #   - cron: "*/20 * * * *"
   workflow_dispatch: {}
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
+      - name: Refuse de partir sans ses secrets
+        # `curl -sf` échouait sans jamais dire pourquoi. Un contrôle explicite coûte trois lignes
+        # et rend le motif lisible dans le journal, au lieu d'un code de sortie nu.
+        run: |
+          if [ -z "${{ secrets.SENTIA_APP_URL }}" ] || [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "SENTIA_APP_URL ou CRON_SECRET manquant : rien n'est appelé." >&2
+            exit 1
+          fi
+
       - name: Déclenche un cycle de prospection
         run: |
           curl -sf -X POST "${{ secrets.SENTIA_APP_URL }}/api/cron/prospect" \
