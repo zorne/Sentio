@@ -7,10 +7,16 @@ les invariants du produit. **Lis-le entièrement avant ta première modification
 
 ## 1. Ce qu'est le projet, en trois phrases
 
-Sentio vend des **employés numériques** : des collaborateurs autonomes spécialisés dans un
-métier, recrutés par une entreprise pour atteindre un objectif chiffré. L'architecture est un
-monolithe modulaire TypeScript, hébergé sur des tiers gratuits, avec Supabase (Postgres) comme
-base. Les lots 0 à 2 sont écrits — schéma, noyau, métier commercial.
+Sentio vend **un employé numérique généraliste, Lady** : un noyau unique dont le rôle est
+**configuré par le diagnostic de l'entreprise**, jamais choisi dans un catalogue de métiers
+([`adr/0029`](docs/adr/0029-noyau-lady-configure-dynamiquement.md),
+[`docs/28`](docs/28-bibliotheque-et-creation-de-lady.md)). L'architecture est un monolithe modulaire
+TypeScript, hébergé sur des tiers gratuits, avec Supabase (Postgres) comme base. Les lots 0 et 1
+sont écrits — schéma et noyau ; le lot 2 est réorienté vers le noyau Lady et sa bibliothèque d'actes.
+
+> ⚠️ **Règle de non-régression.** Toute proposition s'évalue contre une question : *renforce-t-elle
+> un noyau généraliste configuré dynamiquement, ou ramène-t-elle vers des agents spécialisés par
+> métier ?* Si c'est la seconde, elle ne s'implémente pas.
 
 **L'interface vit dans `apps/vitrine`** (Next.js 15), fusionnée depuis un dépôt antérieur et
 déployée sur Vercel, avec son propre noyau dans `packages/vitrine-core`. Elle ne partage encore

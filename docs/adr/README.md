@@ -48,7 +48,7 @@ pas compris ce que la décision coûte — cherche encore.
 | [0005](0005-cles-plateforme-classe-de-donnees.md) | Clés de la plateforme + routage par classe de données | acceptée |
 | [0006](0006-capacite-vs-outil.md) | Capacité (contrat) ≠ outil (moteur) | acceptée |
 | [0007](0007-perimetre-v1-commercial-support.md) | Périmètre V1 : deux métiers, Commercial + Support | remplacée par 0008 |
-| [0008](0008-perimetre-v1-commercial-seul.md) | Périmètre V1 : Commercial seul | acceptée |
+| [0008](0008-perimetre-v1-commercial-seul.md) | Périmètre V1 : Commercial seul | remplacée par 0029 |
 | [0009](0009-fournisseur-inference-ue.md) | Fournisseur d'inférence européen, avant la qualité de modèle | acceptée |
 | [0010](0010-diagnostic-calibrage.md) | Le diagnostic calibre l'employé au lieu de recommander un métier | acceptée |
 | [0011](0011-generaliste-profils-sectoriels.md) | Sentio reste généraliste ; la niche est celle du client | acceptée |
@@ -69,6 +69,7 @@ pas compris ce que la décision coûte — cherche encore.
 | [0026](0026-cadence-et-borne-de-pas.md) | Un cycle de travail par jour, dix pas par cycle, on ne dérange qu'un employé bloqué | acceptée |
 | [0027](0027-approvisionnement-du-travail.md) | Une mission par sujet, approvisionnée chaque jour, bornée par la base | acceptée |
 | [0028](0028-executant-en-fonction-serveur.md) | L'exécutant en fonction serveur ; ce qui le borne est le débit du modèle, pas l'hébergeur | acceptée |
+| [0029](0029-noyau-lady-configure-dynamiquement.md) | ⭐ Un noyau Lady généraliste, configuré par le diagnostic — le métier n'est jamais une entrée | acceptée |
 
 ---
 

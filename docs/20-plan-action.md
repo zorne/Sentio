@@ -34,7 +34,7 @@ construit sur un lot amont incomplet produit du travail à refaire ([`12-roadmap
 | 0 | Lancer ce qui a un délai | ~4 h + délais | ☐ |
 | 1 | Lot 0 — Fondations | ~15 h | ✅ *(sauf temps réel — voir phase 1)* |
 | 2 | Lot 1 — Noyau | ~17 h | ✅ |
-| 3 | Lot 2 — Métier Commercial | ~11 h | ☐ |
+| 3 | ~~Lot 2 — Métier Commercial~~ → **Lots A–G : noyau Lady** ([`adr/0029`](adr/0029-noyau-lady-configure-dynamiquement.md)) | à réestimer | ☐ |
 | 4 | Lot 3 — Exécution autonome *(déplacé après la phase 7)* | ~11 h | ☐ |
 | 5 | Lot 4 — Acquisition | ~19 h | ☐ |
 | 6 | Lot 5 — Recrutement et paiement | ~9,5 h | ☐ |
@@ -197,6 +197,19 @@ reportées avec un message clair, sans dégradation silencieuse, sans effet sur 
 ---
 
 # Phase 3 — Lot 2 : Métier Commercial (~11 h, 15 tâches `METIER-01`→`METIER-15`)
+
+> ⛔ **Ce lot est réorienté depuis le 2026-08-15.** [`adr/0029`](adr/0029-noyau-lady-configure-dynamiquement.md)
+> remplace [`adr/0008`](adr/0008-perimetre-v1-commercial-seul.md) : **le métier n'est plus une entrée
+> du système**. Il n'y a plus de « lot Métier Commercial » à écrire — il y a un noyau généraliste,
+> une bibliothèque d'actes, et une configuration produite par le diagnostic.
+>
+> Les tâches `METIER-*` restantes ne s'implémentent pas telles quelles. Elles sont remplacées par
+> les lots **A → G** de [`28-bibliotheque-et-creation-de-lady.md`](28-bibliotheque-et-creation-de-lady.md),
+> § 8. Ce qui est déjà écrit et vérifié (tables `lead`, `suppression`, `sending_domain`,
+> `outbound_message`, garde `peut_envoyer()`) **se conserve intégralement** : ce sont des objets et
+> des gardes d'envoi, pas un métier.
+>
+> *Texte d'origine conservé ci-dessous — il documente l'état atteint avant la bascule.*
 
 > *C'est le lot qui prouve que le produit existe. Tout ce qui précède est de la plomberie.*
 

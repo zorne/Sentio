@@ -157,15 +157,23 @@ Une identité ne peut jamais être réutilisée.
 Chaque employé est unique.
 
 10. Les rôles
-Un employé reste dans son métier.
+> **Révisé le 2026-08-15** — [`adr/0029`](docs/adr/0029-noyau-lady-configure-dynamiquement.md).
+> Le métier n'est plus l'identité de l'employé : c'est une **configuration** du noyau Lady,
+> produite par le diagnostic.
+
+Un employé ne change jamais de rôle **de lui-même**.
 Toujours.
-Exemple :
-Carter Commercial reste commercial.
-Il ne deviendra jamais :
-* support
-* comptable
-* marketing
-Même si cela serait plus efficace.
+Un rôle ne change que par un chemin explicite et tracé :
+* nouveaux résultats observés
+* nouveau diagnostic
+* proposition de configuration
+* validation par le Policy Engine, selon le niveau d'autonomie
+* nouvelle version de configuration, avec sa raison
+
+Ce qui reste absolument interdit :
+* qu'une configuration donne un pouvoir refusé par le noyau
+* qu'un changement de rôle soit silencieux
+* que le client choisisse le rôle dans un catalogue
 
 11. Évolution des employés
 Les employés évoluent seuls.
@@ -175,8 +183,9 @@ Ils :
 * deviennent plus performants
 Ils le font automatiquement.
 Sans intervention humaine.
-Mais uniquement dans leur métier.
-Ils ne changent jamais de domaine.
+Mais **uniquement dans l'exécution** : mieux faire ce que la configuration leur confie.
+Améliorer une méthode de relance est autonome.
+Changer de priorité est une décision, pas un apprentissage — elle passe par le diagnostic.
 
 12. Les limites
 Chaque employé possède un périmètre.
