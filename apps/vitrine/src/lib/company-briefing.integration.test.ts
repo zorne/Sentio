@@ -24,7 +24,7 @@ import {
   readProfileFromConfig,
   saveCompanyProfile,
 } from "@sentio/vitrine-core/company-briefing";
-import { applyVitrineSchema } from "./test-support/schema.js";
+import { applyVitrineSchema, assertBaseJetable } from "./test-support/schema.js";
 
 const connectionString = process.env["DATABASE_URL"];
 
@@ -39,6 +39,10 @@ if (connectionString === undefined && process.env["SENTIO_REQUIRE_DB_TESTS"] ===
 
 const DEFAUT = "Vous êtes un employé commercial.";
 const ACCUEIL = "Vous travaillez pour Menuiserie Kerbrat.";
+
+// Échouer AU CHARGEMENT, avant toute connexion : ces suites effacent le schéma public, et
+// « ECONNREFUSED » ne dit pas pourquoi on ne voulait pas de cette base.
+if (connectionString !== undefined) assertBaseJetable(connectionString);
 
 const describeIfDatabase = connectionString === undefined ? describe.skip : describe;
 
@@ -57,7 +61,7 @@ describeIfDatabase("le profil d'entreprise, écrit et relu sur un vrai Postgres"
     await db.connect();
 
     // Base jetable : on repart d'un schéma vide à chaque exécution, jamais d'un reliquat.
-    await applyVitrineSchema(db);
+    await applyVitrineSchema(db, connectionString);
 
     const tenant = await db.query(`insert into tenant (name) values ('Menuiserie Kerbrat') returning id`);
     tenantId = tenant.rows[0].id;

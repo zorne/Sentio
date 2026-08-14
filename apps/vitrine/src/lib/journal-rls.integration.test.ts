@@ -22,7 +22,7 @@
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { applyVitrineSchema } from "./test-support/schema.js";
+import { applyVitrineSchema, assertBaseJetable } from "./test-support/schema.js";
 
 const connectionString = process.env["DATABASE_URL"];
 
@@ -32,6 +32,10 @@ if (connectionString === undefined && process.env["SENTIO_REQUIRE_DB_TESTS"] ===
       "(SENTIO_REQUIRE_DB_TESTS=1). Voir .github/workflows/ci.yml, job « schema ».",
   );
 }
+
+// Échouer AU CHARGEMENT, avant toute connexion : ces suites effacent le schéma public, et
+// « ECONNREFUSED » ne dit pas pourquoi on ne voulait pas de cette base.
+if (connectionString !== undefined) assertBaseJetable(connectionString);
 
 const describeIfDatabase = connectionString === undefined ? describe.skip : describe;
 
@@ -49,7 +53,7 @@ describeIfDatabase("execution_event — aucune lecture sans session", () => {
   beforeAll(async () => {
     db = new Client({ connectionString });
     await db.connect();
-    await applyVitrineSchema(db);
+    await applyVitrineSchema(db, connectionString);
 
     const { rows } = await db.query<PolicyRow>(
       `select policyname, roles::text[] as roles, cmd, qual

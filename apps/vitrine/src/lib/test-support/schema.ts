@@ -30,8 +30,52 @@ export interface Queryable {
   query(text: string, values?: unknown[]): Promise<{ rows: never[] } | unknown>;
 }
 
-/** Efface et reconstruit le schéma applicatif à partir des migrations réelles. */
-export async function applyVitrineSchema(db: Queryable): Promise<void> {
+/**
+ * Refuse une chaîne de connexion qui ne désigne pas une base jetable.
+ *
+ * ⚠️ CE GARDE EXISTE PARCE QUE LA FONCTION CI-DESSOUS DÉTRUIT. Elle commence par
+ * `drop schema public cascade` : pointée sur le projet distant, elle effacerait l'ADN, les 350
+ * identités, les formules et les quotas en une commande, sans confirmation et sans retour.
+ *
+ * `supabase/tests/run.sh` porte exactement ce garde depuis le début ; ce chemin-ci ne l'avait
+ * pas. Un banc d'essai qui peut détruire la production n'est pas un banc d'essai — et le seul
+ * moment où l'on découvrirait l'oubli serait celui où il aurait déjà servi.
+ *
+ * Le refus porte sur ce qui est reconnaissable : les hôtes du fournisseur. Ce n'est pas une
+ * preuve que la base est locale — c'est la seule chose qu'on puisse vérifier sans se connecter,
+ * et elle attrape le cas réel, celui d'une variable d'environnement laissée en place.
+ */
+export function assertBaseJetable(connectionString: string): void {
+  if (/supabase\.(co|com)|pooler\.supabase/.test(connectionString)) {
+    throw new Error(
+      "DATABASE_URL désigne un projet Supabase distant. Ces tests EFFACENT le schéma public : " +
+        "ils ne s'exécutent que sur une base jetable. Pour le distant, c'est `supabase db push`.",
+    );
+  }
+}
+
+/**
+ * Efface et reconstruit le schéma applicatif à partir des migrations réelles.
+ *
+ * La chaîne de connexion est un paramètre OBLIGATOIRE, et elle ne sert qu'à être vérifiée. La
+ * rendre facultative reviendrait à rendre le garde facultatif : ici, le compilateur refuse tout
+ * appel qui ne l'a pas traversé.
+ */
+export async function applyVitrineSchema(
+  db: Queryable,
+  connectionString: string | undefined,
+): Promise<void> {
+  // `undefined` est accepté au TYPE mais refusé au comportement : les suites lisent une variable
+  // d'environnement, donc le compilateur ne peut pas garantir qu'elle existe. Ce qu'on refuse,
+  // c'est d'effacer un schéma sans savoir lequel — le contraire d'un `!` posé chez l'appelant,
+  // qui aurait fait taire la question au lieu d'y répondre.
+  if (connectionString === undefined) {
+    throw new Error(
+      "applyVitrineSchema sans chaîne de connexion : le garde ne peut pas vérifier ce qu'on " +
+        "s'apprête à effacer, donc on n'efface pas.",
+    );
+  }
+  assertBaseJetable(connectionString);
   await db.query(`drop schema if exists public cascade; create schema public;`);
   await db.query(SHIM_SUPABASE);
 
