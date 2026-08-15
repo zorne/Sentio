@@ -44,9 +44,17 @@ select 'ffffffff-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-00000000
        'dddddddd-0000-0000-0000-000000000001', id
 from public.reserve_identity('commercial');
 
-insert into public.task (id, tenant_id, employee_id, subject_kind, subject_id) values
+-- Une mission sert toujours un objectif (`20260815120002`) : il n'y a pas de travail « en
+-- général ». L'objectif d'essai est donc posé avant la première mission, comme il le serait dans
+-- un vrai parcours — le dirigeant déclare son but, puis son employé ouvre du travail pour lui.
+insert into public.objective (id, tenant_id, metric, target_value, horizon) values
+  ('0b1ec71f-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001',
+   'chiffre_affaires', 5000, 'mois');
+
+insert into public.task (id, tenant_id, employee_id, objective_id, subject_kind, subject_id) values
   ('99999999-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001',
-   'ffffffff-0000-0000-0000-000000000001', 'lead', gen_random_uuid());
+   'ffffffff-0000-0000-0000-000000000001', '0b1ec71f-0000-0000-0000-000000000001',
+   'lead', gen_random_uuid());
 
 
 -- ── Invariant 1 — l'ADN n'est jamais modifiable ─────────────────────────────────────────────
@@ -500,9 +508,14 @@ select '0c000000-0000-0000-0000-0000000000ce', 'c0000000-0000-0000-0000-00000000
        'dddddddd-0000-0000-0000-000000000001', id
 from public.reserve_identity('commercial');
 
-insert into public.task (id, tenant_id, employee_id, subject_kind, subject_id) values
+insert into public.objective (id, tenant_id, metric, target_value, horizon) values
+  ('0c000000-0000-0000-0000-0000000000c0', 'c0000000-0000-0000-0000-00000000000c',
+   'chiffre_affaires', 5000, 'mois');
+
+insert into public.task (id, tenant_id, employee_id, objective_id, subject_kind, subject_id) values
   ('0c000000-0000-0000-0000-0000000000ca', 'c0000000-0000-0000-0000-00000000000c',
-   '0c000000-0000-0000-0000-0000000000ce', 'lead', gen_random_uuid());
+   '0c000000-0000-0000-0000-0000000000ce', '0c000000-0000-0000-0000-0000000000c0',
+   'lead', gen_random_uuid());
 
 insert into public.notification (tenant_id, employee_id, kind, message) values
   ('c0000000-0000-0000-0000-00000000000c', '0c000000-0000-0000-0000-0000000000ce',
@@ -539,15 +552,30 @@ begin
   select count(*) into visible from public.plan;
   if visible <> 3 then raise exception 'ÉCHEC individuel : % formules au catalogue.', visible; end if;
 
-  -- ── Ce qu'elle fait : fixer un objectif, le corriger.
-  insert into public.objective (tenant_id, metric, target_value, horizon)
-  values ('c0000000-0000-0000-0000-00000000000c', 'chiffre_affaires', 5000, 'mensuel')
-  returning id into objectif_id;
+  -- ── Ce qu'elle fait : corriger son objectif — et ne pas pouvoir en empiler un second.
+  --
+  -- Depuis `20260815120002`, une entreprise n'a qu'UN objectif actif : c'est ce qui rend « quel
+  -- objectif cette mission sert-elle » décidable. Un dirigeant ne pose donc pas un objectif de
+  -- plus, il change le sien — ce que la politique lui permet déjà.
+  select id into objectif_id from public.objective
+   where tenant_id = 'c0000000-0000-0000-0000-00000000000c' and state = 'actif';
+  if objectif_id is null then
+    raise exception 'ÉCHEC individuel : la dirigeante ne voit pas son propre objectif.';
+  end if;
 
   update public.objective set target_value = 6000 where id = objectif_id;
   if (select target_value from public.objective where id = objectif_id) <> 6000 then
     raise exception 'ÉCHEC individuel : l''objectif n''a pas été corrigé.';
   end if;
+
+  -- Un second objectif actif est refusé PAR LA BASE. Sans ce refus, une mission ne saurait plus
+  -- lequel des deux elle sert, et le rattachement redeviendrait une convention de tri.
+  begin
+    insert into public.objective (tenant_id, metric, target_value, horizon)
+    values ('c0000000-0000-0000-0000-00000000000c', 'marges', 20, 'mensuel');
+    raise exception 'ÉCHEC individuel : une entreprise a pu porter deux objectifs actifs.';
+  exception when unique_violation then null;
+  end;
 
   -- Poser un objectif chez quelqu'un d'autre : refusé par la politique, pas par l'interface.
   begin
@@ -693,9 +721,14 @@ select '0d000000-0000-0000-0000-0000000000de', 'd0000000-0000-0000-0000-00000000
        'dddddddd-0000-0000-0000-000000000001', id
 from public.reserve_identity('commercial');
 
-insert into public.task (id, tenant_id, employee_id, subject_kind, subject_id) values
+insert into public.objective (id, tenant_id, metric, target_value, horizon) values
+  ('0d000000-0000-0000-0000-0000000000d0', 'd0000000-0000-0000-0000-00000000000d',
+   'chiffre_affaires', 5000, 'mois');
+
+insert into public.task (id, tenant_id, employee_id, objective_id, subject_kind, subject_id) values
   ('0d000000-0000-0000-0000-0000000000da', 'd0000000-0000-0000-0000-00000000000d',
-   '0d000000-0000-0000-0000-0000000000de', 'lead', gen_random_uuid());
+   '0d000000-0000-0000-0000-0000000000de', '0d000000-0000-0000-0000-0000000000d0',
+   'lead', gen_random_uuid());
 
 do $$
 declare
@@ -713,9 +746,12 @@ begin
     raise exception 'ÉCHEC groupe : la dirigeante voit % membres au lieu de 3.', visible;
   end if;
 
-  insert into public.objective (tenant_id, metric, target_value, horizon)
-  values ('d0000000-0000-0000-0000-00000000000d', 'chiffre_affaires', 12000, 'mensuel')
-  returning id into objectif_id;
+  -- L'entreprise porte déjà son unique objectif actif : la dirigeante le corrige, elle n'en
+  -- empile pas un second (`20260815120002`). Ce que le salarié verra ensuite est donc bien la
+  -- valeur écrite par un autre membre, sur le même objectif.
+  select id into objectif_id from public.objective
+   where tenant_id = 'd0000000-0000-0000-0000-00000000000d' and state = 'actif';
+  update public.objective set target_value = 12000 where id = objectif_id;
 
   -- ── Le salarié voit le même employé et le même objectif : il n'a rien créé, il est membre.
   perform set_config('request.jwt.claim.sub', '0d000000-0000-0000-0000-0000000000d2', true);
@@ -1561,6 +1597,80 @@ begin
   end if;
 
   raise notice 'OK  LADY-A — acte × objet, clé engendrée, doublon et séparateur refusés';
+end;
+$$;
+
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+-- LADY-B — aucune mission ne s'ouvre sans objectif, et une entreprise n'en a qu'un actif.
+--
+-- Le risque que ces refus ferment est écrit dans `docs/28` §6 : « des tâches sans objectif ».
+-- Il n'était pas théorique — il était réalisé, `task` ne portant aucun lien vers `objective`.
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  objectif_ancien uuid;
+  restant integer;
+begin
+  -- 1. Une mission sans objectif est refusée à la naissance, même insérée à la main.
+  begin
+    insert into public.task (tenant_id, employee_id, subject_kind, subject_id)
+    values ('aaaaaaaa-0000-0000-0000-000000000001', 'ffffffff-0000-0000-0000-000000000001',
+            'lead', gen_random_uuid());
+    raise exception 'ÉCHEC mission : une mission sans objectif a été ouverte.';
+  exception
+    when raise_exception then
+      if position('sans objectif' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  -- 2. Un second objectif actif est refusé : sans ça, « quel objectif cette mission sert-elle »
+  --    redeviendrait indécidable, et le rattachement une convention de tri (EXEC-16).
+  begin
+    insert into public.objective (tenant_id, metric, target_value, horizon)
+    values ('aaaaaaaa-0000-0000-0000-000000000001', 'marges', 20, 'mois');
+    raise exception 'ÉCHEC mission : deux objectifs actifs coexistent dans une entreprise.';
+  exception when unique_violation then null;
+  end;
+
+  -- 3. Changer d'objectif reste possible — on retire l'ancien, on en pose un neuf — et les
+  --    missions déjà ouvertes gardent le leur. C'est ce qui rend l'histoire relisible.
+  select id into objectif_ancien from public.objective
+   where tenant_id = 'aaaaaaaa-0000-0000-0000-000000000001' and state = 'actif';
+
+  update public.objective set state = 'retire' where id = objectif_ancien;
+
+  insert into public.objective (tenant_id, metric, target_value, horizon)
+  values ('aaaaaaaa-0000-0000-0000-000000000001', 'marges', 20, 'mois');
+
+  if (select objective_id from public.task
+       where id = '99999999-0000-0000-0000-000000000001') <> objectif_ancien then
+    raise exception
+      'ÉCHEC mission : une mission a changé d''objectif toute seule au moment du remplacement.';
+  end if;
+
+  -- 4. Une mission ne peut pas emprunter l'objectif d'une AUTRE entreprise : la clé étrangère
+  --    porte l'entreprise (`20260729120033`), donc le lien ne peut pas traverser.
+  -- L'entreprise de groupe est intacte ici — celle du parcours individuel a été effacée plus
+  -- haut, et ses objectifs avec elle. Viser une entreprise effacée aurait rendu NULL, donc
+  -- détaché la mission au lieu de prouver l'étanchéité : le test n'aurait rien testé.
+  begin
+    update public.task
+       set objective_id = (select id from public.objective
+                            where tenant_id = 'd0000000-0000-0000-0000-00000000000d' limit 1)
+     where id = '99999999-0000-0000-0000-000000000001';
+    raise exception 'ÉCHEC mission : une mission pointe l''objectif d''une autre entreprise.';
+  exception when foreign_key_violation then null;
+  end;
+
+  -- 5. Et le lien survit à ce qui compte : supprimer l'objectif détache la mission sans
+  --    l'effacer, parce que le journal la référence et doit rester ancré.
+  select count(*) into restant from public.task
+   where id = '99999999-0000-0000-0000-000000000001';
+  if restant <> 1 then
+    raise exception 'ÉCHEC mission : la mission a disparu au cours du test.';
+  end if;
+
+  raise notice 'OK  LADY-B — mission sans objectif refusée, un seul objectif actif, lien étanche';
 end;
 $$;
 

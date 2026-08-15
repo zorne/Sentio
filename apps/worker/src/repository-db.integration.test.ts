@@ -59,6 +59,13 @@ describeIfDatabase("Repositories sur un vrai Postgres", () => {
       "Entreprise B",
     ]);
 
+    // Une mission sert toujours un objectif (`20260815120002`) : chaque entreprise porte le sien.
+    await sql.query(
+      `insert into objective (tenant_id, metric, target_value, horizon)
+       values ($1, 'chiffre_affaires', 5000, 'mois'), ($2, 'chiffre_affaires', 5000, 'mois')`,
+      [tenantA, tenantB],
+    );
+
     const [definition] = await sql.query<{ id: string }>(
       `insert into employee_definition (profession, version, dna)
        values ('commercial', $1, '{}'::jsonb) returning id`,
@@ -78,8 +85,8 @@ describeIfDatabase("Repositories sur un vrai Postgres", () => {
     employeeId = employee?.id as string;
 
     const [task] = await sql.query<{ id: string }>(
-      "insert into task (tenant_id, employee_id, subject_kind, subject_id) " +
-        "values ($1, $2, 'lead', gen_random_uuid()) returning id",
+      "insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id) " +
+        "values ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), 'lead', gen_random_uuid()) returning id",
       [tenantA, employeeId],
     );
     taskId = task?.id as string;
@@ -141,6 +148,9 @@ describeIfDatabase("Repositories sur un vrai Postgres", () => {
       metric: "chiffre_affaires",
       targetValue: 5000,
       horizon: "mensuel",
+      // « retiré » : cette suite éprouve le dépôt générique, pas l'objectif de l'entreprise —
+      // qui n'en porte qu'un actif depuis `20260815120002`.
+      state: "retire",
     });
 
     expect(objective.id).toBeDefined();
@@ -156,7 +166,7 @@ describeIfDatabase("Repositories sur un vrai Postgres", () => {
       "objective",
       TenantScope.of(tenantA),
     );
-    const created = await repo.insert({ metric: "ca", targetValue: 1, horizon: "mensuel" });
+    const created = await repo.insert({ metric: "ca", targetValue: 1, horizon: "mensuel", state: "retire" });
 
     const updated = await repo.update(created.id, { horizon: "trimestriel" });
     expect(updated?.horizon).toBe("trimestriel");
@@ -172,8 +182,8 @@ describeIfDatabase("Repositories sur un vrai Postgres", () => {
       "objective",
       TenantScope.of(tenantA),
     );
-    await repo.insert({ metric: "z", targetValue: 1, horizon: "mensuel" });
-    await repo.insert({ metric: "a", targetValue: 1, horizon: "mensuel" });
+    await repo.insert({ metric: "z", targetValue: 1, horizon: "mensuel", state: "retire" });
+    await repo.insert({ metric: "a", targetValue: 1, horizon: "mensuel", state: "retire" });
 
     const sorted = await repo.list({}, { orderBy: "metric", direction: "asc", limit: 1 });
     expect(sorted).toHaveLength(1);
@@ -252,8 +262,8 @@ describeIfDatabase("Repositories sur un vrai Postgres", () => {
       [tenantB, source?.employee_definition_id, identity?.id],
     );
     const [taskB] = await sql.query<{ id: string }>(
-      "insert into task (tenant_id, employee_id, subject_kind, subject_id) " +
-        "values ($1, $2, 'lead', gen_random_uuid()) returning id",
+      "insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id) " +
+        "values ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), 'lead', gen_random_uuid()) returning id",
       [tenantB, employeeB?.id],
     );
 
@@ -271,7 +281,7 @@ describeIfDatabase("Repositories sur un vrai Postgres", () => {
       "objective",
       TenantScope.of(tenantA),
     );
-    const created = await repo.insert({ metric: "ca", targetValue: 1, horizon: "mensuel" });
+    const created = await repo.insert({ metric: "ca", targetValue: 1, horizon: "mensuel", state: "retire" });
 
     // Le repository refuse déjà d'en entendre parler…
     await expect(repo.update(created.id, { tenantId: tenantB })).rejects.toThrow(

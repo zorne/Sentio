@@ -177,8 +177,16 @@ export class PostgresApprovisionnementStore implements ApprovisionnementStore {
       const identifiants = input.sujets.map((sujet) => sujet.id);
 
       const creees = await tx.query<{ id: string }>(
-        `insert into task (tenant_id, employee_id, subject_kind, subject_id, state)
-         select $1, $2, s.kind, s.id, 'pending'
+        // L'objectif servi est écrit AVEC la mission, dans la même transaction. Il n'est pas
+        // choisi ici : une entreprise n'a qu'un objectif actif (`20260815120002`), donc la
+        // sous-requête en rend un ou aucun. Aucun n'est censé arriver —
+        // `peut_ouvrir_une_mission()` a déjà refusé plus haut — et si cela arrivait, la
+        // contrainte `not null` fait échouer l'ouverture plutôt que d'ouvrir du travail
+        // rattaché à rien.
+        `insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id, state)
+         select $1, $2,
+                (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'),
+                s.kind, s.id, 'pending'
            from unnest($3::text[], $4::uuid[]) as s(kind, id)
          on conflict (tenant_id, employee_id, subject_kind, subject_id) do nothing
          returning id`,

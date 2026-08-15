@@ -607,6 +607,18 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     await approvisionner(tenantId);
     proposerUneAction(1);
 
+    // ⚠️ Ce cas n'exécute QU'UN travail et vérifie que c'est le sien. Or la file est globale :
+    // rien ne garantit que le travail pris soit celui de cette entreprise, et un reliquat d'un
+    // cas précédent le faisait échouer par intermittence — mesuré le 2026-08-15 à 2 échecs sur 9
+    // quand la suite tourne au sein de l'ensemble des paquets, 0 sur 16 quand elle tourne seule.
+    //
+    // On repousse donc les travaux des AUTRES entreprises au lieu de les supprimer : ce qu'ils
+    // ont écrit reste intact, ils ne disputent simplement plus le tour. Un test qui échoue au
+    // hasard ne vaut pas mieux qu'un test qui ne teste rien — on ne relance pas jusqu'au vert.
+    await sql.query("update job set next_run_at = now() + interval '1 hour' where tenant_id <> $1", [
+      tenantId,
+    ]);
+
     await executerLesTravauxDus(deps(), {
       prisPar: "exécutant-de-test",
       maintenant: new Date(),

@@ -88,6 +88,9 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     const tenantId = randomUUID();
     tenants.push(tenantId);
     await sql.query("insert into tenant (id, name) values ($1, $2)", [tenantId, "Entreprise EXEC-17"]);
+    // Cette suite pose elle-même l'objectif, plus bas, parce que son état est précisément ce
+    // qu'elle fait varier — actif, atteint, retiré, ou aucun. Depuis `20260815120002` une
+    // entreprise n'en porte qu'un actif : en ajouter un ici en écraserait le sens.
 
     const abonnement = options.abonnement ?? "active";
     if (abonnement !== "aucun") {
@@ -327,8 +330,8 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     // reprise, ou un chemin de code qu'on n'a pas encore écrit.
     await expect(
       sql.query(
-        `insert into task (tenant_id, employee_id, subject_kind, subject_id)
-         values ($1, $2, 'lead', $3)`,
+        `insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id)
+         values ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), 'lead', $3)`,
         [tenantId, employeeId, mission?.subject_id],
       ),
     ).rejects.toThrow();
@@ -390,16 +393,16 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     await abaisserLeQuota("start", 2);
 
     await sql.query(
-      `insert into task (tenant_id, employee_id, subject_kind, subject_id) values
-         ($1, $2, 'lead', gen_random_uuid()), ($1, $2, 'lead', gen_random_uuid())`,
+      `insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id) values
+         ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), 'lead', gen_random_uuid()), ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), 'lead', gen_random_uuid())`,
       [tenantId, employeeId],
     );
 
     // Insertion directe, hors de tout code d'approvisionnement : c'est le déclencheur qui refuse.
     await expect(
       sql.query(
-        `insert into task (tenant_id, employee_id, subject_kind, subject_id)
-         values ($1, $2, 'lead', gen_random_uuid())`,
+        `insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id)
+         values ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), 'lead', gen_random_uuid())`,
         [tenantId, employeeId],
       ),
     ).rejects.toThrow(/quota_de_periode_atteint/);
@@ -419,8 +422,8 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
       await Promise.allSettled(
         Array.from({ length: 8 }, (_, index) =>
           clients[index % clients.length]!.query(
-            `insert into task (tenant_id, employee_id, subject_kind, subject_id)
-             values ($1, $2, 'lead', gen_random_uuid())`,
+            `insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id)
+             values ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), 'lead', gen_random_uuid())`,
             [tenantId, employeeId],
           ),
         ),
@@ -443,8 +446,8 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     const { tenantId, employeeId } = await entreprise();
     await expect(
       sql.query(
-        `insert into task (tenant_id, employee_id, subject_kind, subject_id)
-         values ($1, $2, '   ', gen_random_uuid())`,
+        `insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id)
+         values ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), '   ', gen_random_uuid())`,
         [tenantId, employeeId],
       ),
     ).rejects.toThrow();

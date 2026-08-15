@@ -61,7 +61,7 @@ Pousser un schéma en ligne · poser un secret · déployer une fonction · touc
 |---|---|---|
 | 1 | Rendre `verify` honnête | ✅ 2026-08-15 |
 | 2 | Séparer l'acte et l'objet dans les capacités | ✅ 2026-08-15 |
-| 3 | La couche mission, et la chaîne objectif → travail | ☐ |
+| 3 | La couche mission, et la chaîne objectif → travail | ✅ 2026-08-15 |
 | 4 | La configuration de Lady, versionnée | ☐ |
 | 5 | Le noyau perd le métier | ☐ |
 | 6 | Les constats d'audit et le moteur de composition | ☐ |
@@ -203,8 +203,47 @@ Elle appartient à la configuration et se rattache à un objectif.
 pas activée` n'exécute qu'un travail et suppose que c'est le sien. Une fois la chaîne
 mission → travail explicite, il doit pouvoir viser SA mission au lieu de parier sur la file.
 
-**✅ Terminé quand :** une tâche ne peut pas exister sans mission, une mission pas sans objectif —
-et c'est la base qui le refuse, pas le code.
+**✅ Terminé quand :** une mission ne peut pas s'ouvrir sans objectif — et c'est la base qui le
+refuse, pas le code.
+
+### Fait le 2026-08-15 — `20260815120002_mission_et_objectif.sql`
+
+**Le plan se trompait sur un point, et le dépôt avait raison :** la couche mission n'était pas à
+créer, elle existait. `task` **est** la mission depuis [`adr/0027`](adr/0027-approvisionnement-du-travail.md)
+— elle porte son sujet, un index unique interdit deux missions sur le même, et un lot par jour et
+par employé borne l'ouverture. Ce qui manquait était plus étroit et plus grave : **elle ne disait
+pas quel objectif elle servait.**
+
+La règle existait pourtant, mais seulement en passant : `peut_ouvrir_une_mission()` refuse d'ouvrir
+sans objectif actif. Un contrôle à l'entrée n'est pas un lien — il empêche d'ouvrir à tort, il ne
+permet pas de répondre *« pour quoi ce travail a-t-il été fait »*.
+
+**Trois décisions prises ici :**
+
+1. **Une entreprise n'a qu'un objectif actif.** Rattacher une mission suppose de savoir duquel on
+   parle ; l'ambiguïté était `EXEC-16`, relevée sans être refermée. Elle l'est par le haut plutôt
+   que par une règle de tri. Changer d'objectif reste possible — on retire l'ancien, on en pose un
+   neuf — et les missions déjà ouvertes gardent le leur.
+2. **La garantie est posée à la création, par déclencheur, pas par `not null`.** Un `not null`
+   aurait été faux : l'effacement RGPD supprime les objectifs mais **conserve** les missions,
+   parce que le journal les référence et doit survivre dépouillé plutôt que détruit. Une cascade
+   aurait emporté la preuve d'effacement ; un `restrict` aurait fait échouer l'effacement.
+3. **Le lien porte l'entreprise**, comme toute clé étrangère du dépôt : une mission ne peut pas
+   emprunter l'objectif d'une autre entreprise.
+
+**Un défaut réel trouvé en chemin, et corrigé.** `loadStepContext` listait **tous** les objectifs,
+sans filtrer sur leur état. Un objectif *atteint* ou *retiré* comptait donc encore comme déclaré :
+l'employé continuait de travailler vers un but que son client venait de retirer, et le contexte du
+modèle citait cette cible comme si elle tenait toujours. Le défaut datait de `20260806120003`, qui
+a donné un état aux objectifs sans que ce chemin de lecture le reprenne.
+
+**Le test instable de l'étape 1 est refermé.** `EXEC-12` n'exécutait qu'un travail et supposait que
+c'était le sien, alors que la file est globale. Les travaux des autres entreprises sont désormais
+repoussés plutôt que supprimés — ce qu'ils ont écrit reste intact, ils ne disputent plus le tour.
+**0 échec sur 5** dans la configuration qui en produisait 2 sur 9.
+
+**Coût :** 11 fichiers de fixtures rattachés à un objectif, 1 invariant (`LADY-B`), 1 correction de
+production.
 
 ---
 

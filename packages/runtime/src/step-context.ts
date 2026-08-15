@@ -185,13 +185,23 @@ export async function loadStepContext(
   const secteur = await chargerSecteur(sql, profil);
 
   // ── Couche 5 — l'objectif et l'état du run.
-  const objectifs = await repos.objective.list();
+  //
+  // ⚠️ `state = 'actif'` n'est pas un détail de requête. Sans ce filtre, un objectif ATTEINT ou
+  // RETIRÉ comptait encore comme « déclaré » : l'employé continuait de travailler vers un but que
+  // son client venait de retirer, et le contexte du modèle citait cette cible comme si elle tenait
+  // toujours. Le défaut date de `20260806120003`, qui a donné un état aux objectifs sans que ce
+  // chemin de lecture le reprenne.
+  //
+  // Une entreprise n'en porte qu'un actif (`20260815120002`) : la liste rend donc zéro ou une
+  // ligne, et « lequel » ne se pose plus.
+  const objectifs = await repos.objective.list({ state: "actif" });
   if (objectifs.length === 0) {
     manques.push({
       quoi: "objectif",
       detail:
-        "Aucun objectif déclaré par cette entreprise. Le moteur n'en invente pas : un employé " +
-        "lancé sur un but que son client n'a jamais formulé travaille pour personne.",
+        "Aucun objectif actif dans cette entreprise. Le moteur n'en invente pas : un employé " +
+        "lancé sur un but que son client n'a jamais formulé — ou qu'il vient de retirer — " +
+        "travaille pour personne.",
     });
   }
 

@@ -58,6 +58,11 @@ describeIfDatabase("Le contexte du pas courant, sur un vrai Postgres", () => {
 
   async function creerEntreprise(tenantId: string, nom: string) {
     await sql.query("insert into tenant (id, name) values ($1, $2)", [tenantId, nom]);
+    // L'objectif précède la mission : la base refuse d'ouvrir sans lui (`20260815120002`).
+    await sql.query(
+      "insert into objective (tenant_id, metric, target_value, horizon) values ($1, 'chiffre_affaires', 5000, 'mois')",
+      [tenantId],
+    );
     const [definition] = await sql.query<{ id: string }>(
       `insert into employee_definition (profession, version, dna) values ('commercial', $1, $2::jsonb) returning id`,
       [
@@ -76,8 +81,8 @@ describeIfDatabase("Le contexte du pas courant, sur un vrai Postgres", () => {
       [tenantId, definition?.id, identity?.id],
     );
     const [task] = await sql.query<{ id: string }>(
-      "insert into task (tenant_id, employee_id, subject_kind, subject_id) " +
-        "values ($1, $2, 'lead', gen_random_uuid()) returning id",
+      "insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id) " +
+        "values ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), 'lead', gen_random_uuid()) returning id",
       [tenantId, employee?.id],
     );
     return { employeeId: employee?.id as string, taskId: task?.id as string };
@@ -107,7 +112,7 @@ describeIfDatabase("Le contexte du pas courant, sur un vrai Postgres", () => {
 
     // A : objectif, profil, faits, et un secteur déclaré SANS profil sectoriel publié.
     await sql.query(
-      "insert into objective (tenant_id, metric, target_value, horizon) values ($1, $2, $3, $4)",
+      "update objective set metric = $2, target_value = $3, horizon = $4 where tenant_id = $1 and state = 'actif'",
       [tenantA, "rendez_vous_qualifies", 10, "ce mois"],
     );
     await poserProfil(tenantA, "secteur", secteur);
@@ -116,7 +121,7 @@ describeIfDatabase("Le contexte du pas courant, sur un vrai Postgres", () => {
 
     // B : des données qui ne doivent JAMAIS apparaître dans le contexte de A.
     await sql.query(
-      "insert into objective (tenant_id, metric, target_value, horizon) values ($1, $2, $3, $4)",
+      "update objective set metric = $2, target_value = $3, horizon = $4 where tenant_id = $1 and state = 'actif'",
       [tenantB, "SECRET_DE_B", 999, "jamais"],
     );
     await poserProfil(tenantB, "cible", "CLIENTS_CONFIDENTIELS_DE_B");
@@ -206,8 +211,17 @@ describeIfDatabase("Le contexte du pas courant, sur un vrai Postgres", () => {
   });
 
   it("refuse de travailler sans objectif déclaré, plutôt que d'en supposer un", async () => {
-    const { taskId } = await creerEntreprise(randomUUID(), "Entreprise sans objectif");
-    // L'entreprise vient d'être créée : ni objectif, ni profil, ni faits.
+    const tenantSansObjectif = randomUUID();
+    const { taskId } = await creerEntreprise(tenantSansObjectif, "Entreprise sans objectif");
+
+    // Depuis `20260815120002`, une mission NE PEUT PAS naître sans objectif : l'état « aucun
+    // objectif » ne s'atteint donc plus à la création, mais après coup — le dirigeant retire le
+    // sien alors que du travail est déjà ouvert. C'est le cas réel, et c'est celui qui compte :
+    // l'employé doit s'arrêter et le dire, jamais deviner un but de remplacement.
+    await sql.query("update objective set state = 'retire' where tenant_id = $1", [
+      tenantSansObjectif,
+    ]);
+
     const [ligne] = await sql.query<{ tenant_id: string }>("select tenant_id from task where id = $1", [
       taskId,
     ]);
@@ -241,8 +255,8 @@ describeIfDatabase("Le contexte du pas courant, sur un vrai Postgres", () => {
 
   it("refuse un contexte quand le journal du run est incohérent", async () => {
     const [tache] = await sql.query<{ id: string }>(
-      "insert into task (tenant_id, employee_id, subject_kind, subject_id) " +
-        "values ($1, $2, 'lead', gen_random_uuid()) returning id",
+      "insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id) " +
+        "values ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), 'lead', gen_random_uuid()) returning id",
       [tenantA, employeA],
     );
     const incoherente = tache?.id as string;
