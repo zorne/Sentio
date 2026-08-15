@@ -38,16 +38,21 @@ partir chez un fournisseur non conforme.
 
 ---
 
-## Lot 2 — Le premier métier réel
+## Lot 2 — Le noyau Lady et sa bibliothèque
 
-**Décidé : Commercial seul** ([`adr/0008`](adr/0008-perimetre-v1-commercial-seul.md)).
+**Réorienté le 2026-08-15** ([`adr/0029`](adr/0029-noyau-lady-configure-dynamiquement.md), qui
+remplace [`adr/0008`](adr/0008-perimetre-v1-commercial-seul.md)). Il n'y a pas de « premier métier
+réel » : **le métier n'est jamais une entrée du système.**
 
-- ADN version 1 du métier retenu
-- Ses capacités, ses moteurs, ses garde-fous (voir D5 pour la source des prospects)
-- Réservoir d'identités alimenté
+- Séparation acte / objet dans les capacités (lot A)
+- Couche `mission`, et la chaîne `task → mission → objective` (lot B)
+- Configuration versionnée et justifiée (lot C)
+- `employee_definition` devient le Lady Core, sans le métier comme axe d'identité (lot D)
 
-**Sortie :** c'est le lot qui prouve que le produit existe. Tout ce qui précède est de la
-plomberie.
+Détail et ordre : [`28-bibliotheque-et-creation-de-lady.md`](28-bibliotheque-et-creation-de-lady.md) §8.
+
+**Sortie :** c'est le lot qui prouve que le produit existe — non pas parce qu'un métier fonctionne,
+mais parce qu'une entreprise décrite produit une configuration de Lady justifiée et exécutable.
 
 > **En cours depuis le 2026-07-29.** Socle posé : ADN v1 et capacités en données, tables de
 > prospection, et la garde d'envoi aux sept conditions — un message ne peut pas partir si une

@@ -43,10 +43,12 @@ recouvrent pas :
 | **Secteur** | vocabulaire, cycle d'achat, objections d'un même métier | généraliste dès la V1, via `sector_profile` |
 
 **À ne pas confondre en vendant :** le discours d'ensemble de Sentio peut légitimement parler de
-« vos futurs employés numériques » au pluriel des métiers — c'est la vision. Mais tant que le lot 2
-d'un deuxième métier n'existe pas, ne jamais laisser un prospect croire qu'il peut recruter un
-employé marketing aujourd'hui. C'est la même règle que [R14](14-recommandations.md) : dire
-honnêtement ce qui sort du périmètre disponible.
+« un employé numérique qui s'adapte à votre entreprise » — c'est la vision, et depuis
+[`adr/0029`](adr/0029-noyau-lady-configure-dynamiquement.md) c'est aussi l'architecture. Mais ce
+qui borne la promesse n'est plus un catalogue de métiers : c'est **ce que la bibliothèque d'actes
+sait réellement faire**. Ne jamais laisser un prospect croire que Lady couvre un domaine dont les
+actes ne sont pas écrits. C'est la même règle que [R14](14-recommandations.md) : dire honnêtement
+ce qui sort du périmètre disponible, et le mécanisme reste `hors_perimetre` + liste d'attente.
 
 ---
 

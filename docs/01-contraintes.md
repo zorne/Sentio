@@ -14,7 +14,8 @@
 | Fournisseur d'inférence | **Fournisseur européen à €0**, secours et sortie payante en UE aussi | → [`19-fournisseurs-modeles.md`](19-fournisseurs-modeles.md), [`adr/0009`](adr/0009-fournisseur-inference-ue.md) |
 | Budget | **€0 strict** | pas de worker permanent, pas de file managée, pas de sauvegarde fine |
 | Mémoire | **Deux contextes** dans Supabase | → [`04-contextes-memoire.md`](04-contextes-memoire.md) |
-| Périmètre métier V1 | **Un seul métier : Commercial** | → [`adr/0008-perimetre-v1-commercial-seul.md`](adr/0008-perimetre-v1-commercial-seul.md) |
+| Périmètre métier V1 | **Aucun métier — un noyau Lady généraliste, configuré par le diagnostic** | → [`adr/0029`](adr/0029-noyau-lady-configure-dynamiquement.md), [`28-bibliotheque-et-creation-de-lady.md`](28-bibliotheque-et-creation-de-lady.md) |
+| Couverture réelle | **Bornée par les actes écrits**, pas par une liste de métiers | → [`28`](28-bibliotheque-et-creation-de-lady.md) §3 ; hors bibliothèque ⇒ `hors_perimetre` |
 
 ---
 

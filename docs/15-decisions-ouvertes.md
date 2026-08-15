@@ -10,12 +10,23 @@
 
 ---
 
-## ✅ D1 — Périmètre métier de la V1 — TRANCHÉE
+## ✅ D1 — Périmètre métier de la V1 — TRANCHÉE, puis **rouverte et re-tranchée le 2026-08-15**
 
-**Décision finale : un seul métier réel au lancement — Commercial.**
-(Un revirement bref vers deux métiers, Commercial + Support, a été acté puis annulé le même
-jour — voir [`adr/0007`](adr/0007-perimetre-v1-commercial-support.md) et
-[`adr/0008`](adr/0008-perimetre-v1-commercial-seul.md) pour l'historique complet.)
+**Décision en vigueur : il n'y a pas de périmètre métier, parce qu'il n'y a pas de métier.**
+Le noyau Lady est généraliste ; sa configuration sort du diagnostic
+([`adr/0029`](adr/0029-noyau-lady-configure-dynamiquement.md),
+[`28-bibliotheque-et-creation-de-lady.md`](28-bibliotheque-et-creation-de-lady.md)).
+Ce qui borne la couverture réelle n'est plus une liste de métiers mais **le nombre d'actes écrits
+dans la bibliothèque**.
+
+*Historique :* un seul métier au lancement — Commercial ([`adr/0008`](adr/0008-perimetre-v1-commercial-seul.md)),
+après un revirement bref vers deux métiers acté puis annulé le même jour
+([`adr/0007`](adr/0007-perimetre-v1-commercial-support.md)).
+
+**Quatre décisions produit sont ouvertes par cette bascule** — voir
+[`28`](28-bibliotheque-et-creation-de-lady.md) §9 : le mot « métier » côté client, le cumul de
+domaines par une même Lady, le plancher de couverture qui déclenche `hors_perimetre`, et
+l'autonomie sur un changement de configuration.
 
 ---
 

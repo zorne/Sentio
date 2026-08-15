@@ -1,7 +1,14 @@
 # ADR-0008 — Périmètre de la V1 : Commercial seul
 
 **Date :** 2026-07-27
-**Statut :** acceptée — remplace [ADR-0007](0007-perimetre-v1-commercial-support.md), retranche la décision D1
+**Statut :** **remplacée par [ADR-0029](0029-noyau-lady-configure-dynamiquement.md)** (2026-08-15) —
+remplaçait [ADR-0007](0007-perimetre-v1-commercial-support.md), retranchait la décision D1
+
+> Le métier n'est plus une entrée du système. Le noyau est généraliste et sa configuration sort du
+> diagnostic ([`0029`](0029-noyau-lady-configure-dynamiquement.md),
+> [`../28-bibliotheque-et-creation-de-lady.md`](../28-bibliotheque-et-creation-de-lady.md)).
+> Entrée conservée pour l'histoire : elle explique pourquoi le schéma porte encore
+> `unique (profession, version)`.
 
 ## Contexte
 

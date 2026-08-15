@@ -70,10 +70,14 @@ principal détecté.
 auditable, reproductible, et **incapable de proposer ce qui n'existe pas**. Le modèle sert
 uniquement à rédiger la justification, en langage de dirigeant.
 
-Tant qu'un seul métier existe, ce moteur ne choisit pas *quel* employé — il détermine **comment
-cet employé est calibré** : objectif, capacités activées, cible visée, ton, angles d'accroche,
-exclusions. C'est une décision réelle, aux conséquences observables sur le travail produit.
-→ [`adr/0010`](adr/0010-diagnostic-calibrage.md)
+Ce moteur ne choisit pas *quel* employé — il n'y a qu'une Lady. Il produit sa **configuration** :
+objectif, missions, capacités activées, priorités, autonomie, limites opérationnelles. C'est une
+décision réelle, aux conséquences observables sur le travail produit.
+→ [`adr/0010`](adr/0010-diagnostic-calibrage.md), [`adr/0029`](adr/0029-noyau-lady-configure-dynamiquement.md)
+
+Le rôle de Lady est donc une **sortie** de ce moteur, jamais une donnée d'entrée : le dirigeant
+décrit son entreprise, il ne choisit pas un métier dans un catalogue
+([`28-bibliotheque-et-creation-de-lady.md`](28-bibliotheque-et-creation-de-lady.md) §5).
 
 Le calibrage s'écrit dans `company_profile` et `employee_capability`. **Il ne touche jamais
 l'ADN**, commun à tous les clients et immuable.
