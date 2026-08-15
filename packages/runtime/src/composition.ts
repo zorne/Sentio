@@ -26,12 +26,12 @@
  *
  * `moteursMetier` est vide par défaut, et c'est **délibéré**, pas un oubli :
  *
- *   · `envoyer_un_message` exige un service d'expédition réel. Le brancher ici rendrait un worker
+ *   · `envoyer.prospect` exige un service d'expédition réel. Le brancher ici rendrait un worker
  *     capable d'écrire à de vraies entreprises dès qu'une clé traîne dans l'environnement — avant
  *     que le compte d'envoi, le domaine en UE et la clé hors dépôt ne soient en place
  *     (`docs/adr/0018`). Ce n'est pas une décision à prendre par défaut.
- *   · les autres moteurs (`qualifier_un_prospect`, `trouver_des_prospects`,
- *     `relancer_un_prospect`) n'existent pas encore, et les deux qui existent attendent une entrée
+ *   · les autres moteurs (`qualifier.prospect`, `rechercher.prospect`,
+ *     `relancer.prospect`) n'existent pas encore, et les deux qui existent attendent une entrée
  *     que le contrat déclaré ne fournit pas — il manque une couche d'adaptation entre ce que le
  *     modèle propose et ce que le moteur consomme.
  *

@@ -1499,4 +1499,69 @@ begin
 end;
 $$;
 
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+-- LADY-A — une capacité est un ACTE appliqué à un OBJET, et sa clé ne peut pas les contredire.
+--
+-- Ce que ces quatre refus protègent : la seule chose qui empêche la bibliothèque de redevenir un
+-- catalogue de métiers est que l'acte ne nomme jamais son objet (`docs/adr/0029`). Une garantie
+-- tenue par la relecture tombe ; celle-ci est tenue par la base.
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  cle_lue    text;
+  actes_avec_objet integer;
+begin
+  -- 1. La clé est ENGENDRÉE : la saisir est refusé. C'est ce qui rend impossible le cas classique
+  --    où l'on renomme l'acte en oubliant la clé, et où les deux se contredisent en silence.
+  begin
+    insert into public.capability (acte, objet, name, contract, key)
+    values ('relancer', 'facture', 'Relancer une facture', '{}'::jsonb, 'autre_chose');
+    raise exception 'ÉCHEC capacité : une clé saisie à la main a été acceptée.';
+  exception
+    when generated_always then null;
+  end;
+
+  -- 2. Un acte s'applique à un nouvel objet sans qu'on écrive une capacité de plus. C'est
+  --    l'intérêt entier de la séparation : `relancer` sert le prospect ET la facture.
+  insert into public.capability (acte, objet, name, contract)
+  values ('relancer', 'facture', 'Relancer une facture impayée', '{}'::jsonb);
+
+  select key into cle_lue from public.capability where acte = 'relancer' and objet = 'facture';
+  if cle_lue <> 'relancer.facture' then
+    raise exception 'ÉCHEC capacité : clé engendrée « % », attendue « relancer.facture ».', cle_lue;
+  end if;
+
+  -- 3. La même chose ne peut pas être déclarée deux fois sous deux contrats différents.
+  begin
+    insert into public.capability (acte, objet, name, contract)
+    values ('relancer', 'facture', 'Doublon', '{}'::jsonb);
+    raise exception 'ÉCHEC capacité : (acte, objet) accepte un doublon.';
+  exception
+    when unique_violation then null;
+  end;
+
+  -- 4. Le séparateur n'appartient qu'à la clé. Toléré dans un axe, il rendrait
+  --    « relancer » + « facture.impayee » et « relancer.facture » + « impayee » indiscernables.
+  begin
+    insert into public.capability (acte, objet, name, contract)
+    values ('relancer.facture', 'impayee', 'Ambiguë', '{}'::jsonb);
+    raise exception 'ÉCHEC capacité : un acte contenant le séparateur a été accepté.';
+  exception
+    when check_violation then null;
+  end;
+
+  -- 5. Et le socle : aucune des capacités livrées ne nomme son objet dans son acte.
+  select count(*) into actes_avec_objet
+    from public.capability
+   where acte like '%_' || objet || '%' or acte like '%prospect%' or acte like '%message%';
+  if actes_avec_objet <> 0 then
+    raise exception
+      'ÉCHEC capacité : % acte(s) portent encore leur objet dans leur nom.', actes_avec_objet;
+  end if;
+
+  raise notice 'OK  LADY-A — acte × objet, clé engendrée, doublon et séparateur refusés';
+end;
+$$;
+
 rollback;

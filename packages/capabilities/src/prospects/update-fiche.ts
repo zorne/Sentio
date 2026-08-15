@@ -1,6 +1,6 @@
 /**
  * METIER-13 — la capacité « mettre à jour une fiche », moteur du contrat déjà publié
- * (`mettre_a_jour_une_fiche`, migration `20260729120039_adn_commercial_v1.sql`).
+ * (`mettre_a_jour.prospect`, migration `20260729120039_adn_commercial_v1.sql`).
  *
  * Ce que consigne cette capacité — l'état de la relation, et éventuellement une note — n'est
  * jamais l'endroit où mesurer la performance du commercial : `lead.status` sert `peut_envoyer()`
@@ -17,6 +17,8 @@
  *
  * Réalise : METIER-13
  */
+
+import { CAPACITES } from "@sentio/domain";
 
 /** Les quatre valeurs que `lead.status` accepte (contrainte `check`, migration 0038) — un
  *  cinquième mot ici serait accepté par TypeScript mais rejeté par la base : les deux doivent
@@ -59,7 +61,7 @@ export type UpdateFicheResult =
 export class UpdateFicheCapability {
   /** Le moteur de base, celui que la migration 0039 lie aux trois formules. */
   readonly engineKey = "base";
-  readonly capabilityKey = "mettre_a_jour_une_fiche";
+  readonly capabilityKey = CAPACITES.mettreAJourProspect;
 
   constructor(
     private readonly leads: LeadStatusStore,

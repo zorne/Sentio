@@ -409,7 +409,7 @@ describeIfDatabase("Le noyau contre un vrai Postgres", () => {
       employeeId,
       sendingDomainId: domain?.id as string,
       subject: "Vos fenêtres",
-      idempotencyKey: "envoyer_un_message:integration",
+      idempotencyKey: "envoyer.prospect:integration",
     };
     expect(await store.claim(claim)).toBe(true);
     expect(await store.claim(claim)).toBe(false);
@@ -451,11 +451,11 @@ describeIfDatabase("Le noyau contre un vrai Postgres", () => {
       employeeId,
       sendingDomainId: domain?.id as string,
       subject: "Bonjour",
-      idempotencyKey: "envoyer_un_message:rebond",
+      idempotencyKey: "envoyer.prospect:rebond",
     });
     await store.confirm({
       tenantId,
-      idempotencyKey: "envoyer_un_message:rebond",
+      idempotencyKey: "envoyer.prospect:rebond",
       providerMessageId: "prov_1",
     });
 

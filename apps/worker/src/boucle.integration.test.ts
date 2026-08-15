@@ -38,7 +38,7 @@ import { executerLesTravauxDus, type BoucleDeps } from "@sentio/runtime";
  *   · **le fournisseur de modèle** — un vrai appel rendrait le test lent, payant, non
  *     reproductible, et ferait transiter des données vers un tiers depuis une suite de tests.
  *     Le Gateway, lui, est le VRAI : routage, enveloppes, plafonds et comptage sont exercés.
- *   · **le moteur de capacité** — `qualifier_un_prospect` n'a pas encore de moteur dans
+ *   · **le moteur de capacité** — `qualifier.prospect` n'a pas encore de moteur dans
  *     `packages/capabilities` (voir le compte rendu). Le faux est enregistré sous la même clé de
  *     moteur (`base`) que la liaison réelle en base : c'est donc bien `capability_binding` qui
  *     le résout, pas le test.
@@ -61,7 +61,7 @@ if (connectionString === undefined && process.env["SENTIO_REQUIRE_DB_TESTS"] ===
 const describeIfDatabase = connectionString === undefined ? describe.skip : describe;
 
 /** La capacité que l'employé propose dans ces tests : écriture interne, donc pas de suspension. */
-const CAPACITE = "qualifier_un_prospect";
+const CAPACITE = "qualifier.prospect";
 
 describeIfDatabase("EXEC-12 — la boucle complète", () => {
   let sql: PostgresClient;

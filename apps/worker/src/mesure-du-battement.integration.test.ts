@@ -57,7 +57,7 @@ if (connectionString === undefined && process.env["SENTIO_REQUIRE_DB_TESTS"] ===
 
 const describeIfDatabase = connectionString === undefined ? describe.skip : describe;
 
-const CAPACITE = "qualifier_un_prospect";
+const CAPACITE = "qualifier.prospect";
 /** Ce que la mesure rapporte, pour que le compte rendu ne soit pas une impression. */
 const mesures: { quoi: string; ms: number; detail?: string }[] = [];
 

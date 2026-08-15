@@ -133,10 +133,10 @@ describe("Calibrage", () => {
     // Un client dont le problème est le ciblage n'a pas besoin qu'on relance davantage : il a
     // besoin qu'on écrive moins, et mieux.
     expect(cible.status === "recommande" && cible.calibration.capabilities).not.toContain(
-      "relancer_un_prospect",
+      "relancer.prospect",
     );
     expect(relance.status === "recommande" && relance.calibration.capabilities).toContain(
-      "relancer_un_prospect",
+      "relancer.prospect",
     );
   });
 

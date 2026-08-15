@@ -120,10 +120,10 @@ describe("Policy Engine — traçabilité", () => {
   });
 
   it("refuse hors périmètre en nommant les capacités autorisées", () => {
-    const decision = refuseOutOfScope("tenir_la_comptabilite", ["trouver_des_prospects"]);
+    const decision = refuseOutOfScope("tenir_la_comptabilite", ["rechercher.prospect"]);
 
     expect(decision).toMatchObject({ outcome: "refuse" });
-    expect(decision.outcome === "refuse" && decision.reason).toMatch(/trouver_des_prospects/);
+    expect(decision.outcome === "refuse" && decision.reason).toMatch(/rechercher.prospect/);
   });
 
   it("trace le refus hors périmètre — TEST-02 exige la trace, pas seulement le refus", async () => {
@@ -131,7 +131,7 @@ describe("Policy Engine — traçabilité", () => {
 
     const decision = await engine.refuse(
       request({ capabilityKey: "tenir_la_comptabilite" }),
-      ["trouver_des_prospects"],
+      ["rechercher.prospect"],
     );
 
     expect(decision.outcome).toBe("refuse");

@@ -37,7 +37,7 @@ const DEMANDE = {
   tenantId: "t-1" as never,
   taskId: "tache-1" as never,
   employeeId: "e-1" as never,
-  capabilityKey: "envoyer_un_message",
+  capabilityKey: "envoyer.prospect",
   autonomy: "confirm_once" as const,
 };
 
@@ -70,7 +70,7 @@ describe("tout ce que le runtime écrit au journal est déclaré", () => {
   it("la lecture de proposition — réponse exploitable comme réponse illisible", async () => {
     const registry = new CapabilityRegistry();
     registry.registerContract({
-      key: "envoyer_un_message",
+      key: "envoyer.prospect",
       effectClass: "internal_write",
       description: "…",
     });
@@ -78,7 +78,7 @@ describe("tout ce que le runtime écrit au journal est déclaré", () => {
     for (const reponse of [
       JSON.stringify({
         action: "agir",
-        capacite: "envoyer_un_message",
+        capacite: "envoyer.prospect",
         entree: {},
         pourquoi: "parce que",
       }),
@@ -109,7 +109,7 @@ describe("tout ce que le runtime écrit au journal est déclaré", () => {
           taskId: "tache-1" as never,
           employeeId: "e-1" as never,
           turns: [{ role: "system", type: "text", text: "consigne" }],
-          capacitesAutorisees: ["envoyer_un_message"],
+          capacitesAutorisees: ["envoyer.prospect"],
           autonomy: "confirm_once",
           dataClass: "synthetic",
           envelope: "internal",

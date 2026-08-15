@@ -22,6 +22,7 @@
 // Réalise : ACQUIS-15
 // ════════════════════════════════════════════════════════════════════
 
+import { CAPACITES } from "@sentio/domain";
 import type { Calibration, RecommendationDecision } from "@sentio/domain";
 
 export interface EmployeePresentation {
@@ -47,11 +48,11 @@ export interface PresentEmployeeDeps {
  *  plutôt que lus en base : ce module n'a pas de connexion, et ces intitulés ne changent pas
  *  sans une migration qui les changerait aussi. */
 const CAPABILITY_WORDING: Record<string, string> = {
-  trouver_des_prospects: "repérer les entreprises à approcher",
-  qualifier_un_prospect: "vérifier qu'un contact correspond vraiment à ce que vous vendez",
-  envoyer_un_message: "engager la conversation avec un premier message",
-  relancer_un_prospect: "revenir vers ceux restés sans réponse",
-  mettre_a_jour_une_fiche: "tenir votre fiche client à jour",
+  [CAPACITES.rechercherProspect]: "repérer les entreprises à approcher",
+  [CAPACITES.qualifierProspect]: "vérifier qu'un contact correspond vraiment à ce que vous vendez",
+  [CAPACITES.envoyerProspect]: "engager la conversation avec un premier message",
+  [CAPACITES.relancerProspect]: "revenir vers ceux restés sans réponse",
+  [CAPACITES.mettreAJourProspect]: "tenir votre fiche client à jour",
 };
 
 const FALLBACK_TITLES: Record<Calibration["profession"], string> = {

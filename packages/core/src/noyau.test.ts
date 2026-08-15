@@ -53,7 +53,7 @@ describe("Tour de conversation", () => {
           role: "assistant",
           type: "capability_call",
           callId: "1",
-          capabilityKey: "trouver_des_prospects",
+          capabilityKey: "rechercher.prospect",
           input: {},
         },
         { role: "capability", type: "capability_result", callId: "1", output: [], failed: false },

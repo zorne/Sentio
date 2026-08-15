@@ -22,6 +22,7 @@
  * Réalise : METIER-09, METIER-10
  */
 
+import { CAPACITES } from "@sentio/domain";
 import type { EmailAddress, EmailProvider } from "./provider.js";
 
 /** Réponse de la garde d'envoi — `public.peut_envoyer()` côté base. */
@@ -137,7 +138,7 @@ export function composeMessage(input: SendMessageInput): string {
 export class SendMessageCapability {
   /** Le moteur de base, celui que la migration 0039 lie aux trois formules. */
   readonly engineKey = "base";
-  readonly capabilityKey = "envoyer_un_message";
+  readonly capabilityKey = CAPACITES.envoyerProspect;
 
   constructor(
     private readonly guard: SendingGuard,

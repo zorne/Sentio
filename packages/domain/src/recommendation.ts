@@ -23,6 +23,8 @@
  * Réalise : ACQUIS-14
  */
 
+import { CAPACITES } from "./capability.js";
+
 /** Les freins que Sentio sait traiter aujourd'hui. Un frein absent de cette liste est hors périmètre. */
 export const HANDLED_FRICTIONS = {
   /** « Personne ne nous connaît » — pas assez d'entreprises approchées. */
@@ -149,7 +151,7 @@ export function recommend(profile: DiagnosticProfile): RecommendationDecision {
   const objective = profile.objective as NonNullable<DiagnosticProfile["objective"]>;
 
   // 3. Le calibrage. Chaque branche est une règle lisible, pas une pondération opaque.
-  const capabilities = ["trouver_des_prospects", "qualifier_un_prospect", "mettre_a_jour_une_fiche"];
+  const capabilities = [CAPACITES.rechercherProspect, CAPACITES.qualifierProspect, CAPACITES.mettreAJourProspect];
   const priorities: string[] = [];
   const grounds: string[] = [
     `objectif annoncé : ${objective.target} ${objective.metric} par ${objective.horizon}`,
@@ -158,22 +160,22 @@ export function recommend(profile: DiagnosticProfile): RecommendationDecision {
 
   switch (friction) {
     case HANDLED_FRICTIONS.tooFewProspects:
-      capabilities.push("envoyer_un_message", "relancer_un_prospect");
+      capabilities.push(CAPACITES.envoyerProspect, CAPACITES.relancerProspect);
       priorities.push("élargir le nombre d'entreprises approchées", "engager la conversation");
       grounds.push("frein : trop peu d'entreprises approchées");
       break;
     case HANDLED_FRICTIONS.poorTargeting:
-      capabilities.push("envoyer_un_message");
+      capabilities.push(CAPACITES.envoyerProspect);
       priorities.push("resserrer le ciblage avant d'écrire", "n'écrire qu'aux entreprises qualifiées");
       grounds.push("frein : du volume, mais mal ciblé");
       break;
     case HANDLED_FRICTIONS.noFollowUp:
-      capabilities.push("envoyer_un_message", "relancer_un_prospect");
+      capabilities.push(CAPACITES.envoyerProspect, CAPACITES.relancerProspect);
       priorities.push("reprendre les conversations laissées sans réponse", "relancer avec tact");
       grounds.push("frein : des contacts entamés, jamais repris");
       break;
     case HANDLED_FRICTIONS.noTime:
-      capabilities.push("envoyer_un_message", "relancer_un_prospect");
+      capabilities.push(CAPACITES.envoyerProspect, CAPACITES.relancerProspect);
       priorities.push("prendre en charge la prospection de bout en bout");
       grounds.push("frein : le dirigeant prospecte lui-même, entre deux chantiers");
       break;

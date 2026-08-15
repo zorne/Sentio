@@ -22,6 +22,7 @@
  * Réalise : METIER-12
  */
 
+import { CAPACITES } from "@sentio/domain";
 import type { EmailAddress, EmailProvider } from "./provider.js";
 import type { OutboundMessageStore } from "./send-message.js";
 import { MessageIncomplete } from "./send-message.js";
@@ -93,7 +94,7 @@ export function composeFollowUp(input: FollowUpInput): string {
 export class FollowUpCapability {
   /** Le moteur de base, celui que la migration 0039 lie aux trois formules. */
   readonly engineKey = "base";
-  readonly capabilityKey = "relancer_un_prospect";
+  readonly capabilityKey = CAPACITES.relancerProspect;
 
   constructor(
     private readonly guard: FollowUpGuard,

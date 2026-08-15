@@ -60,7 +60,7 @@ Pousser un schéma en ligne · poser un secret · déployer une fonction · touc
 | # | Étape | État |
 |---|---|---|
 | 1 | Rendre `verify` honnête | ✅ 2026-08-15 |
-| 2 | Séparer l'acte et l'objet dans les capacités | ☐ |
+| 2 | Séparer l'acte et l'objet dans les capacités | ✅ 2026-08-15 |
 | 3 | La couche mission, et la chaîne objectif → travail | ☐ |
 | 4 | La configuration de Lady, versionnée | ☐ |
 | 5 | Le noyau perd le métier | ☐ |
@@ -156,8 +156,36 @@ fois sert plusieurs métiers.
 **Attention :** aucun comportement ne change à cette étape. C'est un renommage et une
 restructuration. Les cinq capacités existantes doivent continuer à fonctionner exactement pareil.
 
-**✅ Terminé quand :** les 35 invariants de schéma passent, `verify` est vert, et aucune clé de
-capacité ne contient de nom d'objet.
+**✅ Terminé quand :** les invariants de schéma passent, `verify` est vert, et aucun **acte** ne
+contient de nom d'objet.
+
+### Fait le 2026-08-15 — `20260815120001_acte_et_objet.sql`
+
+Les cinq capacités se sont révélées être **cinq actes appliqués au même objet** :
+
+| avant | acte | objet |
+|---|---|---|
+| `trouver_des_prospects` | `rechercher` | `prospect` |
+| `qualifier_un_prospect` | `qualifier` | `prospect` |
+| `envoyer_un_message` | `envoyer` | `prospect` |
+| `relancer_un_prospect` | `relancer` | `prospect` |
+| `mettre_a_jour_une_fiche` | `mettre_a_jour` | `prospect` |
+
+Aucune n'est commerciale en elle-même — c'est leur composition qui l'est. Appliquer `relancer` à
+une facture impayée ne demandera pas une sixième capacité, mais un objet de plus.
+
+**La clé est désormais engendrée** par la base depuis les deux axes : elle ne peut plus les
+contredire. Quatre refus le tiennent mécaniquement, vérifiés par un nouvel invariant (`LADY-A`) :
+une clé saisie à la main, un doublon sur `(acte, objet)`, un séparateur dans un axe, et un acte
+qui nommerait son objet.
+
+`docs/28` §2 décrit la suite : c'est cet axe « objet » qui portera candidat, facture et demande
+entrante, sans qu'un seul acte soit réécrit.
+
+**Ce que l'étape a coûté ailleurs :** 17 fichiers TypeScript renommés, et une constante canonique
+(`CAPACITES` dans `@sentio/domain`) pour que la prochaine évolution se fasse en un seul endroit.
+Le seul test qui a cassé insérait une capacité avec une clé explicite — `verify` l'a attrapé, ce
+qui est exactement ce que l'étape 1 venait rendre possible.
 
 ---
 
