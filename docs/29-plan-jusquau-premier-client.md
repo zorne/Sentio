@@ -59,7 +59,7 @@ Pousser un schéma en ligne · poser un secret · déployer une fonction · touc
 
 | # | Étape | État |
 |---|---|---|
-| 1 | Rendre `verify` honnête | ☐ |
+| 1 | Rendre `verify` honnête | ✅ 2026-08-15 |
 | 2 | Séparer l'acte et l'objet dans les capacités | ☐ |
 | 3 | La couche mission, et la chaîne objectif → travail | ☐ |
 | 4 | La configuration de Lady, versionnée | ☐ |
@@ -110,6 +110,37 @@ ment invalide tout ce qui vient après.
 **✅ Terminé quand :** `pnpm run verify` sans base **échoue** avec un message explicite ; avec les
 deux bases, il passe et `apps/worker` affiche 151 tests exécutés, pas 16.
 
+### Fait le 2026-08-15 — `scripts/verifier-avec-base.mjs`
+
+`verify` orchestre désormais tout ce qui exige une base. Avant / après :
+
+| | avant | après |
+|---|---|---|
+| `apps/worker` | 16 exécutés, 135 sautés | **151 exécutés** |
+| `apps/vitrine` | 4 exécutés, 17 sautés | **21 exécutés** |
+| Fonctions Deno | 24 passés, 6 ignorés | **30 passés, 0 ignoré** |
+| Sans base | vert | **échoue, avec la marche à suivre** |
+
+Trois gardes refusent de commencer plutôt que de détruire : une base distante, deux chaînes de
+connexion identiques (la vitrine effacerait le schéma du cœur), un Postgres injoignable.
+
+**Deux choses trouvées en chemin, qui ne sont pas refermées :**
+
+1. **Un test instable, réel.** `EXEC-12 — refuse une capacité que le client n'a pas activée`
+   (`apps/worker/src/boucle.integration.test.ts`) : **0 échec sur 16** quand le worker tourne seul
+   sur une base fraîche, y compris sous charge processeur — **2 échecs sur 9** quand il tourne au
+   sein de l'ensemble des paquets, en parallèle comme en série. Le script adopte la configuration
+   prouvée stable (chaque suite reçoit une base neuve, seule), ce qui rend `verify` fiable
+   aujourd'hui — mais **la fragilité du test demeure**. Le test n'exécute qu'UN travail et suppose
+   que c'est le sien ; la piste ouverte est l'ordre des fichiers, que vitest ajuste d'après les
+   durées précédentes. **À corriger à l'étape 3**, qui rouvre justement la chaîne mission → travail.
+2. **L'intégration continue garde sa propre définition.** Son job `schema` fait la même chose en
+   trois étapes écrites à la main, et ne lance ni `packages/runtime` ni les tests de parité Deno
+   contre une base. Le dépôt écrit lui-même que *« deux définitions de "vérifié" finiraient par
+   diverger »*. Faire appeler `verify:base` par la CI est la suite naturelle ; ça demande d'ajouter
+   Deno au job `schema` et de fusionner deux travaux — non fait ici parce que non exécutable
+   depuis le poste, donc non vérifiable avant envoi.
+
 ---
 
 ## Étape 2 — Séparer l'acte et l'objet dans les capacités
@@ -139,6 +170,10 @@ existe mais ne fabrique pas le travail.
 
 Une mission : une composition ordonnée d'actes, un déclencheur, une condition de fin, une métrique.
 Elle appartient à la configuration et se rattache à un objectif.
+
+**À refermer ici, hérité de l'étape 1 :** le test `EXEC-12 — refuse une capacité que le client n'a
+pas activée` n'exécute qu'un travail et suppose que c'est le sien. Une fois la chaîne
+mission → travail explicite, il doit pouvoir viser SA mission au lieu de parier sur la file.
 
 **✅ Terminé quand :** une tâche ne peut pas exister sans mission, une mission pas sans objectif —
 et c'est la base qui le refuse, pas le code.
