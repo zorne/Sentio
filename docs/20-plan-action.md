@@ -1,5 +1,10 @@
 # 20 — Plan d'action : de zéro au premier client payant
 
+> ⚠️ **Ce n'est plus le fil d'exécution depuis le 2026-08-15.** Le document qui dit quoi faire
+> ensuite est [`29-plan-jusquau-premier-client.md`](29-plan-jusquau-premier-client.md), écrit après
+> ADR-0029 et un état des lieux vérifié. Ce fichier-ci garde l'historique des lots déjà faits et le
+> détail de chaque phase — il reste utile, il ne se suit plus.
+
 > À lire si tu travailles sur : **n'importe quoi**. C'est le document qui dit quoi faire ensuite.
 >
 > [`12-roadmap.md`](12-roadmap.md) donne les lots, [`18-backlog.md`](18-backlog.md) les tâches.

@@ -18,6 +18,12 @@ sont écrits — schéma et noyau ; le lot 2 est réorienté vers le noyau Lady 
 > un noyau généraliste configuré dynamiquement, ou ramène-t-elle vers des agents spécialisés par
 > métier ?* Si c'est la seconde, elle ne s'implémente pas.
 
+> 📍 **« Continue le plan » ⇒ [`docs/29-plan-jusquau-premier-client.md`](docs/29-plan-jusquau-premier-client.md).**
+> L'étape courante est la première non cochée de son tableau de bord. Une étape à la fois, dans
+> l'ordre, et jamais cochée sans que son critère « Terminé quand » passe. Les étapes marquées
+> ⛔ HUMAIN ne sont jamais exécutées par un agent : pousser un schéma, poser un secret, déployer,
+> engager une dépense, signer.
+
 **L'interface vit dans `apps/vitrine`** (Next.js 15), fusionnée depuis un dépôt antérieur et
 déployée sur Vercel, avec son propre noyau dans `packages/vitrine-core`. Elle ne partage encore
 rien avec `packages/core`, `domain`, `capabilities` ni `db` : ce sont deux ensembles cohérents
