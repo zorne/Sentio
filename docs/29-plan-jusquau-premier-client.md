@@ -15,6 +15,23 @@
 **Pour reprendre le travail, il suffit de dire : « continue le plan ».** L'étape courante est la
 première dont la case n'est pas cochée dans le tableau de bord ci-dessous.
 
+### La forme du plan — décidée le 2026-08-15
+
+**On construit d'abord un produit qui fonctionne. La vente vient après.**
+
+La partie I ne contient que du travail exécutable par un agent : ni geste d'infrastructure, ni
+argent, ni signature, ni démarche administrative. Elle se déroule d'un bout à l'autre sans jamais
+attendre après quoi que ce soit d'extérieur.
+
+La partie II regroupe **tout ce qui dépend du fondateur** — mise en ligne, légal, vente. Rien n'y
+est entamé avant que la partie I ne soit finie.
+
+*Conséquence assumée, dite une fois et pas répétée :* l'immatriculation est le seul élément du plan
+qu'aucun travail de code ne peut rattraper, parce qu'elle dépend d'un délai administratif. Placée en
+partie II, elle devient le chemin critique de la fin. Si tu veux comprimer le calendrier sans rien
+changer à l'ordre, dépose le dossier au moment où tu attaques l'étape 9 — il courra en silence
+pendant que la construction se termine. C'est un levier, pas une consigne.
+
 ### Les cinq règles, non négociables
 
 1. **Une étape à la fois, dans l'ordre.** Aucune étape ne se saute, même si elle paraît facile.
@@ -23,9 +40,9 @@ première dont la case n'est pas cochée dans le tableau de bord ci-dessous.
    impression d'avancement. Si le critère ne passe pas, l'étape n'est pas finie.
 3. **`pnpm run verify` doit être vert avant de cocher quoi que ce soit.** C'est la définition
    unique de « vérifié » ([`adr/0024`](adr/0024-verification-automatique.md)).
-4. **Les étapes marquées ⛔ HUMAIN ne sont jamais faites par un agent.** Elles touchent une
-   infrastructure réelle, de l'argent réel ou une signature. Un agent les prépare, les explique,
-   et s'arrête.
+4. **Aucune étape de la partie I n'attend une décision du fondateur.** Si une question de produit
+   surgit en cours de route, l'agent la note en fin de ce fichier et continue sur l'hypothèse la
+   plus prudente. Il ne s'arrête pas.
 5. **Toute découverte d'architecture se signale** — un manque structurel trouvé en écrivant du
    code se dit, il ne se contourne pas.
 
@@ -38,60 +55,42 @@ Pousser un schéma en ligne · poser un secret · déployer une fonction · touc
 
 ## Tableau de bord
 
-| # | Étape | Qui | État |
-|---|---|---|---|
-| 0 | Décision d'ordre + démarrer l'immatriculation | ⛔ humain | ☐ |
-| 1 | Rendre `verify` honnête | agent | ☐ |
-| 2 | Séparer l'acte et l'objet dans les capacités | agent | ☐ |
-| 3 | La couche mission, et la chaîne objectif → travail | agent | ☐ |
-| 4 | La configuration de Lady, versionnée | agent | ☐ |
-| 5 | Le noyau perd le métier ; la recommandation vise une configuration | agent | ☐ |
-| 6 | Les constats d'audit et le moteur de composition | agent | ☐ |
-| 7 | Le runtime fabrique le travail à partir des missions | agent | ☐ |
-| 8 | Un deuxième domaine dans la bibliothèque | agent | ☐ |
-| 9 | Pouvoir encaisser | agent | ☐ |
-| 10 | L'espace client, version minimale | agent | ☐ |
-| 11 | Le filet : alerte et sauvegarde | agent | ☐ |
-| 12 | Mise en ligne | ⛔ humain | ☐ |
-| 13 | Mentions légales et CGV définitives | ⛔ humain | ☐ |
-| 14 | Répétition générale, en réel | mixte | ☐ |
-| 15 | Vendre | ⛔ humain | ☐ |
+### Partie I — Construire *(agent, sans interruption)*
+
+| # | Étape | État |
+|---|---|---|
+| 1 | Rendre `verify` honnête | ☐ |
+| 2 | Séparer l'acte et l'objet dans les capacités | ☐ |
+| 3 | La couche mission, et la chaîne objectif → travail | ☐ |
+| 4 | La configuration de Lady, versionnée | ☐ |
+| 5 | Le noyau perd le métier | ☐ |
+| 6 | Les constats d'audit et le moteur de composition | ☐ |
+| 7 | Le runtime fabrique le travail | ☐ |
+| 8 | Un deuxième domaine dans la bibliothèque | ☐ |
+| 9 | Pouvoir encaisser | ☐ |
+| 10 | L'espace client, version minimale | ☐ |
+| 11 | Le filet : alerte et sauvegarde | ☐ |
+| 12 | Répétition générale, à blanc | ☐ |
+
+### Partie II — Mettre en vente *(⛔ fondateur uniquement)*
+
+| # | Étape | État |
+|---|---|---|
+| 13 | Immatriculation | ☐ |
+| 14 | Mentions légales, CGV, registre, analyse d'impact | ☐ |
+| 15 | Mise en ligne : schéma, secrets, déploiement | ☐ |
+| 16 | Répétition générale, en réel | ☐ |
+| 17 | Vendre | ☐ |
 
 ---
 
-# Étape 0 — Décision d'ordre, et démarrer l'immatriculation ⛔ HUMAIN
+# PARTIE I — CONSTRUIRE
 
-**Deux gestes, le même jour.**
-
-### 0.1 — Trancher l'ordre
-
-La question : **basculer vers Lady avant de vendre, ou vendre d'abord avec le commercial existant ?**
-
-Ce plan est écrit sur la première réponse. La raison est factuelle : au 15 août 2026, la base en
-ligne contient **zéro entreprise, zéro employé, zéro diagnostic**. Réorganiser le schéma maintenant
-ne demande de convertir aucune donnée de client. La même opération avec trente entreprises coûte
-dix fois plus, et se fait sous contrainte de service.
-
-*Si tu choisis l'autre ordre :* les étapes 2 à 8 passent après l'étape 15, et le premier client est
-vendu sur un employé commercial figé. Tout le reste du plan est inchangé — mais la dette est réelle
-et il faudra la payer avec des clients en production.
-
-**✅ Terminé quand :** la réponse est écrite dans ce fichier, à cette ligne.
-**→ Décision :** *(à remplir)*
-
-### 0.2 — Démarrer l'immatriculation
-
-C'est le seul élément du plan avec un **délai administratif** que rien n'accélère. Il bloque
-l'étape 13 (mentions légales et CGV définitives), qui bloque l'étape 15 (vendre). Lancé aujourd'hui,
-il court en parallèle de tout le reste et ne sera jamais le chemin critique. Lancé au moment de
-vendre, il l'est.
-
-**✅ Terminé quand :** le dossier est déposé et la date de dépôt est notée ici.
-**→ Déposé le :** *(à remplir)*
+*Douze étapes, aucune ne dépend de toi. Un agent peut les enchaîner de bout en bout.*
 
 ---
 
-# Étape 1 — Rendre `verify` honnête
+## Étape 1 — Rendre `verify` honnête
 
 **Le problème, constaté le 2026-08-15.** `pnpm run verify` est vert alors que **152 tests
 d'intégration sautent en silence** — 135 dans `apps/worker`, 17 dans `apps/vitrine`. Ils ne
@@ -105,7 +104,7 @@ chaque `git push`.
 séparées, comme la CI : `sentio_test` pour le cœur, `vitrine_test` pour la vitrine — les migrations
 de la vitrine effacent le schéma du cœur si on les lance sur la même base.
 
-**Pourquoi en premier.** Toutes les étapes suivantes seront validées par `verify`. Un contrôle qui
+**Pourquoi en premier.** Les onze étapes suivantes seront validées par `verify`. Un contrôle qui
 ment invalide tout ce qui vient après.
 
 **✅ Terminé quand :** `pnpm run verify` sans base **échoue** avec un message explicite ; avec les
@@ -113,7 +112,7 @@ deux bases, il passe et `apps/worker` affiche 151 tests exécutés, pas 16.
 
 ---
 
-# Étape 2 — Séparer l'acte et l'objet dans les capacités
+## Étape 2 — Séparer l'acte et l'objet dans les capacités
 
 Aujourd'hui une capacité s'appelle `relancer_un_prospect` : l'objet est enfermé dans le nom. C'est
 ce qui empêche la bibliothèque de dépasser le commercial.
@@ -131,7 +130,7 @@ capacité ne contient de nom d'objet.
 
 ---
 
-# Étape 3 — La couche mission, et la chaîne objectif → travail
+## Étape 3 — La couche mission, et la chaîne objectif → travail
 
 **Le trou, constaté dans le schéma.** `task` n'a aucun lien vers un objectif. `objective` n'a aucun
 lien vers un employé ni une mission. Il n'y a donc rien entre « le dirigeant veut +5 000 €/mois » et
@@ -146,7 +145,7 @@ et c'est la base qui le refuse, pas le code.
 
 ---
 
-# Étape 4 — La configuration de Lady, versionnée
+## Étape 4 — La configuration de Lady, versionnée
 
 Deux tables : la configuration active, et l'historique de ses versions. Chaque version porte son
 déclencheur, sa raison, le diagnostic qui l'a produite, la version précédente, et l'accord qui l'a
@@ -158,12 +157,17 @@ l'a provoqué, quels résultats ont été observés, quelle politique l'a permis
 **Règle absolue :** une configuration ne peut que **retrancher** aux pouvoirs du noyau. Jamais en
 ajouter. Cette garantie doit être mécanique — vérifiée par la base, pas par une relecture.
 
+**Question de produit non tranchée, et son hypothèse de travail.** Une même Lady peut-elle porter
+plusieurs domaines à la fois ? **Hypothèse retenue : oui**, le modèle de données l'autorise. C'est
+le choix réversible — restreindre plus tard coûte une contrainte, élargir plus tard coûte une
+migration.
+
 **✅ Terminé quand :** un test prouve qu'une configuration tentant d'activer une capacité absente du
 noyau est refusée par la base.
 
 ---
 
-# Étape 5 — Le noyau perd le métier
+## Étape 5 — Le noyau perd le métier
 
 `employee_definition` porte aujourd'hui `unique (profession, version)` : le métier est l'identité du
 noyau. Il devient le **Lady Core** : capacités concevables, limites fondamentales, règles, version.
@@ -179,7 +183,7 @@ schéma passent, et un employé existant reste attaché à sa version d'origine.
 
 ---
 
-# Étape 6 — Les constats d'audit et le moteur de composition
+## Étape 6 — Les constats d'audit et le moteur de composition
 
 Le diagnostic produit des **constats typés** — force, faiblesse, goulot, risque, opportunité —
 chacun avec sa source et sa confiance. Puis un moteur **déterministe** les pondère et sélectionne
@@ -196,7 +200,7 @@ contrastés, et qu'aucune configuration ne sort du vocabulaire écrit.
 
 ---
 
-# Étape 7 — Le runtime fabrique le travail
+## Étape 7 — Le runtime fabrique le travail
 
 Le moteur dérive les tâches des missions au lieu de réveiller ce qui existe déjà. Et
 `assembleContext` n'injecte que les capacités de la configuration active — jamais la bibliothèque
@@ -207,13 +211,13 @@ lot de travail sans qu'aucune tâche n'ait été créée à la main.
 
 ---
 
-# Étape 8 — Un deuxième domaine dans la bibliothèque
+## Étape 8 — Un deuxième domaine dans la bibliothèque
 
 Le minimum pour que le diagnostic ait un vrai choix : **la communication entrante**
 (`accuser_reception`, `router`, `repondre`, `escalader`).
 
 Tant qu'un seul domaine existe, la recommandation reste un théâtre à issue unique — le problème
-qu'ADR-0007 avait déjà identifié en 2026-07-27, et qui revient tel quel si on l'oublie.
+qu'ADR-0007 avait déjà identifié le 2026-07-27, et qui revient tel quel si on l'oublie.
 
 Chaque acte : un contrat, une classe d'effet, un moteur lié pour chaque formule vendable, un test.
 Le déploiement échoue déjà tout seul si un acte n'a pas de moteur — ne pas contourner ce contrôle.
@@ -223,7 +227,7 @@ réellement différentes, et la différence s'explique par les constats.
 
 ---
 
-# Étape 9 — Pouvoir encaisser
+## Étape 9 — Pouvoir encaisser
 
 Les dix tâches `RECRUT-01` → `RECRUT-10`. Aujourd'hui, **personne ne peut acheter** — même si dix
 dirigeants le voulaient.
@@ -233,12 +237,18 @@ navigateur) → réservation d'une identité → création de l'employé sur une
 initialisé depuis le diagnostic → connexion par lien magique → rattachement au compte créé pendant
 le diagnostic.
 
+Tout se construit et se teste avec un prestataire de paiement **en mode bac à sable**. Aucun compte
+réel, aucune somme réelle, aucune signature — cela appartient à la partie II.
+
+*(C'est ici que tu peux déposer l'immatriculation si tu veux comprimer le calendrier. Voir plus
+haut.)*
+
 **✅ Terminé quand :** un parcours d'achat complet passe de bout en bout en test, et qu'une
 confirmation de paiement falsifiée est refusée.
 
 ---
 
-# Étape 10 — L'espace client, version minimale
+## Étape 10 — L'espace client, version minimale
 
 Pas les 21 tâches du dashboard. **Neuf**, celles sans lesquelles un client qui paie résilie au
 premier mois :
@@ -253,7 +263,7 @@ premier mois :
 - **approuver ou refuser une action suspendue**
 - **le réglage du niveau d'autonomie**
 
-Les deux derniers ne sont pas du confort : sans eux, Lady se bloque en t'attendant, et personne ne
+Les deux derniers ne sont pas du confort : sans eux, Lady se bloque en attendant, et personne ne
 peut la débloquer sauf toi.
 
 Le reste du dashboard (CRM, ROI, temps économisé, repères, exclusions) attend le deuxième client.
@@ -263,9 +273,9 @@ autonomie — sans jamais passer par toi.
 
 ---
 
-# Étape 11 — Le filet : alerte et sauvegarde
+## Étape 11 — Le filet : alerte et sauvegarde
 
-**C'est l'étape qui décide si tu peux dormir.**
+**C'est l'étape qui décide si tu pourras dormir une fois en ligne.**
 
 - **L'alerte** (`CONF-07`) : un email quand un quota approche, quand des tâches échouent, quand une
   tâche reste bloquée, quand la base grossit anormalement. Aujourd'hui, si le moteur s'arrête,
@@ -273,44 +283,81 @@ autonomie — sans jamais passer par toi.
   pas théorique : un travail programmé a échoué 72 fois par jour avant d'être remarqué.
 - **La sauvegarde** (`CONF-06`) : un export hors plateforme. Il n'y en a aucune.
 
-**Ne pas repousser cette étape après le premier client.** Un incident invisible chez un client
-payant coûte plus que les deux jours gagnés à la sauter.
+Le code se construit et se teste entièrement en local. Le branchement sur le vrai service d'envoi
+appartient à la partie II.
 
-**✅ Terminé quand :** une panne provoquée volontairement déclenche l'email dans les minutes qui
+**✅ Terminé quand :** une panne provoquée volontairement déclenche l'alerte dans les minutes qui
 suivent, et une sauvegarde est restaurée avec succès sur une base vierge.
 
 ---
 
-# Étape 12 — Mise en ligne ⛔ HUMAIN
+## Étape 12 — Répétition générale, à blanc
 
-Trois gestes, dans cet ordre. Un agent peut préparer, expliquer et vérifier après — jamais exécuter.
+Le parcours entier joué en local, de bout en bout, sans qu'aucune donnée ne soit saisie à la main :
+un diagnostic → une configuration de Lady → un paiement en bac à sable → un employé créé → un lot de
+travail produit → une action suspendue → un accord donné depuis l'espace client → un résultat
+observé.
+
+C'est le contrôle qui dit que **le produit existe**. Tout ce qui vient après est de la mise en
+service.
+
+**✅ Terminé quand :** le parcours complet passe en une seule exécution automatisée, et chaque écart
+constaté est corrigé.
+
+---
+
+# PARTIE II — METTRE EN VENTE
+
+⛔ **Tout ce qui suit t'appartient.** Un agent prépare, explique, rédige des brouillons et vérifie
+après coup. Il n'exécute rien : ces étapes touchent une infrastructure réelle, de l'argent réel ou
+une signature.
+
+---
+
+## Étape 13 — Immatriculation
+
+Le seul élément du plan avec un délai qu'aucun travail ne raccourcit. Il bloque l'étape 14, qui
+bloque l'étape 17.
+
+**✅ Terminé quand :** l'immatriculation est obtenue, et la date est notée ici.
+**→ Déposé le :** *(à remplir)* **→ Obtenu le :** *(à remplir)*
+
+---
+
+## Étape 14 — Le légal
+
+Mentions légales définitives, CGU/CGV, registre des traitements RGPD, analyse d'impact (décision
+automatisée). Un agent peut rédiger les brouillons complets à partir des documents déjà présents
+dans le dépôt ; la relecture, l'adaptation et la publication te reviennent.
+
+À traiter dans le même mouvement : la vérification des conditions d'usage commercial des offres
+gratuites sur lesquelles le produit repose, et les contrats de sous-traitance par prestataire.
+
+**✅ Terminé quand :** les documents sont publiés et datés.
+
+---
+
+## Étape 15 — Mise en ligne
+
+Trois gestes, dans cet ordre.
 
 1. **Pousser le schéma.** Au 15 août, **4 migrations du 12 août ne sont pas appliquées** en ligne
-   (profils sectoriels, relance, variantes de stratégie, liste d'attente), auxquelles s'ajouteront
+   (profils sectoriels, relance, variantes de stratégie, liste d'attente), auxquelles s'ajoutent
    celles des étapes 2 à 8.
 2. **Poser les six secrets.** Les six manquent tous aujourd'hui.
 3. **Déployer les fonctions.** Aucune n'est déployée à ce jour.
 
-Et avant tout envoi réel, **l'opt-out d'entraînement chez le fournisseur de modèle** — sans lui,
+Et avant tout envoi réel : **l'opt-out d'entraînement chez le fournisseur de modèle**. Sans lui,
 aucune donnée réelle ne doit partir.
 
 **✅ Terminé quand :** `pnpm run deploiement:verifier --distant` passe entièrement.
 
 ---
 
-# Étape 13 — Mentions légales et CGV définitives ⛔ HUMAIN
+## Étape 16 — Répétition générale, en réel
 
-Dépend de l'immatriculation lancée à l'étape 0. Mentions légales, CGU/CGV, registre des
-traitements, analyse d'impact.
-
-**✅ Terminé quand :** les documents sont publiés et datés.
-
----
-
-# Étape 14 — Répétition générale, en réel
-
-Toi comme premier client. Un vrai diagnostic, un vrai paiement (remboursé), un vrai employé, un vrai
-envoi vers une adresse que tu contrôles.
+Toi comme premier client. Un vrai diagnostic, un vrai paiement (remboursé ensuite), un vrai employé,
+un vrai envoi vers une adresse que tu contrôles.
 
 C'est la seule étape qui teste ce qu'aucun test ne teste : l'écart entre la base locale et la base
 en ligne, la vraie latence, le vrai fournisseur de modèle, la vraie délivrabilité.
@@ -320,17 +367,31 @@ corrigé, soit écrit ici.
 
 ---
 
-# Étape 15 — Vendre ⛔ HUMAIN
+## Étape 17 — Vendre
 
 **✅ Terminé quand :** un euro est encaissé et une entreprise existe en base.
 
 ---
 
-## Ce qui vient juste après, et qu'on ne fait pas avant
+## Questions de produit soulevées en chemin
+
+*Un agent qui rencontre une question de produit pendant la partie I l'écrit ici et continue sur
+l'hypothèse la plus prudente. Elles se tranchent au moment de la partie II, jamais avant.*
+
+| Question | Hypothèse retenue | Soulevée à |
+|---|---|---|
+| Une Lady peut-elle porter plusieurs domaines à la fois ? | Oui — restreindre plus tard coûte une contrainte, élargir plus tard coûte une migration | Étape 4 |
+| Le mot « métier » survit-il côté client ? | Oui, comme étiquette de restitution seulement — jamais en entrée | ADR-0029 |
+| Quel plancher de couverture déclenche `hors_perimetre` ? | Le mécanisme existant est conservé tel quel ; le seuil se règle en données | ADR-0029 |
+| Un changement de configuration se déploie-t-il sans accord du dirigeant ? | Non — accord requis par défaut, comme toute action irréversible | ADR-0029 |
+
+---
+
+## Ce qui vient après le premier euro
 
 L'évolution de l'employé, le reste du dashboard, le CRM client, le calcul du ROI, les profils
 sectoriels supplémentaires, l'extension de la bibliothèque au-delà de deux domaines. Tout cela rend
-le produit meilleur ; rien de tout cela n'est nécessaire pour le premier euro.
+le produit meilleur ; rien n'est nécessaire pour le premier euro.
 
 ## Et sur « ne plus rien toucher pendant cinq mois »
 
