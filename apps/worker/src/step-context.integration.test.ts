@@ -80,6 +80,19 @@ describeIfDatabase("Le contexte du pas courant, sur un vrai Postgres", () => {
       `insert into employee (tenant_id, employee_definition_id, identity_id) values ($1, $2, $3) returning id`,
       [tenantId, definition?.id, identity?.id],
     );
+    // La configuration porte le RÔLE, que le noyau ne porte plus (`20260815120004`). Sans elle,
+    // le contexte n'écrit aucune ligne de rôle — et c'est le comportement voulu : une Lady sans
+    // configuration n'en a pas. Aucune capacité n'y est activée ici : cette suite éprouve
+    // l'assemblage du contexte, pas l'ouverture des pouvoirs.
+    await sql.query(
+      `insert into lady_configuration
+         (tenant_id, employee_id, version, role, priorites, autonomie, declencheur, raison)
+       values ($1, $2, 1, 'prospection',
+               '["élargir le nombre d''entreprises approchées"]'::jsonb,
+               'confirm', 'recrutement', 'Frein déclaré : trop peu d''entreprises approchées.')`,
+      [tenantId, employee?.id],
+    );
+
     const [task] = await sql.query<{ id: string }>(
       "insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id) " +
         "values ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), 'lead', gen_random_uuid()) returning id",
@@ -148,7 +161,7 @@ describeIfDatabase("Le contexte du pas courant, sur un vrai Postgres", () => {
     if (!resultat.ok) throw new Error(`chargement refusé : ${JSON.stringify(resultat.manques)}`);
 
     const texte = textOf(resultat.contexte.turns);
-    expect(texte).toContain("Métier : commercial"); // couche 1
+    expect(texte).toContain("Rôle actuel : prospection"); // couche 1 — le rôle vient de la configuration
     expect(texte).toContain("architectes en Bretagne"); // couche 3
     expect(texte).toContain("Marc préfère être appelé le matin"); // couche 4
     expect(texte).toContain("rendez_vous_qualifies"); // couche 5

@@ -65,7 +65,7 @@ Pousser un schéma en ligne · poser un secret · déployer une fonction · touc
 | 4 | La configuration de Lady, versionnée | ✅ 2026-08-15 |
 | 5 | Le noyau perd le métier | ✅ 2026-08-15 |
 | 6 | Les constats d'audit et le moteur de composition | ✅ 2026-08-15 |
-| 7 | Le runtime fabrique le travail | ☐ |
+| 7 | Le runtime fabrique le travail | ✅ 2026-08-15 |
 | 8 | Un deuxième domaine dans la bibliothèque | ☐ |
 | 9 | Pouvoir encaisser | ☐ |
 | 10 | L'espace client, version minimale | ☐ |
@@ -444,6 +444,44 @@ entière, sous peine de détruire le raisonnement du modèle.
 
 **✅ Terminé quand :** un employé neuf, avec un objectif et une configuration, produit son premier
 lot de travail sans qu'aucune tâche n'ait été créée à la main.
+
+### Fait le 2026-08-15 — `20260815120006`, `20260815120007`, `apps/worker/src/premier-lot.integration.test.ts`
+
+**Le chaînon manquant n'était pas là où le plan le croyait.** L'approvisionnement fabriquait déjà
+les missions ; ce qui manquait était en amont : `lady_configuration` disait ce que Lady **devait**
+faire, `employee_capability` ce qu'elle **pouvait** faire, et **rien ne reliait les deux**. Aucun
+chemin de production n'écrivait `employee_capability` — les seules insertions vivaient dans des
+fixtures de test. Un employé recruté n'avait donc aucun pouvoir, et la configuration était une
+intention sans effet.
+
+`appliquer_la_configuration()` referme ça en **un seul geste atomique** : désactiver l'ancienne
+version, activer la neuve, réaligner les capacités ouvertes, reporter l'autonomie. Fait au bord en
+quatre requêtes, la moindre interruption laisserait un employé dont les pouvoirs ne correspondent
+à aucune configuration — et personne ne s'en apercevrait, chaque table étant cohérente prise
+isolément.
+
+**`employee_capability` devient une projection de la configuration.** Le retrait compte autant que
+l'ajout : une capacité qu'une nouvelle version ne reprend pas cesse d'être utilisable. Sans ça,
+« une configuration retranche au périmètre » serait faux — Lady garderait indéfiniment tout pouvoir
+ouvert un jour.
+
+**Le mot « Métier » a disparu du contexte du modèle**, comme annoncé à l'étape 5. La première ligne
+lue par Lady est désormais son **rôle**, tiré de la configuration active, suivi de ses priorités.
+Sans configuration, aucune ligne de rôle : une Lady non configurée n'en a pas, et lui en inventer un
+serait exactement la faute que le reste de l'architecture rend impossible.
+
+**Un défaut que j'avais introduit à l'étape 4, trouvé en écrivant ce test.** L'immuabilité de
+`lady_configuration` refusait *toute* suppression — donc aussi celle qui vient d'une cascade,
+c'est-à-dire **l'effacement d'une entreprise**. Deux choses étaient confondues sous le même refus :
+réécrire l'histoire (interdit, sans exception) et effacer un client (obligatoire, par un chemin
+explicite). Le verrou les distingue maintenant, selon le motif déjà établi pour le journal. Et
+`erase_tenant()` emporte désormais les configurations : elles portent le rôle décidé **et la raison
+en clair**, c'est-à-dire de la donnée client.
+
+**Le critère est prouvé de bout en bout** par une suite dédiée (`LADY-G`) qui n'écrit **aucune
+ligne de `task`** : trois prospects confiés, une configuration appliquée, et trois missions
+apparaissent — chacune rattachée à son objectif, chacune mise en file. Elle vérifie aussi que Lady
+travaille sous le rôle de sa configuration, et que ses pouvoirs viennent d'elle et non du noyau.
 
 ---
 

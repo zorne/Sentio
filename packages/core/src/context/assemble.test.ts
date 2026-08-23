@@ -17,6 +17,12 @@ const DNA: EmployeeDna = {
   limites: ["comptabilité", "juridique", "recrutement de personnes"],
 };
 
+/** La configuration active : c'est elle qui porte le rôle, plus l'ADN (`docs/adr/0029`). */
+const CONFIGURATION = {
+  role: "prospection",
+  priorites: ["élargir le nombre d'entreprises approchées"],
+};
+
 function fact(overrides: Partial<LearnedFact> & { fact: string }): LearnedFact {
   return {
     id: (overrides.id ?? `fact-${overrides.fact.slice(0, 8)}`) as LearnedFact["id"],
@@ -67,6 +73,7 @@ describe("assemblage — l'ordre des couches", () => {
   it("place l'ADN en premier, toujours", () => {
     const context = assembleContext({
       dna: DNA,
+      configuration: CONFIGURATION,
       profile: [profileEntry("secteur", "menuiserie")],
       facts: [fact({ fact: "Les relances du mardi marchent mieux." })],
       task: { objective: "contacter cinq entreprises" },
@@ -74,7 +81,7 @@ describe("assemblage — l'ordre des couches", () => {
 
     const first = context.turns[0];
     expect(first?.role).toBe("system");
-    expect(first?.type === "text" && first.text).toMatch(/Métier : commercial/);
+    expect(first?.type === "text" && first.text).toMatch(/Rôle actuel : prospection/);
     // La tâche vient en dernier : elle précise, elle ne redéfinit pas.
     expect(context.turns[context.turns.length - 1]?.role).toBe("user");
   });
@@ -82,6 +89,7 @@ describe("assemblage — l'ordre des couches", () => {
   it("n'injecte que la mémoire active", () => {
     const context = assembleContext({
       dna: DNA,
+      configuration: CONFIGURATION,
       profile: [profileEntry("secteur", "menuiserie"), profileEntry("ancien", "obsolète", "retire")],
       facts: [
         fact({ fact: "Fait retiré par le client.", status: "retire", id: "retire" as LearnedFact["id"] }),
@@ -101,6 +109,7 @@ describe("assemblage — tri et bornage des faits appris", () => {
   it("garde les plus utilisés, puis les plus récents", () => {
     const context = assembleContext({
       dna: DNA,
+      configuration: CONFIGURATION,
       profile: [],
       facts: [
         fact({ id: "peu" as LearnedFact["id"], fact: "Peu utilisé.", usageCount: 1 }),
@@ -122,6 +131,7 @@ describe("assemblage — tri et bornage des faits appris", () => {
 
     const context = assembleContext({
       dna: DNA,
+      configuration: CONFIGURATION,
       profile: [],
       facts,
       task: { objective: "prospecter" },
@@ -137,6 +147,7 @@ describe("assemblage — filtre anti-contradiction", () => {
   it("écarte un fait appris qui heurte une limite de l'ADN", () => {
     const context = assembleContext({
       dna: DNA,
+      configuration: CONFIGURATION,
       profile: [],
       facts: [
         fact({ id: "hors" as LearnedFact["id"], fact: "Le client veut qu'on prenne en charge sa comptabilité." }),

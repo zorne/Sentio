@@ -22,7 +22,13 @@ import type { ConversationTurn } from "../conversation/turn.js";
  * anti-contradiction ci-dessous.
  */
 export interface EmployeeDna {
-  readonly profession: string;
+  /**
+   * ⚠️ Facultatif depuis `20260815120004`. Le noyau n'est plus un métier : ce qui décrit ce que
+   * Lady fait pour une entreprise est le RÔLE de sa configuration, une sortie du diagnostic
+   * (`docs/adr/0029`). Le champ subsiste pour les ADN publiés avant la bascule ; rien ne le lit
+   * plus dans le contexte assemblé.
+   */
+  readonly profession?: string;
   readonly mission: string;
   readonly perimetre: readonly string[];
   readonly limites: readonly string[];
@@ -57,8 +63,11 @@ export function parseDna(raw: unknown): EmployeeDna {
 
   const profession = record["profession"];
   const mission = record["mission"];
-  if (typeof profession !== "string" || typeof mission !== "string") {
-    throw new MalformedDna("ADN invalide : « profession » et « mission » sont obligatoires.");
+  if (typeof mission !== "string") {
+    throw new MalformedDna("ADN invalide : « mission » est obligatoire.");
+  }
+  if (profession !== undefined && typeof profession !== "string") {
+    throw new MalformedDna("ADN invalide : « profession », si présente, est un texte.");
   }
 
   const perimetre = strings(record["perimetre"], "perimetre");
@@ -71,9 +80,9 @@ export function parseDna(raw: unknown): EmployeeDna {
   }
 
   const regles = record["regles"] === undefined ? undefined : strings(record["regles"], "regles");
-  return regles === undefined
-    ? { profession, mission, perimetre, limites }
-    : { profession, mission, perimetre, limites, regles };
+  const socle = { mission, perimetre, limites };
+  const avecMetier = profession === undefined ? socle : { ...socle, profession };
+  return regles === undefined ? avecMetier : { ...avecMetier, regles };
 }
 
 /**
@@ -212,8 +221,23 @@ export interface TaskContext {
   readonly done?: readonly string[];
 }
 
+/**
+ * La configuration active de Lady pour cette entreprise. Elle porte ce que le noyau ne porte
+ * plus : **le rôle**, qui est une sortie du diagnostic et non un métier choisi (`docs/adr/0029`).
+ *
+ * Absente tant qu'aucune configuration n'a été publiée. Dans ce cas la ligne de rôle ne s'écrit
+ * pas — Lady sans configuration n'a pas de rôle, et en inventer un serait exactement la faute que
+ * tout le reste de l'architecture cherche à rendre impossible.
+ */
+export interface ConfigurationActive {
+  readonly role: string;
+  /** L'ordre de travail décidé par le diagnostic. */
+  readonly priorites: readonly string[];
+}
+
 export interface AssembleInput {
   readonly dna: EmployeeDna;
+  readonly configuration?: ConfigurationActive;
   /** Couche 2 — la connaissance du SECTEUR, rédigée par Sentio et jamais dérivée d'un client
    *  (`docs/adr/0011`). Absente tant qu'aucun profil n'existe pour le secteur du client : dans
    *  ce cas la couche ne s'écrit pas, elle ne se remplace pas par du générique. */
@@ -280,8 +304,14 @@ export function assembleContext(input: AssembleInput): AssembledContext {
   const excluded: { factId: string; reason: string }[] = [];
 
   // ── Couche 1 — l'ADN. Position non négociable : le premier tour, toujours.
+  // ⚠️ Le rôle vient de la CONFIGURATION, jamais de l'ADN. C'est ce qui distingue un noyau
+  // généraliste configuré d'un agent spécialisé : deux entreprises portant le même noyau peuvent
+  // lire ici deux rôles différents.
   const dnaLines = [
-    `Métier : ${input.dna.profession}.`,
+    ...(input.configuration === undefined ? [] : [`Rôle actuel : ${input.configuration.role}.`]),
+    ...(input.configuration === undefined || input.configuration.priorites.length === 0
+      ? []
+      : [`Priorités, dans l'ordre : ${input.configuration.priorites.join(" ; ")}.`]),
     `Mission : ${input.dna.mission}.`,
     `Périmètre : ${input.dna.perimetre.join(" ; ")}.`,
     `Limites, jamais franchies : ${input.dna.limites.join(" ; ")}.`,

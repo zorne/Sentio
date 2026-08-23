@@ -184,6 +184,19 @@ export async function loadStepContext(
   // ── Couche 2 — le secteur. Facultative par construction.
   const secteur = await chargerSecteur(sql, profil);
 
+  // ── La configuration active — ce que Lady fait pour CETTE entreprise, et pourquoi.
+  //
+  // Elle porte le rôle, que le noyau ne porte plus (`20260815120004`). Absente, la ligne de rôle
+  // ne s'écrit simplement pas : Lady sans configuration n'a pas de rôle, et lui en inventer un
+  // serait exactement la faute que tout le reste de l'architecture rend impossible.
+  const [configuration] = await sql.query<{ role: string; priorites: unknown }>(
+    `select role, priorites
+       from lady_configuration
+      where tenant_id = $1 and employee_id = $2 and active
+      limit 1`,
+    [input.tenantId, employe.id],
+  );
+
   // ── Couche 5 — l'objectif et l'état du run.
   //
   // ⚠️ `state = 'actif'` n'est pas un détail de requête. Sans ce filtre, un objectif ATTEINT ou
@@ -237,6 +250,16 @@ export async function loadStepContext(
 
   const contexte = assembleContext({
     dna,
+    ...(configuration === undefined
+      ? {}
+      : {
+          configuration: {
+            role: configuration.role,
+            priorites: Array.isArray(configuration.priorites)
+              ? (configuration.priorites as string[])
+              : [],
+          },
+        }),
     ...(secteur !== undefined && { sector: secteur }),
     profile: profil,
     facts: faits,

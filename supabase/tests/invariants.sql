@@ -876,6 +876,7 @@ begin
     select 1 from public.company_profile where tenant_id = 'c0000000-0000-0000-0000-00000000000c'
     union all select 1 from public.learned_fact where tenant_id = 'c0000000-0000-0000-0000-00000000000c'
     union all select 1 from public.objective where tenant_id = 'c0000000-0000-0000-0000-00000000000c'
+    union all select 1 from public.lady_configuration where tenant_id = 'c0000000-0000-0000-0000-00000000000c'
     union all select 1 from public.outcome where tenant_id = 'c0000000-0000-0000-0000-00000000000c'
     union all select 1 from public.notification where tenant_id = 'c0000000-0000-0000-0000-00000000000c'
     union all select 1 from public.tenant_member where tenant_id = 'c0000000-0000-0000-0000-00000000000c'
@@ -2047,6 +2048,90 @@ begin
   end if;
 
   raise notice 'OK  LADY-E — constats typés, sourcés, fermés, immuables et non dédoublés';
+end;
+$$;
+
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+-- LADY-F — appliquer une configuration : ce qu'elle retranche est réellement retiré.
+--
+-- Avant ce point, `lady_configuration` disait ce que Lady DEVAIT faire et `employee_capability`
+-- ce qu'elle POUVAIT faire — sans que rien ne relie les deux. Aucun chemin de production
+-- n'écrivait `employee_capability` : la configuration était une intention sans effet.
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  entreprise constant uuid := 'aaaaaaaa-0000-0000-0000-000000000001';
+  employe    constant uuid := 'ffffffff-0000-0000-0000-000000000001';
+  v2         uuid;
+  v3         uuid;
+  qualifier_id uuid;
+  relancer_id  uuid;
+  ouvertes   text;
+begin
+  select id into qualifier_id from public.capability where key = 'qualifier.prospect';
+  select id into relancer_id  from public.capability where key = 'relancer.prospect';
+  select id into v2 from public.lady_configuration
+   where employee_id = employe and version = 2;
+
+  -- ── 1. Appliquer une configuration ouvre EXACTEMENT ses capacités.
+  perform public.appliquer_la_configuration(v2);
+
+  select string_agg(c.key, ', ' order by c.key) into ouvertes
+    from public.employee_capability ec
+    join public.capability c on c.id = ec.capability_id
+   where ec.employee_id = employe and ec.enabled;
+
+  if ouvertes is distinct from 'relancer.prospect' then
+    raise exception
+      'ÉCHEC configuration : capacités ouvertes « % », attendu « relancer.prospect ».', ouvertes;
+  end if;
+
+  -- ── 2. ⭐ Et ce qu'une version suivante NE REPREND PAS est retiré.
+  --
+  -- C'est la moitié qu'on oublie. Sans le retrait, « une configuration retranche au périmètre »
+  -- serait faux : Lady garderait indéfiniment tout pouvoir qu'on lui a ouvert un jour.
+  update public.lady_configuration set active = false where id = v2;
+
+  insert into public.lady_configuration
+    (tenant_id, employee_id, version, role, autonomie, declencheur, raison, precedente_id, active)
+  values (entreprise, employe, 3, 'qualification', 'confirm_once', 'resultats',
+          'Les relances ne produisent plus ; on resserre sur la qualification.', v2, false)
+  returning id into v3;
+
+  insert into public.lady_configuration_capability (configuration_id, capability_id)
+  values (v3, qualifier_id);
+
+  perform public.appliquer_la_configuration(v3);
+
+  select string_agg(c.key, ', ' order by c.key) into ouvertes
+    from public.employee_capability ec
+    join public.capability c on c.id = ec.capability_id
+   where ec.employee_id = employe and ec.enabled;
+
+  if ouvertes is distinct from 'qualifier.prospect' then
+    raise exception
+      'ÉCHEC configuration : après bascule, capacités ouvertes « % » — la relance aurait dû être '
+      'retirée. Une configuration qui ne retranche pas ne retranche rien.', ouvertes;
+  end if;
+
+  -- ── 3. Une seule version active, et c'est la neuve.
+  if (select count(*) from public.lady_configuration
+       where employee_id = employe and active) <> 1 then
+    raise exception 'ÉCHEC configuration : le passage de relais a laissé deux versions actives.';
+  end if;
+  if not (select active from public.lady_configuration where id = v3) then
+    raise exception 'ÉCHEC configuration : la version appliquée n''est pas devenue l''active.';
+  end if;
+
+  -- ── 4. L'autonomie de l'employé suit la configuration, jamais l'inverse.
+  if (select autonomy from public.employee where id = employe) <> 'confirm_once' then
+    raise exception
+      'ÉCHEC configuration : l''autonomie de l''employé ne reflète pas sa configuration.';
+  end if;
+
+  raise notice
+    'OK  LADY-F — passage de relais atomique, capacités ouvertes ET retirées, autonomie reportée';
 end;
 $$;
 
