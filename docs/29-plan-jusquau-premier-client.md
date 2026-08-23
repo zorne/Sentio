@@ -63,7 +63,7 @@ Pousser un schéma en ligne · poser un secret · déployer une fonction · touc
 | 2 | Séparer l'acte et l'objet dans les capacités | ✅ 2026-08-15 |
 | 3 | La couche mission, et la chaîne objectif → travail | ✅ 2026-08-15 |
 | 4 | La configuration de Lady, versionnée | ✅ 2026-08-15 |
-| 5 | Le noyau perd le métier | ☐ |
+| 5 | Le noyau perd le métier | ✅ 2026-08-15 |
 | 6 | Les constats d'audit et le moteur de composition | ☐ |
 | 7 | Le runtime fabrique le travail | ☐ |
 | 8 | Un deuxième domaine dans la bibliothèque | ☐ |
@@ -318,6 +318,54 @@ configuration.
 
 **✅ Terminé quand :** le mot « profession » n'est plus une clé d'identité, les invariants de
 schéma passent, et un employé existant reste attaché à sa version d'origine.
+
+### Fait le 2026-08-15 — `20260815120004_lady_core.sql`
+
+`employee_definition` portait `unique (profession, version)` : **le métier était l'axe d'identité
+du noyau.** Autrement dit, le produit avait autant de noyaux que de métiers — l'architecture même
+qu'[`adr/0029`](adr/0029-noyau-lady-configure-dynamiquement.md) déclare obsolète. Il n'y en a plus
+qu'un, identifié par sa version et rien d'autre.
+
+**Le mot « profession » portait trois sens différents.** Les séparer était le vrai travail :
+
+| sens | ce qu'il devient |
+|---|---|
+| l'identité du noyau | **supprimé** — la version identifie, et elle seule |
+| le rôle de Lady | `lady_configuration.role`, une **sortie** du diagnostic |
+| le gisement de missions | colonne **renommée `gisement`** — ce sens-là est réel et n'a jamais été un métier |
+
+Le troisième était le piège : le runtime lit cette colonne pour savoir **où puiser les sujets**.
+La supprimer aurait cassé l'approvisionnement ; la garder sous son ancien nom aurait laissé le
+métier dans le noyau. Le renommage dit enfin ce qu'elle fait. Le vocabulaire suit dans le code —
+`RegistreDeGisementsParMetier` → `RegistreDeGisementsEnMemoire`, `metier_sans_gisement` →
+`gisement_inconnu`.
+
+**La borne qui manquait est posée.** L'étape 4 refusait déjà d'activer une capacité qu'aucun moteur
+ne sert — mais c'était la borne de la *formule*, annoncée comme provisoire. Le noyau porte
+désormais `capacites` : ce qu'une Lady peut **concevoir**, quelle que soit sa configuration. Les
+deux bornes tiennent maintenant ensemble, et dans cet ordre :
+
+1. **le noyau** — cette version de Lady conçoit-elle ce geste ?
+2. **la formule** — un moteur le sert-il aujourd'hui ?
+
+La première dit ce que Lady *peut être*, la seconde ce qu'elle *peut faire*. L'invariant `LADY-D`
+éprouve les deux séparément, sur un noyau v2 publié exprès pour ça.
+
+**Un noyau qui ne conçoit rien est refusé** — `capacites` doit être une liste non vide. C'est ce
+qui a fait tomber quatorze fixtures : publier un noyau sans dire ce qu'il rend possible était
+jusque-là silencieusement accepté.
+
+**La recommandation ne désigne plus un métier.** Elle porte la **configuration proposée**, comme
+donnée — celle-là même que le moteur de calibrage produisait déjà et que personne n'écrivait nulle
+part. Elle ne peut pas *pointer* une configuration : la recommandation naît pendant le diagnostic,
+avant qu'une entreprise existe. Au recrutement, elle devient la version 1. La règle d'honnêteté est
+conservée telle quelle : hors périmètre ⇒ rien de proposé.
+
+**Ce qui reste, et qui est daté.** L'ADN v1 contient encore `"profession": "commercial"` dans son
+texte, et le contexte du modèle écrit toujours `Métier : commercial`. C'est une donnée, pas une
+structure : elle disparaît à l'**étape 7**, quand `assembleContext` lira le rôle depuis la
+configuration active au lieu de le lire dans l'ADN. Le noyau v2 publié par l'invariant montre déjà
+la forme cible — une mission généraliste, aucun métier.
 
 ---
 

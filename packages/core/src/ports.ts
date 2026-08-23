@@ -124,11 +124,12 @@ export interface FileDeTravaux {
 }
 
 /**
- * Où un métier va chercher ses sujets de mission — **le seul endroit qui connaît le métier**.
+ * Où l'approvisionnement va chercher ses sujets de mission — **le seul endroit qui connaît la
+ * nature de ces sujets**.
  *
  * C'est la charnière qui garde l'approvisionnement généraliste : `planifierLApprovisionnement`
- * ne sait pas ce qu'est un prospect, il manipule des couples `(nature, identifiant)`. Le métier
- * Commercial rend des sujets `lead` ; un métier futur rendra autre chose, et ni le noyau ni le
+ * ne sait pas ce qu'est un prospect, il manipule des couples `(nature, identifiant)`. Le gisement
+ * « commercial » rend des sujets `lead` ; un gisement futur rendra autre chose, et ni le noyau ni le
  * schéma ne changeront.
  *
  * ⚠️ L'implémentation DOIT rendre une liste **ordonnée de façon déterministe** et **déjà filtrée**
@@ -150,14 +151,14 @@ export interface GisementDeMissions {
 }
 
 /**
- * Quel gisement sert quel métier.
+ * Quelle source alimente quel gisement.
  *
- * Résolu par `employee_definition.profession` — la même clé que l'ADN. Un métier sans gisement
- * n'ouvre aucune mission et le **dit** ; il ne retombe pas sur celui d'un autre métier, ce qui
+ * Résolu par `employee_definition.gisement`. Un gisement sans source déclarée
+ * n'ouvre aucune mission et le **dit** ; il ne retombe pas sur celui d'un autre, ce qui
  * ferait travailler un employé sur des sujets qui ne le concernent pas.
  */
 export interface RegistreDeGisements {
-  pour(profession: string): GisementDeMissions | null;
+  pour(gisement: string): GisementDeMissions | null;
 }
 
 /**
@@ -168,9 +169,9 @@ export interface RegistreDeGisements {
  * jour deux réponses différentes.
  */
 export interface ApprovisionnementStore {
-  /** Les employés à examiner aujourd'hui, avec leur métier. Ordonné, pour être rejouable. */
+  /** Les employés à examiner aujourd'hui, avec leur gisement. Ordonné, pour être rejouable. */
   employesAExaminer(): Promise<
-    readonly { tenantId: TenantId; employeeId: EmployeeId; profession: string }[]
+    readonly { tenantId: TenantId; employeeId: EmployeeId; gisement: string }[]
   >;
 
   /** Le verdict de `peut_ouvrir_une_mission()`, rendu tel quel — jamais interprété au passage. */

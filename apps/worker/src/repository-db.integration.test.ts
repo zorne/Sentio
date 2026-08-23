@@ -67,8 +67,8 @@ describeIfDatabase("Repositories sur un vrai Postgres", () => {
     );
 
     const [definition] = await sql.query<{ id: string }>(
-      `insert into employee_definition (profession, version, dna)
-       values ('commercial', $1, '{}'::jsonb) returning id`,
+      `insert into employee_definition (gisement, version, dna, capacites)
+       values ('commercial', $1, '{}'::jsonb, '["relancer.prospect","qualifier.prospect"]'::jsonb) returning id`,
       [Date.now() % 100000],
     );
 

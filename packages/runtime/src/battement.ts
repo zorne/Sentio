@@ -97,7 +97,7 @@ async function approvisionnerUnEmploye(
   deps: ApprovisionnementDeps,
   reglages: ReglagesRuntime,
   jour: string,
-  employe: { tenantId: TenantId; employeeId: EmployeeId; profession: string },
+  employe: { tenantId: TenantId; employeeId: EmployeeId; gisement: string },
   refus: Record<string, number>,
 ): Promise<number> {
   const verdict = await deps.store.verdict(employe.tenantId, employe.employeeId);
@@ -105,15 +105,15 @@ async function approvisionnerUnEmploye(
   // ⚠️ Le gisement n'est interrogé QUE si le verdict est favorable. L'interroger avant coûterait
   // une lecture de prospects pour un employé dont l'abonnement est résilié — c'est-à-dire lire
   // des données client sans motif, ce que la collecte minimale interdit.
-  const gisement = verdict === "ok" ? deps.gisements.pour(employe.profession) : null;
+  const gisement = verdict === "ok" ? deps.gisements.pour(employe.gisement) : null;
   if (verdict === "ok" && gisement === null) {
-    // Un métier sans gisement n'ouvre rien, et le dit. Retomber sur le gisement d'un autre métier
-    // ferait travailler cet employé sur des sujets qui ne le concernent pas.
-    refus["metier_sans_gisement"] = (refus["metier_sans_gisement"] ?? 0) + 1;
+    // Un gisement qu'on ne sait pas alimenter n'ouvre rien, et le dit. Retomber sur celui d'un
+    // autre ferait travailler cet employé sur des sujets qui ne le concernent pas.
+    refus["gisement_inconnu"] = (refus["gisement_inconnu"] ?? 0) + 1;
     await journaliser(deps, employe, APPROVISIONNEMENT_SANS_OUVERTURE, {
       jour,
-      raison: "metier_sans_gisement",
-      metier: employe.profession,
+      raison: "gisement_inconnu",
+      gisement: employe.gisement,
     });
     return 0;
   }

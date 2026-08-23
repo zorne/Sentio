@@ -100,8 +100,8 @@ describeIfDatabase("EXEC-18 — le worker démarre et sert un battement signé",
       [tenantId],
     );
     const [definition] = await sql.query<{ id: string }>(
-      `insert into employee_definition (profession, version, dna)
-       values ('commercial', $1, $2::jsonb) returning id`,
+      `insert into employee_definition (gisement, version, dna, capacites)
+       values ('commercial', $1, $2::jsonb, '["relancer.prospect","qualifier.prospect"]'::jsonb) returning id`,
       [
         versionUnique(),
         JSON.stringify({

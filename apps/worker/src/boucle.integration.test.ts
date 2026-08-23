@@ -16,7 +16,7 @@ import { createPostgresClient, type PostgresClient } from "./adapters/postgres-n
 import type { EmployeeId, TenantId } from "@sentio/domain";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { PostgresApprovisionnementStore, RegistreDeGisementsParMetier } from "@sentio/runtime";
+import { PostgresApprovisionnementStore, RegistreDeGisementsEnMemoire } from "@sentio/runtime";
 import { PostgresApprovalStore } from "@sentio/runtime";
 import { PostgresEffectLedger } from "@sentio/runtime";
 import { PostgresFileDeTravaux } from "@sentio/runtime";
@@ -179,8 +179,8 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     );
 
     const [definition] = await sql.query<{ id: string }>(
-      `insert into employee_definition (profession, version, dna)
-       values ('commercial', $1, $2::jsonb) returning id`,
+      `insert into employee_definition (gisement, version, dna, capacites)
+       values ('commercial', $1, $2::jsonb, '["relancer.prospect","qualifier.prospect"]'::jsonb) returning id`,
       [
         versionUnique(),
         JSON.stringify({
@@ -223,7 +223,7 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     await approvisionnerLeJour(
       {
         store: new PostgresApprovisionnementStore(sql),
-        gisements: RegistreDeGisementsParMetier.commercial(sql),
+        gisements: RegistreDeGisementsEnMemoire.commercial(sql),
         journal: new PostgresJournalWriter(sql),
       },
       new Date(),

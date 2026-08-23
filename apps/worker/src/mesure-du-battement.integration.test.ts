@@ -5,7 +5,7 @@ import { CapabilityRegistry, ModelGateway, PolicyEngine, type ModelProvider } fr
 import { createPostgresClient, type PostgresClient } from "./adapters/postgres-node.js";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { PostgresApprovisionnementStore, RegistreDeGisementsParMetier } from "@sentio/runtime";
+import { PostgresApprovisionnementStore, RegistreDeGisementsEnMemoire } from "@sentio/runtime";
 import { PostgresApprovalStore } from "@sentio/runtime";
 import { PostgresEffectLedger } from "@sentio/runtime";
 import { PostgresFileDeTravaux } from "@sentio/runtime";
@@ -172,8 +172,8 @@ describeIfDatabase("D16 — la durée réelle d'un battement", () => {
       [tenantId],
     );
     const [definition] = await sql.query<{ id: string }>(
-      `insert into employee_definition (profession, version, dna)
-       values ('commercial', $1, $2::jsonb) returning id`,
+      `insert into employee_definition (gisement, version, dna, capacites)
+       values ('commercial', $1, $2::jsonb, '["relancer.prospect","qualifier.prospect"]'::jsonb) returning id`,
       [
         versionUnique(),
         JSON.stringify({
@@ -241,7 +241,7 @@ describeIfDatabase("D16 — la durée réelle d'un battement", () => {
       approvisionnerLeJour(
         {
           store: new PostgresApprovisionnementStore(sql),
-          gisements: RegistreDeGisementsParMetier.commercial(sql),
+          gisements: RegistreDeGisementsEnMemoire.commercial(sql),
           journal: new PostgresJournalWriter(sql),
         },
         new Date(),
@@ -260,7 +260,7 @@ describeIfDatabase("D16 — la durée réelle d'un battement", () => {
     await approvisionnerLeJour(
       {
         store: new PostgresApprovisionnementStore(sql),
-        gisements: RegistreDeGisementsParMetier.commercial(sql),
+        gisements: RegistreDeGisementsEnMemoire.commercial(sql),
         journal: new PostgresJournalWriter(sql),
       },
       new Date(),

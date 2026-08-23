@@ -70,8 +70,8 @@ describeIfDatabase("Le journal et la reconstruction d'un run, sur un vrai Postgr
       [tenantId],
     );
     const [definition] = await sql.query<{ id: string }>(
-      `insert into employee_definition (profession, version, dna)
-       values ('commercial', $1, '{}'::jsonb) returning id`,
+      `insert into employee_definition (gisement, version, dna, capacites)
+       values ('commercial', $1, '{}'::jsonb, '["relancer.prospect","qualifier.prospect"]'::jsonb) returning id`,
       [versionUnique()],
     );
     const [identity] = await sql.query<{ id: string }>("select * from reserve_identity($1)", ["commercial"]);

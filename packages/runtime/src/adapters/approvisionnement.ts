@@ -78,15 +78,15 @@ export class GisementDeProspects implements GisementDeMissions {
  * verrait servir des prospects travaillerait sur des sujets qui ne le concernent pas, et le
  * ferait sans que rien ne le signale.
  */
-export class RegistreDeGisementsParMetier implements RegistreDeGisements {
+export class RegistreDeGisementsEnMemoire implements RegistreDeGisements {
   constructor(private readonly gisements: ReadonlyMap<string, GisementDeMissions>) {}
 
-  static commercial(sql: SqlClient): RegistreDeGisementsParMetier {
-    return new RegistreDeGisementsParMetier(new Map([["commercial", new GisementDeProspects(sql)]]));
+  static commercial(sql: SqlClient): RegistreDeGisementsEnMemoire {
+    return new RegistreDeGisementsEnMemoire(new Map([["commercial", new GisementDeProspects(sql)]]));
   }
 
-  pour(profession: string): GisementDeMissions | null {
-    return this.gisements.get(profession) ?? null;
+  pour(gisement: string): GisementDeMissions | null {
+    return this.gisements.get(gisement) ?? null;
   }
 }
 
@@ -101,14 +101,14 @@ export class PostgresApprovisionnementStore implements ApprovisionnementStore {
    * question — et masquerait la raison réelle du refus, qui est précisément ce qu'on veut lire.
    */
   async employesAExaminer(): Promise<
-    readonly { tenantId: TenantId; employeeId: EmployeeId; profession: string }[]
+    readonly { tenantId: TenantId; employeeId: EmployeeId; gisement: string }[]
   > {
     const rows = await this.sql.query<{
       tenant_id: string;
       employee_id: string;
-      profession: string;
+      gisement: string;
     }>(
-      `select e.tenant_id, e.id as employee_id, d.profession
+      `select e.tenant_id, e.id as employee_id, d.gisement
          from employee e
          join employee_definition d on d.id = e.employee_definition_id
         order by e.tenant_id, e.id`,
@@ -117,7 +117,7 @@ export class PostgresApprovisionnementStore implements ApprovisionnementStore {
     return rows.map((row) => ({
       tenantId: row.tenant_id as TenantId,
       employeeId: row.employee_id as EmployeeId,
-      profession: row.profession,
+      gisement: row.gisement,
     }));
   }
 

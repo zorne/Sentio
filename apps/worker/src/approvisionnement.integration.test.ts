@@ -8,7 +8,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
   GisementDeProspects,
   PostgresApprovisionnementStore,
-  RegistreDeGisementsParMetier,
+  RegistreDeGisementsEnMemoire,
 } from "@sentio/runtime";
 import { PostgresJournalWriter } from "@sentio/runtime";
 import { approvisionnerLeJour, jourUtc } from "@sentio/runtime";
@@ -113,8 +113,8 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
 
     const profession = options.profession ?? "commercial";
     const [definition] = await sql.query<{ id: string }>(
-      `insert into employee_definition (profession, version, dna)
-       values ($1, $2, '{}'::jsonb) returning id`,
+      `insert into employee_definition (gisement, version, dna, capacites)
+       values ($1, $2, '{}'::jsonb, '["relancer.prospect","qualifier.prospect"]'::jsonb) returning id`,
       [profession, versionUnique()],
     );
     const [identity] = await sql.query<{ id: string }>("select * from reserve_identity($1)", [
@@ -140,7 +140,7 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
   function deps(client: PostgresClient = sql) {
     return {
       store: new PostgresApprovisionnementStore(client),
-      gisements: RegistreDeGisementsParMetier.commercial(client),
+      gisements: RegistreDeGisementsEnMemoire.commercial(client),
       journal,
     };
   }
@@ -253,7 +253,7 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     const rapport = await approvisionnerLeJour(deps(), new Date());
 
     expect(await missions(tenantId)).toBe(0);
-    expect(rapport.refus["metier_sans_gisement"]).toBeGreaterThanOrEqual(1);
+    expect(rapport.refus["gisement_inconnu"]).toBeGreaterThanOrEqual(1);
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -479,8 +479,8 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
 
     // Un second employé dans la même entreprise.
     const [definition] = await sql.query<{ id: string }>(
-      `insert into employee_definition (profession, version, dna)
-       values ('commercial', $1, '{}'::jsonb) returning id`,
+      `insert into employee_definition (gisement, version, dna, capacites)
+       values ('commercial', $1, '{}'::jsonb, '["relancer.prospect","qualifier.prospect"]'::jsonb) returning id`,
       [versionUnique()],
     );
     const [identity] = await sql.query<{ id: string }>("select * from reserve_identity($1)", [

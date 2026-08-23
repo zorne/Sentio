@@ -45,7 +45,7 @@
 
 import { ModelGateway, OpenAICompatibleProvider, PolicyEngine, type CapabilityEngine } from "@sentio/core";
 
-import { PostgresApprovisionnementStore, RegistreDeGisementsParMetier } from "./adapters/approvisionnement.js";
+import { PostgresApprovisionnementStore, RegistreDeGisementsEnMemoire } from "./adapters/approvisionnement.js";
 import { PostgresApprovalStore } from "./adapters/approvals.js";
 import { chargerLeRegistre } from "./adapters/capacites.js";
 import { PostgresEffectLedger } from "./adapters/effects.js";
@@ -140,7 +140,7 @@ export function composerLExecutant(
     const approvisionnement = await approvisionnerLeJour(
       {
         store: new PostgresApprovisionnementStore(sql),
-        gisements: RegistreDeGisementsParMetier.commercial(sql),
+        gisements: RegistreDeGisementsEnMemoire.commercial(sql),
         journal,
         reglages: config.reglages,
       },

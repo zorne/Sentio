@@ -75,8 +75,8 @@ describeIfDatabase("Le noyau contre un vrai Postgres", () => {
     );
 
     const [definition] = await sql.query<{ id: string }>(
-      `insert into employee_definition (profession, version, dna)
-       values ('commercial', $1, '{}'::jsonb) returning id`,
+      `insert into employee_definition (gisement, version, dna, capacites)
+       values ('commercial', $1, '{}'::jsonb, '["relancer.prospect","qualifier.prospect"]'::jsonb) returning id`,
       [versionUnique()],
     );
     const [identity] = await sql.query<{ id: string }>("select * from reserve_identity($1)", [
@@ -126,8 +126,8 @@ describeIfDatabase("Le noyau contre un vrai Postgres", () => {
       [fresh],
     );
     const [definition] = await sql.query<{ id: string }>(
-      `insert into employee_definition (profession, version, dna)
-       values ('commercial', $1, '{}'::jsonb) returning id`,
+      `insert into employee_definition (gisement, version, dna, capacites)
+       values ('commercial', $1, '{}'::jsonb, '["relancer.prospect","qualifier.prospect"]'::jsonb) returning id`,
       [versionUnique()],
     );
     const [identity] = await sql.query<{ id: string }>("select * from reserve_identity($1)", [

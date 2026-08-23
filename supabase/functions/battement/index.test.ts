@@ -87,8 +87,8 @@ Deno.test({
         [tenantId],
       );
       const definition = await sql.query<{ id: string }>(
-        `insert into employee_definition (profession, version, dna)
-         values ('commercial', $1, $2::jsonb) returning id`,
+        `insert into employee_definition (gisement, version, dna, capacites)
+         values ('commercial', $1, $2::jsonb, '["relancer.prospect"]'::jsonb) returning id`,
         [
           Math.floor(Math.random() * 2_000_000_000),
           JSON.stringify({

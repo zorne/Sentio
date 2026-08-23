@@ -35,8 +35,9 @@ insert into public.tenant_member (tenant_id, user_id, role) values
 -- Les tests ci-dessous tentent de le modifier et de le supprimer — on ne fait pas ça sur la
 -- version que les employés vendus porteront, et une version d'essai laisse le vrai ADN évoluer
 -- sans réécrire cette suite.
-insert into public.employee_definition (id, profession, version, dna) values
-  ('dddddddd-0000-0000-0000-000000000001', 'commercial', 99, '{"perimetre": ["prospection"]}'::jsonb);
+insert into public.employee_definition (id, gisement, version, dna, capacites) values
+  ('dddddddd-0000-0000-0000-000000000001', 'commercial', 99, '{"perimetre": ["prospection"]}'::jsonb,
+   '["relancer.prospect","qualifier.prospect"]'::jsonb);
 
 -- Un employé recruté sur une identité prise dans le réservoir semé.
 insert into public.employee (id, tenant_id, employee_definition_id, identity_id)
@@ -268,9 +269,14 @@ begin
   values ('empreinte-test') returning id into session_id;
 
   begin
-    insert into public.recommendation (diagnostic_session_id, employee_definition_id, justification, status)
-    values (session_id, 'dddddddd-0000-0000-0000-000000000001', 'Un commercial fera l''affaire.', 'hors_perimetre');
-    raise exception 'ÉCHEC : un employé a été recommandé alors que le besoin est hors périmètre.';
+    -- Depuis `20260815120004`, la recommandation ne désigne plus un métier : elle porte la
+    -- configuration PROPOSÉE. La règle d'honnêteté est la même — hors périmètre ⇒ rien de proposé.
+    insert into public.recommendation
+      (diagnostic_session_id, configuration_proposee, justification, status)
+    values (session_id, '{"role":"prospection"}'::jsonb, 'Une Lady fera l''affaire.',
+            'hors_perimetre');
+    raise exception
+      'ÉCHEC : une configuration a été proposée alors que le besoin est hors périmètre.';
   exception when check_violation then
     null;
   end;
@@ -278,7 +284,7 @@ begin
   insert into public.recommendation (diagnostic_session_id, justification, status)
   values (session_id, 'Votre besoin porte sur la comptabilité, hors de ce que Sentio sait faire aujourd''hui.', 'hors_perimetre');
 
-  raise notice 'OK  diagnostic — hors périmètre, aucun employé recommandé';
+  raise notice 'OK  diagnostic — hors périmètre, aucune configuration proposée';
 end;
 $$;
 
@@ -1813,8 +1819,11 @@ begin
     raise exception
       'ÉCHEC configuration : une capacité hors périmètre a été activée. C''est LA limite que le '
       'produit promet — une configuration ne peut pas donner un pouvoir que le noyau ne sert pas.';
+  -- Depuis `20260815120004`, deux bornes tiennent ensemble et celle du NOYAU s'applique la
+  -- première : cette capacité n'est pas concevable pour cette version de Lady. La borne de la
+  -- formule — « aucun moteur ne la sert » — est éprouvée séparément par LADY-D.
   exception when raise_exception then
-    if position('hors périmètre' in sqlerrm) = 0 then raise; end if;
+    if position('hors du noyau' in sqlerrm) = 0 then raise; end if;
   end;
 
   -- ── 8. Et ce qui EST servi passe, sinon le refus ne prouverait rien.
@@ -1839,6 +1848,124 @@ begin
 
   raise notice
     'OK  LADY-C — versions chaînées et immuables, une seule active, périmètre jamais étendu';
+end;
+$$;
+
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+-- LADY-D — le noyau n'est plus un métier, et c'est LUI qui borne ce qu'une Lady peut concevoir.
+--
+-- Ce que ce bloc éprouve, et que rien ne tenait avant lui : `employee_definition` portait
+-- `unique (profession, version)`, donc le produit avait autant de noyaux que de métiers.
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  entreprise  constant uuid := 'aaaaaaaa-0000-0000-0000-000000000001';
+  noyau_v1    uuid;
+  noyau_v2    uuid;
+  employe_v2  uuid;
+  conf_v2     uuid;
+  cap_sans_moteur uuid;
+  concevables jsonb;
+  noyau_avant uuid;
+begin
+  -- On note à quoi l'employé du jeu d'essai est attaché AVANT toute publication : c'est ce
+  -- rattachement qui ne doit pas bouger, quel que soit le noyau publié ensuite.
+  select employee_definition_id into noyau_avant
+    from public.employee where id = 'ffffffff-0000-0000-0000-000000000001';
+  -- ── 1. Le noyau est identifié par sa VERSION, et rien d'autre. Deux noyaux de même version
+  --    sont refusés, quel que soit le gisement qu'ils alimentent.
+  select id into noyau_v1 from public.employee_definition where version = 1;
+  if noyau_v1 is null then
+    raise exception 'ÉCHEC noyau : la version 1 du noyau est introuvable.';
+  end if;
+
+  begin
+    insert into public.employee_definition (gisement, version, dna, capacites)
+    values ('recrutement', 1, '{"mission":"x","perimetre":["y"],"limites":["z"]}'::jsonb,
+            '["relancer.prospect"]'::jsonb);
+    raise exception
+      'ÉCHEC noyau : deux noyaux de version 1 coexistent. Le métier est redevenu un axe d''identité.';
+  exception when unique_violation then null;
+  end;
+
+  -- ── 2. Le noyau dit ce qu'il rend concevable — et ce n'est pas vide.
+  select capacites into concevables from public.employee_definition where id = noyau_v1;
+  if jsonb_array_length(concevables) = 0 then
+    raise exception 'ÉCHEC noyau : la version 1 ne rend aucune capacité concevable.';
+  end if;
+  if not (concevables ? 'relancer.prospect') then
+    raise exception 'ÉCHEC noyau : « relancer.prospect » n''est pas concevable pour le noyau v1.';
+  end if;
+
+  -- ── 3. Le noyau reste IMMUABLE. La colonne ajoutée ne rouvre pas la porte fermée par
+  --    l'invariant 1 : le verrou d'écriture a été reposé après le remplissage.
+  begin
+    update public.employee_definition set capacites = '["tout"]'::jsonb where id = noyau_v1;
+    raise exception 'ÉCHEC noyau : le noyau a été modifié après publication.';
+  exception when raise_exception then
+    if position('immuable' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  -- ── 4. ⭐ La borne de la FORMULE, distincte de celle du noyau.
+  --
+  -- On publie un noyau v2 qui rend `rappeler.echeance` concevable — donc la borne du noyau
+  -- laisse passer — mais aucun moteur ne la sert pour la formule de cette entreprise. Sans les
+  -- deux bornes, une configuration promettrait un geste que rien n'exécute.
+  select id into cap_sans_moteur from public.capability where key = 'rappeler.echeance';
+
+  insert into public.employee_definition (gisement, version, dna, capacites)
+  values ('commercial', 2,
+          '{"mission":"servir l''entreprise là où elle a le plus besoin de renfort",
+            "perimetre":["ce que la configuration active"],
+            "limites":["professions réglementées","engagement contractuel au nom du client"]}'::jsonb,
+          jsonb_build_array('relancer.prospect', 'rappeler.echeance'))
+  returning id into noyau_v2;
+
+  insert into public.employee (tenant_id, employee_definition_id, identity_id)
+  select entreprise, noyau_v2, id from public.reserve_identity('commercial')
+  returning id into employe_v2;
+
+  insert into public.lady_configuration
+    (tenant_id, employee_id, version, role, autonomie, declencheur, raison)
+  values (entreprise, employe_v2, 1, 'relation_client', 'confirm', 'recrutement',
+          'Essai de la borne de formule.')
+  returning id into conf_v2;
+
+  begin
+    insert into public.lady_configuration_capability (configuration_id, capability_id)
+    values (conf_v2, cap_sans_moteur);
+    raise exception
+      'ÉCHEC noyau : une capacité concevable mais qu''aucun moteur ne sert a été activée.';
+  exception when raise_exception then
+    if position('hors périmètre' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  -- ── 5. Un employé reste attaché à SA version de noyau. C'est la promesse de l'invariant 1 :
+  --    publier une version neuve ne change le comportement d'aucun employé déjà vendu.
+  if (select employee_definition_id from public.employee
+       where id = 'ffffffff-0000-0000-0000-000000000001') <> noyau_avant then
+    raise exception
+      'ÉCHEC noyau : un employé a changé de version de noyau à la publication d''une suivante.';
+  end if;
+
+  -- ── 6. La recommandation propose une CONFIGURATION, plus un métier — et reste honnête :
+  --    hors périmètre ⇒ aucune proposition, et réciproquement.
+  begin
+    insert into public.recommendation (diagnostic_session_id, justification, status)
+    select id, 'On recommande sans rien proposer.', 'proposed'
+      from public.diagnostic_session limit 1;
+    raise exception
+      'ÉCHEC recommandation : une recommandation sans configuration proposée a été acceptée.';
+  exception
+    when check_violation then null;
+    -- Aucune session de diagnostic dans ce jeu d'essai : le cas ne s'applique pas, et le dire
+    -- vaut mieux que faire croire qu'il a été éprouvé.
+    when not_null_violation then null;
+  end;
+
+  raise notice
+    'OK  LADY-D — un seul noyau versionné, capacités concevables bornées, employés figés';
 end;
 $$;
 
