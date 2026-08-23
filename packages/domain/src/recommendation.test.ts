@@ -7,6 +7,7 @@ import {
   recommend,
   type DiagnosticProfile,
   type RecommendationDecision,
+  ROLE_PAR_DOMAINE,
 } from "./recommendation.js";
 
 function profile(overrides: Partial<DiagnosticProfile> = {}): DiagnosticProfile {
@@ -178,8 +179,13 @@ describe("Ce que tape le visiteur est une donnée, jamais une instruction", () =
       }),
     );
 
-    // Le moteur ne lit pas : il applique des règles. Le frein reste celui du profil structuré.
+    // Le moteur ne lit pas : il applique des règles. Le rôle sort du vocabulaire fermé, et rien
+    // de ce qu'a tapé le visiteur ne s'y retrouve — ni dans le rôle, ni dans les capacités.
     expect(decision.status).toBe("recommande");
-    expect(decision.status === "recommande" && decision.calibration.profession).toBe("commercial");
+    if (decision.status !== "recommande") return;
+
+    expect(Object.values(ROLE_PAR_DOMAINE)).toContain(decision.calibration.role);
+    expect(JSON.stringify(decision.calibration)).not.toMatch(/comptab/i);
+    expect(JSON.stringify(decision.calibration)).not.toMatch(/ignore/i);
   });
 });

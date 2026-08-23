@@ -48,12 +48,14 @@ describe("presentEmployee — ce qui se passe une fois la décision prise", () =
   it("se replie si whatTheyDo est vide", async () => {
     const deps: PresentEmployeeDeps = { present: async () => ({ ...VALID_PRESENTATION, whatTheyDo: [] }) };
     const result = await presentEmployee(DECISION, deps);
+    // Depuis que la configuration est COMPOSÉE plutôt que fixe, elle ne contient plus que ce
+    // que les constats appellent. Ce dossier — « pas assez d'entreprises approchées », avec une
+    // liste déjà en main — n'appelle pas de relance : il appelle de la recherche, et l'ouverture
+    // de la conversation. `qualifier` s'y ajoute parce qu'on n'écrit jamais sans avoir qualifié.
     expect(result.whatTheyDo).toEqual([
-      "repérer les entreprises à approcher",
-      "vérifier qu'un contact correspond vraiment à ce que vous vendez",
-      "tenir votre fiche client à jour",
       "engager la conversation avec un premier message",
-      "revenir vers ceux restés sans réponse",
+      "vérifier qu'un contact correspond vraiment à ce que vous vendez",
+      "repérer les entreprises à approcher",
     ]);
   });
 

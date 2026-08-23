@@ -55,9 +55,24 @@ const CAPABILITY_WORDING: Record<string, string> = {
   [CAPACITES.mettreAJourProspect]: "tenir votre fiche client à jour",
 };
 
-const FALLBACK_TITLES: Record<Calibration["profession"], string> = {
-  commercial: "chargé de développement commercial",
+/**
+ * Comment on présente au dirigeant le rôle décidé par le diagnostic.
+ *
+ * ⚠️ Ce n'est PAS un catalogue de métiers : c'est la restitution d'une composition. Le rôle est
+ * une sortie du diagnostic (`docs/adr/0029`), et un rôle qu'on ne saurait pas nommer n'empêche
+ * pas de présenter l'employé — d'où le repli générique, plutôt qu'un écran d'erreur.
+ */
+const TITRE_PAR_ROLE: Record<string, string> = {
+  prospection: "chargé de développement commercial",
+  qualification: "chargé de qualification",
+  relation_client: "chargé de la relation client",
+  administration_commerciale: "assistant administratif commercial",
+  administration: "assistant administratif",
+  suivi: "chargé de suivi",
+  pilotage: "chargé du pilotage",
 };
+
+const TITRE_GENERIQUE = "employé numérique";
 
 /** Un prénom illustratif pour la présentation — pas une identité réservée. La vraie identité,
  *  tirée du réservoir de 300+ noms (FOND-34) et jamais réutilisée, n'est assignée qu'au
@@ -110,7 +125,7 @@ function fallbackPresentation(decision: RecommendedDecision): EmployeePresentati
   const whatTheyDo = calibration.capabilities.map((key) => CAPABILITY_WORDING[key] ?? key);
   return {
     firstName: pickPreviewName(grounds.join("|")),
-    title: FALLBACK_TITLES[calibration.profession],
+    title: TITRE_PAR_ROLE[calibration.role] ?? TITRE_GENERIQUE,
     mission: calibration.priorities[0] ?? "prendre en charge une partie de votre prospection",
     whatTheyDo,
     whyRecommended: grounds.join(". "),

@@ -1969,4 +1969,85 @@ begin
 end;
 $$;
 
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+-- LADY-E — ce que le client dit, ce qu'on constate, et ce qu'on en conclut sont trois choses.
+--
+-- Sans cette séparation, la déclaration du dirigeant EST la décision — et Sentio n'apporte rien
+-- de plus qu'un formulaire (`docs/adr/0029`).
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  session_id uuid;
+  premier    uuid;
+begin
+  insert into public.diagnostic_session (visitor_fingerprint, extracted_profile, detected_friction)
+  values ('essai-constats', '{"secteur":"menuiserie"}'::jsonb, 'pas_assez_de_prospects')
+  returning id into session_id;
+
+  -- ── 1. Un constat porte toujours d'où il vient. Une déduction n'est pas une mesure.
+  insert into public.audit_finding (diagnostic_session_id, genre, domaine, source, confiance, libelle)
+  values (session_id, 'goulot', 'recherche_selection', 'declare', 'moyenne',
+          'trop peu d''entreprises approchées')
+  returning id into premier;
+
+  -- ── 2. Le vocabulaire est fermé : un genre inventé ne se constate pas.
+  begin
+    insert into public.audit_finding
+      (diagnostic_session_id, genre, domaine, source, confiance, libelle)
+    values (session_id, 'intuition', 'recherche_selection', 'declare', 'moyenne', 'au feeling');
+    raise exception 'ÉCHEC constat : un genre inventé a été accepté.';
+  exception when check_violation then null;
+  end;
+
+  begin
+    insert into public.audit_finding
+      (diagnostic_session_id, genre, domaine, source, confiance, libelle)
+    values (session_id, 'goulot', 'le_commercial', 'declare', 'moyenne', 'un métier, pas un domaine');
+    raise exception 'ÉCHEC constat : un domaine hors vocabulaire a été accepté — un métier a pu rentrer.';
+  exception when check_violation then null;
+  end;
+
+  -- ── 3. Le même constat ne se compte pas deux fois : il pèserait double sans qu'on le voie.
+  begin
+    insert into public.audit_finding
+      (diagnostic_session_id, genre, domaine, source, confiance, libelle)
+    values (session_id, 'goulot', 'recherche_selection', 'mesure', 'forte',
+            'trop peu d''entreprises approchées');
+    raise exception 'ÉCHEC constat : un doublon a été accepté, et il pèserait deux fois.';
+  exception when unique_violation then null;
+  end;
+
+  -- ── 4. ⭐ Un constat ne se réécrit pas. Sans ce verrou, l'audit pourrait être ajusté après
+  --    coup pour justifier une configuration déjà vendue — l'inverse exact d'un audit.
+  begin
+    update public.audit_finding set genre = 'force' where id = premier;
+    raise exception 'ÉCHEC constat : un constat a été réécrit après coup.';
+  exception when raise_exception then
+    if position('ne se modifie pas' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  begin
+    delete from public.audit_finding where id = premier;
+    raise exception 'ÉCHEC constat : un constat a été supprimé.';
+  exception when raise_exception then
+    if position('ne se modifie pas' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  -- ── 5. Une force et un goulot coexistent sur le MÊME domaine : c'est ce qui permet de
+  --    conclure autre chose que ce que le dirigeant demandait.
+  insert into public.audit_finding (diagnostic_session_id, genre, domaine, source, confiance, libelle)
+  values (session_id, 'force', 'recherche_selection', 'mesure', 'forte',
+          'la liste existe déjà et elle est fournie');
+
+  if (select count(*) from public.audit_finding
+       where diagnostic_session_id = session_id and domaine = 'recherche_selection') <> 2 then
+    raise exception
+      'ÉCHEC constat : un domaine ne peut pas porter à la fois une force et un goulot.';
+  end if;
+
+  raise notice 'OK  LADY-E — constats typés, sourcés, fermés, immuables et non dédoublés';
+end;
+$$;
+
 rollback;

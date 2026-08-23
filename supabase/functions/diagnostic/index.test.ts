@@ -137,9 +137,15 @@ Deno.test("un profil complet reçoit la décision du domaine", async () => {
   await withDiagnosticOpen(async () => {
     const response = await handle(post(VALID_PROFILE));
     assertEquals(response.status, 200, "un profil complet aboutit");
-    const body = (await response.json()) as { status: string; calibration: { profession: string } };
+    const body = (await response.json()) as {
+      status: string;
+      calibration: { role: string; capabilities: string[] };
+    };
     assertEquals(body.status, "recommande", "le domaine recommande");
-    assertEquals(body.calibration.profession, "commercial", "un seul métier en V1");
+    // Le rôle est une SORTIE du diagnostic, plus un métier figé (`docs/adr/0029`). Ce qu'on
+    // vérifie ici est qu'il en sort UN, décidé — pas lequel, qui dépend des constats.
+    assert(body.calibration.role.length > 0, "un rôle est décidé");
+    assert(body.calibration.capabilities.length > 0, "au moins une capacité est activée");
   });
 });
 

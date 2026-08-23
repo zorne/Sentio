@@ -64,7 +64,7 @@ Pousser un schéma en ligne · poser un secret · déployer une fonction · touc
 | 3 | La couche mission, et la chaîne objectif → travail | ✅ 2026-08-15 |
 | 4 | La configuration de Lady, versionnée | ✅ 2026-08-15 |
 | 5 | Le noyau perd le métier | ✅ 2026-08-15 |
-| 6 | Les constats d'audit et le moteur de composition | ☐ |
+| 6 | Les constats d'audit et le moteur de composition | ✅ 2026-08-15 |
 | 7 | Le runtime fabrique le travail | ☐ |
 | 8 | Un deuxième domaine dans la bibliothèque | ☐ |
 | 9 | Pouvoir encaisser | ☐ |
@@ -383,6 +383,56 @@ configuration en sortie, toujours. Écris-le avant le moteur.
 
 **✅ Terminé quand :** le test de déterminisme passe sur au moins cinq jeux de constats
 contrastés, et qu'aucune configuration ne sort du vocabulaire écrit.
+
+### Fait le 2026-08-15 — `20260815120005_constats_daudit.sql`, `packages/domain/{audit,composition}.ts`
+
+**Le moteur allait droit de la déclaration à la configuration.** Le dirigeant disait « je manque
+de prospects », l'employé partait prospecter. Autrement dit **la demande du client était la
+décision** — et Sentio n'apportait rien de plus qu'un formulaire.
+
+Trois choses étaient confondues, elles sont maintenant distinctes :
+
+```text
+ce que le client DIT   →   ce qu'on CONSTATE   →   ce qu'on en CONCLUT
+detected_friction          audit_finding          configuration_proposee
+```
+
+Un constat porte **son genre** (force, faiblesse, goulot, risque, opportunité), **son domaine**,
+**sa source** et **sa confiance**. Une déduction ne pèse pas comme une mesure — sans quoi une
+impression vaudrait une observation et le diagnostic ne serait qu'un écho poli.
+
+**Le mécanisme qui rend le diagnostic capable de contredire la demande, c'est la force.** Elle
+pèse *négativement*. Quand un dirigeant dit « on parle aux mauvaises personnes », il déclare
+implicitement que le volume ne manque pas : ce constat-là retire à la recherche le besoin qu'on
+lui aurait prêté, et le rôle bascule vers la qualification. Sans jamais inventer une donnée.
+
+**Le test le plus important du projet est écrit** — cinq dossiers volontairement contrastés,
+chacun composé cinquante fois plus trois permutations de l'ordre d'arrivée des constats. L'ordre
+d'arrivée est un accident de la conversation : s'il changeait la configuration, deux dirigeants
+racontant la même chose dans un ordre différent recevraient deux Lady différentes, et personne ne
+saurait pourquoi.
+
+**Deux règles de produit ont émergé en écrivant le moteur, et n'étaient écrites nulle part :**
+
+1. **Un domaine cassé ouvre toute sa famille d'actes ; une simple opportunité n'ouvre que l'acte
+   d'entrée.** Sans cette distinction, un client dont le problème est le ciblage recevait des
+   relances en plus — alors qu'il a besoin qu'on écrive *moins, et mieux*. C'est un test existant
+   qui l'a signalé, et c'est le moteur qui avait tort.
+2. **On n'écrit jamais à une entreprise qu'on n'a pas qualifiée.** Le moteur activait `envoyer`
+   sans `qualifier` : la composition ferme désormais l'ensemble sur les exigences de chaque acte.
+   Ce n'est pas une dépendance technique, c'est la garantie de réputation que `peut_envoyer()`
+   défend déjà en base.
+
+**Conséquence visible :** les configurations diffèrent désormais réellement d'un client à l'autre.
+Le socle de cinq capacités toujours activées a disparu — un dossier « pas assez d'entreprises
+approchées, liste déjà en main » reçoit `rechercher` + `qualifier` + `envoyer`, et **pas** de
+relance. C'est ce que la vision promettait, et c'est ce qui casse le plus de tests : ils
+supposaient une configuration fixe.
+
+**Le refus honnête fonctionne de bout en bout.** Un dossier dont le besoin dominant tombe dans un
+domaine que la bibliothèque ne couvre pas — les demandes entrantes, par exemple — sort en
+`hors_perimetre`, **sans se rabattre sur le deuxième besoin**. Vendre le deuxième en taisant le
+premier serait exactement le mensonge que ce mécanisme existe pour empêcher.
 
 ---
 
