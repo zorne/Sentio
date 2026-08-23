@@ -1674,4 +1674,172 @@ begin
 end;
 $$;
 
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+-- LADY-C — une configuration est une VERSION justifiée, et elle ne peut que retrancher.
+--
+-- Les trois questions que ce bloc rend décidables, et qui étaient sans réponse avant lui :
+-- pourquoi Lady a changé, quand, et ce qu'il y avait avant.
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  entreprise  constant uuid := 'aaaaaaaa-0000-0000-0000-000000000001';
+  employe     constant uuid := 'ffffffff-0000-0000-0000-000000000001';
+  v1          uuid;
+  v2          uuid;
+  autre_conf  uuid;
+  hors_perim  uuid;
+  dans_perim  uuid;
+begin
+  -- Un périmètre suppose une formule : sans abonnement actif, aucune capacité n'est activable.
+  if not exists (select 1 from public.subscription
+                  where tenant_id = entreprise and status = 'active') then
+    insert into public.subscription (tenant_id, plan_id, status,
+                                     current_period_start, current_period_end)
+    select entreprise, p.id, 'active', now() - interval '1 day', now() + interval '29 days'
+      from public.plan p where p.tier = 'start';
+  end if;
+
+  -- ── 1. La v1 naît sans passé. Prétendre le contraire est refusé.
+  begin
+    insert into public.lady_configuration
+      (tenant_id, employee_id, version, role, autonomie, declencheur, raison, precedente_id)
+    values (entreprise, employe, 1, 'relation_client', 'confirm', 'recrutement', 'essai',
+            gen_random_uuid());
+    raise exception 'ÉCHEC configuration : une v1 avec un passé a été acceptée.';
+  -- Deux filets la refusent — la contrainte de chaîne et la clé étrangère — et l'ordre entre
+  -- eux n'est pas garanti. On accepte l'un ou l'autre : ce qui compte est le refus.
+  exception
+    when check_violation then null;
+    when foreign_key_violation then null;
+  end;
+
+  insert into public.lady_configuration
+    (tenant_id, employee_id, version, role, priorites, autonomie, declencheur, raison)
+  values (entreprise, employe, 1, 'prospection',
+          '["élargir le nombre d''entreprises approchées"]'::jsonb,
+          'confirm', 'recrutement',
+          'Au recrutement, le frein déclaré était le manque d''entreprises approchées.')
+  returning id into v1;
+
+  -- ── 2. Toute version suivante DIT ce qu'elle remplace. Sans ça, la chaîne casse en silence.
+  begin
+    insert into public.lady_configuration
+      (tenant_id, employee_id, version, role, autonomie, declencheur, raison)
+    values (entreprise, employe, 2, 'relation_client', 'confirm', 'resultats', 'essai');
+    raise exception 'ÉCHEC configuration : une v2 sans version précédente a été acceptée.';
+  exception when check_violation then null;
+  end;
+
+  -- ── 3. Et elle ne saute pas de version : « avant » doit rester vrai.
+  begin
+    insert into public.lady_configuration
+      (tenant_id, employee_id, version, role, autonomie, declencheur, raison, precedente_id)
+    values (entreprise, employe, 3, 'relation_client', 'confirm', 'resultats', 'essai', v1);
+    raise exception 'ÉCHEC configuration : une v3 succédant à une v1 a été acceptée.';
+  exception when raise_exception then
+    if position('manque une version' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  -- ── 4. Une chaîne décrit UNE Lady : elle ne traverse pas deux employés.
+  insert into public.lady_configuration
+    (tenant_id, employee_id, version, role, autonomie, declencheur, raison)
+  values ('d0000000-0000-0000-0000-00000000000d', '0d000000-0000-0000-0000-0000000000de',
+          1, 'prospection', 'confirm', 'recrutement', 'essai')
+  returning id into autre_conf;
+
+  begin
+    insert into public.lady_configuration
+      (tenant_id, employee_id, version, role, autonomie, declencheur, raison, precedente_id)
+    values (entreprise, employe, 2, 'relation_client', 'confirm', 'resultats', 'essai', autre_conf);
+    raise exception 'ÉCHEC configuration : une chaîne a traversé deux entreprises.';
+  exception
+    -- Le déclencheur devance la clé étrangère composite — il s'exécute avant la vérification
+    -- des contraintes — et rend un message qui dit ce qui ne va pas. La clé reste le second
+    -- filet, pour le jour où quelqu'un désactiverait le déclencheur.
+    when raise_exception then
+      if position('autre employé' in sqlerrm) = 0 then raise; end if;
+    when foreign_key_violation then null;
+  end;
+
+  -- ── 5. Une seule configuration active : « laquelle s'applique » ne se devine pas.
+  begin
+    insert into public.lady_configuration
+      (tenant_id, employee_id, version, role, autonomie, declencheur, raison, precedente_id)
+    values (entreprise, employe, 2, 'relation_client', 'confirm', 'resultats', 'essai', v1);
+    raise exception 'ÉCHEC configuration : deux configurations actives coexistent.';
+  exception when unique_violation then null;
+  end;
+
+  -- Le passage de relais : on désactive, puis on publie. C'est le seul chemin.
+  update public.lady_configuration set active = false where id = v1;
+
+  insert into public.lady_configuration
+    (tenant_id, employee_id, version, role, priorites, autonomie, declencheur, raison,
+     precedente_id)
+  values (entreprise, employe, 2, 'relation_client',
+          '["reprendre les demandes entrantes laissées sans réponse"]'::jsonb,
+          'confirm', 'resultats',
+          'La prospection produit ; ce sont les demandes entrantes qui se perdent.', v1)
+  returning id into v2;
+
+  -- ── 6. Une configuration publiée ne se réécrit pas, et ne se supprime pas.
+  begin
+    update public.lady_configuration set raison = 'autre chose' where id = v1;
+    raise exception 'ÉCHEC configuration : une configuration publiée a été réécrite.';
+  exception when raise_exception then
+    if position('ne se réécrit pas' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  begin
+    delete from public.lady_configuration where id = v1;
+    raise exception 'ÉCHEC configuration : une configuration a été supprimée.';
+  exception when raise_exception then
+    if position('ne se supprime pas' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  -- ── 7. ⭐ LA garantie : une configuration RETRANCHE au périmètre, elle ne l'étend jamais.
+  --
+  -- `rappeler.echeance` est un acte parfaitement légitime — et aucun moteur ne le sert pour la
+  -- formule de cette entreprise. L'activer promettrait un geste que rien n'exécute.
+  insert into public.capability (acte, objet, name, contract)
+  values ('rappeler', 'echeance', 'Rappeler une échéance',
+          jsonb_build_object('effect_class', 'external_irreversible'))
+  returning id into hors_perim;
+
+  begin
+    insert into public.lady_configuration_capability (configuration_id, capability_id)
+    values (v2, hors_perim);
+    raise exception
+      'ÉCHEC configuration : une capacité hors périmètre a été activée. C''est LA limite que le '
+      'produit promet — une configuration ne peut pas donner un pouvoir que le noyau ne sert pas.';
+  exception when raise_exception then
+    if position('hors périmètre' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  -- ── 8. Et ce qui EST servi passe, sinon le refus ne prouverait rien.
+  select id into dans_perim from public.capability where key = 'relancer.prospect';
+
+  insert into public.lady_configuration_capability (configuration_id, capability_id)
+  values (v2, dans_perim);
+
+  if not exists (select 1 from public.lady_configuration_capability
+                  where configuration_id = v2 and capability_id = dans_perim) then
+    raise exception 'ÉCHEC configuration : une capacité du périmètre a été refusée.';
+  end if;
+
+  -- ── 9. Et l'histoire se relit : v2 sait ce qu'elle remplace, et pourquoi.
+  if (select precedente_id from public.lady_configuration where id = v2) <> v1 then
+    raise exception 'ÉCHEC configuration : la version 2 ne désigne pas celle qu''elle remplace.';
+  end if;
+
+  if (select raison from public.lady_configuration where id = v1) not like '%frein déclaré%' then
+    raise exception 'ÉCHEC configuration : la raison d''origine ne se relit plus.';
+  end if;
+
+  raise notice
+    'OK  LADY-C — versions chaînées et immuables, une seule active, périmètre jamais étendu';
+end;
+$$;
+
 rollback;

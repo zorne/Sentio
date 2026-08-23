@@ -27,6 +27,7 @@ export type NotificationId = Brand<string, "NotificationId">;
 export type StrategyChangeId = Brand<string, "StrategyChangeId">;
 
 export type CapabilityId = Brand<string, "CapabilityId">;
+export type LadyConfigurationId = Brand<string, "LadyConfigurationId">;
 export type CapabilityBindingId = Brand<string, "CapabilityBindingId">;
 export type ProviderCredentialId = Brand<string, "ProviderCredentialId">;
 export type ProviderQuotaId = Brand<string, "ProviderQuotaId">;

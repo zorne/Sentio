@@ -62,7 +62,7 @@ Pousser un schéma en ligne · poser un secret · déployer une fonction · touc
 | 1 | Rendre `verify` honnête | ✅ 2026-08-15 |
 | 2 | Séparer l'acte et l'objet dans les capacités | ✅ 2026-08-15 |
 | 3 | La couche mission, et la chaîne objectif → travail | ✅ 2026-08-15 |
-| 4 | La configuration de Lady, versionnée | ☐ |
+| 4 | La configuration de Lady, versionnée | ✅ 2026-08-15 |
 | 5 | Le noyau perd le métier | ☐ |
 | 6 | Les constats d'audit et le moteur de composition | ☐ |
 | 7 | Le runtime fabrique le travail | ☐ |
@@ -266,6 +266,42 @@ migration.
 
 **✅ Terminé quand :** un test prouve qu'une configuration tentant d'activer une capacité absente du
 noyau est refusée par la base.
+
+### Fait le 2026-08-15 — `20260815120003_configuration_de_lady.sql`
+
+**La configuration existait déjà — éparpillée, et sans mémoire.** L'autonomie sur `employee`, les
+capacités dans `employee_capability`, le contexte dans `company_profile`, le calibrage produit par
+le moteur de recommandation et **jamais écrit nulle part**, et `strategy_change` réduit à une phrase
+libre sans lien vers ce qui avait changé. Les trois questions que le produit promet restaient donc
+sans réponse : **pourquoi Lady a changé, quand, et ce qu'il y avait avant.**
+
+`lady_configuration` les rend décidables. Six garanties, toutes tenues par la base :
+
+| Garantie | Ce qu'elle empêche |
+|---|---|
+| Une seule configuration active par employé | « laquelle s'applique » redevenu flou |
+| La v1 n'a pas de passé, toute autre en a un | une chaîne qui casse en silence |
+| Les versions se suivent sans trou | « ce qu'il y avait avant » devenu faux |
+| Une chaîne ne traverse pas deux employés | l'histoire d'une Lady mélangée à celle d'une autre |
+| Publiée, une configuration est immuable | une décision réécrite après coup |
+| **Une capacité hors périmètre ne s'active pas** | **une configuration qui étend les pouvoirs du noyau** |
+
+La dernière ligne est le critère de l'étape, et c'est le §11 de la vision : une configuration
+**retranche**, elle n'étend jamais.
+
+**Deux limites dites plutôt que simulées :**
+
+1. **La borne du périmètre est celle d'aujourd'hui** — `capability_binding`, c'est-à-dire
+   « existe-t-il un moteur pour cette capacité dans cette formule ». La borne par les capacités du
+   **Lady Core** lui-même viendra à l'étape 5, quand `employee_definition` cessera d'être un métier.
+   L'ADN v1 est en prose : il ne peut pas encore servir de borne mécanique.
+2. **Aucune clé étrangère vers `diagnostic_session`**, délibérément. Elle appartient à la zone
+   *vitrine*, étanche à la zone client ([`02-architecture.md`](02-architecture.md)) : un lien de
+   schéma coudrait les deux zones. La référence est gardée comme trace, pas comme contrainte.
+
+**Deux filets du dépôt ont fait leur travail sur moi.** L'invariant structurel a refusé mes deux
+clés étrangères qui ne portaient pas l'entreprise ; et le verrou de changement d'entreprise manquait
+sur la nouvelle table. Les deux ont été signalés avant tout envoi, pas découverts après.
 
 ---
 

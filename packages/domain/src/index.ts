@@ -6,6 +6,7 @@ export * from "./employee.js";
 export * from "./memory.js";
 export * from "./work.js";
 export * from "./capability.js";
+export * from "./configuration.js";
 export * from "./acquisition.js";
 export * from "./recommendation.js";
 export * from "./secteur.js";
