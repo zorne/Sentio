@@ -2573,4 +2573,105 @@ begin
 end;
 $$;
 
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+-- LADY-O — une panne provoquée se voit. C'est le critère de l'étape 11 du plan.
+--
+-- Aujourd'hui, si le moteur s'arrête, personne ne le sait : on l'apprendrait par un client
+-- mécontent, ou pas du tout. Un travail programmé a échoué 72 fois par jour avant d'être remarqué.
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  entreprise constant uuid := 'aaaaaaaa-0000-0000-0000-000000000001';
+  employe    constant uuid := 'ffffffff-0000-0000-0000-000000000001';
+  objectif   uuid;
+  mission    uuid;
+  signaux    integer;
+begin
+  -- ── 1. Une base saine ne réveille personne. C'est la moitié qu'on oublie de vérifier : une
+  --    alerte qui se déclenche tout le temps ne se lit plus au bout d'une semaine.
+  select count(*) into signaux from public.etat_de_sante() where sujet = 'missions immobiles';
+  if signaux <> 0 then
+    raise exception 'ÉCHEC santé : une base au repos déclenche déjà une alerte.';
+  end if;
+
+  select id into objectif from public.objective
+   where tenant_id = entreprise and state = 'actif';
+
+  insert into public.task (tenant_id, employee_id, objective_id, subject_kind, subject_id)
+  values (entreprise, employe, objectif, 'lead', gen_random_uuid())
+  returning id into mission;
+
+  -- ── 2. ⭐ LA panne qui compte : un exécutant s'est arrêté sans rendre son bail. Le client paie
+  --    pour un employé qui n'avance plus, et rien ne le signale.
+  insert into public.job (tenant_id, task_id, locked_at, locked_by)
+  values (entreprise, mission, now() - interval '6 hours', 'exécutant-mort');
+
+  select count(*) into signaux
+    from public.etat_de_sante()
+   where sujet = 'missions immobiles' and gravite = 'alerte';
+  if signaux <> 1 then
+    raise exception
+      'ÉCHEC santé : une mission verrouillée depuis six heures ne déclenche rien. Le moteur peut '
+      's''arrêter sans que personne l''apprenne.';
+  end if;
+
+  -- ── 3. Un travail repris en boucle : la panne la plus coûteuse, et la plus silencieuse.
+  update public.job set attempts = 9, locked_at = null, locked_by = null where task_id = mission;
+
+  select count(*) into signaux
+    from public.etat_de_sante()
+   where sujet = 'travaux repris en boucle' and gravite = 'alerte';
+  if signaux <> 1 then
+    raise exception 'ÉCHEC santé : un travail repris neuf fois ne déclenche rien.';
+  end if;
+
+  -- ── 4. Une mission en échec ne se rejoue pas : quelqu'un doit la reprendre.
+  update public.task set state = 'failed' where id = mission;
+
+  select count(*) into signaux
+    from public.etat_de_sante()
+   where sujet = 'missions en échec' and gravite = 'alerte';
+  if signaux <> 1 then
+    raise exception 'ÉCHEC santé : une mission en échec passe inaperçue.';
+  end if;
+
+  -- ── 5. Un accord qui dort : Lady s'arrête pour demander — c'est voulu — mais si personne ne
+  --    tranche, le client paie pour un employé à l'arrêt.
+  insert into public.approval (tenant_id, task_id, requested_at)
+  values (entreprise, mission, now() - interval '2 days');
+
+  select count(*) into signaux
+    from public.etat_de_sante()
+   where sujet = 'accords en attente' and gravite = 'avertissement';
+  if signaux <> 1 then
+    raise exception 'ÉCHEC santé : un accord en attente depuis deux jours ne se signale pas.';
+  end if;
+
+  -- ── 6. Les seuils sont des PARAMÈTRES, pas des constantes cachées. Un seuil qu'on ne peut pas
+  --    déplacer est un seuil qu'on finit par contourner.
+  select count(*) into signaux
+    from public.etat_de_sante(interval '30 days', 3, 0.85)
+   where sujet = 'accords en attente';
+  if signaux <> 0 then
+    raise exception 'ÉCHEC santé : le seuil d''immobilité ne se règle pas.';
+  end if;
+
+  -- ── 7. L'état de santé agrège TOUTES les entreprises : il dit combien de clients ont des
+  --    ennuis. Aucun client n'a à le savoir.
+  begin
+    set local role authenticated;
+    perform set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+    perform public.etat_de_sante();
+    reset role;
+    raise exception 'ÉCHEC santé : un client a pu lire l''état de santé de la plateforme.';
+  exception when insufficient_privilege then
+    reset role;
+  end;
+
+  raise notice
+    'OK  LADY-O — panne provoquée détectée, base saine silencieuse, seuils réglables';
+end;
+$$;
+
 rollback;

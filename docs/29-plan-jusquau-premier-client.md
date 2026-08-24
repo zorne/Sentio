@@ -69,7 +69,7 @@ Pousser un schéma en ligne · poser un secret · déployer une fonction · touc
 | 8 | Un deuxième domaine dans la bibliothèque | ✅ 2026-08-15 |
 | 9 | Pouvoir encaisser | ✅ 2026-08-15 |
 | 10 | L'espace client, version minimale | ✅ 2026-08-15 |
-| 11 | Le filet : alerte et sauvegarde | ☐ |
+| 11 | Le filet : alerte et sauvegarde | ✅ 2026-08-15 |
 | 12 | Répétition générale, à blanc | ☐ |
 
 ### Partie II — Mettre en vente *(⛔ fondateur uniquement)*
@@ -689,6 +689,36 @@ appartient à la partie II.
 
 **✅ Terminé quand :** une panne provoquée volontairement déclenche l'alerte dans les minutes qui
 suivent, et une sauvegarde est restaurée avec succès sur une base vierge.
+
+### Fait le 2026-08-15 — `etat_de_sante()`, `pnpm run surveiller`, `pnpm run sauvegarde`
+
+**Les deux moitiés du critère ont été exécutées, pas décrites.**
+
+Une panne a été provoquée pour de bon — une mission verrouillée depuis neuf heures par un exécutant
+mort, reprise sept fois — et la surveillance a rendu deux alertes et un code de sortie `1`. Une
+sauvegarde a été prise, **restaurée sur une base vierge**, et comparée : 350 identités, même compte
+sur les cinq tables témoins.
+
+**La surveillance constate, elle n'envoie rien** — et c'est ce qui la rend éprouvable. Une fonction
+qui expédierait un courriel ne se testerait qu'en expédiant des courriels. Son **code de sortie est
+la notification** : posé sur une tâche programmée, un code non nul *est* l'alerte, car tout
+ordonnanceur sait prévenir d'un échec et aucun ne sait lire une sortie standard.
+
+Le code `2` — « la surveillance elle-même est en panne » — est distinct du `1` à dessein. Une
+surveillance qui ne peut pas joindre la base ne dit pas « tout va bien » : elle dit qu'elle ne sait
+pas. C'est l'alerte qu'on oublie de traiter, parce qu'elle ressemble à du silence.
+
+**Une base saine est silencieuse**, et c'est vérifié aussi : une alerte qui se déclenche tout le
+temps ne se lit plus au bout d'une semaine.
+
+**La sauvegarde restaure dans le même geste.** Une sauvegarde jamais restaurée n'est pas une
+sauvegarde, c'est un fichier — et le jour où on en a besoin est le pire moment pour découvrir
+qu'elle est illisible. Le fichier va hors du dépôt et hors de la plateforme : rangé à côté de ce
+qu'il sauvegarde, il ne protégerait de rien. Le script refuse de restaurer sur la base d'origine,
+et ne fait que la lire.
+
+**Ce qui reste pour la partie II :** brancher l'expédition du courriel. Le contrat est écrit — ce
+qu'on envoie, à quel seuil, et ce qui distingue une alerte d'un avertissement.
 
 ---
 

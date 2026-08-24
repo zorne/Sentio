@@ -118,6 +118,50 @@ Pousser un schéma, poser un secret et déployer restent des gestes humains, jam
 
 ---
 
+## Tenir le produit une fois en ligne
+
+Deux commandes, et une règle pour chacune.
+
+### La surveillance
+
+```bash
+pnpm run surveiller
+```
+
+**Son code de sortie est la notification.** `0` rien à signaler · `1` au moins une alerte ·
+`2` la surveillance elle-même est en panne.
+
+Ce n'est pas un détail d'implémentation : posé sur une tâche programmée, un code non nul *est*
+l'alerte. Tous les ordonnanceurs savent prévenir quand une tâche échoue ; aucun ne sait lire une
+sortie standard. Tant que le service d'envoi n'est pas branché, c'est ce qui rend la surveillance
+réelle plutôt qu'annoncée.
+
+Le `2` est distinct du `1` à dessein : une surveillance qui ne peut pas joindre la base ne dit pas
+« tout va bien », elle dit qu'elle ne sait pas. C'est l'alerte qu'on oublie de traiter, parce
+qu'elle ressemble à du silence.
+
+Ce qu'elle regarde : missions verrouillées par un exécutant mort, travaux repris en boucle,
+missions en échec, accords qui dorment, enveloppe d'inférence et quotas d'entreprise près du
+plafond. Les seuils sont des paramètres de `etat_de_sante()`, pas des constantes cachées.
+
+### La sauvegarde
+
+```bash
+pnpm run sauvegarde
+```
+
+**Elle restaure dans le même geste, et compare.** Une sauvegarde qu'on n'a jamais restaurée n'est
+pas une sauvegarde : c'est un fichier. Le jour où on en a besoin est le pire moment pour découvrir
+qu'elle est illisible.
+
+Le fichier va **hors du dépôt et hors de la plateforme** (`SENTIO_SAUVEGARDES`, par défaut le
+dossier personnel) : une sauvegarde rangée à côté de ce qu'elle sauvegarde ne protège de rien.
+
+Le script ne fait que **lire** la base d'origine, et refuse de restaurer sur elle. Pour sauvegarder
+le projet distant, donner sa chaîne de connexion dans `SENTIO_SAUVEGARDE_SOURCE`.
+
+---
+
 ## Ce qu'on peut effacer sans rien perdre
 
 Une fois les secrets en sécurité ailleurs, **le dossier local entier est reconstructible**. Rien

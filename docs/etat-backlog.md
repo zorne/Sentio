@@ -17,7 +17,7 @@
 
 ## Avancement
 
-**133 tâches sur 185** portent une preuve dans le dépôt.
+**135 tâches sur 185** portent une preuve dans le dépôt.
 
 | Lot | Fait | Total | |
 |---|---|---|---|
@@ -29,7 +29,7 @@
 | Dashboard (Lot 6) | 8 | 21 | `████████············` |
 | Exécution autonome (Lot 3) | 12 | 19 | `█████████████·······` |
 | Évolution (Lot 7) | 0 | 8 | `····················` |
-| Conformité & Lancement (Lot 8) | 1 | 10 | `██··················` |
+| Conformité & Lancement (Lot 8) | 3 | 10 | `██████··············` |
 | Vérification (transverse) | 7 | 9 | `████████████████····` |
 ---
 
@@ -264,8 +264,8 @@
 | ☐ | **CONF-03** Rédaction du registre des traitements RGPD | P0 | — |
 | ☐ | **CONF-04** Rédaction de l'analyse d'impact (AIPD, décision automatisée) | P0 | — |
 | ✅ | **CONF-05** Implémentation de la procédure d'effacement (anonymisation du journal) | P0 | [`supabase/migrations/20260729120036_effacement.sql`](../supabase/migrations/20260729120036_effacement.sql) |
-| ☐ | **CONF-06** Script de sauvegarde exportée hors plateforme | P0 | — |
-| ☐ | **CONF-07** Surveillance minimale : alerte email sur quota/échecs/taille base/tâches bloquées | P0 | — |
+| ✅ | **CONF-06** Script de sauvegarde exportée hors plateforme | P0 | [`scripts/sauvegarder.mjs`](../scripts/sauvegarder.mjs) |
+| ✅ | **CONF-07** Surveillance minimale : alerte email sur quota/échecs/taille base/tâches bloquées | P0 | [`scripts/surveiller.mjs`](../scripts/surveiller.mjs) · [`supabase/migrations/20260815120014_etat_de_sante.sql`](../supabase/migrations/20260815120014_etat_de_sante.sql) |
 | ☐ | **CONF-08** Contrôle automatique du lexique interdit en intégration continue | P1 | — |
 | ☐ | **CONF-09** Checklist de vérification des conditions d'usage commercial des offres gratuites (préparation, décision humaine finale) | P0 | — |
 | ☐ | **CONF-10** Modèle de contrat de sous-traitance par prestataire (préparation, signature humaine) | P0 | — |
