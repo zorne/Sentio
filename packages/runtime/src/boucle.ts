@@ -193,7 +193,16 @@ async function executerUnPas(
     });
   }
 
-  const issue = await unPasDeDecision(deps, options, travail);
+  // ── EXEC-11 — le client a tranché, et il a dit oui.
+  //
+  // ⚠️ On N'APPELLE PAS le modèle. L'action qu'il a proposée est déjà écrite au journal, et c'est
+  // ELLE que le client a autorisée — pas « une action de ce genre ». La reproposer laisserait le
+  // modèle en écrire une autre, que la politique suspendrait de nouveau : le client dirait oui
+  // indéfiniment sans que rien ne parte. C'était le défaut trouvé par la répétition générale.
+  const issue =
+    avant.etat.actionEnAttente !== null
+      ? await reprendreLActionAutorisee(deps, travail, avant.etat.actionEnAttente)
+      : await unPasDeDecision(deps, options, travail);
 
   // ── L'état relu APRÈS le pas : c'est lui qui porte le pas qu'on vient d'écrire, donc le budget
   //    réellement consommé. Le déduire ferait diverger la mémoire du processus et le journal.
@@ -224,6 +233,67 @@ async function executerUnPas(
  * conforme les transformerait en « le modèle n'a rien proposé », c'est-à-dire en travail
  * silencieusement non fait.
  */
+/**
+ * Exécute l'action que le client vient d'autoriser.
+ *
+ * ══ POURQUOI LA POLITIQUE N'EST PAS RECONSULTÉE ══
+ *
+ * Ce n'est pas un contournement : **l'accord EST la décision de politique**. La repasser au
+ * moteur reviendrait à redemander au client ce qu'il vient d'accorder.
+ *
+ * Mais on ne se fie pas au journal seul pour l'affirmer : l'accord est **relu en base** avant
+ * d'exécuter. Le journal dit ce qui s'est passé ; la table dit ce qui est vrai maintenant. Si
+ * l'accord a été révoqué entre-temps, rien ne part.
+ */
+async function reprendreLActionAutorisee(
+  deps: BoucleDeps,
+  travail: TravailPris,
+  proposition: unknown,
+): Promise<IssueDuPas> {
+  const accords = await deps.sql.query<{ state: string }>(
+    `select state from approval
+      where tenant_id = $1 and task_id = $2
+      order by requested_at desc limit 1`,
+    [travail.tenantId, travail.taskId],
+  );
+
+  if (accords[0]?.state !== "granted") {
+    return {
+      kind: "contexte_incomplet",
+      detail:
+        "accord : le journal porte un accord accordé, la base non. Rien n'est exécuté — un " +
+        "accord révoqué entre-temps ne doit pas laisser partir l'action qu'il couvrait.",
+    };
+  }
+
+  const decision = {
+    kind: "agir" as const,
+    proposition: proposition as never,
+    decision: { outcome: "allow" as const, notify: true, basis: "accord_ponctuel" as const },
+  };
+
+  try {
+    const execution = await executeDecidedAction(
+      {
+        registry: deps.registry,
+        ledger: deps.ledger,
+        engineFor: (capabilityKey) => deps.moteurPour(travail.tenantId, capabilityKey),
+      },
+      {
+        tenantId: travail.tenantId,
+        taskId: travail.taskId,
+        employeeId: travail.employeeId,
+        decision,
+      },
+    );
+    return { kind: "decision", decision, execution };
+  } catch (erreur) {
+    const report = issueDepuisErreur(erreur);
+    if (report !== null) return report;
+    throw erreur;
+  }
+}
+
 async function unPasDeDecision(
   deps: BoucleDeps,
   options: OptionsDeBoucle,

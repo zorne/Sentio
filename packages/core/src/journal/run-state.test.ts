@@ -13,6 +13,7 @@ import {
   RUN_ECHOUE,
   RUN_REPORTE,
   RUN_TERMINE,
+  PROPOSITION_RECUE,
 } from "./vocabulaire.js";
 import { peutReprendre, reconstruireEtatRun, type Anomalie, type EtatRun } from "./run-state.js";
 import type { JournalEntry } from "./trace.js";
@@ -80,31 +81,44 @@ describe("l'état métier d'un run, projeté depuis le journal", () => {
   });
 
   it("passe en attente d'accord, et retient l'action suspendue", () => {
+    // ⚠️ L'action retenue vient de la PROPOSITION, pas de la trace de la politique.
+    //
+    // La trace ne porte que le nom de la capacité et sa classe d'effet ; l'action, elle, a des
+    // arguments. Reconstruite depuis la trace, elle n'était pas rejouable — et un accord humain
+    // n'aboutissait donc à rien (EXEC-11).
+    const proposition = { kind: "agir", capacite: "envoyer.prospect", entree: { a: "julie@exemple.fr" } };
     const etat = etatDe([
       ...RUN_NOMINAL,
-      evenement(13, POLITIQUE_SUSPEND, { payload: { outil: "mail.send", a: "julie@exemple.fr" } }),
+      evenement(13, PROPOSITION_RECUE, { payload: { fournisseur: "faux", proposition } }),
+      evenement(14, POLITIQUE_SUSPEND, { payload: { capacite: "envoyer.prospect" } }),
     ]);
     expect(etat.phase).toBe("attente_accord");
-    expect(etat.actionEnAttente).toEqual({ outil: "mail.send", a: "julie@exemple.fr" });
+    expect(etat.actionEnAttente).toEqual(proposition);
   });
 
-  it("repart après un accord, et oublie l'action en attente", () => {
+  it("repart après un accord EN GARDANT l'action autorisée", () => {
+    // L'oublier reviendrait à redemander au modèle, qui proposerait autre chose, que la politique
+    // suspendrait de nouveau : le client accorderait indéfiniment sans que rien ne parte.
+    const proposition = { kind: "agir", capacite: "envoyer.prospect", entree: { a: "julie@exemple.fr" } };
     const etat = etatDe([
       ...RUN_NOMINAL,
-      evenement(13, POLITIQUE_SUSPEND, { payload: { outil: "mail.send" } }),
-      evenement(14, ACCORD_ACCORDE),
+      evenement(13, PROPOSITION_RECUE, { payload: { fournisseur: "faux", proposition } }),
+      evenement(14, POLITIQUE_SUSPEND, { payload: { capacite: "envoyer.prospect" } }),
+      evenement(15, ACCORD_ACCORDE),
     ]);
     expect(etat.phase).toBe("en_cours");
-    expect(etat.actionEnAttente).toBeNull();
+    expect(etat.actionEnAttente).toEqual(proposition);
   });
 
   it("s'arrête sur un refus, sans exécuter l'action suspendue", () => {
     const etat = etatDe([
       ...RUN_NOMINAL,
-      evenement(13, POLITIQUE_SUSPEND, { payload: { outil: "mail.send" } }),
-      evenement(14, ACCORD_REFUSE),
+      evenement(13, PROPOSITION_RECUE, { payload: { fournisseur: "faux", proposition: { kind: "agir", capacite: "envoyer.prospect", entree: { a: "julie@exemple.fr" } } } }),
+      evenement(14, POLITIQUE_SUSPEND, { payload: { capacite: "envoyer.prospect" } }),
+      evenement(15, ACCORD_REFUSE),
     ]);
     expect(etat.phase).toBe("termine");
+    expect(etat.actionEnAttente).toBeNull();
     expect(etat.actionsExecutees).toBe(1); // l'action refusée n'a jamais compté
   });
 
@@ -265,7 +279,10 @@ describe("reprise après interruption — rien ne survit en mémoire", () => {
       evenement(1, RUN_DEMARRE),
       evenement(2, ACTION_DECIDEE),
       evenement(3, ACTION_EXECUTEE, { cle: "mail:prospect-1" }),
-      evenement(4, POLITIQUE_SUSPEND, { payload: { outil: "mail.send", a: "marc@exemple.fr" } }),
+      evenement(4, PROPOSITION_RECUE, {
+        payload: { fournisseur: "faux", proposition: { kind: "agir", capacite: "envoyer.prospect", entree: { a: "marc@exemple.fr" } } },
+      }),
+      evenement(5, POLITIQUE_SUSPEND, { payload: { capacite: "envoyer.prospect" } }),
     ];
 
     const avantLaPanne = etatDe(journal);
@@ -273,7 +290,11 @@ describe("reprise après interruption — rien ne survit en mémoire", () => {
 
     expect(apresRedemarrage).toEqual(avantLaPanne);
     expect(apresRedemarrage.phase).toBe("attente_accord");
-    expect(apresRedemarrage.actionEnAttente).toEqual({ outil: "mail.send", a: "marc@exemple.fr" });
+    expect(apresRedemarrage.actionEnAttente).toEqual({
+      kind: "agir",
+      capacite: "envoyer.prospect",
+      entree: { a: "marc@exemple.fr" },
+    });
   });
 
   it("reprend au bon rang après ajout d'événements, sans rejouer les effets déjà produits", () => {
@@ -371,7 +392,10 @@ describe("l'arrêt qui appelle un humain", () => {
     ]);
     const accord = etatDe([
       evenement(1, RUN_DEMARRE),
-      evenement(2, POLITIQUE_SUSPEND, { payload: { outil: "mail.send" } }),
+      evenement(2, PROPOSITION_RECUE, {
+        payload: { fournisseur: "faux", proposition: { kind: "agir", capacite: "envoyer.prospect" } },
+      }),
+      evenement(3, POLITIQUE_SUSPEND, { payload: { capacite: "envoyer.prospect" } }),
     ]);
 
     expect(attention.phase).not.toBe(accord.phase);

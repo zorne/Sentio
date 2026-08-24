@@ -70,7 +70,7 @@ Pousser un schéma en ligne · poser un secret · déployer une fonction · touc
 | 9 | Pouvoir encaisser | ✅ 2026-08-15 |
 | 10 | L'espace client, version minimale | ✅ 2026-08-15 |
 | 11 | Le filet : alerte et sauvegarde | ✅ 2026-08-15 |
-| 12 | Répétition générale, à blanc | ⛔ bloquée par `EXEC-11` |
+| 12 | Répétition générale, à blanc | ✅ 2026-08-15 |
 
 ### Partie II — Mettre en vente *(⛔ fondateur uniquement)*
 
@@ -735,7 +735,41 @@ service.
 **✅ Terminé quand :** le parcours complet passe en une seule exécution automatisée, et chaque écart
 constaté est corrigé.
 
-### ⛔ Non terminée — et c'est le résultat le plus utile de cette étape
+### Fait le 2026-08-15 — `EXEC-11` levé, le parcours va jusqu'au bout
+
+Le parcours complet passe désormais en une exécution, **sans qu'aucune ligne de `task`, `job`,
+`employee`, `lady_configuration` ou `tenant_member` ne soit écrite par le test** : le diagnostic
+compose, le paiement recrute, l'acheteur retrouve son entreprise, le travail s'ouvre, Lady
+s'arrête pour demander, le dirigeant accorde — **et l'action part**.
+
+`EXEC-11` a demandé trois corrections, dont deux invisibles jusqu'à ce que le parcours entier soit
+joué :
+
+1. **La mission ne retournait pas en file.** Un déclencheur l'y remet quand le client tranche — en
+   base, parce que le client écrit directement dans `approval` sous RLS et qu'**aucun code serveur
+   ne s'exécute sur ce chemin**.
+2. **La décision n'était pas journalisée.** `accord_accorde` et `accord_refuse` existaient dans le
+   vocabulaire et la machine à états savait les lire ; personne ne les écrivait.
+3. **⭐ L'état retenait la mauvaise chose.** `actionEnAttente` était reconstruite depuis la trace de
+   la politique — qui porte le nom de la capacité, **pas ses arguments**. L'action n'était donc pas
+   rejouable. Elle vient maintenant de la proposition, et **survit à l'accord** : le runtime
+   exécute *celle que le client a autorisée*, sans rappeler le modèle. Le rappeler lui ferait
+   proposer autre chose, que la politique suspendrait de nouveau — le client accorderait
+   indéfiniment dans le vide.
+
+Un fondement d'autorisation a été ajouté : `accord_ponctuel`, distinct d'`accord_permanent`. Un
+accord ponctuel ne couvre rien d'autre et ne se révoque pas — il est déjà consommé. Les confondre
+reviendrait à répondre « vous l'aviez autorisé » à un client qui n'a rien autorisé de général.
+
+Et l'accord est **relu en base** avant d'exécuter : le journal dit ce qui s'est passé, la table dit
+ce qui est vrai maintenant. Un accord révoqué entre-temps ne laisse rien partir.
+
+**Stabilité mesurée :** la répétition seule, 5 exécutions vertes sur 5 ; la suite du worker,
+5 sur 5 ; `verify` complet, 2 sur 3 — l'échec restant appartient à la famille d'instabilité
+inter-suites documentée depuis l'étape 1 (la file est globale), pas à ce travail : la suite de la
+boucle passe 4 fois sur 4 en isolation.
+
+### Ce que l'étape avait révélé, et qui est maintenant levé
 
 La répétition générale a été écrite et jouée. **Elle s'arrête**, et là où elle s'arrête est
 précisément ce qu'il fallait apprendre avant de vendre.

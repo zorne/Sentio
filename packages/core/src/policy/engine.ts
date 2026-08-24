@@ -44,7 +44,15 @@ export type AllowBasis =
   /** Ni effet extérieur, ni irréversibilité : l'action n'a jamais eu besoin d'un accord. */
   | "sans_effet_exterieur"
   /** Un accord permanent en vigueur couvre CETTE capacité (« confirmer une fois »). */
-  | "accord_permanent";
+  | "accord_permanent"
+  /**
+   * Le client a autorisé CETTE action-là, une fois, depuis son espace.
+   *
+   * Distinct d'un accord permanent, et la distinction n'est pas cosmétique : un accord ponctuel
+   * ne couvre rien d'autre et ne se révoque pas — il est déjà consommé. Les confondre reviendrait
+   * à répondre « vous l'aviez autorisé » à un client qui n'a jamais rien autorisé de général.
+   */
+  | "accord_ponctuel";
 
 export type PolicyDecision =
   | { readonly outcome: "allow"; readonly notify: boolean; readonly basis: AllowBasis }
