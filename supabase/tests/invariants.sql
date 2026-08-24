@@ -2145,4 +2145,160 @@ begin
 end;
 $$;
 
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+-- LADY-J — recruter : d'une recommandation payée à une Lady qui travaille.
+--
+-- Avant ce point, RIEN en production ne transformait une recommandation en employé : personne ne
+-- pouvait acheter, et chaque pièce posée depuis l'étape 1 attendait un chemin inexistant.
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  session_id  uuid;
+  reco_id     uuid;
+  hors_id     uuid;
+  r           record;
+  rejeu       record;
+  identites_avant integer;
+  identites_apres integer;
+  ouvertes    text;
+  proposition constant jsonb := jsonb_build_object(
+    'role', 'prospection',
+    'priorites', jsonb_build_array('élargir le nombre d''entreprises approchées'),
+    'limites', jsonb_build_array('particuliers'),
+    'autonomie', 'confirm',
+    'capacites', jsonb_build_array('relancer.prospect', 'qualifier.prospect'));
+begin
+  insert into public.diagnostic_session (visitor_fingerprint, extracted_profile, detected_friction)
+  values ('essai-recrutement',
+          jsonb_build_object(
+            'sector', 'menuiserie',
+            'targetCustomers', 'architectes en Bretagne',
+            'objective', jsonb_build_object('metric', 'rendez_vous_qualifies',
+                                            'target', 10, 'horizon', 'ce mois')),
+          'pas_assez_de_prospects')
+  returning id into session_id;
+
+  insert into public.recommendation
+    (diagnostic_session_id, configuration_proposee, justification, status)
+  values (session_id, proposition,
+          'Votre frein est le nombre d''entreprises approchées.', 'proposed')
+  returning id into reco_id;
+
+  select count(*) into identites_avant from public.identity where status = 'free';
+
+  -- ── 1. Le recrutement complet, en un appel.
+  select * into r from public.recruter(reco_id, 'Menuiserie Le Guen', 'start', 'paiement-essai-1');
+
+  if r.deja_recrute then
+    raise exception 'ÉCHEC recrutement : un premier achat a été pris pour un rejeu.';
+  end if;
+
+  -- ── 2. Ce qui doit exister ensuite, et qui n'existait pas avant.
+  if (select count(*) from public.employee where tenant_id = r.tenant_id) <> 1 then
+    raise exception 'ÉCHEC recrutement : aucun employé n''a été créé.';
+  end if;
+
+  if (select count(*) from public.objective
+       where tenant_id = r.tenant_id and state = 'actif') <> 1 then
+    raise exception
+      'ÉCHEC recrutement : aucun objectif actif — l''employé travaillerait pour personne.';
+  end if;
+
+  if (select count(*) from public.subscription
+       where tenant_id = r.tenant_id and status = 'active') <> 1 then
+    raise exception 'ÉCHEC recrutement : aucun abonnement actif.';
+  end if;
+
+  -- ── 3. ⭐ La configuration est APPLIQUÉE, pas seulement écrite. C'est la différence entre une
+  --    intention et un employé qui peut travailler.
+  select string_agg(c.key, ', ' order by c.key) into ouvertes
+    from public.employee_capability ec
+    join public.capability c on c.id = ec.capability_id
+   where ec.employee_id = r.employee_id and ec.enabled;
+
+  if ouvertes is distinct from 'qualifier.prospect, relancer.prospect' then
+    raise exception
+      'ÉCHEC recrutement : capacités ouvertes « % », attendu celles de la proposition.', ouvertes;
+  end if;
+
+  if not (select active from public.lady_configuration where id = r.configuration_id) then
+    raise exception 'ÉCHEC recrutement : la configuration v1 n''est pas active.';
+  end if;
+
+  -- ── 4. Le contexte d'entreprise vient du diagnostic, et son auteur est le CLIENT : c'est lui
+  --    qui l'a dit, et il doit pouvoir le corriger.
+  if (select count(*) from public.company_profile
+       where tenant_id = r.tenant_id and key = 'secteur' and author = 'client') <> 1 then
+    raise exception 'ÉCHEC recrutement : le secteur déclaré au diagnostic n''a pas suivi.';
+  end if;
+
+  -- ── 5. Le diagnostic est rattaché à l'entreprise (RECRUT-10), et la recommandation consommée.
+  if (select tenant_id from public.diagnostic_session where id = session_id) <> r.tenant_id then
+    raise exception 'ÉCHEC recrutement : le diagnostic n''a pas été rattaché à l''entreprise.';
+  end if;
+  if (select status from public.recommendation where id = reco_id) <> 'purchased' then
+    raise exception 'ÉCHEC recrutement : la recommandation n''a pas été consommée.';
+  end if;
+
+  -- ── 6. La notification annonce quelqu'un, par son prénom.
+  if (select count(*) from public.notification
+       where tenant_id = r.tenant_id and kind = 'recrutement') <> 1 then
+    raise exception 'ÉCHEC recrutement : le dirigeant n''apprend pas qui le rejoint.';
+  end if;
+
+  -- ── 7. ⭐⭐ LE rejeu. Un prestataire de paiement rejoue ses notifications : sans garde, un
+  --    rejeu créerait une seconde entreprise et CONSOMMERAIT UNE SECONDE IDENTITÉ — or une
+  --    identité ne se réutilise jamais.
+  select count(*) into identites_apres from public.identity where status = 'free';
+  if identites_apres <> identites_avant - 1 then
+    raise exception 'ÉCHEC recrutement : % identité(s) consommée(s) au lieu d''une.',
+      identites_avant - identites_apres;
+  end if;
+
+  select * into rejeu from public.recruter(reco_id, 'Menuiserie Le Guen', 'start', 'paiement-essai-1');
+
+  if not rejeu.deja_recrute then
+    raise exception 'ÉCHEC recrutement : un paiement rejoué a recruté une seconde fois.';
+  end if;
+  if rejeu.tenant_id <> r.tenant_id or rejeu.employee_id <> r.employee_id then
+    raise exception 'ÉCHEC recrutement : le rejeu rend un autre employé que le premier.';
+  end if;
+  if (select count(*) from public.identity where status = 'free') <> identites_apres then
+    raise exception 'ÉCHEC recrutement : le rejeu a consommé une identité de plus.';
+  end if;
+
+  -- ── 8. On ne recrute pas sur un refus. Hors périmètre ⇒ aucune configuration proposée, et
+  --    vendre quand même reviendrait à contredire par écrit ce qu'on vient de dire au client.
+  -- Une recommandation par diagnostic : le refus vient donc d'un autre visiteur, comme dans la
+  -- vraie vie.
+  insert into public.diagnostic_session (visitor_fingerprint, extracted_profile)
+  values ('essai-hors-perimetre', '{}'::jsonb)
+  returning id into hors_id;
+
+  insert into public.recommendation
+    (diagnostic_session_id, configuration_proposee, justification, status)
+  values (hors_id, null, 'Votre besoin porte sur la comptabilité.', 'hors_perimetre')
+  returning id into hors_id;
+
+  begin
+    perform public.recruter(hors_id, 'Autre entreprise', 'start', 'paiement-essai-2');
+    raise exception 'ÉCHEC recrutement : un employé a été vendu sur une recommandation refusée.';
+  exception when raise_exception then
+    if position('hors périmètre' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  -- ── 9. Une référence de paiement vide ne distinguerait pas un rejeu d'un second achat.
+  begin
+    perform public.recruter(reco_id, 'Entreprise', 'start', '   ');
+    raise exception 'ÉCHEC recrutement : une référence de paiement vide a été acceptée.';
+  exception when raise_exception then
+    if position('référence de paiement' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  raise notice
+    'OK  LADY-J — recrutement complet en une transaction, rejeu inoffensif, refus non vendable';
+end;
+$$;
+
 rollback;

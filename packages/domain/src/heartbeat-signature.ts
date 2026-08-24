@@ -130,3 +130,74 @@ export async function verifyHeartbeat(input: {
     return { ok: false, reason: "signature_invalide" };
   }
 }
+
+// ═════════════════════════════════════════════════════════════════════════════════════════════
+// Signer une CHARGE, et pas seulement un instant
+// ═════════════════════════════════════════════════════════════════════════════════════════════
+//
+// ⚠️ POURQUOI CETTE SECONDE PRIMITIVE EXISTE, ET POURQUOI RÉUTILISER LA PREMIÈRE SERAIT UN TROU.
+//
+// `signHeartbeat` ne couvre que l'horodatage. C'est suffisant pour un battement : son corps ne
+// décide de rien, il déclenche du travail déjà décidé ailleurs. Rejouer un battement authentique
+// dans sa fenêtre ne fait rien de plus qu'un battement.
+//
+// Une confirmation de paiement, elle, DÉCIDE : quelle recommandation, quelle entreprise, quelle
+// référence. Une signature qui ne couvrirait que l'instant laisserait quiconque l'intercepte
+// changer le corps dans les cinq minutes — et recruter sur la proposition de quelqu'un d'autre.
+//
+// La signature porte donc l'horodatage ET le corps exact. Un octet qui change invalide tout.
+
+export const CHARGE_HEADER = "x-sentio-signature";
+
+/** Construit l'en-tête d'une charge signée. Sert à l'émetteur — et aux tests. */
+export async function signerLaCharge(secret: string, at: Date, corps: string): Promise<string> {
+  const horodatage = String(at.getTime());
+  const key = await hmacKey(secret);
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(`${horodatage}.${corps}`),
+  );
+  return `${horodatage}.${toBase64Url(new Uint8Array(signature))}`;
+}
+
+/**
+ * Vérifie une charge signée.
+ *
+ * Même ordre que pour le battement : la fenêtre AVANT la signature, pour qu'un horodatage périmé
+ * ne coûte pas un calcul HMAC. Et même défaut : pas de secret configuré, rien ne passe.
+ */
+export async function verifierLaCharge(input: {
+  header: string | null;
+  secret: string | undefined;
+  corps: string;
+  now: Date;
+  toleranceMs?: number;
+}): Promise<SignatureVerdict> {
+  if (input.secret === undefined || input.secret === "") return { ok: false, reason: "secret_absent" };
+  if (input.header === null || input.header.trim() === "") return { ok: false, reason: "entete_absent" };
+
+  const parts = input.header.split(".");
+  if (parts.length !== 2) return { ok: false, reason: "entete_malforme" };
+  const [horodatage, signature] = parts;
+  if (!horodatage || !signature) return { ok: false, reason: "entete_malforme" };
+
+  const emisA = Number(horodatage);
+  if (!Number.isSafeInteger(emisA)) return { ok: false, reason: "horodatage_invalide" };
+
+  const tolerance = input.toleranceMs ?? DEFAULT_TOLERANCE_MS;
+  if (Math.abs(input.now.getTime() - emisA) > tolerance) return { ok: false, reason: "hors_fenetre" };
+
+  try {
+    const key = await hmacKey(input.secret);
+    const valide = await crypto.subtle.verify(
+      "HMAC",
+      key,
+      Uint8Array.from(fromBase64Url(signature)),
+      new TextEncoder().encode(`${horodatage}.${input.corps}`),
+    );
+    return valide ? { ok: true } : { ok: false, reason: "signature_invalide" };
+  } catch {
+    return { ok: false, reason: "signature_invalide" };
+  }
+}

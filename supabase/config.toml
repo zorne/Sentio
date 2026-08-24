@@ -409,6 +409,20 @@ verify_jwt = false
 # → docs/adr/0023-code-partage-vers-les-fonctions.md
 import_map = "./functions/deno.json"
 
+# RECRUT-02 — la confirmation de paiement, de serveur à serveur.
+#
+# `verify_jwt = false` : le prestataire de paiement n'a pas de session Supabase. L'autorisation
+# vient de la SIGNATURE de la notification, qui couvre l'horodatage ET le corps exact — pas d'un
+# jeton, et surtout pas de la redirection du navigateur, qui ne prouve rien.
+#
+# `enabled = false` : rien n'est déployé tant que le secret n'est pas posé et l'immatriculation
+# obtenue (docs/29, partie II). Une confirmation de paiement ouverte sans secret configuré serait
+# fermée par `verifierLaCharge` — mais mieux vaut ne pas l'exposer du tout.
+[functions.recrutement]
+enabled = false
+verify_jwt = false
+import_map = "./functions/deno.json"
+
 [analytics]
 enabled = true
 port = 54327

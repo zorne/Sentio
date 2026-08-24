@@ -67,7 +67,7 @@ Pousser un schéma en ligne · poser un secret · déployer une fonction · touc
 | 6 | Les constats d'audit et le moteur de composition | ✅ 2026-08-15 |
 | 7 | Le runtime fabrique le travail | ✅ 2026-08-15 |
 | 8 | Un deuxième domaine dans la bibliothèque | ✅ 2026-08-15 |
-| 9 | Pouvoir encaisser | ☐ |
+| 9 | Pouvoir encaisser | ✅ 2026-08-15 |
 | 10 | L'espace client, version minimale | ☐ |
 | 11 | Le filet : alerte et sauvegarde | ☐ |
 | 12 | Répétition générale, à blanc | ☐ |
@@ -562,6 +562,54 @@ haut.)*
 
 **✅ Terminé quand :** un parcours d'achat complet passe de bout en bout en test, et qu'une
 confirmation de paiement falsifiée est refusée.
+
+### Fait le 2026-08-15 — `20260815120009_recrutement.sql`, `supabase/functions/recrutement/`
+
+**Rien, en production, ne transformait une recommandation en employé.** `reserve_identity()`
+n'était appelée que par des fixtures : personne ne pouvait acheter, et chaque pièce posée depuis
+l'étape 1 attendait un chemin qui n'existait pas.
+
+`recruter()` le pose, en **une transaction** : l'entreprise, le diagnostic rattaché, l'abonnement,
+l'objectif du dirigeant, l'identité réservée, l'employé figé sur son noyau, la configuration v1
+appliquée, le contexte d'entreprise repris du diagnostic, la notification de bienvenue, la
+recommandation consommée. Neuf écritures qui n'ont aucun sens séparées : interrompues au milieu,
+elles laissent un client qui a **payé** et un employé incapable de travailler.
+
+**L'ordre n'est pas indifférent.** L'abonnement précède les capacités, parce que le garde de
+périmètre refuse d'activer sans formule active — et il a raison. Et *tout ce qui peut échouer*
+échoue avant la réservation d'identité, parce qu'une identité ne se réutilise jamais.
+
+**Le rejeu est inoffensif.** Un prestataire de paiement rejoue ses notifications. Sans garde, un
+rejeu créerait une seconde entreprise et consommerait une seconde identité. La référence de
+facturation est unique, et un rejeu rend le recrutement déjà fait.
+
+**On ne vend pas sur un refus.** Une recommandation `hors_perimetre` n'a aucune configuration
+proposée — la base l'impose depuis l'étape 5 — et recruter dessus est refusé en premier, avant même
+le contrôle de statut : c'est la raison de fond, et elle mérite le message.
+
+### La porte : jamais la redirection du navigateur
+
+Un parcours d'achat se termine par une redirection vers une page de succès. **Elle ne prouve
+rien** — elle vient du navigateur, donc de quelqu'un qui peut la fabriquer, la rejouer, la
+partager. Recruter dessus offrirait un employé à qui sait recopier une URL.
+
+Ce que le serveur écoute est la notification **signée** du prestataire. Et il a fallu étendre la
+primitive : `signHeartbeat` ne couvre que l'horodatage, ce qui suffit pour un battement dont le
+corps ne décide de rien. **Une confirmation de paiement, elle, décide** — quelle recommandation,
+quelle entreprise, quelle référence. Une signature qui ne couvrirait que l'instant laisserait
+quiconque l'intercepte changer le corps dans les cinq minutes et recruter sur la proposition d'un
+autre. `verifierLaCharge` couvre l'horodatage **et** le corps exact : un octet invalide tout.
+
+Dix cas éprouvent la porte, dont celui-là, et aucun refus ne dit au demandeur où il en est —
+distinguer « secret absent » de « signature invalide » lui apprendrait ce qu'il lui reste à
+trouver.
+
+### Ce qui n'est pas fait, et pourquoi
+
+| Tâche | État |
+|---|---|
+| `RECRUT-01` — intégration du prestataire | **Le contrat est écrit** (notification signée, référence unique) ; le branchement exige un compte, donc la partie II |
+| `RECRUT-07/08/09` — page de succès, lien magique, anti-scanner | Ce sont la **porte de l'espace client** : elles vont avec l'étape 10, pas avec l'encaissement |
 
 ---
 

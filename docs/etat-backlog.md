@@ -17,7 +17,7 @@
 
 ## Avancement
 
-**119 tâches sur 185** portent une preuve dans le dépôt.
+**125 tâches sur 185** portent une preuve dans le dépôt.
 
 | Lot | Fait | Total | |
 |---|---|---|---|
@@ -25,7 +25,7 @@
 | Noyau (Lot 1) | 22 | 22 | `████████████████████` |
 | Métier Commercial (Lot 2) | 23 | 24 | `███████████████████·` |
 | Acquisition (Lot 4) | 16 | 24 | `█████████████·······` |
-| Recrutement & Paiement (Lot 5) | 0 | 10 | `····················` |
+| Recrutement & Paiement (Lot 5) | 6 | 10 | `████████████········` |
 | Dashboard (Lot 6) | 0 | 21 | `····················` |
 | Exécution autonome (Lot 3) | 12 | 19 | `█████████████·······` |
 | Évolution (Lot 7) | 0 | 8 | `····················` |
@@ -174,15 +174,15 @@
 | | Tâche | Priorité | Preuve dans le dépôt |
 |---|---|---|---|
 | ☐ | **RECRUT-01** Intégration du prestataire de paiement (paiement hébergé) | P0 | — |
-| ☐ | **RECRUT-02** Point d'entrée de confirmation serveur du paiement (jamais la redirection navigateur) | P0 | — |
-| ☐ | **RECRUT-03** Réservation atomique d'une identité dans le réservoir | P0 | — |
-| ☐ | **RECRUT-04** Création de l'employé sur une version figée d'ADN | P0 | — |
-| ☐ | **RECRUT-05** Initialisation du Contexte Entreprise depuis le profil du diagnostic et le profil sectoriel | P0 | — |
-| ☐ | **RECRUT-06** Notification de recrutement ("Bienvenue, X rejoint votre entreprise") | P0 | — |
+| ✅ | **RECRUT-02** Point d'entrée de confirmation serveur du paiement (jamais la redirection navigateur) | P0 | [`supabase/functions/recrutement/index.ts`](../supabase/functions/recrutement/index.ts) · [`packages/domain/src/charge-signee.test.ts`](../packages/domain/src/charge-signee.test.ts) |
+| ✅ | **RECRUT-03** Réservation atomique d'une identité dans le réservoir | P0 | [`supabase/migrations/20260815120009_recrutement.sql`](../supabase/migrations/20260815120009_recrutement.sql) |
+| ✅ | **RECRUT-04** Création de l'employé sur une version figée d'ADN | P0 | [`supabase/migrations/20260815120009_recrutement.sql`](../supabase/migrations/20260815120009_recrutement.sql) |
+| ✅ | **RECRUT-05** Initialisation du Contexte Entreprise depuis le profil du diagnostic et le profil sectoriel | P0 | [`supabase/migrations/20260815120009_recrutement.sql`](../supabase/migrations/20260815120009_recrutement.sql) |
+| ✅ | **RECRUT-06** Notification de recrutement ("Bienvenue, X rejoint votre entreprise") | P0 | [`supabase/migrations/20260815120009_recrutement.sql`](../supabase/migrations/20260815120009_recrutement.sql) |
 | ☐ | **RECRUT-07** Page de succès de paiement + ouverture de l'accès à l'espace privé | P0 | — |
 | ☐ | **RECRUT-08** Authentification par lien magique (connexion) | P0 | — |
 | ☐ | **RECRUT-09** Protection anti-scanner du lien de connexion (callback) | P1 | — |
-| ☐ | **RECRUT-10** Rattachement automatique de l'utilisateur au tenant créé pendant le diagnostic | P0 | — |
+| ✅ | **RECRUT-10** Rattachement automatique de l'utilisateur au tenant créé pendant le diagnostic | P0 | [`supabase/migrations/20260815120009_recrutement.sql`](../supabase/migrations/20260815120009_recrutement.sql) · [`supabase/migrations/20260815120010_un_visiteur_devient_client.sql`](../supabase/migrations/20260815120010_un_visiteur_devient_client.sql) |
 
 ---
 
