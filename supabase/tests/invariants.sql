@@ -1987,24 +1987,32 @@ begin
   returning id into session_id;
 
   -- ── 1. Un constat porte toujours d'où il vient. Une déduction n'est pas une mesure.
-  insert into public.audit_finding (diagnostic_session_id, genre, domaine, source, confiance, libelle)
-  values (session_id, 'goulot', 'recherche_selection', 'declare', 'moyenne',
+  insert into public.audit_finding
+    (diagnostic_session_id, genre, domaine, objet, source, confiance, libelle)
+  values (session_id, 'goulot', 'recherche_selection', 'prospect', 'declare', 'moyenne',
           'trop peu d''entreprises approchées')
   returning id into premier;
+
+  -- ── 1 bis. ⭐ Le MÊME constat sur un AUTRE objet est un constat distinct. Sans l'objet, les
+  --    deux se confondraient et le moteur servirait des factures avec les actes du prospect.
+  insert into public.audit_finding
+    (diagnostic_session_id, genre, domaine, objet, source, confiance, libelle)
+  values (session_id, 'goulot', 'recherche_selection', 'facture', 'declare', 'moyenne',
+          'trop peu d''entreprises approchées');
 
   -- ── 2. Le vocabulaire est fermé : un genre inventé ne se constate pas.
   begin
     insert into public.audit_finding
-      (diagnostic_session_id, genre, domaine, source, confiance, libelle)
-    values (session_id, 'intuition', 'recherche_selection', 'declare', 'moyenne', 'au feeling');
+      (diagnostic_session_id, genre, domaine, objet, source, confiance, libelle)
+    values (session_id, 'intuition', 'recherche_selection', 'prospect', 'declare', 'moyenne', 'au feeling');
     raise exception 'ÉCHEC constat : un genre inventé a été accepté.';
   exception when check_violation then null;
   end;
 
   begin
     insert into public.audit_finding
-      (diagnostic_session_id, genre, domaine, source, confiance, libelle)
-    values (session_id, 'goulot', 'le_commercial', 'declare', 'moyenne', 'un métier, pas un domaine');
+      (diagnostic_session_id, genre, domaine, objet, source, confiance, libelle)
+    values (session_id, 'goulot', 'le_commercial', 'prospect', 'declare', 'moyenne', 'un métier, pas un domaine');
     raise exception 'ÉCHEC constat : un domaine hors vocabulaire a été accepté — un métier a pu rentrer.';
   exception when check_violation then null;
   end;
@@ -2012,8 +2020,8 @@ begin
   -- ── 3. Le même constat ne se compte pas deux fois : il pèserait double sans qu'on le voie.
   begin
     insert into public.audit_finding
-      (diagnostic_session_id, genre, domaine, source, confiance, libelle)
-    values (session_id, 'goulot', 'recherche_selection', 'mesure', 'forte',
+      (diagnostic_session_id, genre, domaine, objet, source, confiance, libelle)
+    values (session_id, 'goulot', 'recherche_selection', 'prospect', 'mesure', 'forte',
             'trop peu d''entreprises approchées');
     raise exception 'ÉCHEC constat : un doublon a été accepté, et il pèserait deux fois.';
   exception when unique_violation then null;
@@ -2037,17 +2045,19 @@ begin
 
   -- ── 5. Une force et un goulot coexistent sur le MÊME domaine : c'est ce qui permet de
   --    conclure autre chose que ce que le dirigeant demandait.
-  insert into public.audit_finding (diagnostic_session_id, genre, domaine, source, confiance, libelle)
-  values (session_id, 'force', 'recherche_selection', 'mesure', 'forte',
+  insert into public.audit_finding
+    (diagnostic_session_id, genre, domaine, objet, source, confiance, libelle)
+  values (session_id, 'force', 'recherche_selection', 'prospect', 'mesure', 'forte',
           'la liste existe déjà et elle est fournie');
 
   if (select count(*) from public.audit_finding
-       where diagnostic_session_id = session_id and domaine = 'recherche_selection') <> 2 then
+       where diagnostic_session_id = session_id
+         and domaine = 'recherche_selection' and objet = 'prospect') <> 2 then
     raise exception
       'ÉCHEC constat : un domaine ne peut pas porter à la fois une force et un goulot.';
   end if;
 
-  raise notice 'OK  LADY-E — constats typés, sourcés, fermés, immuables et non dédoublés';
+  raise notice 'OK  LADY-E — constats typés par domaine ET objet, sourcés, fermés, immuables';
 end;
 $$;
 

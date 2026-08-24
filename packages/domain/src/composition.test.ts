@@ -16,6 +16,7 @@ import {
   type Constat,
   type Domaine,
   type GenreDeConstat,
+  type Objet,
   type SourceDeConstat,
   CONFIANCE_PAR_SOURCE,
 } from "./audit.js";
@@ -32,10 +33,12 @@ const c = (
   domaine: Domaine,
   source: SourceDeConstat,
   libelle = "peu importe",
+  objet: Objet = "prospect",
   confiance?: Confiance,
 ): Constat => ({
   genre,
   domaine,
+  objet,
   source,
   confiance: confiance ?? CONFIANCE_PAR_SOURCE[source],
   libelle,
@@ -59,7 +62,12 @@ const DOSSIERS: Record<string, readonly Constat[]> = {
   "tout va bien sauf l'entrant": [
     c("force", "recherche_selection", "mesure", "la prospection produit"),
     c("force", "communication_sortante", "mesure", "les messages partent et obtiennent des réponses"),
-    c("goulot", "communication_entrante", "mesure", "les demandes entrantes se perdent"),
+    c("goulot", "communication_entrante", "mesure", "les demandes entrantes se perdent", "demande"),
+  ],
+  "les impayés ne sont jamais relancés": [
+    // Même domaine et même acte que la relance de prospects — un AUTRE objet. La bibliothèque
+    // sait relancer, et pourtant elle ne sait pas relancer une facture : aucun moteur ne le sert.
+    c("goulot", "communication_sortante", "declare", "les impayés dorment", "facture"),
   ],
   "rien ne ressort": [c("force", "recherche_selection", "declare", "tout fonctionne")],
 };
@@ -119,7 +127,9 @@ describe("Le diagnostic conclut, il n'obéit pas", () => {
 });
 
 describe("Le vocabulaire est fermé — rien n'est rédigé, tout est choisi", () => {
-  const connues = new Set(Object.values(ACTES_PAR_DOMAINE).flat());
+  const connues = new Set(
+    Object.values(ACTES_PAR_DOMAINE).flatMap((parObjet) => Object.values(parObjet ?? {}).flat()),
+  );
 
   it("ne produit jamais une capacité qui n'existe pas dans la bibliothèque", () => {
     for (const constats of Object.values(DOSSIERS)) {
@@ -183,5 +193,44 @@ describe("Aucune capacité n'est activée sans ce qu'elle exige", () => {
         }
       }
     }
+  });
+});
+
+describe("L'axe « objet » est réel — un acte connu ne suffit pas", () => {
+  it("ne confond pas relancer un prospect et relancer une facture", () => {
+    // `relancer` existe. `facture` existe. Et pourtant `relancer × facture` n'est servi par aucun
+    // moteur : le besoin sort du périmètre, et Sentio le dit au lieu de promettre un geste que
+    // rien n'exécute. C'est la séparation de l'étape 2, devenue effective dans le moteur.
+    const resultat = composer(diagnostiquer(DOSSIERS["les impayés ne sont jamais relancés"] as Constat[]));
+
+    expect(resultat.statut).toBe("hors_perimetre");
+    if (resultat.statut !== "hors_perimetre") return;
+    expect(resultat.domaine).toBe("communication_sortante");
+    expect(resultat.objet).toBe("facture");
+  });
+
+  it("un besoin sur un objet servi passe, sur le même domaine", () => {
+    const resultat = composer(
+      diagnostiquer([c("goulot", "communication_sortante", "declare", "jamais repris", "prospect")]),
+    );
+    expect(resultat.statut).toBe("compose");
+  });
+
+  it("deux entreprises aux constats opposés reçoivent deux configurations différentes", () => {
+    // ⭐ Le critère de l'étape 8. La différence doit s'expliquer par les constats, pas par un
+    // réglage : ce sont les mêmes règles, appliquées à des observations opposées.
+    const aSec = composer(diagnostiquer(DOSSIERS["prospection à sec"] as Constat[]));
+    const malCible = composer(diagnostiquer(DOSSIERS["du volume, mal ciblé"] as Constat[]));
+
+    expect(aSec.statut).toBe("compose");
+    expect(malCible.statut).toBe("compose");
+    if (aSec.statut !== "compose" || malCible.statut !== "compose") return;
+
+    expect(aSec.configuration.role).not.toBe(malCible.configuration.role);
+    expect(aSec.configuration.capacites).not.toEqual(malCible.configuration.capacites);
+
+    // Et la différence se relit : chaque configuration porte les constats qui l'expliquent.
+    expect(aSec.configuration.motifs.join(" ")).toContain("trop peu d'entreprises approchées");
+    expect(malCible.configuration.motifs.join(" ")).toContain("mal ciblé");
   });
 });

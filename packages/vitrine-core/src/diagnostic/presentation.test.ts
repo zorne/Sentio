@@ -10,6 +10,7 @@ const DECISION = recommend({
   objective: { metric: "€ de chiffre d'affaires", target: 5000, horizon: "mois" },
   targetCustomers: "architectes et maîtres d'œuvre",
   hasProspectList: true,
+  inboundHandling: null,
 }) as Extract<RecommendationDecision, { status: "recommande" }>;
 
 const VALID_PRESENTATION = {

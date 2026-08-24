@@ -18,6 +18,7 @@ function profile(overrides: Partial<DiagnosticProfile> = {}): DiagnosticProfile 
     objective: { metric: "€ de chiffre d'affaires", target: 5000, horizon: "mois" },
     targetCustomers: "architectes et maîtres d'œuvre",
     hasProspectList: true,
+    inboundHandling: null,
     ...overrides,
   };
 }
@@ -187,5 +188,34 @@ describe("Ce que tape le visiteur est une donnée, jamais une instruction", () =
     expect(Object.values(ROLE_PAR_DOMAINE)).toContain(decision.calibration.role);
     expect(JSON.stringify(decision.calibration)).not.toMatch(/comptab/i);
     expect(JSON.stringify(decision.calibration)).not.toMatch(/ignore/i);
+  });
+});
+
+describe("Le diagnostic voit ce que le dirigeant ne déclare pas", () => {
+  it("refuse honnêtement quand le vrai trou est ailleurs que dans la demande", () => {
+    // ⭐ Le cas canonique de la vision (§7). Le dirigeant demande de la prospection ; il a déjà
+    // une liste, et il dit que ses demandes entrantes se perdent. Le besoin le plus lourd n'est
+    // donc pas celui qu'il a formulé — et Sentio ne sait pas encore le traiter. Il le dit.
+    const decision = recommend(
+      profile({
+        friction: HANDLED_FRICTIONS.tooFewProspects,
+        hasProspectList: true,
+        inboundHandling: "perdu",
+      }),
+    );
+
+    expect(decision.status).toBe("hors_perimetre");
+    if (decision.status !== "hors_perimetre") return;
+    expect(decision.reason).toContain("relation_client");
+  });
+
+  it("ne change rien quand la question n'a pas été posée", () => {
+    // Un diagnostic mené sans cette question reste valable : il voit simplement moins. Ce qui
+    // serait faux, c'est de supposer une réponse.
+    const sansQuestion = recommend(profile({ inboundHandling: null }));
+    const avecEntrantSain = recommend(profile({ inboundHandling: "traite" }));
+
+    expect(sansQuestion.status).toBe("recommande");
+    expect(avecEntrantSain.status).toBe("recommande");
   });
 });

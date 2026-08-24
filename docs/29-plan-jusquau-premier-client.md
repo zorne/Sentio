@@ -66,7 +66,7 @@ Pousser un schéma en ligne · poser un secret · déployer une fonction · touc
 | 5 | Le noyau perd le métier | ✅ 2026-08-15 |
 | 6 | Les constats d'audit et le moteur de composition | ✅ 2026-08-15 |
 | 7 | Le runtime fabrique le travail | ✅ 2026-08-15 |
-| 8 | Un deuxième domaine dans la bibliothèque | ☐ |
+| 8 | Un deuxième domaine dans la bibliothèque | ✅ 2026-08-15 |
 | 9 | Pouvoir encaisser | ☐ |
 | 10 | L'espace client, version minimale | ☐ |
 | 11 | Le filet : alerte et sauvegarde | ☐ |
@@ -498,6 +498,49 @@ Le déploiement échoue déjà tout seul si un acte n'a pas de moteur — ne pas
 
 **✅ Terminé quand :** deux entreprises aux constats opposés reçoivent deux configurations
 réellement différentes, et la différence s'explique par les constats.
+
+### Fait le 2026-08-15 — `20260815120008_objet_du_constat.sql`, axe « objet » dans le moteur
+
+**⚠️ La prémisse de cette étape était fausse, et l'étape 6 l'a révélée.** J'avais écrit « tant
+qu'un seul domaine existe, la recommandation reste un théâtre à issue unique ». C'est faux : la
+bibliothèque en couvre **quatre** — recherche, évaluation, communication sortante, données. Le
+critère de l'étape était donc déjà atteint avant de commencer.
+
+**Le vrai manque était ailleurs, et plus grave.** L'étape 2 avait séparé l'acte de l'objet *en
+base* ; le moteur de composition, lui, raisonnait encore **en domaines seuls**. Un besoin sur
+`communication_sortante × facture` aurait donc été servi par les actes du prospect : le moteur
+recollait ce que le schéma avait séparé, et le refus honnête aurait répondu « oui » à la mauvaise
+question.
+
+Un besoin est désormais un **couple (domaine, objet)**. `relancer` existe, `facture` existe, et
+`relancer × facture` n'est servi par **aucun moteur** — le moteur le dit au lieu de promettre un
+geste que rien n'exécute.
+
+**Pourquoi aucun nouveau domaine n'a été écrit.** La communication entrante demanderait quatre
+moteurs neufs et un canal d'entrée qui n'existe pas — aucune fonction n'est déployée. Le dépôt
+interdit par construction de déclarer une capacité sans moteur : le contrôle de déploiement échoue
+(`20260729120010`, bloc `do $$`). Déclarer `accuser_reception` aujourd'hui aurait été une promesse
+invérifiable. Ce qui a été fait à la place rend l'ajout futur possible **sans réécrire le moteur**.
+
+**Le cas canonique de la vision (§7) fonctionne maintenant de bout en bout.** Une question a été
+ajoutée au diagnostic : *que deviennent les demandes que vous recevez sans les avoir cherchées ?*
+Sans elle, Sentio ne pouvait pas constater ce que le dirigeant ne déclare pas — donc pas le dire.
+Un client qui demande de la prospection, a déjà une liste, et perd ses demandes entrantes reçoit
+désormais un **refus honnête** plutôt que la prospection qu'il croyait vouloir. La question est
+facultative : un diagnostic mené sans elle reste valable, il voit simplement moins.
+
+### La cause racine du test instable, enfin trouvée
+
+Poursuivie depuis l'étape 1, contournée à l'étape 3, **identifiée ici** : `job.next_run_at` reçoit
+le `now()` de **Postgres** ; la file compare `next_run_at <= maintenant`, où `maintenant` venait de
+l'horloge du **processus Node**. Un décalage d'une milliseconde entre les deux suffit à rendre le
+travail « pas encore dû » — l'exécutant ne prend rien, le journal reste vide, et le test échoue sur
+une assertion qui n'a rien à voir avec ce qu'elle vérifie.
+
+Les suites lisent désormais l'heure **selon la base**. En production le même décalage est sans
+conséquence — le battement suivant reprend le travail — mais en test il n'y a pas de battement
+suivant. **0 échec sur 3 exécutions complètes** et 0 sur 6 en isolation, là où le taux tournait
+autour d'un sur huit.
 
 ---
 

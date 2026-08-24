@@ -63,6 +63,12 @@ const mesures: { quoi: string; ms: number; detail?: string }[] = [];
 
 describeIfDatabase("D16 — la durée réelle d'un battement", () => {
   let sql: PostgresClient;
+
+  /** L'heure SELON LA BASE — voir la note détaillée dans `boucle.integration.test.ts`. */
+  async function maintenantSelonLaBase(): Promise<Date> {
+    const [ligne] = await sql.query<{ maintenant: Date }>("select now() as maintenant", []);
+    return ligne?.maintenant as Date;
+  }
   const tenants: string[] = [];
   let appels = 0;
 
@@ -273,7 +279,7 @@ describeIfDatabase("D16 — la durée réelle d'un battement", () => {
     const rapport = await mesurer(
       executerLesTravauxDus(deps(), {
         prisPar: "mesure",
-        maintenant: new Date(),
+        maintenant: await maintenantSelonLaBase(),
         dataClass: "synthetic",
         maxTravaux: 10,
       }),

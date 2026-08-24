@@ -27,6 +27,7 @@ import {
   type Constat,
   type Domaine,
   type GenreDeConstat,
+  type Objet,
   type SourceDeConstat,
   CONFIANCE_PAR_SOURCE,
 } from "./audit.js";
@@ -74,6 +75,17 @@ export interface DiagnosticProfile {
   readonly targetCustomers: string | null;
   /** Le client dispose-t-il déjà d'une liste de prospects ? Décide du premier pas (`adr/0016`). */
   readonly hasProspectList: boolean | null;
+  /**
+   * Ce qui arrive aux demandes que le client reçoit SANS les avoir cherchées.
+   *
+   * ⚠️ C'est la question qui rend le diagnostic capable de voir ce que le dirigeant ne déclare
+   * pas. Le cas canonique de la vision (§7) : il demande de la prospection alors que sa
+   * prospection fonctionne et que ce sont ses demandes entrantes qui se perdent. Sans cette
+   * question, Sentio ne peut pas le constater — donc pas le dire.
+   *
+   * Facultative : un diagnostic mené sans elle reste valable, il voit simplement moins.
+   */
+  readonly inboundHandling: "traite" | "irregulier" | "perdu" | null;
 }
 
 /**
@@ -240,8 +252,16 @@ export function relever(profile: DiagnosticProfile): readonly Constat[] {
     domaine: Domaine,
     source: SourceDeConstat,
     libelle: string,
+    objet: Objet = "prospect",
   ): void => {
-    constats.push({ genre, domaine, source, confiance: CONFIANCE_PAR_SOURCE[source], libelle });
+    constats.push({
+      genre,
+      domaine,
+      objet,
+      source,
+      confiance: CONFIANCE_PAR_SOURCE[source],
+      libelle,
+    });
   };
 
   switch (profile.friction) {
@@ -274,6 +294,19 @@ export function relever(profile: DiagnosticProfile): readonly Constat[] {
       noter("risque", "temps_echeances", "deduit",
         "une tâche récurrente portée par une seule personne s'arrête dès qu'elle s'absente");
       break;
+  }
+
+  // Ce que le client reçoit sans l'avoir cherché. C'est là que se cache le plus souvent l'écart
+  // entre ce qu'un dirigeant demande et ce qui le bloque réellement.
+  if (profile.inboundHandling === "perdu") {
+    noter("goulot", "communication_entrante", "declare",
+      "les demandes entrantes se perdent", "demande");
+  } else if (profile.inboundHandling === "irregulier") {
+    noter("faiblesse", "communication_entrante", "declare",
+      "les demandes entrantes sont traitées quand quelqu'un y pense", "demande");
+  } else if (profile.inboundHandling === "traite") {
+    noter("force", "communication_entrante", "declare",
+      "les demandes entrantes sont prises en charge", "demande");
   }
 
   if (profile.hasProspectList === true) {

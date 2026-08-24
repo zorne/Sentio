@@ -12,6 +12,7 @@ const VALID_CANDIDATE = {
   objective: { metric: "€ de chiffre d'affaires", target: 5000, horizon: "mois" },
   targetCustomers: "architectes et maîtres d'œuvre",
   hasProspectList: true,
+  inboundHandling: null,
 };
 
 /** Un faux `converse` scripté : une réponse par appel, dans l'ordre. */

@@ -27,7 +27,9 @@ import { CAPACITES } from "./capability.js";
 import {
   type Constat,
   type Domaine,
+  type Objet,
   DOMAINES,
+  OBJETS,
   POIDS_DE_CONFIANCE,
   POIDS_DE_GENRE,
   ordonnerLesConstats,
@@ -44,16 +46,26 @@ import {
  * plus fort tombe dans un domaine vide, Sentio le dit au lieu de vendre à côté. Les remplir est le
  * travail de l'étape 8 du plan, un domaine à la fois.
  */
-export const ACTES_PAR_DOMAINE: Record<Domaine, readonly string[]> = {
-  recherche_selection: [CAPACITES.rechercherProspect],
-  evaluation: [CAPACITES.qualifierProspect],
-  communication_sortante: [CAPACITES.envoyerProspect, CAPACITES.relancerProspect],
-  donnees_fiches: [CAPACITES.mettreAJourProspect],
-  communication_entrante: [],
-  documents: [],
-  temps_echeances: [],
-  analyse_restitution: [],
+export const ACTES_PAR_DOMAINE: Partial<Record<Domaine, Partial<Record<Objet, readonly string[]>>>> = {
+  recherche_selection: { prospect: [CAPACITES.rechercherProspect] },
+  evaluation: { prospect: [CAPACITES.qualifierProspect] },
+  communication_sortante: {
+    prospect: [CAPACITES.envoyerProspect, CAPACITES.relancerProspect],
+  },
+  donnees_fiches: { prospect: [CAPACITES.mettreAJourProspect] },
 };
+
+/**
+ * Les actes que la bibliothèque sait exercer sur ce couple — vide si elle ne sait pas.
+ *
+ * ⚠️ Un couple absent n'est pas une lacune de ce fichier : c'est l'état réel de la bibliothèque.
+ * `relancer` existe, `facture` existe, et pourtant `relancer × facture` n'est pas servi — parce
+ * qu'aucun moteur ne le sert. Le déploiement échoue tout seul si on déclarait le contraire
+ * (`20260729120010`, bloc `do $$`), et c'est exactement le garde-fou qu'on veut.
+ */
+export function actesServis(domaine: Domaine, objet: Objet): readonly string[] {
+  return ACTES_PAR_DOMAINE[domaine]?.[objet] ?? [];
+}
 
 /**
  * Le rôle que Sentio annonce au dirigeant quand un domaine domine.
@@ -125,6 +137,8 @@ export const PRIORITE_PAR_DOMAINE: Record<Domaine, string> = {
 
 export interface BesoinPriorise {
   readonly domaine: Domaine;
+  /** Sur quel objet porte ce besoin. Deux besoins de même domaine sur deux objets sont distincts. */
+  readonly objet: Objet;
   /** Somme pondérée des constats du domaine. Négatif = ce domaine va bien, on n'y touche pas. */
   readonly score: number;
   /** La bibliothèque sait-elle faire quelque chose ici ? Sinon, aucun renfort n'est possible. */
@@ -143,23 +157,32 @@ export interface BesoinPriorise {
 export function diagnostiquer(constats: readonly Constat[]): readonly BesoinPriorise[] {
   const ordonnes = ordonnerLesConstats(constats);
 
-  const besoins = DOMAINES.map((domaine): BesoinPriorise => {
-    const duDomaine = ordonnes.filter((c) => c.domaine === domaine);
-    const score = duDomaine.reduce(
-      (total, c) => total + POIDS_DE_GENRE[c.genre] * POIDS_DE_CONFIANCE[c.confiance],
-      0,
-    );
-    return {
-      domaine,
-      score,
-      couvert: ACTES_PAR_DOMAINE[domaine].length > 0,
-      constats: duDomaine,
-    };
-  });
+  // Un besoin est un couple (domaine, objet). « Les relances ne suivent pas » n'appelle pas les
+  // mêmes actes selon qu'il s'agit de prospects ou de factures impayées — les confondre reviendrait
+  // à recoller ce que l'étape 2 avait séparé.
+  const besoins = DOMAINES.flatMap((domaine) =>
+    OBJETS.map((objet): BesoinPriorise => {
+      const duCouple = ordonnes.filter((c) => c.domaine === domaine && c.objet === objet);
+      const score = duCouple.reduce(
+        (total, c) => total + POIDS_DE_GENRE[c.genre] * POIDS_DE_CONFIANCE[c.confiance],
+        0,
+      );
+      return {
+        domaine,
+        objet,
+        score,
+        couvert: actesServis(domaine, objet).length > 0,
+        constats: duCouple,
+      };
+    }),
+  );
 
   // Tri par besoin décroissant, puis par nom : à score égal, l'ordre ne dépend jamais de
   // l'ordre d'arrivée des constats. C'est ce qui rend le résultat rejouable.
-  return [...besoins].sort((a, b) => b.score - a.score || a.domaine.localeCompare(b.domaine));
+  return [...besoins].sort(
+    (a, b) =>
+      b.score - a.score || a.domaine.localeCompare(b.domaine) || a.objet.localeCompare(b.objet),
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -183,8 +206,9 @@ export type ResultatDeComposition =
   | { readonly statut: "compose"; readonly configuration: ConfigurationProposee }
   | {
       readonly statut: "hors_perimetre";
-      /** Le domaine où le besoin est le plus fort, et que la bibliothèque ne couvre pas. */
+      /** Le couple où le besoin est le plus fort, et que la bibliothèque ne couvre pas. */
       readonly domaine: Domaine;
+      readonly objet: Objet;
       readonly motif: string;
     }
   | { readonly statut: "aucun_besoin"; readonly motif: string };
@@ -226,6 +250,7 @@ export function composer(besoins: readonly BesoinPriorise[]): ResultatDeComposit
     return {
       statut: "hors_perimetre",
       domaine: dominant.domaine,
+      objet: dominant.objet,
       motif:
         `Ce qui pèse le plus lourd chez vous relève de ${ROLE_PAR_DOMAINE[dominant.domaine]}, ` +
         `et ce n'est pas encore ce que Lady sait faire. Nous préférons vous le dire maintenant ` +
@@ -248,21 +273,22 @@ export function composer(besoins: readonly BesoinPriorise[]): ResultatDeComposit
 
   const capacites = fermerSurLesExigences(
     retenus.flatMap((b) => {
-      const actes = ACTES_PAR_DOMAINE[b.domaine];
+      const actes = actesServis(b.domaine, b.objet);
       return casse(b) ? actes : actes.slice(0, 1);
     }),
   );
-  const priorites = retenus.map((b) => PRIORITE_PAR_DOMAINE[b.domaine]);
+  const priorites = [...new Set(retenus.map((b) => PRIORITE_PAR_DOMAINE[b.domaine]))];
 
   const motifs = retenus.flatMap((b) =>
-    b.constats.map((c) => `${c.domaine} — ${c.genre} : ${c.libelle} (${c.source})`),
+    b.constats.map((c) => `${c.domaine} sur ${c.objet} — ${c.genre} : ${c.libelle} (${c.source})`),
   );
 
   // Un besoin fort mais non couvert qui n'est PAS dominant se dit quand même : le dirigeant doit
   // savoir ce que Lady ne prendra pas en charge, au moment où il achète.
   for (const b of reels.filter((x) => !x.couvert)) {
     motifs.push(
-      `${b.domaine} — non couvert aujourd'hui : ${PRIORITE_PAR_DOMAINE[b.domaine]} reste à votre charge`,
+      `${b.domaine} sur ${b.objet} — non couvert aujourd'hui : ` +
+        `${PRIORITE_PAR_DOMAINE[b.domaine]} reste à votre charge`,
     );
   }
 

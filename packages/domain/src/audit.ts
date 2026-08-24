@@ -54,6 +54,20 @@ export const DOMAINES = [
 export type Domaine = (typeof DOMAINES)[number];
 
 /**
+ * Les objets métier sur lesquels les actes portent (`docs/28` §2).
+ *
+ * ⚠️ **C'est ici que vit la spécificité métier, jamais dans l'acte.** Un constat porte donc un
+ * domaine ET un objet : « les relances ne suivent pas » n'a pas le même sens selon qu'il s'agit
+ * de prospects ou de factures impayées, et ce ne sont pas les mêmes actes qui y répondent.
+ *
+ * Un seul objet est servi aujourd'hui. Les autres sont nommés parce qu'un constat peut les
+ * désigner : c'est ce qui permet à Sentio de dire « votre vrai problème est là, et je ne sais pas
+ * encore le traiter » au lieu de ne pas le voir.
+ */
+export const OBJETS = ["prospect", "demande", "facture", "candidature", "document"] as const;
+export type Objet = (typeof OBJETS)[number];
+
+/**
  * D'où vient un constat. C'est ce qui permet de ne pas traiter une impression comme une mesure.
  *
  *   · `declare`  — le dirigeant l'a dit. Utile, et faillible.
@@ -71,6 +85,8 @@ export type Confiance = (typeof CONFIANCES)[number];
 export interface Constat {
   readonly genre: GenreDeConstat;
   readonly domaine: Domaine;
+  /** Sur QUOI porte le constat. Deux constats de même domaine sur deux objets sont distincts. */
+  readonly objet: Objet;
   readonly source: SourceDeConstat;
   readonly confiance: Confiance;
   /** Formulé dans le vocabulaire du dirigeant. C'est ce qu'il relira dans sa justification. */
@@ -110,6 +126,7 @@ export function ordonnerLesConstats(constats: readonly Constat[]): readonly Cons
   return [...constats].sort(
     (a, b) =>
       a.domaine.localeCompare(b.domaine) ||
+      a.objet.localeCompare(b.objet) ||
       a.genre.localeCompare(b.genre) ||
       a.source.localeCompare(b.source) ||
       a.libelle.localeCompare(b.libelle),

@@ -109,7 +109,23 @@ export const EXTRACTION_TOOL = {
       },
       targetCustomers: { type: ["string", "null"], description: "À qui l'entreprise vend." },
       hasProspectList: { type: ["boolean", "null"], description: "Dispose déjà d'une liste de prospects." },
+      inboundHandling: {
+        type: ["string", "null"],
+        enum: ["traite", "irregulier", "perdu", null],
+        description:
+          "Ce qui arrive aux demandes reçues SANS avoir été cherchées : « traite » si elles sont " +
+          "prises en charge, « irregulier » si c'est quand quelqu'un y pense, « perdu » si elles " +
+          "se perdent. Null tant que le dirigeant ne l'a pas dit — ne jamais le supposer.",
+      },
     },
-    required: ["sector", "headcount", "friction", "objective", "targetCustomers", "hasProspectList"],
+    required: [
+      "sector",
+      "headcount",
+      "friction",
+      "objective",
+      "targetCustomers",
+      "hasProspectList",
+      "inboundHandling",
+    ],
   },
 } as const;

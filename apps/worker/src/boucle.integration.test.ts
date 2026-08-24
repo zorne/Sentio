@@ -219,6 +219,24 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     return { tenantId: tenantId as TenantId, employeeId: employee?.id as EmployeeId };
   }
 
+  /**
+   * L'heure SELON LA BASE.
+   *
+   * ⚠️ Ce n'est pas une coquetterie : c'est la cause d'un échec intermittent poursuivi sur trois
+   * étapes. `job.next_run_at` reçoit le `now()` de Postgres ; `prendre()` compare
+   * `next_run_at <= maintenant`, où `maintenant` venait de l'horloge du processus Node. Un
+   * décalage d'une milliseconde entre les deux horloges suffit à rendre le travail « pas encore
+   * dû » — l'exécutant ne prend rien, le journal reste vide, et le test échoue sur une assertion
+   * qui n'a rien à voir avec ce qu'elle vérifie.
+   *
+   * En production le même décalage est sans conséquence : le battement suivant reprend le travail
+   * quelques minutes plus tard. En test, il n'y a pas de battement suivant.
+   */
+  async function maintenantSelonLaBase(): Promise<Date> {
+    const [ligne] = await sql.query<{ maintenant: Date }>("select now() as maintenant", []);
+    return ligne?.maintenant as Date;
+  }
+
   async function approvisionner(...tenantIds: TenantId[]): Promise<void> {
     await approvisionnerLeJour(
       {
@@ -282,7 +300,7 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
 
     const rapport = await executerLesTravauxDus(deps(), {
       prisPar: "exécutant-de-test",
-      maintenant: new Date(),
+      maintenant: await maintenantSelonLaBase(),
       dataClass: "synthetic",
       maxTravaux: 1,
     });
@@ -319,7 +337,7 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     for (let i = 0; i < 3; i++) {
       await executerLesTravauxDus(deps(), {
         prisPar: "exécutant-de-test",
-        maintenant: new Date(),
+        maintenant: await maintenantSelonLaBase(),
         dataClass: "synthetic",
         maxTravaux: 1,
       });
@@ -339,7 +357,7 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     for (let i = 0; i < REGLAGES_RUNTIME_PAR_DEFAUT.pasMaximumParRun; i++) {
       await executerLesTravauxDus(deps(), {
         prisPar: "exécutant-de-test",
-        maintenant: new Date(),
+        maintenant: await maintenantSelonLaBase(),
         dataClass: "synthetic",
         maxTravaux: 1,
       });
@@ -363,7 +381,7 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
 
     await executerLesTravauxDus(deps(), {
       prisPar: "exécutant-de-test",
-      maintenant: new Date(),
+      maintenant: await maintenantSelonLaBase(),
       dataClass: "synthetic",
       maxTravaux: 1,
     });
@@ -445,7 +463,9 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
 
     // Un exécutant prend le travail… puis meurt. Le verrou n'est jamais rendu.
     const bail = new PostgresFileDeTravaux(sql, 10);
-    expect(await bail.prendre({ pris_par: "mort", maintenant: new Date() })).not.toBeNull();
+    expect(
+      await bail.prendre({ pris_par: "mort", maintenant: await maintenantSelonLaBase() }),
+    ).not.toBeNull();
 
     // Onze minutes plus tard, un autre le reprend — et compte la reprise.
     const plusTard = new Date(Date.now() + 11 * 60 * 1000);
@@ -470,7 +490,7 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     const avant = appelsAuModele;
     await executerLesTravauxDus(deps(), {
       prisPar: "exécutant-de-test",
-      maintenant: new Date(),
+      maintenant: await maintenantSelonLaBase(),
       dataClass: "synthetic",
       maxTravaux: 1,
     });
@@ -508,7 +528,7 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     for (let i = 0; i < 2; i++) {
       await executerLesTravauxDus(deps(), {
         prisPar: "exécutant-de-test",
-        maintenant: new Date(),
+        maintenant: await maintenantSelonLaBase(),
         dataClass: "synthetic",
         maxTravaux: 1,
       });
@@ -548,7 +568,7 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     const avant = appelsAuModele;
     await executerLesTravauxDus(deps(), {
       prisPar: "exécutant-de-test",
-      maintenant: new Date(),
+      maintenant: await maintenantSelonLaBase(),
       dataClass: "synthetic",
       maxTravaux: 1,
     });
@@ -576,7 +596,7 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
 
     await executerLesTravauxDus(deps(), {
       prisPar: "exécutant-de-test",
-      maintenant: new Date(),
+      maintenant: await maintenantSelonLaBase(),
       dataClass: "synthetic",
       maxTravaux: 8,
     });
@@ -621,13 +641,23 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
 
     await executerLesTravauxDus(deps(), {
       prisPar: "exécutant-de-test",
-      maintenant: new Date(),
+      maintenant: await maintenantSelonLaBase(),
       dataClass: "synthetic",
       maxTravaux: 1,
     });
 
-    const chaine = await natures(tenantId, await laMission(tenantId));
-    expect(chaine).toContain("politique_refuse");
+    // ⚠️ Diagnostic avant assertion. Ce cas a déjà échoué sur un journal vide, et « vide » a
+    // deux causes très différentes : soit la mission n'a jamais été ouverte, soit elle l'a été
+    // mais l'exécutant a pris le travail d'un autre. Les distinguer ici évite de rejouer
+    // l'enquête à chaque occurrence — un test instable qu'on ne sait pas lire se contourne au
+    // lieu de se corriger.
+    const mission = await laMission(tenantId);
+    expect(mission, "aucune mission ouverte : l'approvisionnement a refusé").toBeDefined();
+
+    const chaine = await natures(tenantId, mission);
+    expect(chaine, "journal vide : l'exécutant a pris le travail d'une autre entreprise").toContain(
+      "politique_refuse",
+    );
     expect(chaine).not.toContain("action_engagee");
     expect(effets).toHaveLength(0);
   });
