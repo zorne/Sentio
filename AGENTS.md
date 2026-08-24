@@ -18,6 +18,9 @@ sont écrits — schéma et noyau ; le lot 2 est réorienté vers le noyau Lady 
 > un noyau généraliste configuré dynamiquement, ou ramène-t-elle vers des agents spécialisés par
 > métier ?* Si c'est la seconde, elle ne s'implémente pas.
 
+> 🖥️ **Poste neuf, ou poste à effacer ⇒ [`docs/30-refaire-le-poste.md`](docs/30-refaire-le-poste.md).**
+> Tout le produit vit sur git ; ce qui n'y vit pas y est listé, avec le moyen de le retrouver.
+
 > 📍 **« Continue le plan » ⇒ [`docs/29-plan-jusquau-premier-client.md`](docs/29-plan-jusquau-premier-client.md).**
 > L'étape courante est la première non cochée de son tableau de bord. Une étape à la fois, dans
 > l'ordre, et jamais cochée sans que son critère « Terminé quand » passe. Les étapes marquées
