@@ -28,6 +28,7 @@ const CORPS = JSON.stringify({
   entreprise: "Menuiserie Le Guen",
   formule: "start",
   reference: "paiement-abc",
+  email: "dirigeant@menuiserie-le-guen.fr",
 });
 
 async function requeteSignee(corps: string, secret = SECRET): Promise<Request> {
@@ -82,6 +83,7 @@ Deno.test("⭐ une signature valide REJOUÉE avec un autre corps est refusée", 
       entreprise: "Entreprise pirate",
       formule: "start",
       reference: "paiement-abc",
+      email: "pirate@exemple.fr",
     });
 
     const response = await handle(
@@ -118,6 +120,7 @@ Deno.test("un champ inconnu est refusé, jamais ignoré", async () => {
       entreprise: "Menuiserie",
       formule: "start",
       reference: "paiement-abc",
+      email: "dirigeant@exemple.fr",
       montant: 999,
     });
     const response = await handle(await requeteSignee(corps));
@@ -132,6 +135,7 @@ Deno.test("un champ vide est refusé — une référence vide rendrait le rejeu 
       entreprise: "Menuiserie",
       formule: "start",
       reference: "   ",
+      email: "dirigeant@exemple.fr",
     });
     const response = await handle(await requeteSignee(corps));
     assertEquals(response.status, 422, "une référence vide est refusée");

@@ -68,7 +68,7 @@ Pousser un schéma en ligne · poser un secret · déployer une fonction · touc
 | 7 | Le runtime fabrique le travail | ✅ 2026-08-15 |
 | 8 | Un deuxième domaine dans la bibliothèque | ✅ 2026-08-15 |
 | 9 | Pouvoir encaisser | ✅ 2026-08-15 |
-| 10 | L'espace client, version minimale | ☐ |
+| 10 | L'espace client, version minimale | ✅ 2026-08-15 |
 | 11 | Le filet : alerte et sauvegarde | ☐ |
 | 12 | Répétition générale, à blanc | ☐ |
 
@@ -635,6 +635,42 @@ Le reste du dashboard (CRM, ROI, temps économisé, repères, exclusions) attend
 
 **✅ Terminé quand :** un client peut voir ce que fait son employé, l'autoriser, et régler son
 autonomie — sans jamais passer par toi.
+
+### Fait le 2026-08-15 — `/espace`, `20260815120011` à `20260815120013`
+
+**L'espace lit avec la session du client, donc sous RLS.** C'est une divergence assumée avec le
+`/dashboard` hérité, qui lit par un pool de service hors RLS : dans l'espace privé, l'isolation
+entre entreprises est une **propriété de l'accès**, pas une discipline du fichier. Il n'y a même
+pas d'identifiant d'entreprise à passer — donc aucun à falsifier.
+
+**Trois trous trouvés en le câblant, invisibles tant qu'aucune interface ne les demandait :**
+
+1. **Régler l'autonomie ne pouvait pas être un `update`.** C'est le réglage qui décide si un
+   message part sans qu'une personne l'ait relu. Le client **publie une version** de configuration,
+   avec le déclencheur `demande_client` — le reste recopié à l'identique, parce qu'un réglage n'est
+   pas une reconfiguration.
+2. **Le client ne pouvait pas lire le nom de son propre employé.** La table des identités naît
+   fermée, à raison — c'est un réservoir global. Une politique ouvre exactement ses employés à lui.
+   L'invariant qui interdisait tout accès est **précisé, pas affaibli** : ce qui reste interdit,
+   c'est d'énumérer.
+3. **⭐ Après avoir payé, l'acheteur n'était rattaché à rien.** `recruter()` créait une entreprise
+   que *personne ne pouvait voir*. Et ça ne pouvait pas être autrement au moment du paiement :
+   **l'acheteur n'a pas encore de compte**. Le recrutement écrit donc une *attente de
+   rattachement*, consommée à la première connexion — sur une adresse **prouvée par le lien
+   magique**, jamais déclarée. Une attente ne se consomme qu'une fois : une adresse partagée ne
+   rattache pas un second compte.
+
+**Ce que l'espace affiche, et ce qu'il refuse d'afficher.** Aucun chiffre qui ne vienne d'une ligne
+en base (invariant 4). Pas de progression estimée, pas de « temps économisé » calculé au doigt
+mouillé : là où rien n'est mesuré, l'espace écrit qu'il ne le sait pas encore. Les états vides
+disent ce qui manque **et pourquoi** — « votre employé ne travaillera pas tant qu'il n'a pas
+d'objectif : un employé lancé sans but travaille pour personne ».
+
+**Ce que je n'ai pas pu vérifier.** La page compile, typecheck et se construit (`ƒ /espace`), mais
+je ne l'ai **pas vue s'afficher** : le rendu exige `NEXT_PUBLIC_SUPABASE_URL` et la clé anonyme,
+qui sont des secrets absents de ce poste. Les garanties qui comptent — isolation, versionnement de
+l'autonomie, rattachement — sont prouvées par les invariants `LADY-L`, `LADY-M` et `LADY-N`. Le
+rendu, lui, reste à voir de tes yeux.
 
 ---
 

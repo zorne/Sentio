@@ -2203,7 +2203,8 @@ begin
   select count(*) into identites_avant from public.identity where status = 'free';
 
   -- ── 1. Le recrutement complet, en un appel.
-  select * into r from public.recruter(reco_id, 'Menuiserie Le Guen', 'start', 'paiement-essai-1');
+  select * into r from public.recruter(reco_id, 'Menuiserie Le Guen', 'start',
+                                      'paiement-essai-1', 'dirigeant@menuiserie-le-guen.fr');
 
   if r.deja_recrute then
     raise exception 'ÉCHEC recrutement : un premier achat a été pris pour un rejeu.';
@@ -2271,7 +2272,8 @@ begin
       identites_avant - identites_apres;
   end if;
 
-  select * into rejeu from public.recruter(reco_id, 'Menuiserie Le Guen', 'start', 'paiement-essai-1');
+  select * into rejeu from public.recruter(reco_id, 'Menuiserie Le Guen', 'start',
+                                          'paiement-essai-1', 'dirigeant@menuiserie-le-guen.fr');
 
   if not rejeu.deja_recrute then
     raise exception 'ÉCHEC recrutement : un paiement rejoué a recruté une seconde fois.';
@@ -2297,7 +2299,8 @@ begin
   returning id into hors_id;
 
   begin
-    perform public.recruter(hors_id, 'Autre entreprise', 'start', 'paiement-essai-2');
+    perform public.recruter(hors_id, 'Autre entreprise', 'start', 'paiement-essai-2',
+                            'autre@exemple.fr');
     raise exception 'ÉCHEC recrutement : un employé a été vendu sur une recommandation refusée.';
   exception when raise_exception then
     if position('hors périmètre' in sqlerrm) = 0 then raise; end if;
@@ -2305,7 +2308,7 @@ begin
 
   -- ── 9. Une référence de paiement vide ne distinguerait pas un rejeu d'un second achat.
   begin
-    perform public.recruter(reco_id, 'Entreprise', 'start', '   ');
+    perform public.recruter(reco_id, 'Entreprise', 'start', '   ', 'x@exemple.fr');
     raise exception 'ÉCHEC recrutement : une référence de paiement vide a été acceptée.';
   exception when raise_exception then
     if position('référence de paiement' in sqlerrm) = 0 then raise; end if;
@@ -2469,6 +2472,104 @@ begin
 
   reset role;
   raise notice 'OK  LADY-M — le dirigeant voit son employé, jamais le réservoir ni les autres';
+end;
+$$;
+
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+-- LADY-N — celui qui a payé retrouve son entreprise, et personne d'autre ne peut la réclamer.
+--
+-- Sans ce rapprochement, `recruter()` crée une entreprise que PERSONNE ne peut voir : l'acheteur
+-- n'a pas de compte au moment où il paie, donc aucun rattachement n'est possible à cet instant.
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  session_id   uuid;
+  reco_id      uuid;
+  r            record;
+  acheteur     constant uuid := '0e000000-0000-0000-0000-0000000000e1';
+  intrus       constant uuid := '0e000000-0000-0000-0000-0000000000e2';
+  rattache     uuid;
+  proposition  constant jsonb := jsonb_build_object(
+    'role', 'prospection',
+    'priorites', jsonb_build_array('élargir le nombre d''entreprises approchées'),
+    'limites', jsonb_build_array('particuliers'),
+    'autonomie', 'confirm',
+    'capacites', jsonb_build_array('qualifier.prospect'));
+begin
+  insert into auth.users (id) values (acheteur), (intrus);
+
+  insert into public.diagnostic_session (visitor_fingerprint, extracted_profile)
+  values ('essai-rattachement',
+          jsonb_build_object('objective', jsonb_build_object(
+            'metric', 'rendez_vous_qualifies', 'target', 10, 'horizon', 'ce mois')))
+  returning id into session_id;
+
+  insert into public.recommendation
+    (diagnostic_session_id, configuration_proposee, justification, status)
+  values (session_id, proposition, 'Frein : trop peu d''entreprises approchées.', 'proposed')
+  returning id into reco_id;
+
+  -- La casse de l'adresse est celle que le client a tapée. Elle ne doit rien décider.
+  select * into r from public.recruter(reco_id, 'Atelier Nord', 'start', 'paiement-rattachement',
+                                       'Dirigeant@Atelier-Nord.FR');
+
+  -- ── 1. L'attente existe, et elle est ouverte.
+  if (select count(*) from public.rattachement_attendu
+       where tenant_id = r.tenant_id and consomme_le is null) <> 1 then
+    raise exception
+      'ÉCHEC rattachement : aucune attente ouverte — l''entreprise créée serait irréclamable.';
+  end if;
+
+  -- ── 2. ⭐ Une autre adresse ne réclame rien. C'est ce qui empêche n'importe qui de s'attribuer
+  --    l'entreprise de n'importe qui.
+  if public.rattacher_par_email(intrus, 'quelquun-dautre@exemple.fr') is not null then
+    raise exception 'ÉCHEC rattachement : une adresse étrangère a récupéré une entreprise.';
+  end if;
+  if (select count(*) from public.tenant_member where tenant_id = r.tenant_id) <> 0 then
+    raise exception 'ÉCHEC rattachement : un intrus a été rattaché.';
+  end if;
+
+  -- ── 3. La bonne adresse rattache — quelle que soit la casse saisie à l'achat.
+  rattache := public.rattacher_par_email(acheteur, 'dirigeant@atelier-nord.fr');
+  if rattache is distinct from r.tenant_id then
+    raise exception 'ÉCHEC rattachement : l''acheteur n''a pas retrouvé son entreprise.';
+  end if;
+
+  if (select role from public.tenant_member
+       where tenant_id = r.tenant_id and user_id = acheteur) <> 'owner' then
+    raise exception 'ÉCHEC rattachement : l''acheteur n''est pas propriétaire de son entreprise.';
+  end if;
+
+  -- ── 4. ⭐⭐ L'attente se consomme UNE fois. Sans ça, une adresse partagée — ou récupérée après
+  --    un changement de propriétaire — rattacherait indéfiniment de nouveaux comptes.
+  if public.rattacher_par_email(intrus, 'dirigeant@atelier-nord.fr') is not null then
+    raise exception
+      'ÉCHEC rattachement : une attente déjà consommée a rattaché un second compte.';
+  end if;
+  if (select count(*) from public.tenant_member where tenant_id = r.tenant_id) <> 1 then
+    raise exception 'ÉCHEC rattachement : l''entreprise compte plus d''un propriétaire.';
+  end if;
+
+  -- ── 5. Une connexion ordinaire ne casse rien : la plupart sont des retours, pas des premières
+  --    fois, et l'absence d'attente n'est pas une erreur.
+  if public.rattacher_par_email(acheteur, 'dirigeant@atelier-nord.fr') is not null then
+    raise exception 'ÉCHEC rattachement : un retour a été traité comme une première connexion.';
+  end if;
+
+  -- ── 6. Et maintenant l'acheteur VOIT son entreprise — c'est tout l'objet de l'espace privé.
+  set local role authenticated;
+  perform set_config('request.jwt.claim.sub', acheteur::text, true);
+
+  if (select count(*) from public.employee where tenant_id = r.tenant_id) <> 1 then
+    reset role;
+    raise exception
+      'ÉCHEC rattachement : l''acheteur ne voit pas l''employé qu''il vient de payer.';
+  end if;
+  reset role;
+
+  raise notice
+    'OK  LADY-N — l''acheteur retrouve son entreprise, une seule fois, et lui seul';
 end;
 $$;
 

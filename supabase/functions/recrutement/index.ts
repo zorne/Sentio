@@ -49,6 +49,12 @@ interface Confirmation {
   readonly entreprise: string;
   readonly formule: string;
   readonly reference: string;
+  /**
+   * L'adresse de l'acheteur. Sans elle, on créerait une entreprise que **personne ne peut
+   * réclamer** : l'acheteur n'a pas encore de compte au moment où il paie, et le rattachement se
+   * fait à sa première connexion (`20260815120013`).
+   */
+  readonly email: string;
 }
 
 /** Ce qu'on accepte de lire. Fermé : un champ inconnu est refusé, jamais ignoré. */
@@ -56,7 +62,7 @@ function lireLaConfirmation(brut: unknown): Confirmation | null {
   if (typeof brut !== "object" || brut === null) return null;
   const r = brut as Record<string, unknown>;
 
-  const attendus = ["recommendation", "entreprise", "formule", "reference"];
+  const attendus = ["recommendation", "entreprise", "formule", "reference", "email"];
   if (Object.keys(r).some((cle) => !attendus.includes(cle))) return null;
 
   for (const cle of attendus) {
@@ -67,6 +73,7 @@ function lireLaConfirmation(brut: unknown): Confirmation | null {
     entreprise: (r["entreprise"] as string).trim(),
     formule: (r["formule"] as string).trim(),
     reference: (r["reference"] as string).trim(),
+    email: (r["email"] as string).trim(),
   };
 }
 
@@ -135,11 +142,12 @@ export async function handle(request: Request): Promise<Response> {
       tenant_id: string;
       employee_id: string;
       deja_recrute: boolean;
-    }>("select * from recruter($1, $2, $3, $4)", [
+    }>("select * from recruter($1, $2, $3, $4, $5)", [
       confirmation.recommendation,
       confirmation.entreprise,
       confirmation.formule,
       confirmation.reference,
+      confirmation.email,
     ]);
 
     const resultat = lignes[0];

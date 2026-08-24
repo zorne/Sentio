@@ -39,4 +39,21 @@ export async function claimTenantsForCurrentUser(): Promise<void> {
       [row.tenant_id, user.id]
     );
   }
+
+  // ── Le cœur, à côté de l'héritage ────────────────────────────────────
+  //
+  // Les deux générations coexistent (ADR-0025) : la boucle ci-dessus sert
+  // l'ancienne, cet appel sert la nouvelle. Ce sont deux sources d'attente
+  // distinctes, et les confondre reviendrait à faire dépendre un
+  // rattachement du cœur d'une table condamnée.
+  //
+  // ⚠️ Le rapprochement se fait sur une adresse PROUVÉE : le lien magique
+  // atteste que celui qui vient de cliquer lit cette boîte. C'est ce qui
+  // rend l'opération sûre — et c'est pour ça qu'elle a lieu ICI, après
+  // l'échange du code, et nulle part ailleurs (`20260815120013`).
+  //
+  // L'attente ne se consomme qu'une fois : une adresse partagée, ou
+  // récupérée après un changement de propriétaire, ne rattache pas un
+  // second compte.
+  await pool.query("select rattacher_par_email($1, $2)", [user.id, user.email]);
 }

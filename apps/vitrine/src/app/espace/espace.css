@@ -1,0 +1,87 @@
+/* L'espace privé — sobre par choix. Un dirigeant vient y chercher une réponse,
+   pas une expérience. La palette reprend celle de la vitrine (globals.css). */
+
+.espace {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.espace .entete { margin-bottom: 0.5rem; }
+.espace h1 { font-size: 2rem; font-weight: 600; letter-spacing: -0.02em; }
+.espace .role { color: var(--text-secondary); margin-top: 0.4rem; }
+.espace .role strong { color: var(--text-primary); font-weight: 500; }
+
+.espace .carte {
+  background: var(--glass);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 1.25rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.espace h2 {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.espace .chiffre { font-size: 2.1rem; font-weight: 600; letter-spacing: -0.02em; }
+.espace .chiffre span { font-size: 1rem; font-weight: 400; color: var(--text-secondary); }
+.espace .detail { color: var(--text-secondary); font-size: 0.92rem; }
+.espace .sobre { color: var(--text-tertiary); font-size: 0.85rem; }
+
+/* L'état vide n'est pas un écran d'erreur : il dit ce qui manque et pourquoi. */
+.espace .vide { color: var(--text-tertiary); font-size: 0.92rem; line-height: 1.55; }
+
+.espace .priorites { padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.3rem; }
+.espace .priorites li { color: var(--text-primary); }
+
+.espace .capacites {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+}
+.espace .capacites li {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+}
+
+.espace .attente, .espace .notifications { list-style: none; display: flex; flex-direction: column; gap: 0.7rem; }
+.espace .attente li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.7rem; }
+.espace .notifications li { display: flex; gap: 0.8rem; align-items: baseline; }
+.espace .notifications time { color: var(--text-tertiary); font-size: 0.8rem; min-width: 6rem; }
+
+.espace button {
+  font: inherit;
+  font-size: 0.86rem;
+  color: var(--text-primary);
+  background: var(--glass);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  padding: 0.4rem 0.85rem;
+  cursor: pointer;
+}
+.espace button:hover:not(:disabled) { background: var(--glass-hover); }
+.espace button:disabled { opacity: 0.5; cursor: default; }
+.espace button:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+
+.espace .decision { display: inline-flex; gap: 0.4rem; align-items: center; }
+.espace .refus { color: var(--text-secondary); }
+
+.espace .autonomie { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.espace .autonomie .actif { border-color: var(--border-strong); background: var(--glass-hover); }
+
+.espace .erreur { color: var(--amber); font-size: 0.82rem; font-style: normal; }

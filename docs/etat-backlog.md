@@ -17,7 +17,7 @@
 
 ## Avancement
 
-**127 tâches sur 185** portent une preuve dans le dépôt.
+**133 tâches sur 185** portent une preuve dans le dépôt.
 
 | Lot | Fait | Total | |
 |---|---|---|---|
@@ -26,7 +26,7 @@
 | Métier Commercial (Lot 2) | 23 | 24 | `███████████████████·` |
 | Acquisition (Lot 4) | 16 | 24 | `█████████████·······` |
 | Recrutement & Paiement (Lot 5) | 6 | 10 | `████████████········` |
-| Dashboard (Lot 6) | 2 | 21 | `██··················` |
+| Dashboard (Lot 6) | 8 | 21 | `████████············` |
 | Exécution autonome (Lot 3) | 12 | 19 | `█████████████·······` |
 | Évolution (Lot 7) | 0 | 8 | `····················` |
 | Conformité & Lancement (Lot 8) | 1 | 10 | `██··················` |
@@ -190,17 +190,17 @@
 
 | | Tâche | Priorité | Preuve dans le dépôt |
 |---|---|---|---|
-| ☐ | **DASH-01** Layout de l'espace privé (dashboard) | P0 | — |
-| ✅ | **DASH-02** Fiche employé : mission, objectif, périmètre | P0 | [`supabase/migrations/20260815120012_le_client_voit_son_employe.sql`](../supabase/migrations/20260815120012_le_client_voit_son_employe.sql) |
-| ☐ | **DASH-03** Fiche employé : performances et progression | P0 | — |
-| ☐ | **DASH-04** Fiche employé : compétences / capacités actives | P1 | — |
-| ☐ | **DASH-05** Vue "progression vers l'objectif" (CA attribué / objectif déclaré) | P0 | — |
+| ✅ | **DASH-01** Layout de l'espace privé (dashboard) | P0 | [`apps/vitrine/src/app/espace/page.tsx`](../apps/vitrine/src/app/espace/page.tsx) |
+| ✅ | **DASH-02** Fiche employé : mission, objectif, périmètre | P0 | [`apps/vitrine/src/app/espace/page.tsx`](../apps/vitrine/src/app/espace/page.tsx) · [`supabase/migrations/20260815120012_le_client_voit_son_employe.sql`](../supabase/migrations/20260815120012_le_client_voit_son_employe.sql) |
+| ✅ | **DASH-03** Fiche employé : performances et progression | P0 | [`apps/vitrine/src/app/espace/page.tsx`](../apps/vitrine/src/app/espace/page.tsx) |
+| ✅ | **DASH-04** Fiche employé : compétences / capacités actives | P1 | [`apps/vitrine/src/app/espace/page.tsx`](../apps/vitrine/src/app/espace/page.tsx) |
+| ✅ | **DASH-05** Vue "progression vers l'objectif" (CA attribué / objectif déclaré) | P0 | [`apps/vitrine/src/app/espace/page.tsx`](../apps/vitrine/src/app/espace/page.tsx) |
 | ☐ | **DASH-06** Déclaration de vente par le client (confirmation d'attribution) | P0 | — |
 | ☐ | **DASH-07** Calcul du CA généré (fenêtre d'attribution annoncée) | P0 | — |
 | ☐ | **DASH-08** Calcul du temps économisé (estimation documentée et affichée comme telle) | P1 | — |
 | ☐ | **DASH-09** Calcul du ROI dérivé (CA attribué − prix / prix) | P1 | — |
-| ☐ | **DASH-10** État vide soigné du dashboard (montée en puissance lisible) | P0 | — |
-| ☐ | **DASH-11** Liste des notifications (Recrutement/Travail/Évolution) | P0 | — |
+| ✅ | **DASH-10** État vide soigné du dashboard (montée en puissance lisible) | P0 | [`apps/vitrine/src/app/espace/page.tsx`](../apps/vitrine/src/app/espace/page.tsx) |
+| ✅ | **DASH-11** Liste des notifications (Recrutement/Travail/Évolution) | P0 | [`apps/vitrine/src/app/espace/page.tsx`](../apps/vitrine/src/app/espace/page.tsx) |
 | ☐ | **DASH-12** Guide de première connexion (bulles, affiché une seule fois) | P1 | — |
 | ☐ | **DASH-13** Gestion de l'abonnement (visualisation, statut) | P1 | — |
 | ☐ | **DASH-14** Section CRM minimal côté client ("vos prospects") | P1 | — |
