@@ -70,7 +70,7 @@ Pousser un schéma en ligne · poser un secret · déployer une fonction · touc
 | 9 | Pouvoir encaisser | ✅ 2026-08-15 |
 | 10 | L'espace client, version minimale | ✅ 2026-08-15 |
 | 11 | Le filet : alerte et sauvegarde | ✅ 2026-08-15 |
-| 12 | Répétition générale, à blanc | ☐ |
+| 12 | Répétition générale, à blanc | ⛔ bloquée par `EXEC-11` |
 
 ### Partie II — Mettre en vente *(⛔ fondateur uniquement)*
 
@@ -734,6 +734,47 @@ service.
 
 **✅ Terminé quand :** le parcours complet passe en une seule exécution automatisée, et chaque écart
 constaté est corrigé.
+
+### ⛔ Non terminée — et c'est le résultat le plus utile de cette étape
+
+La répétition générale a été écrite et jouée. **Elle s'arrête**, et là où elle s'arrête est
+précisément ce qu'il fallait apprendre avant de vendre.
+
+**Ce que le parcours franchit :** le diagnostic constate et compose · la recommandation est
+enregistrée · le paiement recrute en une transaction · l'acheteur retrouve son entreprise à sa
+connexion · du travail s'ouvre tout seul · Lady propose une action irréversible et **s'arrête pour
+demander** · le dirigeant accorde depuis son espace.
+
+**Où il s'arrête :** rien ne repart.
+
+```text
+approvisionnement_ouverture → run_demarre → contexte_assemble
+  → proposition_recue → politique_suspend → accord_accorde → (rien)
+```
+
+C'est `EXEC-11 — reprise après validation humaine`, **P0, jamais implémenté**. Le client dit oui,
+et Lady l'ignore. Indéfiniment.
+
+**Deux tiers du chemin ont été posés** (`20260815120016`), parce qu'ils manquaient tous les deux et
+qu'aucun test ne pouvait les voir :
+
+1. **La mission ne retournait pas en file.** `mettreDeCote()` l'en sort quand Lady s'arrête — c'est
+   juste — mais **personne ne l'y remettait**. Un déclencheur le fait désormais, et il est en base
+   parce que le client tranche en écrivant directement dans `approval`, sous RLS : **aucun code
+   serveur ne s'exécute sur ce chemin**.
+2. **La décision n'était pas journalisée.** `accord_accorde` et `accord_refuse` existaient dans le
+   vocabulaire depuis le début, et la machine à états savait les interpréter — *personne ne les
+   écrivait*. Sans eux, un run reprendrait sur un journal qui le croit toujours suspendu.
+
+**Ce qui reste** est dans le runtime : reprendre la mission et **exécuter l'action que le client
+vient d'autoriser**, au lieu de la reproposer au modèle — qui la fait suspendre à nouveau. Ça
+touche le moteur d'autorisation, pièce de sécurité : ça mérite son propre travail.
+
+**La répétition générale elle-même n'est pas livrée.** Écrite, elle s'est révélée instable une fois
+sur trois dans la suite complète — la file est globale et le tour se dispute. Livrer un contrôle
+qui échoue au hasard est exactement ce que ce dépôt s'interdit. Ce qu'elle prouvait de
+déterministe est devenu l'invariant `LADY-R` ; le parcours de bout en bout se réécrira **après**
+`EXEC-11`, quand il aura une fin à atteindre.
 
 ---
 

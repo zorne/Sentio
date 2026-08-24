@@ -2674,4 +2674,96 @@ begin
 end;
 $$;
 
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+-- LADY-R — quand le client tranche, le travail repart. Ou du moins : il redevient prenable.
+--
+-- ⚠️ CE BLOC DIT AUSSI CE QUI MANQUE. Avant lui, le dirigeant accordait depuis son espace et il
+-- ne se passait RIEN, jamais : la mission avait été sortie de la file en attendant sa réponse, et
+-- personne ne l'y remettait. Lady paraissait ignorer son client.
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  entreprise constant uuid := 'aaaaaaaa-0000-0000-0000-000000000001';
+  employe    constant uuid := 'ffffffff-0000-0000-0000-000000000001';
+  objectif   uuid;
+  mission    uuid;
+  demande    uuid;
+  natures    text;
+begin
+  select id into objectif from public.objective
+   where tenant_id = entreprise and state = 'actif';
+
+  insert into public.task (tenant_id, employee_id, objective_id, subject_kind, subject_id, state)
+  values (entreprise, employe, objectif, 'lead', gen_random_uuid(), 'waiting_approval')
+  returning id into mission;
+
+  insert into public.approval (tenant_id, task_id) values (entreprise, mission)
+  returning id into demande;
+
+  -- La mission est hors file : c'est ce que fait `mettreDeCote()` quand Lady s'arrête pour
+  -- demander. Un travail qui attend une personne ne doit pas occuper un exécutant.
+  if exists (select 1 from public.job where task_id = mission) then
+    raise exception 'ÉCHEC accord : la mission ne devrait pas être en file en attendant l''accord.';
+  end if;
+
+  -- ── 1. ⭐ Le client accorde. La mission retourne en file ET redevient prenable.
+  update public.approval set state = 'granted', resolved_at = now() where id = demande;
+
+  if not exists (select 1 from public.job where task_id = mission) then
+    raise exception
+      'ÉCHEC accord : le client a accordé et le travail n''est pas retourné en file. Lady '
+      'ignorerait sa réponse, indéfiniment.';
+  end if;
+
+  if (select state from public.task where id = mission) <> 'pending' then
+    raise exception
+      'ÉCHEC accord : la mission reste « waiting_approval », donc imprenable — remettre en file '
+      'sans la rendre prenable ne sert à rien.';
+  end if;
+
+  -- ── 2. Le journal enregistre la décision. La machine à états l'attendait depuis le début :
+  --    `accord_accorde` relance le run, `accord_refuse` le referme (`run-state.ts`). Personne ne
+  --    les écrivait.
+  select string_agg(kind, ', ' order by seq) into natures
+    from public.execution_event where task_id = mission;
+  if position('accord_accorde' in coalesce(natures, '')) = 0 then
+    raise exception
+      'ÉCHEC accord : la décision du client n''est pas au journal. Le run reprendrait sur un '
+      'journal qui le croit toujours suspendu. Journal : %.', natures;
+  end if;
+
+  -- ── 3. Trancher deux fois ne crée pas deux travaux.
+  update public.approval set state = 'granted', resolved_at = now() where id = demande;
+  if (select count(*) from public.job where task_id = mission) <> 1 then
+    raise exception 'ÉCHEC accord : un accord tranché deux fois a créé deux travaux.';
+  end if;
+
+  -- ── 4. Un refus repart aussi — c'est le runtime qui referme, pas ce déclencheur. Trancher ici
+  --    mettrait la décision à deux endroits, et c'est toujours le second qui dérive.
+  declare
+    autre_mission uuid;
+    autre_demande uuid;
+  begin
+    insert into public.task (tenant_id, employee_id, objective_id, subject_kind, subject_id, state)
+    values (entreprise, employe, objectif, 'lead', gen_random_uuid(), 'waiting_approval')
+    returning id into autre_mission;
+
+    insert into public.approval (tenant_id, task_id) values (entreprise, autre_mission)
+    returning id into autre_demande;
+
+    update public.approval set state = 'refused', resolved_at = now() where id = autre_demande;
+
+    select string_agg(kind, ', ' order by seq) into natures
+      from public.execution_event where task_id = autre_mission;
+    if position('accord_refuse' in coalesce(natures, '')) = 0 then
+      raise exception 'ÉCHEC accord : un refus n''est pas journalisé.';
+    end if;
+  end;
+
+  raise notice
+    'OK  LADY-R — le client tranche, la mission retourne en file, la décision est au journal';
+end;
+$$;
+
 rollback;

@@ -17,7 +17,7 @@
 
 ## Avancement
 
-**135 tâches sur 185** portent une preuve dans le dépôt.
+**136 tâches sur 185** portent une preuve dans le dépôt.
 
 | Lot | Fait | Total | |
 |---|---|---|---|
@@ -27,7 +27,7 @@
 | Acquisition (Lot 4) | 16 | 24 | `█████████████·······` |
 | Recrutement & Paiement (Lot 5) | 6 | 10 | `████████████········` |
 | Dashboard (Lot 6) | 8 | 21 | `████████············` |
-| Exécution autonome (Lot 3) | 12 | 19 | `█████████████·······` |
+| Exécution autonome (Lot 3) | 13 | 19 | `██████████████······` |
 | Évolution (Lot 7) | 0 | 8 | `····················` |
 | Conformité & Lancement (Lot 8) | 3 | 10 | `██████··············` |
 | Vérification (transverse) | 7 | 9 | `████████████████····` |
@@ -228,7 +228,7 @@
 | ✅ | **EXEC-08** Runtime : replanifier le pas suivant ou terminer le run | P0 | [`packages/core/src/ports.ts`](../packages/core/src/ports.ts) · [`packages/runtime/src/suite-du-run.ts`](../packages/runtime/src/suite-du-run.ts) |
 | ☐ | **EXEC-09** Reprise après interruption (reconstruction d'état depuis le journal) | P0 | — |
 | ☐ | **EXEC-10** Suspension d'un run en attente d'accord humain | P0 | — |
-| ☐ | **EXEC-11** Reprise après validation humaine (approve/reject/trustFuture) | P0 | — |
+| ✅ | **EXEC-11** Reprise après validation humaine (approve/reject/trustFuture) | P0 | [`supabase/migrations/20260815120016_reprendre_apres_accord.sql`](../supabase/migrations/20260815120016_reprendre_apres_accord.sql) |
 | ✅ | **EXEC-12** Verrouillage par ligne de la file job + saut des lignes verrouillées | P0 | [`packages/runtime/src/boucle.ts`](../packages/runtime/src/boucle.ts) · [`packages/runtime/src/adapters/moteurs.ts`](../packages/runtime/src/adapters/moteurs.ts) |
 | ☐ | **EXEC-13** Priorité d'exécution pilotée par la formule du client | P1 | — |
 | ☐ | **EXEC-14** Notifications de travail émises depuis les outcomes journalisés | P0 | — |
