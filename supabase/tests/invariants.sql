@@ -373,15 +373,30 @@ begin
     null;
   end;
 
-  begin
-    select count(*) into visible from public.identity;
-    raise exception 'ÉCHEC : le client a pu interroger le réservoir d''identités (% lignes).', visible;
-  exception when insufficient_privilege then
-    null;
-  end;
+  -- Le réservoir d'identités n'est pas fermé de la même façon que le journal et la file, et la
+  -- nuance compte (`20260815120012`). Le dirigeant doit voir QUI travaille pour lui : sa fiche
+  -- d'employé sans nom n'a pas de sens. Ce qui reste interdit, c'est d'ÉNUMÉRER — le réservoir
+  -- libre laisserait déduire combien d'employés Sentio a vendus, et les identités des autres
+  -- entreprises n'ont jamais à être visibles.
+  select count(*) into visible from public.identity where status = 'free';
+  if visible <> 0 then
+    raise exception
+      'ÉCHEC : le client voit % identité(s) libre(s) — le réservoir global est énumérable.',
+      visible;
+  end if;
+
+  select count(*) into visible
+    from public.identity i
+    join public.employee e on e.identity_id = i.id
+   where e.tenant_id <> 'aaaaaaaa-0000-0000-0000-000000000001';
+  if visible <> 0 then
+    raise exception
+      'ÉCHEC : le client voit % identité(s) appartenant à une autre entreprise.', visible;
+  end if;
 
   reset role;
-  raise notice 'OK  mécanique — journal, file et réservoir hors d''atteinte du client';
+  raise notice
+    'OK  mécanique — journal et file hors d''atteinte, réservoir non énumérable';
 end;
 $$;
 
@@ -2298,6 +2313,162 @@ begin
 
   raise notice
     'OK  LADY-J — recrutement complet en une transaction, rejeu inoffensif, refus non vendable';
+end;
+$$;
+
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+-- LADY-L — régler l'autonomie laisse une trace, parce que c'est le réglage qui décide si un
+-- message part sans qu'une personne l'ait relu.
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  entreprise constant uuid := 'aaaaaaaa-0000-0000-0000-000000000001';
+  employe    constant uuid := 'ffffffff-0000-0000-0000-000000000001';
+  avant      public.lady_configuration;
+  suivante   uuid;
+  apres      public.lady_configuration;
+  capacites_avant text;
+  capacites_apres text;
+begin
+  select * into avant from public.lady_configuration
+   where employee_id = employe and active;
+
+  select string_agg(c.key, ', ' order by c.key) into capacites_avant
+    from public.lady_configuration_capability lcc
+    join public.capability c on c.id = lcc.capability_id
+   where lcc.configuration_id = avant.id;
+
+  -- ── 1. Le client ne peut PAS écrire l'autonomie directement. C'est ce qui rend le reste vrai.
+  begin
+    set local role authenticated;
+    perform set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+    update public.employee set autonomy = 'auto' where id = employe;
+    reset role;
+    raise exception
+      'ÉCHEC autonomie : un client a modifié l''autonomie en place, sans version ni raison.';
+  exception when insufficient_privilege then
+    reset role;
+  end;
+
+  -- ── 2. Le réglage publie une VERSION SUIVANTE, avec son déclencheur.
+  suivante := public.regler_l_autonomie(entreprise, employe, 'auto',
+                                        'Le dirigeant fait confiance après deux semaines.');
+
+  select * into apres from public.lady_configuration where id = suivante;
+
+  if apres.version <> avant.version + 1 then
+    raise exception 'ÉCHEC autonomie : la version ne suit pas (% après %).',
+      apres.version, avant.version;
+  end if;
+  if apres.precedente_id <> avant.id then
+    raise exception 'ÉCHEC autonomie : la nouvelle version ne dit pas ce qu''elle remplace.';
+  end if;
+  if apres.declencheur <> 'demande_client' then
+    raise exception 'ÉCHEC autonomie : le déclencheur ne dit pas d''où vient le changement.';
+  end if;
+  if apres.autonomie <> 'auto' then
+    raise exception 'ÉCHEC autonomie : le niveau demandé n''a pas été appliqué.';
+  end if;
+
+  -- ── 3. ⭐ Le RESTE est recopié à l'identique. Régler l'autonomie ne reconfigure pas Lady.
+  if (apres.role, apres.priorites, apres.limites)
+     is distinct from (avant.role, avant.priorites, avant.limites) then
+    raise exception
+      'ÉCHEC autonomie : le rôle ou les priorités ont changé au passage. Un réglage n''est pas '
+      'une reconfiguration.';
+  end if;
+
+  select string_agg(c.key, ', ' order by c.key) into capacites_apres
+    from public.lady_configuration_capability lcc
+    join public.capability c on c.id = lcc.capability_id
+   where lcc.configuration_id = suivante;
+
+  if capacites_apres is distinct from capacites_avant then
+    raise exception
+      'ÉCHEC autonomie : les capacités ont changé (« % » → « % »). Régler l''autonomie ne '
+      'retire pas de travail à Lady.', capacites_avant, capacites_apres;
+  end if;
+
+  -- ── 4. Et l'employé reflète la nouvelle configuration, sans qu'on ait touché sa colonne.
+  if (select autonomy from public.employee where id = employe) <> 'auto' then
+    raise exception 'ÉCHEC autonomie : l''employé ne reflète pas sa configuration.';
+  end if;
+
+  -- ── 5. Redemander ce qui est déjà en place ne pollue pas l'histoire d'une version muette.
+  if public.regler_l_autonomie(entreprise, employe, 'auto', 'encore') <> suivante then
+    raise exception 'ÉCHEC autonomie : une version a été publiée pour un changement inexistant.';
+  end if;
+
+  -- ── 6. Un niveau inventé est refusé : la liste est close.
+  begin
+    perform public.regler_l_autonomie(entreprise, employe, 'total', 'essai');
+    raise exception 'ÉCHEC autonomie : un niveau inconnu a été accepté.';
+  exception when raise_exception then
+    if position('liste est close' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  raise notice
+    'OK  LADY-L — l''autonomie se règle en publiant une version, jamais en modifiant une colonne';
+end;
+$$;
+
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+-- LADY-M — le dirigeant voit qui travaille pour lui, et personne d'autre.
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  visibles integer;
+  libres   integer;
+begin
+  set local role authenticated;
+
+  -- Le membre de l'entreprise A. Pas celui du parcours individuel : son entreprise a été effacée
+  -- plus haut, et ses rattachements avec elle — il ne verrait plus rien, ce qui ne prouverait rien.
+  perform set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+
+  -- ── 1. Elle voit l'identité de SON employé. Sans ça, sa fiche n'a pas de nom.
+  -- Autant d'identités visibles que d'employés : ni plus, ni moins. Compter en dur serait faux
+  -- dès qu'un bloc précédent en recrute un second — et ce qu'on veut prouver n'est pas « une »,
+  -- c'est « les siens ».
+  select count(*) into visibles
+    from public.identity i
+    join public.employee e on e.identity_id = i.id
+   where e.tenant_id = 'aaaaaaaa-0000-0000-0000-000000000001';
+
+  if visibles = 0 then
+    raise exception 'ÉCHEC identité : le dirigeant ne voit aucun de ses employés — fiche sans nom.';
+  end if;
+  if visibles <> (select count(*) from public.employee
+                   where tenant_id = 'aaaaaaaa-0000-0000-0000-000000000001') then
+    raise exception
+      'ÉCHEC identité : % identité(s) visibles pour % employé(s).',
+      visibles,
+      (select count(*) from public.employee
+        where tenant_id = 'aaaaaaaa-0000-0000-0000-000000000001');
+  end if;
+
+  -- ── 2. ⭐ Elle ne voit RIEN du réservoir libre. L'ouvrir laisserait déduire combien d'employés
+  --    Sentio a vendus, et à qui.
+  select count(*) into libres from public.identity where status = 'free';
+  if libres <> 0 then
+    raise exception
+      'ÉCHEC identité : % identité(s) libres visibles — le réservoir global fuit.', libres;
+  end if;
+
+  -- ── 3. Et rien des employés d'une autre entreprise.
+  select count(*) into visibles
+    from public.identity i
+    join public.employee e on e.identity_id = i.id
+   where e.tenant_id <> 'aaaaaaaa-0000-0000-0000-000000000001';
+  if visibles <> 0 then
+    raise exception
+      'ÉCHEC identité : % identité(s) d''une autre entreprise visibles.', visibles;
+  end if;
+
+  reset role;
+  raise notice 'OK  LADY-M — le dirigeant voit son employé, jamais le réservoir ni les autres';
 end;
 $$;
 

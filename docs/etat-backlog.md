@@ -17,7 +17,7 @@
 
 ## Avancement
 
-**125 tâches sur 185** portent une preuve dans le dépôt.
+**127 tâches sur 185** portent une preuve dans le dépôt.
 
 | Lot | Fait | Total | |
 |---|---|---|---|
@@ -26,7 +26,7 @@
 | Métier Commercial (Lot 2) | 23 | 24 | `███████████████████·` |
 | Acquisition (Lot 4) | 16 | 24 | `█████████████·······` |
 | Recrutement & Paiement (Lot 5) | 6 | 10 | `████████████········` |
-| Dashboard (Lot 6) | 0 | 21 | `····················` |
+| Dashboard (Lot 6) | 2 | 21 | `██··················` |
 | Exécution autonome (Lot 3) | 12 | 19 | `█████████████·······` |
 | Évolution (Lot 7) | 0 | 8 | `····················` |
 | Conformité & Lancement (Lot 8) | 1 | 10 | `██··················` |
@@ -191,7 +191,7 @@
 | | Tâche | Priorité | Preuve dans le dépôt |
 |---|---|---|---|
 | ☐ | **DASH-01** Layout de l'espace privé (dashboard) | P0 | — |
-| ☐ | **DASH-02** Fiche employé : mission, objectif, périmètre | P0 | — |
+| ✅ | **DASH-02** Fiche employé : mission, objectif, périmètre | P0 | [`supabase/migrations/20260815120012_le_client_voit_son_employe.sql`](../supabase/migrations/20260815120012_le_client_voit_son_employe.sql) |
 | ☐ | **DASH-03** Fiche employé : performances et progression | P0 | — |
 | ☐ | **DASH-04** Fiche employé : compétences / capacités actives | P1 | — |
 | ☐ | **DASH-05** Vue "progression vers l'objectif" (CA attribué / objectif déclaré) | P0 | — |
@@ -205,7 +205,7 @@
 | ☐ | **DASH-13** Gestion de l'abonnement (visualisation, statut) | P1 | — |
 | ☐ | **DASH-14** Section CRM minimal côté client ("vos prospects") | P1 | — |
 | ☐ | **DASH-15** Contrôles de validation humaine (approuver/refuser une action suspendue) | P0 | — |
-| ☐ | **DASH-16** Réglage du niveau d'autonomie par le client | P1 | — |
+| ✅ | **DASH-16** Réglage du niveau d'autonomie par le client | P1 | [`supabase/migrations/20260815120011_regler_l_autonomie.sql`](../supabase/migrations/20260815120011_regler_l_autonomie.sql) |
 | ☐ | **DASH-17** Vue temps réel d'exécution d'une tâche (abonnement live) | P2 | — |
 | ☐ | **DASH-18** Affichage des repères de performance réalistes à côté des résultats mesurés | P0 | — |
 | ☐ | **DASH-19** Affichage du motif de sélection d'un prospect ("pourquoi cette entreprise") | P1 | — |
