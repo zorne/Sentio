@@ -140,7 +140,12 @@ export default async function EspacePage() {
     <main className="espace">
       <header className="entete">
         <h1>{prenom}</h1>
-        {configuration ? (
+        {employe.en_pause_depuis ? (
+          <p className="role">
+            <span className="etat arrete">À l'arrêt</span> depuis le{" "}
+            {dateCourte(employe.en_pause_depuis)}.
+          </p>
+        ) : configuration ? (
           <p className="role">
             Se concentre actuellement sur <strong>{motDuRole(configuration.role)}</strong>.
           </p>
@@ -152,25 +157,56 @@ export default async function EspacePage() {
         )}
       </header>
 
-      {/* ── L'arrêt. En haut, avant tout le reste : c'est ce qu'on cherche quand on le cherche. ── */}
-      <section className={employe.en_pause_depuis ? "carte arrete" : "carte"}>
-        <h2>{employe.en_pause_depuis ? "Il est à l'arrêt" : "Vous gardez la main"}</h2>
-        {employe.en_pause_depuis ? (
-          <p className="detail">
-            Arrêté depuis le {dateCourte(employe.en_pause_depuis)}. Plus aucune mission ne s'ouvre,
-            aucune de celles qui attendaient n'est reprise, et plus rien ne part. Ce qui était
-            préparé vous attend — un arrêt n'est pas un renvoi.
+      {/* ── Un employé arrêté : ça ne se lit pas au milieu de neuf cadres identiques. ── */}
+      {employe.en_pause_depuis ? (
+        <section className="bandeau arret">
+          <p>
+            Plus aucune mission ne s'ouvre, aucune de celles qui attendaient n'est reprise, et plus
+            rien ne part. Ce qui était préparé vous attend — un arrêt n'est pas un renvoi.
           </p>
+          <ArretDUrgence tenantId={tenantId} employeeId={employe.id} arrete />
+        </section>
+      ) : null}
+
+      {/* ── Ce que son employé PROPOSE. Il ne l'a pas fait : il le demande (§10). ── */}
+      {proposition ? (
+        <section className="carte proposition">
+          <h2>{prenom} propose de changer sa façon de travailler</h2>
+          <p className="detail">
+            Au vu de ses résultats, il se concentrerait plutôt sur{" "}
+            <strong>{motDuRole(proposition.role)}</strong>.
+          </p>
+          {Array.isArray(proposition.priorites) && proposition.priorites.length > 0 ? (
+            <ol className="priorites">
+              {(proposition.priorites as string[]).map((priorite) => (
+                <li key={priorite}>{priorite}</li>
+              ))}
+            </ol>
+          ) : null}
+          <p className="detail sobre">Ce qu'il a observé : {proposition.raison}</p>
+          <DecisionSurLaProposition tenantId={tenantId} configurationId={proposition.id} />
+          <p className="detail sobre">
+            Rien ne change tant que vous n'avez pas répondu. Si vous préférez ne rien changer, il
+            continue exactement comme aujourd'hui.
+          </p>
+        </section>
+      ) : null}
+
+      {/* ── Ce qui attend une décision. C'est le seul endroit où Lady s'arrête. ── */}
+      <section className="carte">
+        <h2>Ce qui attend votre accord</h2>
+        {enAttente && enAttente.length > 0 ? (
+          <ul className="attente">
+            {enAttente.map((demande) => (
+              <li key={demande.id}>
+                <span>Une action attend votre accord depuis le {dateCourte(demande.requested_at)}.</span>
+                <BoutonsDeDecision approvalId={demande.id} />
+              </li>
+            ))}
+          </ul>
         ) : (
-          <p className="detail">
-            À tout moment, vous pouvez tout arrêter. Rien ne repart ensuite sans vous.
-          </p>
+          <p className="vide">Rien n'attend votre accord.</p>
         )}
-        <ArretDUrgence
-          tenantId={tenantId}
-          employeeId={employe.id}
-          arrete={Boolean(employe.en_pause_depuis)}
-        />
       </section>
 
       {/* ── Ce que le dirigeant a demandé, et ce qui a été fait. Rien d'estimé. ── */}
@@ -179,7 +215,8 @@ export default async function EspacePage() {
         {objectif ? (
           <>
             <p className="chiffre">
-              {objectif.target_value} <span>{motDeLaMetrique(objectif.metric)}</span>
+              {nombreLisible(objectif.target_value)}{" "}
+              <span>{motDeLaMetrique(objectif.metric)}</span>
             </p>
             <p className="detail">par {objectif.horizon}</p>
             <p className="detail sobre">
@@ -223,47 +260,6 @@ export default async function EspacePage() {
         ) : null}
       </section>
 
-      {/* ── Ce que son employé PROPOSE. Il ne l'a pas fait : il le demande (§10). ── */}
-      {proposition ? (
-        <section className="carte proposition">
-          <h2>{prenom} propose de changer sa façon de travailler</h2>
-          <p className="detail">
-            Au vu de ses résultats, il se concentrerait plutôt sur{" "}
-            <strong>{motDuRole(proposition.role)}</strong>.
-          </p>
-          {Array.isArray(proposition.priorites) && proposition.priorites.length > 0 ? (
-            <ol className="priorites">
-              {(proposition.priorites as string[]).map((priorite) => (
-                <li key={priorite}>{priorite}</li>
-              ))}
-            </ol>
-          ) : null}
-          <p className="detail sobre">Ce qu'il a observé : {proposition.raison}</p>
-          <DecisionSurLaProposition tenantId={tenantId} configurationId={proposition.id} />
-          <p className="detail sobre">
-            Rien ne change tant que vous n'avez pas répondu. Si vous préférez ne rien changer, il
-            continue exactement comme aujourd'hui.
-          </p>
-        </section>
-      ) : null}
-
-      {/* ── Ce qui attend une décision. C'est le seul endroit où Lady s'arrête. ── */}
-      <section className="carte">
-        <h2>Ce qui attend votre accord</h2>
-        {enAttente && enAttente.length > 0 ? (
-          <ul className="attente">
-            {enAttente.map((demande) => (
-              <li key={demande.id}>
-                <span>Une action attend votre accord depuis le {dateCourte(demande.requested_at)}.</span>
-                <BoutonsDeDecision approvalId={demande.id} />
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="vide">Rien n'attend votre accord.</p>
-        )}
-      </section>
-
       {/* ── Ce qu'il a appris, et ce qu'il a retenu de ses propres résultats. ── */}
       <section className="carte">
         <h2>Ce qu'il a appris de vous</h2>
@@ -304,22 +300,6 @@ export default async function EspacePage() {
         )}
       </section>
 
-      {/* ── Le réglage le plus lourd du produit. Il publie une version, il ne modifie rien. ── */}
-      <section className="carte">
-        <h2>Son autonomie</h2>
-        <p className="detail">{MOTS_DE_L_AUTONOMIE[employe.autonomy] ?? ""}</p>
-        <ReglageDAutonomie
-          tenantId={tenantId}
-          employeeId={employe.id}
-          niveau={employe.autonomy as "confirm" | "confirm_once" | "auto"}
-        />
-        <p className="detail sobre">
-          Chaque changement est daté et conservé : vous pourrez toujours savoir ce qui était réglé,
-          et quand. Vous seul pouvez lui donner plus de liberté — ni un diagnostic, ni une mesure
-          de ses résultats ne peut le faire à votre place.
-        </p>
-      </section>
-
       {/* ── Ce qui s'est passé. ── */}
       <section className="carte">
         <h2>Ce qui s'est passé</h2>
@@ -334,6 +314,31 @@ export default async function EspacePage() {
           </ul>
         ) : (
           <p className="vide">Rien à signaler pour l'instant.</p>
+        )}
+      </section>
+      {/* ── Ce que vous gardez en main. En bas, et c'est voulu : ce ne sont pas des gestes du
+             quotidien, ce sont des garanties. Les ranger ne les cache pas. ── */}
+      <section className="carte main">
+        <h2>Ce que vous gardez en main</h2>
+
+        <p className="detail">{MOTS_DE_L_AUTONOMIE[employe.autonomy] ?? ""}</p>
+        <ReglageDAutonomie
+          tenantId={tenantId}
+          employeeId={employe.id}
+          niveau={employe.autonomy as "confirm" | "confirm_once" | "auto"}
+        />
+        <p className="detail sobre">
+          Chaque changement est daté et conservé. Vous seul pouvez lui donner plus de liberté : ni
+          un diagnostic, ni une mesure de ses résultats ne peut le faire à votre place.
+        </p>
+
+        {employe.en_pause_depuis ? null : (
+          <div className="separateur">
+            <p className="detail">
+              Et à tout moment, vous pouvez tout arrêter. Rien ne repart ensuite sans vous.
+            </p>
+            <ArretDUrgence tenantId={tenantId} employeeId={employe.id} arrete={false} />
+          </div>
         )}
       </section>
     </main>
@@ -370,6 +375,18 @@ function motDeLaMetrique(metric: string): string {
     chiffre_affaires: "€ de chiffre d'affaires",
   };
   return mots[metric] ?? metric;
+}
+
+/**
+ * Un objectif se lit, il ne se déchiffre pas. « 10000 » demande un effort que « 10 000 » ne
+ * demande pas — et c'est le chiffre que le dirigeant vient voir.
+ *
+ * ⚠️ Mise en forme seulement. La valeur reste celle de la base : on n'arrondit pas, on ne
+ * convertit pas, on ne complète pas.
+ */
+function nombreLisible(valeur: number | string): string {
+  const nombre = Number(valeur);
+  return Number.isFinite(nombre) ? nombre.toLocaleString("fr-FR") : String(valeur);
 }
 
 function dateCourte(iso: string): string {

@@ -985,6 +985,38 @@ n'en est pas un.
 
 ---
 
+## Étape 12 sexies — L'espace client, lisible
+
+**Pourquoi cette étape existe.** Le style avait été mis de côté volontairement — « d'abord on fait
+tourner ». Entre-temps, trois sections ont été greffées sur la page (la proposition, la mémoire,
+l'arrêt) sans que personne ne regarde l'ensemble. Le résultat n'était pas laid : il était **mal
+hiérarchisé**, ce qui est pire — un dirigeant qui ouvre son espace ne devait plus savoir où
+regarder.
+
+### Fait le 2026-08-26 — `/espace`, mise en page et petits écrans
+
+**L'ordre suit ce que le lecteur a à faire**, pas l'ordre dans lequel les fonctionnalités ont été
+écrites :
+
+1. ce qui **attend une réponse** (une proposition, un accord) — c'est ce qu'on vient chercher ;
+2. l'objectif, et ce que l'employé fait pour l'atteindre ;
+3. ce qu'il a appris et ce qui marche chez ce client ;
+4. ce qui s'est passé ;
+5. **ce que le dirigeant garde en main** — autonomie et arrêt, ensemble, à la fin.
+
+⚠️ **L'arrêt est descendu en bas, et ce n'est pas un recul.** Un bouton d'arrêt en haut d'une page
+consultée tous les jours occupe la meilleure place pour ne rien dire 364 jours sur 365. Quand
+l'employé EST arrêté, en revanche, ça ne se lit pas au milieu de neuf cadres identiques : l'état
+devient un bandeau rouge sous le titre, et le bouton de reprise est dedans.
+
+**Trois défauts trouvés en regardant, pas en relisant :** les listes gardaient le retrait de 40 px
+que `list-style: none` ne supprime pas (chaque liste se décalait par rapport au titre de sa carte),
+`10000` s'affichait sans séparateur là où un dirigeant lit `10 000`, et rien n'avait été prévu pour
+un téléphone — alors que c'est là qu'un dirigeant lit son espace le soir. Vérifié à 375 px : les
+boutons passent l'un sous l'autre avec une cible assez large pour un pouce.
+
+---
+
 # PARTIE II — METTRE EN VENTE
 
 ⛔ **Tout ce qui suit t'appartient.** Un agent prépare, explique, rédige des brouillons et vérifie

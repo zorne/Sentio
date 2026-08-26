@@ -46,6 +46,7 @@
 
 .espace .capacites {
   list-style: none;
+  padding-left: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
@@ -59,7 +60,15 @@
   padding: 0.2rem 0.65rem;
 }
 
-.espace .attente, .espace .notifications { list-style: none; display: flex; flex-direction: column; gap: 0.7rem; }
+/* `list-style: none` ne suffit pas : le retrait de 40 px reste, et chaque liste se décale
+   silencieusement par rapport au titre de sa carte. Visible dès qu'on regarde la page en entier. */
+.espace .attente, .espace .notifications {
+  list-style: none;
+  padding-left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
 .espace .attente li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.7rem; }
 .espace .notifications li { display: flex; gap: 0.8rem; align-items: baseline; }
 .espace .notifications time { color: var(--text-tertiary); font-size: 0.8rem; min-width: 6rem; }
@@ -86,13 +95,107 @@
 
 .espace .erreur { color: var(--amber); font-size: 0.82rem; font-style: normal; }
 
-/* Une proposition n'est pas une nouvelle parmi d'autres : c'est la seule chose de cette page qui
-   attend une réponse. Elle se distingue, sans crier. */
-.espace .carte.proposition { border-left: 3px solid var(--text-primary, currentColor); }
+/* ── Ce qui attend une réponse ───────────────────────────────────────────────────────────────
+   Une proposition n'est pas une nouvelle parmi d'autres : c'est la seule chose de cette page qui
+   attend quelque chose du lecteur. Elle se distingue par la couleur de l'attente (l'ambre, comme
+   partout ailleurs dans le produit), pas par de la taille — un cadre plus gros crierait. */
+.espace .carte.proposition {
+  border-color: rgba(251, 191, 36, 0.28);
+  background: rgba(251, 191, 36, 0.04);
+}
+.espace .carte.proposition h2 { color: var(--amber); }
 
-.espace .faits, .espace .progression { margin: 0.4rem 0 0; padding-left: 1.1rem; }
-.espace .faits li, .espace .progression li { margin: 0.25rem 0; }
+/* ── L'arrêt ─────────────────────────────────────────────────────────────────────────────────
+   Un employé arrêté ne se lit pas au milieu de neuf cadres identiques. C'est un bandeau, pas une
+   carte : il n'appartient pas à la liste, il la surplombe. */
+.espace .bandeau {
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  background: rgba(248, 113, 113, 0.06);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.espace .bandeau p { color: var(--text-secondary); font-size: 0.92rem; line-height: 1.55; }
 
-/* L'arrêt se voit. Un état « à l'arrêt » qui ressemble à tous les autres cadres se rate. */
-.espace .carte.arrete { border-left: 3px solid var(--text-primary, currentColor); }
-.espace .arret { font-weight: 600; }
+.espace .etat {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  margin-right: 0.35rem;
+}
+.espace .etat.arrete {
+  color: var(--red);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  background: rgba(248, 113, 113, 0.08);
+}
+
+/* Le bouton d'arrêt porte la couleur de ce qu'il fait. Il ne demande pas de confirmation : sa
+   couleur EST l'avertissement. */
+.espace .arret {
+  color: var(--red);
+  border-color: rgba(248, 113, 113, 0.3);
+  background: rgba(248, 113, 113, 0.08);
+  font-weight: 500;
+}
+.espace .arret:hover:not(:disabled) { background: rgba(248, 113, 113, 0.14); }
+
+/* ── Ce qu'il a appris ───────────────────────────────────────────────────────────────────── */
+.espace .faits, .espace .progression {
+  list-style: none;
+  padding-left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.espace .faits li, .espace .progression li {
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  padding-left: 0.9rem;
+  position: relative;
+}
+/* Un fait appris n'est pas une puce de liste à puces : c'est une observation datée. Le trait
+   discret le dit sans meubler. */
+.espace .faits li::before, .espace .progression li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.65em;
+  width: 0.4rem;
+  height: 1px;
+  background: var(--border-strong);
+}
+.espace .progression li strong { color: var(--text-primary); font-weight: 500; }
+
+/* ── Ce que vous gardez en main ──────────────────────────────────────────────────────────── */
+.espace .carte.main { margin-top: 1rem; }
+.espace .separateur {
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 0.5rem;
+  padding-top: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+
+/* ── Petits écrans. Un dirigeant lit son espace depuis son téléphone au moins autant que
+      depuis son bureau. ─────────────────────────────────────────────────────────────────── */
+@media (max-width: 40rem) {
+  .espace { padding: 2rem 1rem 4rem; gap: 1rem; }
+  .espace h1 { font-size: 1.6rem; }
+  .espace .carte { padding: 1rem 1.1rem; }
+  .espace .chiffre { font-size: 1.8rem; }
+  /* Deux boutons côte à côte deviennent illisibles sous 380 px : ils passent l'un sous l'autre,
+     et gardent une cible assez large pour un pouce. */
+  .espace .decision { display: flex; flex-wrap: wrap; width: 100%; }
+  .espace .decision button { flex: 1 1 12rem; padding: 0.55rem 0.85rem; }
+  .espace .notifications li { flex-direction: column; gap: 0.15rem; }
+  .espace .notifications time { min-width: 0; }
+}
