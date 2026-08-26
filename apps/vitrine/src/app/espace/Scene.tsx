@@ -36,6 +36,7 @@ import { Conversation } from "./Conversation";
 import { BoutonsDeDecision } from "./BoutonsDeDecision";
 import { DecisionSurLaProposition } from "./DecisionSurLaProposition";
 import { ReglageDAutonomie } from "./ReglageDAutonomie";
+import { Tableau, type DonneesDuTableau } from "./Tableau";
 
 export interface DonneesDeLaScene {
   readonly tenantId: string;
@@ -58,6 +59,8 @@ export interface DonneesDeLaScene {
   readonly faits: readonly string[];
   readonly progression: readonly { readonly quoi: string; readonly raison: string }[];
   readonly journal: readonly { readonly id: string; readonly quand: string; readonly quoi: string }[];
+  /** Ce que le dirigeant voit sans cliquer. */
+  readonly tableau: DonneesDuTableau;
 }
 
 type Panneau = "capacites" | "parler" | "objectif" | "attente" | "memoire" | "main";
@@ -228,6 +231,10 @@ export function Scene(d: DonneesDeLaScene) {
         <span className="sc-parler-onde" aria-hidden="true" />
         Lui parler
       </button>
+
+      {/* ── Ce que ça donne. Visible d'emblée : c'est la première question qu'on se pose en
+             ouvrant l'espace, et la faire attendre derrière un clic serait la cacher. ── */}
+      <Tableau {...d.tableau} />
 
       {/* ── Les orbes. Quatre mots, pas une phrase. ── */}
       <nav className="sc-orbes" aria-label="Son travail">

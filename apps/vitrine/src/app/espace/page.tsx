@@ -17,8 +17,16 @@
 //           DASH-15, DASH-16
 // ════════════════════════════════════════════════════════════════════
 
+import { pool } from "@/lib/db";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
+
+import {
+  courbe,
+  evolutionDuTauxDeReponse,
+  tauxDeReponse,
+  type JourDeTravail,
+} from "@sentio/domain";
 
 import { Scene } from "./Scene";
 import "./espace.css";
@@ -116,6 +124,48 @@ export default async function EspacePage() {
         .eq("configuration_id", configuration.id)
     : { data: null };
 
+  // ── Ce que le dirigeant voit sans cliquer. Les deux fonctions sont `security definer` et
+  //    révoquées au public : elles passent donc par le pool de service, après que RLS a déjà
+  //    établi plus haut à quelle entreprise ce compte appartient.
+  const JOURS = 14;
+  const [{ rows: serieBrute }, { rows: bilanBrut }] = await Promise.all([
+    pool.query<{
+      jour: Date;
+      contactes: number;
+      reponses: number;
+      rendez_vous: number;
+      ventes: number;
+    }>("select * from serie_quotidienne($1, $2)", [tenantId, JOURS]),
+    pool.query<{
+      contactes: number;
+      reponses: number;
+      rendez_vous: number;
+      ventes: number;
+      chiffre_affaires: string;
+      entreprises_engagees: number;
+      missions_agies: number;
+    }>("select * from bilan_de_l_employe($1, $2)", [tenantId, JOURS]),
+  ]);
+
+  const serie: JourDeTravail[] = serieBrute.map((ligne) => ({
+    jour: new Date(ligne.jour).toISOString().slice(0, 10),
+    contactes: Number(ligne.contactes),
+    reponses: Number(ligne.reponses),
+    rendezVous: Number(ligne.rendez_vous),
+    ventes: Number(ligne.ventes),
+  }));
+
+  const bilan = {
+    contactes: Number(bilanBrut[0]?.contactes ?? 0),
+    reponses: Number(bilanBrut[0]?.reponses ?? 0),
+    rendezVous: Number(bilanBrut[0]?.rendez_vous ?? 0),
+    ventes: Number(bilanBrut[0]?.ventes ?? 0),
+    chiffreAffaires: Number(bilanBrut[0]?.chiffre_affaires ?? 0),
+    entreprisesEngagees: Number(bilanBrut[0]?.entreprises_engagees ?? 0),
+  };
+
+  const parts = courbe(serie, (j) => j.contactes);
+
   const capacitesLisibles = (capacites ?? [])
     .map((ligne) => (ligne.capability as { name?: string } | null)?.name)
     .filter((nom): nom is string => typeof nom === "string" && nom.trim() !== "");
@@ -161,6 +211,17 @@ export default async function EspacePage() {
         quoi: motDuGenre(preference.kind as string),
         raison: preference.raison as string,
       }))}
+      tableau={{
+        ...bilan,
+        jours: JOURS,
+        taux: tauxDeReponse(bilan),
+        evolution: evolutionDuTauxDeReponse(serie),
+        courbe: serie.map((jour, i) => ({
+          jour: jour.jour,
+          part: parts[i] ?? 0,
+          valeur: jour.contactes,
+        })),
+      }}
       journal={(notifications ?? []).map((notification) => ({
         id: notification.id as string,
         quand: dateCourte(notification.created_at as string),

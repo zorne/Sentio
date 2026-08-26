@@ -1168,6 +1168,50 @@ qui compte.
 
 ---
 
+## Étape 12 decies — Ce que ça donne, sans cliquer
+
+**Ce qu'un dirigeant vient vérifier en ouvrant son espace, c'est si ça marche.** Le faire attendre
+derrière un clic, c'était le cacher.
+
+### Fait le 2026-08-26 — `20260815120023`, `statistiques.ts`, `Tableau.tsx`
+
+Quatre nombres et une courbe, visibles d'emblée : **entreprises approchées**, **combien ont
+répondu**, **combien ont donné une suite**, **ventes et chiffre d'affaires**. Puis le **taux de
+réponse** et son évolution, et la courbe **jour par jour** des 14 derniers jours.
+
+**La forme n'est pas un choix d'esthétique.** Une poignée de valeurs de tête se lit en pastilles :
+un histogramme à quatre barres demanderait au lecteur de mesurer avec les yeux ce qu'un chiffre
+lui donne directement. Seule la question « est-ce que ça progresse » demande une forme — c'est la
+courbe, une seule série, donc une seule couleur et aucune légende.
+
+⚠️ **Trois refus, et ce sont eux qui rendent le tableau crédible :**
+
+1. **Aucun taux sous 30 entreprises approchées.** « 1 réponse sur 2 envois = 50 % » est un chiffre
+   vrai et une information fausse : le dirigeant lirait 50 % le premier jour et 8 % la semaine
+   suivante, et croirait que son employée s'est effondrée. En dessous du seuil, on écrit combien
+   il manque — une case vide, un tiret ou un « 0 % » se lisent tous les trois comme un échec.
+2. **Un écart de moins de deux points est « stable ».** Un produit qui annonce une évolution tous
+   les jours n'en annonce plus aucune. Et la baisse se dit comme la hausse : un tableau qui ne
+   sait annoncer que les bonnes nouvelles n'informe pas.
+3. **Une entreprise qui répond, obtient un rendez-vous puis signe reste UNE entreprise.** La
+   compter trois fois gonflerait le seul chiffre auquel un dirigeant tient vraiment. Et une
+   réponse seule n'est pas une suite — « merci, sans suite » est une réponse.
+
+⛔ **Il n'y a pas de « taux de rétention », et c'est délibéré.** La rétention mesure des clients
+qui restent d'un mois sur l'autre : elle se calcule sur des abonnements, elle demande plusieurs
+mois d'historique, et Sentio n'a pas encore un seul client payant. Publier un nombre sous ce nom
+serait inventer la métrique la plus structurante du produit. Ce qui répond à la même question —
+*est-ce que ça s'améliore ?* — et qui est réellement mesuré, c'est le taux de réponse comparé
+d'une moitié de période à l'autre. C'est ce qui est affiché, sous son vrai nom.
+
+**Un défaut de mise en page corrigé au passage, et il venait de la même capture qu'à l'étape
+précédente :** la scène ne tenait pas sur un écran **court**. Les chiffres — la raison même
+d'ouvrir la page — passaient sous la ligne de flottaison. La composition interroge désormais la
+**hauteur** de l'écran, pas sa largeur : un 1500×730 n'est pas « un petit écran », il est large et
+court.
+
+---
+
 # PARTIE II — METTRE EN VENTE
 
 ⛔ **Tout ce qui suit t'appartient.** Un agent prépare, explique, rédige des brouillons et vérifie

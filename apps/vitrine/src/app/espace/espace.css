@@ -147,12 +147,13 @@
    geste qu'un plan qui change de mise au point. */
 .sc[data-tiroir="1"] .sc-scene,
 .sc[data-tiroir="1"] .sc-parler,
+.sc[data-tiroir="1"] .tb,
 .sc[data-tiroir="1"] .sc-orbes {
   transform: scale(0.965);
   opacity: 0.4;
   filter: blur(1px);
 }
-.sc-scene, .sc-parler, .sc-orbes {
+.sc-scene, .sc-parler, .tb, .sc-orbes {
   transition: opacity 0.55s var(--ease), transform 0.55s var(--ease), filter 0.55s var(--ease);
 }
 
@@ -166,18 +167,20 @@
    ne doit jamais être ce qui rend une page visible. */
 .sc[data-monte="0"] .sc-scene,
 .sc[data-monte="0"] .sc-parler,
+.sc[data-monte="0"] .tb,
 .sc[data-monte="0"] .sc-orbes,
 .sc[data-monte="0"] .sc-barre {
   opacity: 0;
   transform: translateY(14px);
 }
-.sc-scene, .sc-parler, .sc-orbes, .sc-barre {
+.sc-scene, .sc-parler, .tb, .sc-orbes, .sc-barre {
   transition: opacity 0.9s var(--ease), transform 0.9s var(--ease);
 }
 .sc[data-monte="1"] .sc-scene   { transition-delay: 0.05s; }
 .sc[data-monte="1"] .sc-barre   { transition-delay: 0.5s; }
 .sc[data-monte="1"] .sc-parler  { transition-delay: 0.62s; }
-.sc[data-monte="1"] .sc-orbes   { transition-delay: 0.74s; }
+.sc[data-monte="1"] .tb         { transition-delay: 0.74s; }
+.sc[data-monte="1"] .sc-orbes   { transition-delay: 0.86s; }
 
 /* ─── LA PRÉSENCE ────────────────────────────────────────────────────
    Trois couches, et chacune dit quelque chose :
@@ -462,6 +465,137 @@
   70%  { opacity: 0;   transform: scale(1.22); }
   100% { opacity: 0;   transform: scale(1.22); }
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   LE TABLEAU — ce qui se lit sans cliquer
+   ────────────────────────────────────────────────────────────────────
+   Quatre nombres et une courbe. Pas de graphique à barres : une poignée
+   de valeurs de tête se lit en pastilles, et un histogramme à quatre
+   barres demanderait au lecteur de mesurer avec les yeux ce qu'un
+   chiffre lui donne directement.
+
+   Une seule série sur la courbe, donc une seule couleur et aucune
+   légende — la légende du dessous la nomme.
+   ════════════════════════════════════════════════════════════════════ */
+
+.tb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.3rem;
+  width: min(40rem, 100%);
+}
+
+/* ⚠️ Une GRILLE, pas un `flex-wrap`. À quatre pastilles de largeurs inégales, le retour à la
+   ligne laissait trois valeurs sur une rangée et la quatrième seule en dessous — un ordre qui
+   n'a aucun sens et qu'on lit comme un défaut de gabarit. Une grille garde quatre colonnes, puis
+   deux, et jamais trois-et-une. */
+.tb-chiffres {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.9rem 1.2rem;
+  width: 100%;
+}
+.tb-pastille {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  text-align: center;
+}
+.tb-pastille strong {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 1.85rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+/* ⚠️ Le mot reste en encre neutre, jamais dans la couleur de la donnée : une étiquette colorée
+   se lit comme un état, et « ont répondu » n'en est pas un. La couleur ne sert qu'à distinguer
+   ce qui a produit un RÉSULTAT — les deux pastilles de droite. */
+.tb-pastille span {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.tb-pastille.est-accent strong { color: var(--mint); }
+
+.tb-taux {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  text-align: center;
+}
+.tb-taux-nombre { display: flex; align-items: baseline; gap: 0.55rem; flex-wrap: wrap; justify-content: center; }
+.tb-taux-nombre strong {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 2.6rem;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+.tb-taux-nombre span { font-size: 0.85rem; color: var(--ink-2); }
+/* Un taux qu'on ne peut pas encore calculer s'écrit en toutes lettres. Une case vide, un tiret
+   ou un « 0 % » se lisent tous les trois comme un échec — or il ne s'est rien passé de mal. */
+.tb-pas-encore {
+  font-family: var(--mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.tb-tendance {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  max-width: 46ch;
+  line-height: 1.6;
+}
+.tb-tendance--hausse { color: var(--mint); }
+.tb-tendance--baisse { color: var(--amber); }
+.tb-tendance--muette { color: var(--ink-3); }
+
+.tb-courbe { width: 100%; }
+.tb-courbe svg {
+  display: block;
+  width: 100%;
+  /* Assez haute pour qu'une variation se voie. À 44 px étirés sur 600, la courbe s'aplatissait
+     au point de ne plus rien montrer — un graphique qui ne montre rien occupe de la place pour
+     rien. */
+  height: 64px;
+}
+/* Trait fin, sans point sur chaque jour : un marqueur par jour transforme une tendance en
+   nuage de points. Le point n'apparaît qu'au survol, là où on regarde. */
+.tb-trace {
+  fill: none;
+  stroke: var(--mint);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.tb-surface { fill: url(#tb-degrade); fill-opacity: 0.14; stroke: none; }
+.tb-viseur { stroke: var(--line-2); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.tb-pointeur { fill: var(--mint); }
+
+.tb-courbe figcaption {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 0.5rem;
+}
+.tb-point-lu { color: var(--mint); }
 
 /* ════════════════════════════════════════════════════════════════════
    LES ORBES — quatre mots, et c'est tout ce que la page dit au repos
@@ -855,6 +989,41 @@
 .sc--arrete .sc-corps { opacity: 0.45; filter: saturate(0.35); }
 .sc--arrete .sc-corps:hover { opacity: 0.7; }
 
+/* ─── Écrans COURTS ──────────────────────────────────────────────────
+   Un portable posé sur un bureau, c'est large et bas. Toute la scène doit
+   y tenir d'un coup d'œil, sinon les chiffres — la raison même d'ouvrir
+   cette page — passent sous la ligne de flottaison.
+
+   ⚠️ C'est la HAUTEUR qu'on interroge, pas la largeur. Un écran 1500×730
+   n'est pas « un petit écran » : il est large et court, et c'est
+   exactement le cas que les deux premières versions rataient. */
+@media (max-height: 860px) {
+  .sc { gap: 0.6rem; padding-top: 4rem; padding-bottom: 1.2rem; }
+  .sc-corps { width: clamp(140px, 24svh, 210px); height: clamp(170px, 30svh, 265px); }
+  .sc-identite { margin-top: 0.1rem; }
+  .sc-identite h1 { font-size: clamp(1.9rem, 5svh, 2.7rem); }
+  .sc-etat { margin-top: 0.5rem; }
+  .sc-parler { height: 42px; }
+  .tb { gap: 0.6rem; }
+  .tb-pastille strong { font-size: 1.35rem; }
+  .tb-taux-nombre strong { font-size: 1.7rem; }
+  .tb-courbe svg { height: 38px; }
+  .tb-courbe figcaption { margin-bottom: 0.25rem; }
+  /* Les jalons se rapprochent avec la silhouette, sinon ils flottent loin d'elle. */
+  .sc-jalons i {
+    transform:
+      translate(-50%, -50%)
+      translate(calc(var(--x) * 52%), calc(var(--y) * 52%))
+      translate(calc(var(--x) * clamp(70px, 13svh, 100px)), calc(var(--y) * clamp(70px, 13svh, 100px)));
+  }
+  .sc-couronne.est-ouverte li {
+    transform:
+      translate(-50%, -50%)
+      translate(calc(var(--x) * min(30vw, 175px)), calc(var(--y) * min(20svh, 125px)))
+      scale(1);
+  }
+}
+
 /* ─── Petits écrans ──────────────────────────────────────────────── */
 @media (max-width: 40rem) {
   .sc { gap: 1.8rem; padding: 3.5rem 1rem 2rem; }
@@ -891,6 +1060,9 @@
   /* Le nom n'a plus besoin de s'écarter : la colonne pousse déjà le flux. */
   .sc-couronne.est-ouverte + .sc-identite { margin-top: 1.2rem; }
   .sc-identite h1 { font-size: 2.6rem; }
+  .tb-chiffres { grid-template-columns: repeat(2, 1fr); gap: 0.9rem 0.6rem; }
+  .tb-pastille strong { font-size: 1.5rem; }
+  .tb-taux-nombre strong { font-size: 2rem; }
   .sc-tiroir { padding: 1.6rem 1.15rem 2rem; max-height: 82svh; }
   .sc-chiffre { font-size: 2.6rem; }
   .sc .decision, .sc-tiroir .decision { display: flex; width: 100%; }

@@ -3387,4 +3387,99 @@ end;
 $$;
 
 
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+-- LADY-Y — les chiffres que le dirigeant voit en arrivant.
+--
+-- C'est la première chose qu'il lit, tous les jours. Un chiffre gonflé ici n'est pas une erreur
+-- d'affichage : c'est ce qui décide s'il continue de payer, et s'il croit le reste.
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  entreprise constant uuid := 'aaaaaaaa-0000-0000-0000-000000000001';
+  employe    constant uuid := 'ffffffff-0000-0000-0000-000000000001';
+  objectif   uuid;
+  mission    uuid;
+  fiche      uuid;
+  avant      record;
+  b          record;
+  jours      integer;
+begin
+  -- Comme LADY-X : on mesure des ÉCARTS. Les blocs précédents travaillent la même entreprise.
+  select * into avant from public.bilan_de_l_employe(entreprise, 14);
+
+  select id into objectif from public.objective
+   where tenant_id = entreprise and state = 'actif' limit 1;
+
+  -- ── 1. La série rend TOUS les jours de la fenêtre, y compris les jours vides.
+  --    Une courbe qui saute les jours sans travail relie lundi à jeudi en ligne droite et donne
+  --    à voir une progression continue là où il ne s'est rien passé.
+  select count(*) into jours from public.serie_quotidienne(entreprise, 14);
+  if jours <> 14 then
+    raise exception
+      'ÉCHEC tableau : la série rend % jours au lieu de 14. Les jours vides ont été sautés, et '
+      'la courbe ment sur ce qui s''est passé entre deux.', jours;
+  end if;
+
+  -- ── 2. ⭐⭐ Une entreprise qui répond, obtient un rendez-vous PUIS signe reste UNE entreprise.
+  --    La compter trois fois gonflerait le seul chiffre auquel un dirigeant tient vraiment.
+  insert into public.lead (tenant_id, company_name, email, source)
+  values (entreprise, 'Menuiserie Duval', 'contact-lady-y@exemple.fr', 'import_client')
+  returning id into fiche;
+
+  insert into public.task (tenant_id, employee_id, objective_id, subject_kind, subject_id)
+  values (entreprise, employe, objectif, 'lead', fiche)
+  returning id into mission;
+
+  insert into public.outcome (tenant_id, task_id, kind, declared_by)
+  values (entreprise, mission, 'response', 'client');
+  insert into public.outcome (tenant_id, task_id, kind, declared_by)
+  values (entreprise, mission, 'meeting', 'client');
+  insert into public.outcome (tenant_id, task_id, kind, value, declared_by)
+  values (entreprise, mission, 'sale', 3000, 'client');
+
+  select * into b from public.bilan_de_l_employe(entreprise, 14);
+
+  if b.entreprises_engagees - avant.entreprises_engagees <> 1 then
+    raise exception
+      'ÉCHEC tableau : % entreprises engagées de plus pour UNE seule entreprise. Un rendez-vous '
+      'et une vente chez le même prospect en font deux — le chiffre le plus regardé du produit '
+      'serait gonflé.', b.entreprises_engagees - avant.entreprises_engagees;
+  end if;
+
+  -- ── 3. Les issues, elles, se comptent toutes : ce sont trois faits distincts.
+  if b.reponses - avant.reponses <> 1 or b.rendez_vous - avant.rendez_vous <> 1
+     or b.ventes - avant.ventes <> 1 then
+    raise exception 'ÉCHEC tableau : les trois issues de cette entreprise n''ont pas été comptées.';
+  end if;
+
+  if b.chiffre_affaires - avant.chiffre_affaires <> 3000 then
+    raise exception 'ÉCHEC tableau : % € de plus au lieu de 3000.',
+      b.chiffre_affaires - avant.chiffre_affaires;
+  end if;
+
+  -- ── 4. ⭐ Une réponse SEULE n'est pas une entreprise engagée. « Merci, sans suite » est une
+  --    réponse — la compter comme un engagement transformerait un refus poli en résultat.
+  insert into public.lead (tenant_id, company_name, email, source)
+  values (entreprise, 'Sans suite', 'poli-lady-y@exemple.fr', 'import_client')
+  returning id into fiche;
+  insert into public.task (tenant_id, employee_id, objective_id, subject_kind, subject_id)
+  values (entreprise, employe, objectif, 'lead', fiche) returning id into mission;
+  insert into public.outcome (tenant_id, task_id, kind, declared_by)
+  values (entreprise, mission, 'response', 'client');
+
+  select * into b from public.bilan_de_l_employe(entreprise, 14);
+
+  if b.entreprises_engagees - avant.entreprises_engagees <> 1 then
+    raise exception
+      'ÉCHEC tableau : une entreprise qui a seulement répondu compte comme engagée. « Merci, '
+      'sans suite » deviendrait un résultat.';
+  end if;
+
+  raise notice
+    'OK  LADY-Y — tous les jours rendus, chaque entreprise comptée une fois, une réponse n''est pas une suite';
+end;
+$$;
+
+
 rollback;
