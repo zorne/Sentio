@@ -388,6 +388,41 @@ describeIfDatabase("LADY-V — il retient, il essaie, il garde ce qui marche", (
     expect(await preference(tenantId)).toBeUndefined();
   });
 
+  /**
+   * ⚠️ MÊME DÉFAUT QUE DANS LA RÉÉVALUATION, MÊME CORRECTIF, MÊME PREUVE.
+   *
+   * La garde « une fois par jour » bornait sa fenêtre avec « ($jour::date)::timestamptz », qui
+   * interprète en base une date calculée par Node en UTC. Sur un serveur qui n'est pas en UTC,
+   * la fenêtre glisse, l'événement qu'on vient d'écrire en sort, et l'employé se fait examiner à
+   * chaque battement au lieu d'une fois par jour.
+   *
+   * On force les deux fuseaux les plus éloignés d'UTC : quelle que soit l'heure de la
+   * vérification, l'un des deux fait sortir l'événement de la fenêtre si le cast est faux.
+   */
+  it("⭐ la garde du jour ne dépend pas du fuseau du serveur", async () => {
+    for (const fuseau of ["Etc/GMT-14", "Etc/GMT+12"]) {
+      const { tenantId, employeeId } = await entreprise();
+      await jouer(tenantId, employeeId, "specialise", 25, 9);
+      await jouer(tenantId, employeeId, "courant", 25, 1);
+
+      await sql.query(`set time zone '${fuseau}'`, []);
+      try {
+        const jour = new Date();
+        await faireProgresserLesEmployes({ sql, journal }, jour);
+        await faireProgresserLesEmployes({ sql, journal }, jour);
+
+        const [trace] = await sql.query<{ n: string }>(
+          `select count(*) as n from execution_event
+            where tenant_id = $1 and kind in ('progression_retenue', 'progression_sans_suite')`,
+          [tenantId],
+        );
+        expect(Number(trace?.n), `fuseau ${fuseau}`).toBe(1);
+      } finally {
+        await sql.query("set time zone 'UTC'", []);
+      }
+    }
+  });
+
   it("⭐⭐ retient ce qui vend chez CE client, et le lui dit avec la preuve", async () => {
     const { tenantId, employeeId } = await entreprise();
     await jouer(tenantId, employeeId, "specialise", 25, 9);

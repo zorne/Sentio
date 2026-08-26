@@ -228,6 +228,42 @@ describeIfDatabase("LADY-U — les résultats proposent, ils n'appliquent pas", 
     expect(Number(trace?.n)).toBe(1);
   });
 
+  /**
+   * ⚠️ LA GARDE DOIT TENIR À TOUTE HEURE, PAS SEULEMENT EN JOURNÉE.
+   *
+   * Le jour de référence est calculé par Node, en UTC ; la fenêtre était bornée en base par
+   * « ($jour::date)::timestamptz », qui interprète cette date dans le fuseau de la SESSION
+   * Postgres. Les deux ne coïncident que si la session est en UTC.
+   *
+   * Le défaut se voyait donc entre minuit et 2 h locales sur un serveur en Europe/Paris, et
+   * nulle part le reste du temps : le test précédent passait tout le jour et échouait la nuit.
+   * Un test qui dépend de l'heure à laquelle on le lance ne prouve rien.
+   *
+   * Celui-ci force les deux fuseaux les plus éloignés d'UTC qui existent, UTC+14 et UTC-12. Quelle
+   * que soit l'heure, **l'un des deux** décale la fenêtre au point d'en faire sortir l'événement
+   * qu'on vient d'écrire. Avec le cast corrigé, aucun des deux ne bouge quoi que ce soit.
+   */
+  it("⭐ la garde du jour ne dépend pas du fuseau du serveur", async () => {
+    for (const fuseau of ["Etc/GMT-14", "Etc/GMT+12"]) {
+      const { tenantId } = await entrepriseEnCours({ missions: 30, reponses: 12, ventes: 0 });
+      await sql.query(`set time zone '${fuseau}'`, []);
+      try {
+        const jour = new Date();
+        await reevaluerLesEmployes({ sql, journal }, jour);
+        await reevaluerLesEmployes({ sql, journal }, jour);
+
+        const [trace] = await sql.query<{ n: string }>(
+          `select count(*) as n from execution_event
+            where tenant_id = $1 and kind in ('reevaluation_proposee', 'reevaluation_sans_suite')`,
+          [tenantId],
+        );
+        expect(Number(trace?.n), `fuseau ${fuseau}`).toBe(1);
+      } finally {
+        await sql.query("set time zone 'UTC'", []);
+      }
+    }
+  });
+
   it("⭐ l'accord du dirigeant, et alors seulement, applique la version", async () => {
     const { tenantId, employeeId } = await entrepriseEnCours({
       missions: 30,

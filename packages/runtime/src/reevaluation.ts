@@ -109,8 +109,18 @@ async function dejaReevalueAujourdhui(
        select 1 from execution_event e
         where e.tenant_id = $1 and e.employee_id = $2
           and e.kind = any($3::text[])
-          and e.created_at >= ($4::date)::timestamptz
-          and e.created_at <  ($4::date + 1)::timestamptz
+          -- ⚠️ « at time zone 'UTC' », et surtout PAS « ::timestamptz ».
+          --
+          -- Le jour ($4) est calculé par Node, en UTC. Le cast direct « ::date::timestamptz »,
+          -- lui, interprète cette date dans le fuseau de la SESSION Postgres. Sur un serveur en
+          -- Europe/Paris, la fenêtre glissait donc de deux heures : entre minuit et 2 h locales,
+          -- l'événement écrit à l'instant tombait APRÈS la fin de la fenêtre, la garde ne le
+          -- voyait pas, et le travail du jour se refaisait à chaque battement.
+          --
+          -- Un défaut qui n'existe que deux heures par nuit ne se voit jamais en journée : il a
+          -- fallu que la vérification tourne à 00 h 12 pour qu'il apparaisse.
+          and e.created_at >= ($4::date)::timestamp at time zone 'UTC'
+          and e.created_at <  ($4::date + 1)::timestamp at time zone 'UTC'
      ) as deja`,
     [employe.tenantId, employe.employeeId, [REEVALUATION_PROPOSEE, REEVALUATION_SANS_SUITE], jour],
   );
