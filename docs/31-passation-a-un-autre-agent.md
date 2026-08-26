@@ -41,6 +41,13 @@
 | 2026-08-26 | **Plus aucun tiret dans le texte visible** | Demande du fondateur. Les tirets cadratins restent dans les commentaires de code |
 | 2026-08-26 | **Jamais un message flou** — l'accord dit QUELLE action, sur qui, avec quel texte | « Une action attend votre accord » faisait signer une page blanche |
 | 2026-08-26 | **Ce qu'une proposition change, terme à terme** — aujourd'hui / si vous acceptez | Une phrase de résumé dit une intention ; le dirigeant valide une **conséquence** |
+| 2026-08-26 | **Audit avant mise en vente** ([`docs/32`](32-audit-avant-mise-en-vente.md)) — texte, sécurité, RGPD. Lecture seule, rien modifié | Le cœur est solide ; **le site public et le cœur sont deux produits qui ne se touchent pas**. Le paiement ne recrute personne, l'acheteur atterrit sur la démo, `/espace` n'est lié nulle part |
+| 2026-08-27 | **Le garde des frontières regarde enfin la vitrine** — lexique et tirets rendus mécaniques | Deux règles scannaient `apps/web/src`, **supprimé**. Elles lisaient zéro fichier et disaient « rien à signaler » |
+| 2026-08-27 | **Plus aucun tiret sur une page publique**, vérifié dans le RENDU | 49 corrigés, dont 8 titres d'onglet et 12 faux tirets de puce dans les droits RGPD |
+| 2026-08-27 | **Trois textes qui promettaient du vide, retirés** | La section « Le retard », les 20 lignes d'offre sur l'écran de paiement, et deux notes internes publiées au client |
+| 2026-08-27 | **`CRON_SECRET` et `SENTIO_IP_HASH_SALT` échouent fermé** | Les deux échouaient OUVERT quand ils manquaient. Le sel avait une valeur de repli **écrite dans git** |
+| 2026-08-27 | **L'accueil a enfin un plafond**, le même que le diagnostic | Server Action publique qui appelait un modèle sans aucune limite : facture ouverte à qui écrit une boucle |
+| 2026-08-27 | **La garde « une fois par jour » ne tenait pas la nuit** | ⚠️ Défaut réel trouvé en lançant `verify` à 00 h 12. Voir piège 20 : Node compte en UTC, `::date::timestamptz` compte dans le fuseau de la session |
 
 ---
 
@@ -345,6 +352,21 @@ Chacun a coûté du temps. Ils sont listés dans l'ordre où on les rencontre.
 
 ### Interface
 
+19 bis. **Node compte les jours en UTC, Postgres dans le fuseau de sa SESSION.** Une garde
+    « une fois par jour » bornait sa fenêtre avec `($jour::date)::timestamptz`, où `$jour` venait
+    de `new Date().toISOString()`. Sur un serveur en Europe/Paris, la fenêtre glissait de deux
+    heures : **entre minuit et 2 h locales**, l'événement qu'on venait d'écrire tombait après la
+    fin de la fenêtre, la garde ne le voyait pas, et le travail du jour se refaisait à chaque
+    battement. Écrire `($jour::date)::timestamp at time zone 'UTC'`. Deux endroits étaient
+    touchés (`reevaluation.ts`, `progression.ts`). ⚠️ **Et le test qui l'attrapait ne tombait que
+    deux heures par nuit** : le test de non-régression force `Etc/GMT-14` et `Etc/GMT+12`, pour
+    qu'il échoue à n'importe quelle heure.
+
+19 ter. **`&apos;` se termine par un point-virgule.** Un filtre qui écartait les lignes de code en
+    cherchant `=` ou `;` a écarté, en silence, **toute phrase française contenant une
+    apostrophe**. Retirer les entités HTML avant d'analyser du texte JSX.
+
+
 14. **`justify-content: center` COUPE le haut** quand le contenu dépasse la hauteur. Sur un écran
     large et court, la silhouette passait hors champ. `safe center`.
 15. **La spécificité d'un `:not()` compte celle de son argument.** Une règle de base avec
@@ -354,6 +376,11 @@ Chacun a coûté du temps. Ils sont listés dans l'ordre où on les rencontre.
     **et** sur le tiroir : le jour où le tiroir passe dans un portail, les couleurs disparaissent
     sans erreur.
 17. **`list-style: none` ne retire pas le retrait de 40 px.**
+17 bis. **Un contrôle peut être vert parce qu'il ne regarde nulle part.** Deux des six règles de
+    `scripts/verifier-frontieres.mjs` scannent `apps/web/src`, dossier supprimé avec l'ancienne
+    vitrine SvelteKit. Elles lisent **zéro fichier** et rendent « rien à signaler ». Quand tu
+    déplaces ou supprimes un dossier, **cherche qui le nommait** — un chemin mort ne lève aucune
+    erreur, il rend juste le contrôle muet. Trouvé à l'audit du 2026-08-26 (`docs/32` §A2).
 18. **Toujours regarder l'écran.** Les trois quarts des défauts d'interface de ce projet ont été
     trouvés en prenant une capture, jamais en relisant le code.
 19. **Et une capture ne suffit pas pour ce qui bouge.** Le carré des pastilles et le bond de la
