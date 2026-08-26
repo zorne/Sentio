@@ -310,6 +310,40 @@ describeIfDatabase("EXEC-19 — les vrais moteurs, sur la vraie base", () => {
     expect(note?.payload.note).toMatch(/sans réponse/);
   });
 
+  it("⭐⭐ arrêté par son dirigeant, il ne touche plus à rien — même à ce qui l'attendait", async () => {
+    // Refuser d'OUVRIR de nouvelles missions ne suffirait pas : celles déjà en file partiraient
+    // quand même, et « stop » ne stopperait rien de ce qui est déjà préparé.
+    const { tenantId, employeeId, leadId } = await entreprise({
+      capacites: ["mettre_a_jour.prospect"],
+    });
+    await approvisionner(tenantId);
+
+    await sql.query("select mettre_en_pause($1, $2, $3)", [
+      tenantId,
+      employeeId,
+      "Je veux vérifier ce qu'il écrit.",
+    ]);
+
+    reponses = [
+      JSON.stringify({
+        action: "agir",
+        capacite: "mettre_a_jour.prospect",
+        entree: { statut: "contacte" },
+        pourquoi: "consigner",
+      }),
+    ];
+
+    await unBattement();
+
+    // La mission attendait, elle attend encore. Rien n'a bougé sur la fiche.
+    expect((await fiche(leadId))?.status).toBe("nouveau");
+
+    // Et la reprise est une décision du dirigeant : elle ne se prend pas toute seule.
+    await sql.query("select reprendre_le_travail($1, $2)", [tenantId, employeeId]);
+    await unBattement();
+    expect((await fiche(leadId))?.status).toBe("contacte");
+  });
+
   it("⭐⭐ n'agit PAS sur la fiche que le modèle désigne, et le dit", async () => {
     // Le scénario d'injection, jusqu'au bout de la chaîne réelle : le modèle nomme une autre
     // fiche. Rien ne doit changer nulle part — ni sur la sienne, ni sur celle de la mission.

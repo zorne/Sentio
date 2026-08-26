@@ -92,3 +92,7 @@
 
 .espace .faits, .espace .progression { margin: 0.4rem 0 0; padding-left: 1.1rem; }
 .espace .faits li, .espace .progression li { margin: 0.25rem 0; }
+
+/* L'arrêt se voit. Un état « à l'arrêt » qui ressemble à tous les autres cadres se rate. */
+.espace .carte.arrete { border-left: 3px solid var(--text-primary, currentColor); }
+.espace .arret { font-weight: 600; }

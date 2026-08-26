@@ -135,9 +135,12 @@ async function employesConfigures(sql: SqlClient): Promise<readonly EmployeConfi
     employee_id: string;
     diagnostic_session_id: string | null;
   }>(
+    // Un employé arrêté ne se voit pas non plus proposer autre chose : le dirigeant a demandé
+    // que rien ne bouge, et une proposition qui l'attend au réveil bouge déjà.
     `select c.tenant_id, c.employee_id, c.diagnostic_session_id
        from lady_configuration c
-      where c.active
+       join employee e on e.tenant_id = c.tenant_id and e.id = c.employee_id
+      where c.active and e.en_pause_depuis is null
       order by c.tenant_id, c.employee_id`,
     [],
   );

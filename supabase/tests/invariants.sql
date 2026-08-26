@@ -3136,4 +3136,131 @@ end;
 $$;
 
 
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+-- LADY-W — « qu'est-ce qui empêche cet employé de prendre le contrôle de mon entreprise ? »
+--
+-- Deux réponses, et ce sont celles qui comptent le jour où quelque chose va mal : rien ne le rend
+-- plus autonome sauf son dirigeant, et son dirigeant peut tout arrêter.
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  entreprise constant uuid := 'aaaaaaaa-0000-0000-0000-000000000001';
+  employe    constant uuid := 'ffffffff-0000-0000-0000-000000000001';
+  active     public.lady_configuration;
+  suivante   uuid;
+  arret      timestamptz;
+  verdict    text;
+begin
+  select * into active
+    from public.lady_configuration c
+   where c.tenant_id = entreprise and c.employee_id = employe and c.active;
+
+  if not found then
+    raise exception 'ÉCHEC limites : le montage n''a aucune configuration active.';
+  end if;
+
+  -- ── 1. ⭐⭐ Une réévaluation ne peut PAS rendre l'employé plus autonome.
+  --
+  -- C'est le scénario qui inquiète, et à raison : une mesure conclut, le dirigeant accepte d'un
+  -- clic, et son employé se met à écrire sans relecture. La base refuse.
+  begin
+    insert into public.lady_configuration
+      (tenant_id, employee_id, version, role, autonomie, declencheur, raison, precedente_id, active)
+    select entreprise, employe, max(version) + 1, 'prospection', 'auto', 'resultats',
+           'Les résultats seraient meilleurs sans validation.', active.id, false
+      from public.lady_configuration where employee_id = employe;
+    raise exception
+      'ÉCHEC limites : une réévaluation a pu faire passer l''employé en « agit seul ».';
+  exception when raise_exception then
+    if position('plus autonome' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  -- ── 2. Elle peut le rendre plus PRUDENT : le cliquet ne tourne que dans ce sens.
+  insert into public.lady_configuration
+    (tenant_id, employee_id, version, role, autonomie, declencheur, raison, precedente_id, active)
+  select entreprise, employe, max(version) + 1, 'prospection', 'confirm', 'resultats',
+         'Deux envois ont été signalés : on repasse par une relecture.', active.id, false
+    from public.lady_configuration where employee_id = employe
+  returning id into suivante;
+
+  if suivante is null then
+    raise exception 'ÉCHEC limites : une configuration plus prudente a été refusée.';
+  end if;
+
+  -- ── 3. ⭐ Et le dirigeant, lui, peut lever la garde — c'est LA porte, et elle est nommée.
+  perform public.appliquer_la_configuration(suivante);
+
+  if public.regler_l_autonomie(entreprise, employe, 'auto', 'Je le laisse agir seul.') is null then
+    raise exception 'ÉCHEC limites : le dirigeant n''a pas pu régler l''autonomie de son employé.';
+  end if;
+
+  if (select autonomy from public.employee where id = employe) <> 'auto' then
+    raise exception
+      'ÉCHEC limites : le dirigeant a demandé « agit seul » et l''employé ne l''est pas.';
+  end if;
+
+  -- ── 4. Un employé ne NAÎT jamais en « agit seul » : personne n'a encore rien consenti.
+  begin
+    insert into public.lady_configuration
+      (tenant_id, employee_id, version, role, autonomie, declencheur, raison)
+    values (entreprise, 'ffffffff-0000-0000-0000-00000000000e', 1, 'prospection', 'auto',
+            'recrutement', 'Essai.');
+    raise exception 'ÉCHEC limites : un employé a pu être recruté en « agit seul ».';
+  exception when raise_exception then
+    if position('recruté en' in sqlerrm) = 0 then raise; end if;
+  -- L'employé d'essai n'existe pas : la clé étrangère peut trancher avant le déclencheur, et
+  -- c'est le refus qui compte, pas lequel des deux l'a prononcé.
+  when foreign_key_violation then null;
+  end;
+
+  -- ── 5. ⭐⭐ L'ARRÊT. Plus aucune mission ne s'ouvre.
+  select * into active
+    from public.lady_configuration c
+   where c.tenant_id = entreprise and c.employee_id = employe and c.active;
+
+  arret := public.mettre_en_pause(entreprise, employe, 'Je veux vérifier ce qu''il écrit.');
+  if arret is null then
+    raise exception 'ÉCHEC limites : l''arrêt n''a rien produit.';
+  end if;
+
+  verdict := public.peut_ouvrir_une_mission(entreprise, employe);
+  if verdict <> 'employe_arrete' then
+    raise exception
+      'ÉCHEC limites : employé arrêté, et l''ouverture de missions rend « % ». Un employé arrêté '
+      'doit rendre « arrêté » — un motif exact vaut mieux qu''un motif vrai par accident.',
+      verdict;
+  end if;
+
+  -- ── 6. ⭐⭐ Et plus rien ne part. Refuser d'ouvrir ne suffirait pas : ce qui était déjà
+  --    préparé partirait quand même.
+  verdict := public.peut_envoyer(entreprise, gen_random_uuid(), gen_random_uuid(), 0, 50);
+  if verdict <> 'employe_arrete' then
+    raise exception
+      'ÉCHEC limites : employé arrêté, et la garde d''envoi rend « % ».', verdict;
+  end if;
+
+  -- ── 7. Un second arrêt ne réécrit pas la date du premier.
+  if public.mettre_en_pause(entreprise, employe, 'Encore.') <> arret then
+    raise exception 'ÉCHEC limites : un second arrêt a réécrit la date du premier.';
+  end if;
+
+  -- ── 8. Rien ne reprend tout seul : il faut le dire.
+  perform public.reprendre_le_travail(entreprise, employe);
+
+  if (select en_pause_depuis from public.employee where id = employe) is not null then
+    raise exception 'ÉCHEC limites : le dirigeant a repris et l''employé est resté arrêté.';
+  end if;
+
+  verdict := public.peut_ouvrir_une_mission(entreprise, employe);
+  if verdict = 'employe_arrete' then
+    raise exception 'ÉCHEC limites : reprise demandée, employé toujours arrêté.';
+  end if;
+
+  raise notice
+    'OK  LADY-W — l''autonomie ne monte que par le dirigeant, et son arrêt arrête tout';
+end;
+$$;
+
+
 rollback;

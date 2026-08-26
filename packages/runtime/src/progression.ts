@@ -92,8 +92,12 @@ interface EmployeEnActivite {
 
 async function employesEnActivite(sql: SqlClient): Promise<readonly EmployeEnActivite[]> {
   const rows = await sql.query<{ tenant_id: string; employee_id: string }>(
+    // ⚠️ Un employé arrêté par son dirigeant ne progresse pas non plus. Laisser sa façon de
+    // travailler changer pendant qu'il est à l'arrêt, c'est exactement ce qu'un arrêt existe
+    // pour empêcher : que quelque chose bouge sans lui.
     `select e.tenant_id, e.id as employee_id
        from employee e
+      where e.en_pause_depuis is null
       order by e.tenant_id, e.id`,
     [],
   );

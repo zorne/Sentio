@@ -105,3 +105,37 @@ export async function repondreALaProposition(
     return { ok: false, message: "Votre réponse n'a pas pu être enregistrée." };
   }
 }
+
+/**
+ * Arrêter son employé, ou le reprendre.
+ *
+ * ⚠️ C'est le geste que le dirigeant doit pouvoir poser sans réfléchir, à n'importe quelle heure.
+ * Il ne demande aucune confirmation et ne pose aucune question : un arrêt qu'on doit négocier
+ * n'est pas un arrêt. Reprendre, en revanche, est une décision — et elle reste toujours la sienne,
+ * rien ne se relance tout seul.
+ */
+export async function arreterOuReprendre(
+  tenantId: string,
+  employeeId: string,
+  geste: "arreter" | "reprendre",
+): Promise<{ ok: boolean; message?: string }> {
+  if (!(await isAuthorizedForTenant(tenantId))) {
+    return { ok: false, message: "Vous n'avez pas accès à cette entreprise." };
+  }
+
+  try {
+    if (geste === "arreter") {
+      await pool.query("select mettre_en_pause($1, $2, $3)", [
+        tenantId,
+        employeeId,
+        "Arrêté depuis l'espace client.",
+      ]);
+    } else {
+      await pool.query("select reprendre_le_travail($1, $2)", [tenantId, employeeId]);
+    }
+    revalidatePath("/espace");
+    return { ok: true };
+  } catch {
+    return { ok: false, message: "L'action n'a pas pu être enregistrée." };
+  }
+}

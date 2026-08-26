@@ -90,6 +90,15 @@ export class PostgresFileDeTravaux implements FileDeTravaux {
            from job j
           where j.next_run_at <= $2
             and (j.locked_at is null or j.locked_at < $2 - make_interval(mins => $3))
+            -- ⚠️ L'ARRÊT DU DIRIGEANT (LADY-W). Refuser d'ouvrir de nouvelles missions ne suffit
+            -- pas : celles déjà en file partiraient quand même, et « stop » ne stopperait rien
+            -- de ce qui est déjà préparé. Le travail n'est pas supprimé — il n'est pas pris.
+            and not exists (
+              select 1 from task t
+                join employee e on e.tenant_id = t.tenant_id and e.id = t.employee_id
+               where t.tenant_id = j.tenant_id and t.id = j.task_id
+                 and e.en_pause_depuis is not null
+            )
           order by j.priority desc, j.next_run_at, j.id
           for update of j skip locked
           limit 1

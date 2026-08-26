@@ -20,6 +20,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 
+import { ArretDUrgence } from "./ArretDUrgence";
 import { BoutonsDeDecision } from "./BoutonsDeDecision";
 import { DecisionSurLaProposition } from "./DecisionSurLaProposition";
 import { ReglageDAutonomie } from "./ReglageDAutonomie";
@@ -60,7 +61,7 @@ export default async function EspacePage() {
 
   const [{ data: employes }, { data: objectifs }, { data: notifications }, { data: enAttente }] =
     await Promise.all([
-      supabase.from("employee").select("id, autonomy, identity_id"),
+      supabase.from("employee").select("id, autonomy, identity_id, en_pause_depuis"),
       supabase.from("objective").select("metric, target_value, horizon").eq("state", "actif"),
       supabase
         .from("notification")
@@ -150,6 +151,27 @@ export default async function EspacePage() {
           </p>
         )}
       </header>
+
+      {/* ── L'arrêt. En haut, avant tout le reste : c'est ce qu'on cherche quand on le cherche. ── */}
+      <section className={employe.en_pause_depuis ? "carte arrete" : "carte"}>
+        <h2>{employe.en_pause_depuis ? "Il est à l'arrêt" : "Vous gardez la main"}</h2>
+        {employe.en_pause_depuis ? (
+          <p className="detail">
+            Arrêté depuis le {dateCourte(employe.en_pause_depuis)}. Plus aucune mission ne s'ouvre,
+            aucune de celles qui attendaient n'est reprise, et plus rien ne part. Ce qui était
+            préparé vous attend — un arrêt n'est pas un renvoi.
+          </p>
+        ) : (
+          <p className="detail">
+            À tout moment, vous pouvez tout arrêter. Rien ne repart ensuite sans vous.
+          </p>
+        )}
+        <ArretDUrgence
+          tenantId={tenantId}
+          employeeId={employe.id}
+          arrete={Boolean(employe.en_pause_depuis)}
+        />
+      </section>
 
       {/* ── Ce que le dirigeant a demandé, et ce qui a été fait. Rien d'estimé. ── */}
       <section className="carte">
@@ -293,7 +315,8 @@ export default async function EspacePage() {
         />
         <p className="detail sobre">
           Chaque changement est daté et conservé : vous pourrez toujours savoir ce qui était réglé,
-          et quand.
+          et quand. Vous seul pouvez lui donner plus de liberté — ni un diagnostic, ni une mesure
+          de ses résultats ne peut le faire à votre place.
         </p>
       </section>
 

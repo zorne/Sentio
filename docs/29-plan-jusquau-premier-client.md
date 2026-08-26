@@ -940,6 +940,51 @@ bande, ce qui marche chez un concurrent.
 
 ---
 
+## Étape 12 quinquies — Les deux limites que le dirigeant garde en main
+
+**La question à laquelle cette étape répond :** « qu'est-ce qui empêche cet employé de prendre le
+contrôle de mon entreprise ? »
+
+Le produit avait déjà beaucoup de réponses — périmètre de capacités, accord requis sur les actions
+irréversibles, cible imposée par la mission, rôle jamais changé sans accord. Il en manquait deux,
+et ce sont celles qui comptent le jour où quelque chose va mal.
+
+### Fait le 2026-08-26 — `20260815120021`, invariant `LADY-W`
+
+**1. Le cliquet d'autonomie.** L'autonomie décide si un message part sans qu'une personne l'ait
+relu : c'est le réglage le plus lourd du produit. Jusqu'ici, **rien en base** n'empêchait une
+configuration de l'augmenter — la prudence tenait à une valeur écrite dans un fichier TypeScript.
+Une ligne changée un jour de fatigue, une proposition acceptée d'un clic, et un employé passait en
+« agit seul » sans que personne ne l'ait voulu.
+
+Désormais, seul un geste explicite du dirigeant peut **augmenter** l'autonomie. Un recrutement, un
+diagnostic, une réévaluation sur résultats peuvent la maintenir ou la **réduire** — jamais la
+lever. Et une v1 ne naît jamais en « agit seul » : au recrutement, personne n'a encore rien
+consenti.
+
+**2. L'arrêt.** Il n'existait aucun moyen de dire « stop, maintenant ». Un dirigeant inquiet un
+dimanche soir n'avait rien à actionner — et un produit qui ne s'arrête pas sur commande n'est pas
+un employé, c'est un processus.
+
+L'arrêt est posé **en base**, à trois endroits qui verrouillent trois choses différentes :
+
+| Où | Ce que ça arrête |
+|---|---|
+| `peut_ouvrir_une_mission` | plus aucune mission ne s'ouvre |
+| la prise de travail dans la file | plus aucune mission **déjà préparée** n'est reprise |
+| `peut_envoyer` | plus rien ne part |
+
+Le mettre à un seul endroit laisserait passer ce que les deux autres retiennent : refuser d'ouvrir
+de nouvelles missions ne sert à rien si celles qui attendaient partent quand même. Et pendant
+l'arrêt, **rien ne bouge non plus tout seul** : ni réévaluation de configuration, ni progression —
+un arrêt existe précisément pour que rien ne change sans lui.
+
+Il n'y a **aucune reprise automatique**. Un arrêt qui se lève tout seul n'est pas un arrêt. Le
+bouton est en haut de l'espace client, sans confirmation à cliquer : un arrêt qu'on doit négocier
+n'en est pas un.
+
+---
+
 # PARTIE II — METTRE EN VENTE
 
 ⛔ **Tout ce qui suit t'appartient.** Un agent prépare, explique, rédige des brouillons et vérifie
