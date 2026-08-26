@@ -3832,4 +3832,119 @@ end;
 $$;
 
 
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+-- LADY-AG — après assez de silence, elle s'arrête d'elle-même.
+--
+-- Le reproche le plus documenté fait aux produits concurrents, mot pour mot dans les avis
+-- publics : « ~1 400 emails envoyés. 0 réponse reçue. » Le produit avait continué, jour après
+-- jour. Le client a payé deux fois : en abonnement, et en réputation de domaine brûlée.
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  entreprise constant uuid := 'aaaaaaaa-0000-0000-0000-000000000001';
+  employe    constant uuid := 'ffffffff-0000-0000-0000-000000000001';
+  objectif   uuid;
+  domaine    uuid;
+  fiche      uuid;
+  mission    uuid;
+  verdict    text;
+  i          integer;
+begin
+  select id into objectif from public.objective where tenant_id = entreprise and state = 'actif' limit 1;
+
+  insert into public.sending_domain
+    (tenant_id, domain, spf_verified_at, dkim_verified_at, dmarc_verified_at, warmup_started_on)
+  values (entreprise, 'silence-lady-ag.fr', now(), now(), now(), current_date - 30)
+  returning id into domaine;
+
+  -- Qualifié : la garde du silence ne s'exprime que lorsque rien d'autre ne bloque, et un
+  -- prospect non qualifié bloque — à raison.
+  insert into public.lead (tenant_id, company_name, email, source, qualification)
+  values (entreprise, 'Silence', 'silence-lady-ag@exemple.fr', 'import_client', 'qualifie')
+  returning id into fiche;
+
+  insert into public.task (tenant_id, employee_id, objective_id, subject_kind, subject_id)
+  values (entreprise, employe, objectif, 'lead', fiche) returning id into mission;
+
+  -- ── 1. Au début, rien ne s'oppose à l'envoi.
+  verdict := public.peut_envoyer(entreprise, fiche, domaine, 0, 50);
+  if verdict = 'silence_total' then
+    raise exception 'ÉCHEC silence : la garde se déclenche avant le moindre envoi.';
+  end if;
+
+  -- ── 2. Quarante messages partent, et personne ne répond.
+  --
+  -- ⚠️ `sent_at` est POSÉ EXPLICITEMENT, et pas laissé à `now()`. Dans une transaction, tous les
+  -- `now()` rendent le MÊME instant : les messages seraient alors simultanés aux réponses posées
+  -- par les blocs précédents, et « envoyé après la dernière réponse » deviendrait faux — le
+  -- contrôle passerait à côté de ce qu'il vérifie. En production les deux instants diffèrent
+  -- toujours ; ici il faut le dire.
+  for i in 1..40 loop
+    insert into public.outbound_message
+      (tenant_id, lead_id, employee_id, sending_domain_id, subject, carried_optout, carried_notice,
+       idempotency_key, sent_at)
+    values (entreprise, fiche, employe, domaine, 'Message ' || i, true, true, 'silence-' || i,
+            now() + interval '1 hour');
+  end loop;
+
+  -- ── 3. ⭐⭐ Elle s'arrête d'elle-même, et le motif NOMME la cause.
+  verdict := public.peut_envoyer(entreprise, fiche, domaine, 0, 50);
+  if verdict <> 'silence_total' then
+    raise exception
+      'ÉCHEC silence : 40 messages sans une seule réponse, et la garde rend « % ». C''est '
+      'exactement le défaut reproché aux concurrents : le silence compté comme un volume à '
+      'augmenter.', verdict;
+  end if;
+
+  -- ── 4. ⭐ Une seule réponse suffit à repartir : le compteur part de la DERNIÈRE réponse, pas
+  --    du début des temps. Une entreprise qui a reçu une réponse hier n'est pas dans le silence.
+  insert into public.outcome (tenant_id, task_id, kind, declared_by, recorded_at)
+  values (entreprise, mission, 'response', 'client', now() + interval '2 hours');
+
+  verdict := public.peut_envoyer(entreprise, fiche, domaine, 0, 50);
+  if verdict = 'silence_total' then
+    raise exception
+      'ÉCHEC silence : une réponse vient d''arriver et la garde bloque encore. Le compteur ne '
+      'repart pas de la dernière réponse.';
+  end if;
+
+  -- ── 5. Le dirigeant peut passer outre — c'est lui qui décide, toujours.
+  delete from public.outcome where tenant_id = entreprise and task_id = mission;
+  if public.peut_envoyer(entreprise, fiche, domaine, 0, 50) <> 'silence_total' then
+    raise exception 'ÉCHEC silence : le montage du cas « passer outre » ne bloque plus.';
+  end if;
+
+  perform public.continuer_malgre_le_silence(entreprise, 'Cycle long, je sais.');
+
+  if public.peut_envoyer(entreprise, fiche, domaine, 0, 50) = 'silence_total' then
+    raise exception
+      'ÉCHEC silence : le dirigeant a dit de continuer et la garde bloque quand même. Un '
+      'garde-fou qu''on ne peut pas lever devient une panne.';
+  end if;
+
+  -- ── 6. ⭐ Et le passe-droit ne vaut pas pour toujours : la première réponse le lève, donc la
+  --    série SUIVANTE de silence sera de nouveau signalée.
+  insert into public.outcome (tenant_id, task_id, kind, declared_by, recorded_at)
+  values (entreprise, mission, 'response', 'client', now() + interval '3 hours');
+
+  if (select passe_outre_le from public.garde_du_silence where tenant_id = entreprise) is not null then
+    raise exception
+      'ÉCHEC silence : le passe-droit survit à une réponse. Il vaudrait alors pour toujours, et '
+      'le garde-fou ne se redéclencherait jamais.';
+  end if;
+
+  -- ── 7. L'arrêt du dirigeant passe AVANT : c'est lui qui prime, et le motif doit le dire.
+  perform public.mettre_en_pause(entreprise, employe, 'Je vérifie.');
+  if public.peut_envoyer(entreprise, fiche, domaine, 0, 50) <> 'employe_arrete' then
+    raise exception 'ÉCHEC silence : l''arrêt du dirigeant ne passe pas avant la garde du silence.';
+  end if;
+  perform public.reprendre_le_travail(entreprise, employe);
+
+  raise notice
+    'OK  LADY-AG — 40 messages sans réponse et elle s''arrête ; une réponse relance ; le dirigeant tranche';
+end;
+$$;
+
+
 rollback;
