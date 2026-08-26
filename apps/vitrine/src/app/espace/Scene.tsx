@@ -186,26 +186,37 @@ export function Scene(d: DonneesDeLaScene) {
         </button>
 
         {/* Les capacités s'équipent AUTOUR d'elle, en couronne. Chacune part du centre : ce
-            sont ses pouvoirs à elle, pas une liste posée à côté. */}
-        <ul className={`sc-couronne${panneau === "capacites" ? " est-ouverte" : ""}`} aria-hidden={panneau !== "capacites"}>
-          {d.capacites.map((capacite, i) => {
-            const angle = (i / Math.max(d.capacites.length, 1)) * Math.PI * 2 - Math.PI / 2;
-            return (
-              <li
-                key={capacite}
-                style={
-                  {
-                    "--i": i,
-                    "--x": `${Math.cos(angle).toFixed(3)}`,
-                    "--y": `${Math.sin(angle).toFixed(3)}`,
-                  } as React.CSSProperties
-                }
-              >
-                {capacite}
-              </li>
-            );
-          })}
-        </ul>
+            sont ses pouvoirs à elle, pas une liste posée à côté.
+
+            ⚠️ Un conteneur ENVELOPPE la liste, et il n'est pas décoratif : sur téléphone, la
+            couronne devient une colonne qui doit s'ouvrir et se refermer sans que le nom saute.
+            C'est `grid-template-rows: 0fr → 1fr` qui le permet, et cette technique exige un
+            enfant unique. Sans lui, il fallait deviner une hauteur maximale — donc se tromper
+            dès qu'une capacité de plus est activée. */}
+        <div
+          className={`sc-couronne${panneau === "capacites" ? " est-ouverte" : ""}`}
+          aria-hidden={panneau !== "capacites"}
+        >
+          <ul>
+            {d.capacites.map((capacite, i) => {
+              const angle = (i / Math.max(d.capacites.length, 1)) * Math.PI * 2 - Math.PI / 2;
+              return (
+                <li
+                  key={capacite}
+                  style={
+                    {
+                      "--i": i,
+                      "--x": `${Math.cos(angle).toFixed(3)}`,
+                      "--y": `${Math.sin(angle).toFixed(3)}`,
+                    } as React.CSSProperties
+                  }
+                >
+                  {capacite}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
 
         <div className="sc-identite">
           <h1>{d.prenom}</h1>

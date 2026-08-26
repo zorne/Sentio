@@ -329,14 +329,19 @@
   left: 50%;
   top: min(28vh, 190px);
   width: 0; height: 0;
+  z-index: 3;
+}
+.sc-couronne ul {
   list-style: none;
   margin: 0; padding: 0;
-  z-index: 3;
 }
 .sc-couronne li {
   position: absolute;
   left: 0; top: 0;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   font-family: var(--mono);
   font-size: 10.5px;
   letter-spacing: 0.08em;
@@ -346,7 +351,7 @@
   background: rgba(3, 3, 3, 0.82);
   backdrop-filter: blur(6px);
   border-radius: 100px;
-  padding: 0.4rem 0.85rem;
+  padding: 0.42rem 0.9rem 0.42rem 0.75rem;
   /* Au repos : au centre, invisible, replié. */
   transform: translate(-50%, -50%) scale(0.4);
   opacity: 0;
@@ -355,6 +360,14 @@
     transform 0.65s var(--ease),
     opacity 0.4s var(--ease);
   transition-delay: calc(var(--i) * 45ms);
+}
+/* Le point reprend le jalon qu'on voyait au repos, à la même place : la pastille ne remplace pas
+   le repère, elle le prolonge. */
+.sc-couronne li::before {
+  content: "";
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--mint);
+  flex: 0 0 auto;
 }
 .sc-couronne.est-ouverte li {
   /* Déployé : sur le cercle, à sa place. Le rayon suit la largeur de la
@@ -1033,28 +1046,44 @@
      la largeur porte encore sa propre largeur : sur 375 px, les deux
      capacités latérales sortent de l'écran et se font couper par le
      `overflow-x: hidden`. Constaté à l'écran, pas déduit.
-     Elles se déploient donc EN COLONNE sous la silhouette — le geste
-     reste le même (elles jaillissent d'elle, en décalé), la forme
-     s'adapte. */
+
+     Elles se déploient donc EN COLONNE sous la silhouette. Le geste reste
+     le même — elles jaillissent d'elle, en décalé — mais la forme change :
+     sur un téléphone, une couronne n'a pas la place d'exister.
+
+     `grid-template-rows: 0fr → 1fr` ouvre la colonne SANS hauteur devinée.
+     La version précédente pariait sur un `max-height` en dur : juste avec
+     quatre capacités, faux avec six, et personne pour le signaler. */
   .sc-couronne {
     position: static;
     width: 100%;
     height: auto;
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.55s var(--ease), margin-top 0.55s var(--ease);
+    margin-top: 0;
+  }
+  .sc-couronne.est-ouverte { grid-template-rows: 1fr; margin-top: 1rem; }
+  .sc-couronne ul {
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.4rem;
-    margin-top: 1.1rem;
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.5s var(--ease), margin-top 0.5s var(--ease);
+    gap: 0.45rem;
+    min-height: 0;
   }
-  .sc-couronne.est-ouverte { max-height: 22rem; }
   .sc-couronne li {
     position: static;
-    transform: translateY(-10px);
-    font-size: 9.5px;
-    padding: 0.32rem 0.7rem;
+    /* Elles sortent d'elle : par le haut, resserrées, puis se posent. Le décalage se lit comme
+       une distribution — une main qui pose des cartes — plutôt que comme une liste qui apparaît. */
+    transform: translateY(-14px) scale(0.86);
+    transform-origin: top center;
+    font-size: 10px;
+    padding: 0.42rem 0.85rem 0.42rem 0.7rem;
+    transition:
+      transform 0.5s var(--ease),
+      opacity 0.35s var(--ease);
+    transition-delay: calc(var(--i) * 55ms);
   }
   .sc-couronne.est-ouverte li { transform: none; }
   /* Le nom n'a plus besoin de s'écarter : la colonne pousse déjà le flux. */

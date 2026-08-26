@@ -1168,6 +1168,26 @@ qui compte.
 
 ---
 
+## Étape 12 undecies — L'équipement des capacités, sur téléphone
+
+**Le geste marchait, la mécanique était fausse.** Sur téléphone, la couronne se transformait en
+colonne — bonne décision, mauvaise exécution : l'ouverture reposait sur une **hauteur maximale
+devinée en dur**. Juste avec quatre capacités, fausse avec six, et rien pour le signaler : la
+liste se serait simplement retrouvée coupée, en silence.
+
+### Fait le 2026-08-26 — `grid-template-rows: 0fr → 1fr`
+
+La colonne s'ouvre désormais **sans hauteur devinée**. C'est la seule façon d'animer une hauteur
+`auto` en CSS, et elle exige un enfant unique : la couronne est donc un conteneur qui enveloppe la
+liste. Le prénom ne saute plus — il est poussé, et il revient.
+
+**Et le geste a été redessiné pour un téléphone.** Les capacités sortent d'elle **par le haut**,
+resserrées, puis se posent l'une après l'autre. Le décalage se lit comme une distribution — une
+main qui pose des cartes — plutôt que comme une liste qui apparaît. Chaque pastille porte le point
+qui servait de jalon au repos, à la même place : elle ne remplace pas le repère, elle le prolonge.
+
+---
+
 ## Étape 12 decies — Ce que ça donne, sans cliquer
 
 **Ce qu'un dirigeant vient vérifier en ouvrant son espace, c'est si ça marche.** Le faire attendre
