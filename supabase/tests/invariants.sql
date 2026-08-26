@@ -423,6 +423,11 @@ begin
       leaked;
   end if;
 
+  -- ⚠️ On la retire. Elle vivait jusqu'à la fin de la transaction et faisait échouer, tout à la
+  -- fin, le contrôle structurel du schéma final (AUDIT-01) — sur une table de test, pour une
+  -- raison sans rapport. Un contrôle qui échoue pour la mauvaise raison est pire qu'absent.
+  drop table public.table_creee_apres_coup;
+
   raise notice 'OK  droits par défaut — une table ajoutée après coup naît inaccessible';
 end;
 $$;
@@ -2104,11 +2109,35 @@ begin
     if position('ne se modifie pas' in sqlerrm) = 0 then raise; end if;
   end;
 
+  -- ⚠️ Deux gestes qui se ressemblent et n'ont rien à voir : SUPPRIMER un constat (interdit,
+  -- toujours) et EFFACER un client à sa demande (un droit, article 17). Le message le dit
+  -- désormais, parce que le second a été refusé par ce verrou pendant tout un temps — et que
+  -- personne ne pouvait alors satisfaire une demande d'effacement.
   begin
     delete from public.audit_finding where id = premier;
     raise exception 'ÉCHEC constat : un constat a été supprimé.';
   exception when raise_exception then
-    if position('ne se modifie pas' in sqlerrm) = 0 then raise; end if;
+    if position('ne se supprime pas' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  -- ── 4 bis. ⭐⭐ Mais l'effacement d'un client, lui, passe. C'est le contrôle qui manquait :
+  --    le droit à l'effacement échouait sur ce verrou, et le parcours complet ne le disait pas.
+  begin
+    -- Sur un constat jetable : les suivants comptent ceux d'origine, et les faire disparaître
+    -- ici ferait échouer un contrôle sans rapport, deux blocs plus bas.
+    insert into public.audit_finding
+      (diagnostic_session_id, genre, domaine, objet, source, confiance, libelle)
+    values (session_id, 'risque', 'documents', 'document', 'deduit', 'faible', 'Constat jetable.');
+
+    perform set_config('sentio.retention_purge', 'on', true);
+    delete from public.audit_finding
+     where diagnostic_session_id = session_id and libelle = 'Constat jetable.';
+    perform set_config('sentio.retention_purge', 'off', true);
+  exception when others then
+    perform set_config('sentio.retention_purge', 'off', true);
+    raise exception
+      'ÉCHEC constat : l''effacement d''un client bute sur l''immuabilité des constats (%). '
+      'Le droit à l''effacement devient alors impossible à satisfaire.', sqlerrm;
   end;
 
   -- ── 5. Une force et un goulot coexistent sur le MÊME domaine : c'est ce qui permet de
@@ -3531,6 +3560,274 @@ begin
 
   raise notice
     'OK  LADY-Y — tous les jours rendus, chaque entreprise comptée une fois, une réponse n''est pas une suite';
+end;
+$$;
+
+
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+-- AUDIT-01 — les deux moitiés d'un accès doivent être d'accord, SUR LE SCHÉMA FINAL.
+--
+-- ══ POURQUOI CE BLOC EXISTE ICI, ET PAS DANS UNE MIGRATION ══
+--
+-- Le filet de `20260729120029` fait ces vérifications au moment où il est APPLIQUÉ. Les tables
+-- créées après lui — il y en a eu une douzaine depuis — n'ont donc jamais été examinées. Un filet
+-- qui ne couvre que le passé donne exactement la confiance qu'il ne mérite pas.
+--
+-- Ici, on tourne après TOUTES les migrations. Une table ajoutée demain est couverte le jour même.
+--
+-- ══ LES TROIS CONTRÔLES ══
+--
+--   1. RLS active partout — sinon l'isolation n'existe simplement pas ;
+--   2. toute table portant `tenant_id` a une politique, ou est déclarée réservée au serveur ;
+--   3. ⭐ toute politique `to authenticated` est ADOSSÉE À UN DROIT correspondant.
+--
+-- Le troisième est celui qui manquait, et il a trouvé quelque chose : quatre tables portaient une
+-- politique de lecture sans aucun `grant`. Droit et politique sont indépendants sous Postgres —
+-- le droit décide si l'on peut regarder la table, la politique quelles lignes. Sans droit, le
+-- client est refusé AVANT que RLS ne s'exprime, et le message parle de permission, pas
+-- d'isolation : personne ne fait le lien. L'espace du dirigeant lisait « configuration non
+-- établie » alors qu'elle existait.
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  -- Ce que le client ne doit jamais voir. La liste est DÉCLARÉE, jamais subie : une table ajoutée
+  -- ici doit être un geste conscient.
+  reserve_au_serveur constant text[] := array[
+    'job',                 -- la file d'exécution est de la mécanique pure
+    'execution_event',     -- le journal porte le raisonnement ; le client en voit des projections
+    'diagnostic_session',  -- zone vitrine : aucun accès depuis la zone client, et réciproquement
+    'audit_finding',       -- les constats naissent avant que l'entreprise existe
+    'rattachement_attendu',-- une attente de rattachement n'appartient encore à personne
+    'approvisionnement',   -- le lot de missions du jour : comptabilité interne du battement
+    'strategy_variant',    -- notre méthode, pas la donnée du client
+    'task_variant'         -- quelle variante a servi : mécanique de mesure
+  ];
+  sans_rls        text;
+  sans_politique  text;
+  sans_droit      text;
+  contradictoire  text;
+begin
+  -- ── 1. RLS partout.
+  select string_agg(c.relname, ', ' order by c.relname) into sans_rls
+    from pg_class c join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity;
+
+  if sans_rls is not null then
+    raise exception
+      'ÉCHEC audit : isolation absente sur %. Activer RLS dans la migration qui crée la table.',
+      sans_rls;
+  end if;
+
+  -- ── 2. Une table d'entreprise sans politique est presque toujours un oubli.
+  select string_agg(t.relname, ', ' order by t.relname) into sans_politique
+    from pg_class t
+    join pg_namespace n on n.oid = t.relnamespace
+    join pg_attribute a on a.attrelid = t.oid and a.attname = 'tenant_id' and a.attnum > 0
+   where n.nspname = 'public' and t.relkind = 'r'
+     and not (t.relname = any (reserve_au_serveur))
+     and not exists (select 1 from pg_policy p where p.polrelid = t.oid);
+
+  if sans_politique is not null then
+    raise exception
+      'ÉCHEC audit : table(s) portant tenant_id sans aucune politique : %. Ajouter la politique, '
+      'ou déclarer la table réservée au serveur dans ce bloc.', sans_politique;
+  end if;
+
+  -- ── 2 bis. Et l'inverse : une table déclarée réservée au serveur qui gagnerait une politique
+  --    rendrait la liste mensongère, donc le contrôle précédent inutile.
+  select string_agg(t.relname, ', ' order by t.relname) into contradictoire
+    from pg_class t join pg_namespace n on n.oid = t.relnamespace
+   where n.nspname = 'public' and t.relname = any (reserve_au_serveur)
+     and exists (select 1 from pg_policy p where p.polrelid = t.oid);
+
+  if contradictoire is not null then
+    raise exception
+      'ÉCHEC audit : % est déclarée réservée au serveur ET porte une politique. Choisir.',
+      contradictoire;
+  end if;
+
+  -- ── 3. ⭐⭐ Une politique sans droit est une porte verrouillée dont on a retiré la poignée.
+  select string_agg(distinct p.tablename || ' (' || p.cmd || ')', ', ' order by p.tablename || ' (' || p.cmd || ')')
+    into sans_droit
+    from pg_policies p
+   where p.schemaname = 'public'
+     and 'authenticated' = any(p.roles)
+     and not exists (
+       select 1 from information_schema.role_table_grants g
+        where g.table_schema = 'public'
+          and g.table_name = p.tablename
+          and g.grantee = 'authenticated'
+          and g.privilege_type = case p.cmd
+                                   when 'SELECT' then 'SELECT'
+                                   when 'INSERT' then 'INSERT'
+                                   when 'UPDATE' then 'UPDATE'
+                                   when 'DELETE' then 'DELETE'
+                                   else 'SELECT'
+                                 end
+     );
+
+  if sans_droit is not null then
+    raise exception
+      'ÉCHEC audit : politique(s) sans droit correspondant : %. Le client sera refusé AVANT que '
+      'RLS ne s''exprime, avec un message qui parle de permission — personne ne fera le lien.',
+      sans_droit;
+  end if;
+
+  -- ── 4. Et le symétrique, qui est le vrai risque de fuite : un droit accordé sur une table
+  --    SANS politique pour ce rôle. RLS refuserait tout, mais le jour où quelqu'un ajoute une
+  --    politique large « pour débloquer », le droit est déjà là et personne ne le relit.
+  select string_agg(distinct g.table_name, ', ' order by g.table_name) into contradictoire
+    from information_schema.role_table_grants g
+   where g.table_schema = 'public' and g.grantee = 'authenticated'
+     and exists (select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
+                  where n.nspname = 'public' and c.relname = g.table_name and c.relkind = 'r')
+     and not exists (
+       select 1 from pg_policies p
+        where p.schemaname = 'public' and p.tablename = g.table_name
+          and 'authenticated' = any(p.roles));
+
+  if contradictoire is not null then
+    raise exception
+      'ÉCHEC audit : droit(s) accordé(s) sans aucune politique : %. Retirer le droit — le laisser '
+      'arme la table pour le jour où quelqu''un ajoutera une politique large.', contradictoire;
+  end if;
+
+  raise notice
+    'OK  AUDIT-01 — RLS partout, politiques et droits d''accord, sur le schéma FINAL';
+end;
+$$;
+
+
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+-- AUDIT-02 — aucune fonction ne répond sur l'entreprise du voisin.
+--
+-- ══ CE QUE CE BLOC A TROUVÉ LE JOUR OÙ IL A ÉTÉ ÉCRIT ══
+--
+-- `avancement_vers_l_objectif(entreprise)` était appelable par n'importe quel compte authentifié,
+-- sur n'importe quelle entreprise, et rendait son **chiffre d'affaires**. Quatre autres fonctions
+-- répondaient de même sur des informations moins graves — quota restant, verdicts d'ouverture et
+-- d'envoi, cadence de relance.
+--
+-- Toutes pour la même raison : le `revoke` oublié dans leur migration. Le réflexe existait
+-- partout ailleurs, et c'est précisément ce qui a rendu l'oubli invisible.
+--
+-- ⚠️ Une fonction `security definer` ignore RLS **par construction** : c'est tout son intérêt, et
+-- c'est ce qui la rend dangereuse. Son argument `p_tenant` n'est pas une frontière — c'est un
+-- paramètre. La seule frontière est le droit d'exécution.
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  -- Les seules fonctions qu'un client a le droit d'appeler avec une entreprise en argument.
+  -- Chacune doit répondre UNIQUEMENT sur le compte appelant, jamais sur une entreprise nommée.
+  autorisees constant text[] := array[
+    'is_tenant_member'  -- ne répond que sur auth.uid() : n'apprend rien sur personne d'autre
+  ];
+  ouvertes text;
+begin
+  select string_agg(
+           p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')',
+           ', ' order by p.proname)
+    into ouvertes
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public'
+     and p.prosecdef                      -- ignore RLS par construction
+     and not (p.proname = any (autorisees))
+     and pg_get_function_identity_arguments(p.oid) like '%uuid%'
+     and (has_function_privilege('authenticated', p.oid, 'execute')
+       or has_function_privilege('anon', p.oid, 'execute'));
+
+  if ouvertes is not null then
+    raise exception
+      'ÉCHEC audit : fonction(s) « security definer » prenant un identifiant et appelable(s) par '
+      'un client : %. Une telle fonction ignore RLS par construction — son argument n''est pas '
+      'une frontière, c''est un paramètre. Ajouter « revoke execute … from public, authenticated, '
+      'anon » dans sa migration.', ouvertes;
+  end if;
+
+  raise notice 'OK  AUDIT-02 — aucune fonction ne répond sur l''entreprise du voisin';
+end;
+$$;
+
+-- ── AUDIT-03 — et le client ne lit rien du voisin, en le tentant vraiment ────────────────────
+--
+-- Le contrôle précédent est structurel. Celui-ci se met dans la peau d'un dirigeant authentifié
+-- et va chercher, table par table, les données de l'entreprise d'à côté. Une politique peut
+-- exister et être trop large : seule la tentative le dit.
+
+do $$
+declare
+  a constant uuid := 'aaaaaaaa-0000-0000-0000-00000000000a';
+  b constant uuid := 'bbbbbbbb-0000-0000-0000-00000000000b';
+  vu integer;
+  chez_moi integer;
+begin
+  insert into auth.users (id) values
+    ('a11c0000-0000-0000-0000-000000000001'), ('b11c0000-0000-0000-0000-000000000002');
+  insert into public.tenant (id, name) values (a, 'Entreprise A'), (b, 'Entreprise B');
+  insert into public.tenant_member (tenant_id, user_id, role) values
+    (a, 'a11c0000-0000-0000-0000-000000000001', 'owner'),
+    (b, 'b11c0000-0000-0000-0000-000000000002', 'owner');
+
+  insert into public.employee (id, tenant_id, employee_definition_id, identity_id)
+  select 'e11a0000-0000-0000-0000-00000000000a', a, 'dddddddd-0000-0000-0000-000000000001', id
+    from public.reserve_identity('commercial');
+  insert into public.employee (id, tenant_id, employee_definition_id, identity_id)
+  select 'e11b0000-0000-0000-0000-00000000000b', b, 'dddddddd-0000-0000-0000-000000000001', id
+    from public.reserve_identity('commercial');
+
+  insert into public.objective (tenant_id, metric, target_value, horizon) values
+    (a, 'mrr', 1000, 'mois'), (b, 'mrr', 9999, 'mois');
+
+  -- Ce que B a de plus précieux : ce que son employée a appris, et ce qu'il vend.
+  insert into public.learned_fact (tenant_id, employee_id, fact, author) values
+    (b, 'e11b0000-0000-0000-0000-00000000000b', 'SECRET DE B : ils signent en fin de trimestre.', 'apprentissage');
+  insert into public.company_profile (tenant_id, key, value, author, status) values
+    (b, 'cible', '"SECRET DE B"'::jsonb, 'client', 'actif');
+
+  -- ══ On devient le dirigeant de A ══
+  perform set_config('request.jwt.claim.sub', 'a11c0000-0000-0000-0000-000000000001', true);
+  set local role authenticated;
+
+  -- ── 1. ⭐⭐ Rien de B n'est lisible.
+  select (select count(*) from public.learned_fact where tenant_id = b)
+       + (select count(*) from public.company_profile where tenant_id = b)
+       + (select count(*) from public.objective where tenant_id = b)
+       + (select count(*) from public.employee where tenant_id = b)
+       + (select count(*) from public.tenant where id = b)
+       + (select count(*) from public.tenant_member where tenant_id = b)
+    into vu;
+
+  if vu <> 0 then
+    raise exception
+      'ÉCHEC audit : le dirigeant de A voit % ligne(s) de l''entreprise B. C''est une fuite.', vu;
+  end if;
+
+  -- ── 2. Et il voit bien la sienne — sinon on aurait « prouvé » l'isolation en bloquant tout.
+  select (select count(*) from public.objective) + (select count(*) from public.employee)
+    into chez_moi;
+
+  if chez_moi < 2 then
+    raise exception
+      'ÉCHEC audit : le dirigeant de A ne voit pas ses propres données (% lignes). Une isolation '
+      'qui bloque aussi le légitime n''est pas une isolation, c''est une panne.', chez_moi;
+  end if;
+
+  -- ── 3. ⭐ Et il ne peut pas s'inviter chez B.
+  begin
+    insert into public.tenant_member (tenant_id, user_id, role)
+    values (b, 'a11c0000-0000-0000-0000-000000000001', 'owner');
+    raise exception 'ÉCHEC audit : le dirigeant de A s''est ajouté comme membre de B.';
+  exception
+    when insufficient_privilege then null;
+    when others then
+      if sqlerrm like 'ÉCHEC audit%' then raise; end if;
+  end;
+
+  reset role;
+  raise notice 'OK  AUDIT-03 — un dirigeant ne lit rien du voisin, et lit tout chez lui';
 end;
 $$;
 
