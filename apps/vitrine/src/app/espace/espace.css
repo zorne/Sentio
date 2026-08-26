@@ -1474,3 +1474,32 @@
   .rv-faits dd { margin-bottom: 0.5rem; }
   .rv-fiche header time { margin-left: 0; width: 100%; }
 }
+
+
+/* ─── Ce qu'une action contient ──────────────────────────────────────
+   Le message tel qu'il partirait. On demande au dirigeant d'autoriser
+   une action irréversible : le lui cacher reviendrait à lui faire
+   signer une page blanche. */
+.ac-message {
+  border-left: 2px solid var(--amber-line);
+  padding: 0.6rem 0 0.6rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.ac-objet {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+/* Le corps garde ses retours à la ligne : un message réécrit en un seul bloc ne ressemble plus
+   à ce qui partirait, et c'est pourtant ce qu'on fait valider. */
+.ac-corps {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.75;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+}

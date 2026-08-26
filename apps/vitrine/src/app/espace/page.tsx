@@ -56,7 +56,7 @@ export default async function EspacePage() {
     );
   }
 
-  const [{ data: employes }, { data: objectifs }, { data: notifications }, { data: enAttente }] =
+  const [{ data: employes }, { data: objectifs }, { data: notifications }] =
     await Promise.all([
       supabase.from("employee").select("id, autonomy, identity_id, en_pause_depuis"),
       supabase.from("objective").select("metric, target_value, horizon").eq("state", "actif"),
@@ -65,7 +65,6 @@ export default async function EspacePage() {
         .select("id, kind, message, created_at")
         .order("created_at", { ascending: false })
         .limit(10),
-      supabase.from("approval").select("id, requested_at").eq("state", "requested"),
     ]);
 
   const employe = employes?.[0];
@@ -201,6 +200,20 @@ export default async function EspacePage() {
 
   const mots = motsDeLaRecolte(configuration?.role ?? null);
 
+  // ── Ce qui attend un accord, avec CE QU'IL AUTORISE. Jamais « une action attend votre
+  //    accord » : on demande d'autoriser une action irréversible, lui cacher laquelle rend la
+  //    garde inutile ou bloquante.
+  const { rows: accords } = await pool.query<{
+    approval_id: string;
+    demande_le: Date;
+    capacite_nom: string | null;
+    entreprise: string | null;
+    contact: string | null;
+    objet: string | null;
+    corps: string | null;
+    pourquoi: string | null;
+  }>("select * from ce_qui_attend_votre_accord($1)", [tenantId]);
+
   // ── De quoi préparer chaque rendez-vous obtenu.
   //    ⚠️ Le texte des réponses reçues n'est stocké nulle part : ce qui porte des mots venus de
   //    l'échange, ce sont les NOTES consignées par l'employée. Chaque élément est affiché avec sa
@@ -244,9 +257,17 @@ export default async function EspacePage() {
             }
           : null
       }
-      accords={(enAttente ?? []).map((demande) => ({
-        id: demande.id as string,
-        depuis: dateCourte(demande.requested_at as string),
+      accords={accords.map((a) => ({
+        id: a.approval_id,
+        depuis: dateCourte(a.demande_le.toISOString()),
+        // Sans nom de capacité, on reste factuel plutôt que vague : « une action » ne dit rien,
+        // mais inventer un intitulé dirait faux.
+        quoi: a.capacite_nom ?? "Action non identifiée au journal",
+        entreprise: a.entreprise,
+        contact: a.contact,
+        objet: a.objet,
+        corps: a.corps,
+        pourquoi: a.pourquoi,
       }))}
       proposition={
         proposition

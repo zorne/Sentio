@@ -63,6 +63,11 @@ export type Reevaluation =
  * viennent pas d'une déclaration. Ils pèsent donc plus lourd que tout ce que le dirigeant a pu
  * dire au premier jour — et c'est voulu : ce qu'on observe l'emporte sur ce qu'on croyait.
  */
+/** « 1 réponse » et non « 1 réponse(s) ». Les parenthèses de pluriel sont une note de brouillon. */
+function pluriel(n: number, singulier: string, plurielMot: string): string {
+  return `${n.toLocaleString("fr-FR")} ${n > 1 ? plurielMot : singulier}`;
+}
+
 export function releverDesResultats(mesures: MesuresDuTravail): Reevaluation {
   if (mesures.partEcoulee < SIGNAL_MINIMAL.partEcoulee) {
     return {
@@ -141,8 +146,8 @@ export function releverDesResultats(mesures: MesuresDuTravail): Reevaluation {
         noter(
           "goulot",
           "evaluation",
-          `${mesures.reponses} réponse(s) et aucune vente : les entreprises retenues répondent ` +
-            `sans correspondre à l'offre`,
+          `${pluriel(mesures.reponses, "réponse", "réponses")} et aucune vente : les ` +
+            `entreprises retenues répondent sans correspondre à l'offre`,
         ),
         noter(
           "force",
@@ -160,8 +165,8 @@ export function releverDesResultats(mesures: MesuresDuTravail): Reevaluation {
       noter(
         "faiblesse",
         "recherche_selection",
-        `${mesures.ventes} vente(s) obtenues, mais le rythme reste en dessous de ce que la cible ` +
-          `demande : il manque des entreprises à approcher`,
+        `${pluriel(mesures.ventes, "vente obtenue", "ventes obtenues")}, mais le rythme reste ` +
+          `en dessous de ce que la cible demande : il manque des entreprises à approcher`,
       ),
       noter(
         "force",

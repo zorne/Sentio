@@ -39,6 +39,7 @@
 | 2026-08-26 | **Avant vos rendez-vous** — un briefing par entreprise qui a donné un rendez-vous | ⚠️ **Le texte des réponses reçues n'est stocké nulle part.** Ce qui vient de l'échange, ce sont les **notes consignées** |
 | 2026-08-26 | **Tableau et courbe repris** — indicateurs en colonnes, graduation, sol, bornes de dates | Une ligne seule montre une forme sans donner d'ordre de grandeur |
 | 2026-08-26 | **Plus aucun tiret dans le texte visible** | Demande du fondateur. Les tirets cadratins restent dans les commentaires de code |
+| 2026-08-26 | **Jamais un message flou** — l'accord dit QUELLE action, sur qui, avec quel texte | « Une action attend votre accord » faisait signer une page blanche |
 
 ---
 
@@ -188,6 +189,24 @@ Après 40 envois **sans une seule réponse**, l'employée s'arrête d'elle-même
 directe au reproche le plus documenté fait aux concurrents (« ~1 400 emails, 0 réponse »). Elle ne
 s'exprime **que si rien d'autre ne bloque** : un domaine suspendu *explique* le silence, et
 l'annoncer enverrait le dirigeant réécrire son message alors que le problème est technique.
+
+### Jamais un message flou, et surtout pas sur un accord
+
+Règle donnée par le fondateur, et elle est absolue : **aucun message vague**. L'écran des accords
+affichait *« Une action attend votre accord »* — on lui demandait d'autoriser quelque chose qu'il
+ne pouvait pas voir.
+
+Les deux issues étaient mauvaises. Soit il clique sans savoir, et la garde qui l'arrête n'est plus
+qu'une case à cocher. Soit il n'ose pas, et son employée reste bloquée sans qu'il comprenne
+pourquoi.
+
+L'information existait déjà : la table `approval` ne porte que la mission et la date, mais le
+**contenu** vit au journal, dans l'événement `proposition_recue` qui précède la suspension
+(capacité, entrée, raison). `ce_qui_attend_votre_accord()` va le chercher. **Rien n'a été ajouté
+au schéma : tout était écrit, personne n'allait le lire.**
+
+⚠️ Et quand le contenu est introuvable, on l'écrit — *« ne l'autorisez pas sans savoir ce qu'elle
+contient »* — plutôt que d'inventer un intitulé. Un libellé faux est pire qu'un libellé absent.
 
 ### On ne stocke PAS le texte des réponses reçues
 
@@ -412,7 +431,8 @@ entrée qui n'apprend rien à un lecteur qui ne connaît pas le projet n'a rien 
 2. **Elle propose, elle n'applique pas** — pour tout ce qui touche à son rôle.
 3. **Les garanties vivent dans la base.** Si c'est mécaniquement décidable, ajoute un contrôle et
    branche-le sur `verify` ; n'écris jamais « à vérifier à la revue ».
-4. **Pas de tiret cadratin dans le texte visible** — demande explicite du fondateur. Une virgule,
+4. **Aucun message flou, jamais.** Si l'écran demande une décision, il dit sur quoi elle porte.
+   Et pas de tiret cadratin dans le texte visible — demande explicite du fondateur. Une virgule,
    un deux-points ou une phrase de plus. Les commentaires de code n'en sont pas concernés.
 5. **Signale ce que tu découvres.** Les manques structurels trouvés en codant sont ce qu'il
    attend le plus — les taire est la vraie faute.

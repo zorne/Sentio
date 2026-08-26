@@ -49,7 +49,23 @@ export interface DonneesDeLaScene {
   readonly priorites: readonly string[];
   readonly raisonDeLaConfiguration: string | null;
   readonly objectif: { readonly cible: string; readonly metrique: string; readonly horizon: string } | null;
-  readonly accords: readonly { readonly id: string; readonly depuis: string }[];
+  /**
+   * Ce qui attend un accord, EN TOUTES LETTRES.
+   *
+   * ⚠️ Jamais « une action attend votre accord ». On demande au dirigeant d'autoriser une action
+   * irréversible : lui cacher laquelle rend la garde inutile (il clique sans savoir) ou bloquante
+   * (il n'ose pas cliquer).
+   */
+  readonly accords: readonly {
+    readonly id: string;
+    readonly depuis: string;
+    readonly quoi: string;
+    readonly entreprise: string | null;
+    readonly contact: string | null;
+    readonly objet: string | null;
+    readonly corps: string | null;
+    readonly pourquoi: string | null;
+  }[];
   readonly proposition: {
     readonly id: string;
     readonly role: string;
@@ -422,8 +438,36 @@ export function Scene(d: DonneesDeLaScene) {
 
                 {d.accords.map((accord) => (
                   <div key={accord.id} className="sc-accord">
-                    <p className="sc-dit">Une action attend votre accord.</p>
-                    <p className="sc-note">Depuis le {accord.depuis}.</p>
+                    <p className="sc-dit">
+                      {accord.quoi}
+                      {accord.entreprise ? (
+                        <>
+                          {" à "}
+                          <em>{accord.entreprise}</em>
+                        </>
+                      ) : null}
+                      {accord.contact ? `, ${accord.contact}` : ""}
+                    </p>
+
+                    {/* Le message, tel qu'il partirait. C'est ce qu'on autorise : le lui cacher
+                        reviendrait à lui faire signer une page blanche. */}
+                    {accord.objet || accord.corps ? (
+                      <div className="ac-message">
+                        {accord.objet ? <p className="ac-objet">{accord.objet}</p> : null}
+                        {accord.corps ? <p className="ac-corps">{accord.corps}</p> : null}
+                      </div>
+                    ) : (
+                      <p className="sc-note">
+                        Le contenu de cette action n&apos;a pas été retrouvé au journal. Ne
+                        l&apos;autorisez pas sans savoir ce qu&apos;elle contient.
+                      </p>
+                    )}
+
+                    {accord.pourquoi ? (
+                      <p className="sc-note">Pourquoi elle le propose : {accord.pourquoi}</p>
+                    ) : null}
+                    <p className="sc-note">En attente depuis le {accord.depuis}.</p>
+
                     <BoutonsDeDecision approvalId={accord.id} />
                   </div>
                 ))}
