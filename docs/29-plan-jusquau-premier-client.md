@@ -812,6 +812,46 @@ déterministe est devenu l'invariant `LADY-R` ; le parcours de bout en bout se r
 
 ---
 
+## Étape 12 bis — Le déclencheur : les résultats reviennent dans le diagnostic
+
+**Pourquoi cette étape existe.** Le produit vend un employé qui *s'ajuste*. Jusqu'ici, il
+s'ajustait une fois — au recrutement — et plus jamais. Une Lady pouvait rater sa cible un mois
+entier sans que sa configuration bouge d'un millimètre, et le client l'aurait vu avant nous.
+
+### Fait le 2026-08-26 — `20260815120018`, `20260815120019`, `reevaluation.ts` (domaine et runtime)
+
+La boucle est refermée, en quatre pièces qui existaient déjà et ne se parlaient pas :
+
+1. **`mesures_du_travail()`** (`20260815120018`) rend les nombres bruts : missions ouvertes,
+   missions réellement travaillées, réponses, rendez-vous, ventes, part de l'horizon écoulée,
+   écart de rythme. Elle ne calcule **aucun taux** — « 1 réponse sur 2 envois = 50 % » est un
+   chiffre vrai et une information fausse.
+2. **`releverDesResultats()`** (`packages/domain`) en tire des constats, de la même forme que ceux
+   du premier diagnostic. Elle distingue trois causes que le même retard peut avoir : personne ne
+   répond (le message), beaucoup répondent et personne n'achète (le ciblage), ça vend mais trop
+   lentement (le volume). Et **elle se tait** sous 25 % d'horizon écoulé ou 10 missions
+   travaillées.
+3. **`proposer_une_configuration()`** (`20260815120019`) publie une version suivante **inactive**,
+   déclencheur `resultats`, et prévient le dirigeant par une notification de genre `proposition` —
+   pas `evolution` : rien n'a évolué, on demande. Une seule proposition à la fois ; un refus est
+   daté et rouvre la porte à la suivante.
+4. **`/espace`** affiche la proposition avec deux boutons : *Accepter ce changement* ou *Garder
+   comme aujourd'hui*. `accepter_la_configuration()` enregistre le changement, l'applique, puis
+   annonce l'évolution — dans cet ordre, pour qu'aucune annonce ne précède son fait.
+
+**La règle que tout ce travail sert : Lady ne change jamais de rôle toute seule** (§10 de la
+vision). L'invariant `LADY-U` l'éprouve en base — après une réévaluation, la configuration active
+et les pouvoirs de l'employé n'ont pas bougé d'un octet. C'est ce qui sépare un employé
+configurable d'un produit qui se réécrit tout seul pendant que son client dort.
+
+**Ce qui est délibérément limité.** La réévaluation tourne **une fois par jour et par employé**,
+pas à chaque battement : les mesures portent sur des jours, et relire toutes les cinq minutes ne
+remplirait que le journal. Et les constats mesurés **s'ajoutent** à ceux du premier diagnostic au
+lieu de les remplacer : ce que le dirigeant a déclaré au départ reste vrai, simplement une mesure
+pèse plus lourd qu'une déclaration.
+
+---
+
 # PARTIE II — METTRE EN VENTE
 
 ⛔ **Tout ce qui suit t'appartient.** Un agent prépare, explique, rédige des brouillons et vérifie

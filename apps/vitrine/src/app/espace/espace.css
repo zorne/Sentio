@@ -85,3 +85,7 @@
 .espace .autonomie .actif { border-color: var(--border-strong); background: var(--glass-hover); }
 
 .espace .erreur { color: var(--amber); font-size: 0.82rem; font-style: normal; }
+
+/* Une proposition n'est pas une nouvelle parmi d'autres : c'est la seule chose de cette page qui
+   attend une réponse. Elle se distingue, sans crier. */
+.espace .carte.proposition { border-left: 3px solid var(--text-primary, currentColor); }

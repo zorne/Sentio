@@ -54,6 +54,7 @@ import { PostgresJournalWriter } from "./adapters/journal.js";
 import { PostgresUsageLedger } from "./adapters/ledger.js";
 import { PostgresMoteurs } from "./adapters/moteurs.js";
 import { approvisionnerLeJour } from "./battement.js";
+import { reevaluerLesEmployes } from "./reevaluation.js";
 import { executerLesTravauxDus } from "./boucle.js";
 import { createHeartbeatHandler, type HeartbeatReport } from "./heartbeat/index.js";
 import type { TransactionalSqlClient } from "@sentio/db";
@@ -178,9 +179,16 @@ export function composerLExecutant(
       },
     );
 
+    // 3. Relire les résultats et, s'il y a lieu, PROPOSER une version suivante. En dernier, et
+    //    pas par commodité : les mesures doivent porter sur du travail déjà fait, pas sur les
+    //    missions que ce battement vient d'ouvrir. ⚠️ Rien ne s'applique ici — la proposition
+    //    naît inactive et attend le dirigeant (§10 de la vision).
+    const reevaluation = await reevaluerLesEmployes({ sql, journal }, instant);
+
     options.log?.({
       route: "battement",
       approvisionnement,
+      reevaluation,
       // Une capacité écartée du registre est un contrat illisible en base : ça se voit, ça ne se
       // devine pas.
       capacitesEcartees: ecartees,

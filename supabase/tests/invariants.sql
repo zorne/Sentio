@@ -2847,4 +2847,166 @@ begin
 end;
 $$;
 
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+-- LADY-U — le déclencheur PROPOSE. Il n'applique rien.
+--
+-- C'est le bloc qui garde §10 de la vision. Sans lui, la boucle « mesurer → reconfigurer » se
+-- refermerait sur elle-même : Lady changerait de rôle sur ses propres chiffres, un dirigeant
+-- découvrirait au réveil que ce qu'il a acheté fait autre chose, et rien dans le schéma ne
+-- l'aurait empêché.
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  entreprise constant uuid := 'aaaaaaaa-0000-0000-0000-000000000001';
+  employe    constant uuid := 'ffffffff-0000-0000-0000-000000000001';
+  avant      public.lady_configuration;
+  apres      public.lady_configuration;
+  propose    uuid;
+  rejoue     uuid;
+  deja       boolean;
+  annonces   integer;
+begin
+  select * into avant
+    from public.lady_configuration c
+   where c.tenant_id = entreprise and c.employee_id = employe and c.active;
+
+  if not found then
+    raise exception 'ÉCHEC déclencheur : le montage n''a aucune configuration active à faire évoluer.';
+  end if;
+
+  -- ── 1. ⭐⭐ Une proposition naît INACTIVE, et l'employé ne bouge pas d'un millimètre.
+  select p.configuration_id, p.deja_proposee into propose, deja
+    from public.proposer_une_configuration(
+           entreprise, employe, 'qualification',
+           '["mieux choisir qui est approché"]'::jsonb, '[]'::jsonb, 'confirm',
+           array['qualifier.prospect'],
+           'Des réponses arrivent, mais aucune ne se transforme : le ciblage passe devant le volume.'
+         ) p;
+
+  if deja then
+    raise exception 'ÉCHEC déclencheur : une proposition neuve a été rendue comme déjà posée.';
+  end if;
+
+  if (select active from public.lady_configuration where id = propose) then
+    raise exception
+      'ÉCHEC déclencheur : la proposition s''est appliquée toute seule. C''est exactement ce que '
+      '§10 interdit — Lady ne change jamais de rôle sans que le dirigeant ait dit oui.';
+  end if;
+
+  select * into apres
+    from public.lady_configuration c
+   where c.tenant_id = entreprise and c.employee_id = employe and c.active;
+
+  if apres.id <> avant.id then
+    raise exception 'ÉCHEC déclencheur : la configuration active a changé sans accord.';
+  end if;
+
+  if (select autonomy from public.employee where id = employe) <> avant.autonomie then
+    raise exception 'ÉCHEC déclencheur : les pouvoirs de l''employé ont bougé avant tout accord.';
+  end if;
+
+  -- ── 2. La proposition demande, elle n'annonce pas. Le genre « evolution » resterait adossé à
+  --    un changement réel, et il n'y en a aucun.
+  if not exists (select 1 from public.notification
+                  where tenant_id = entreprise and kind = 'proposition') then
+    raise exception 'ÉCHEC déclencheur : le dirigeant n''a pas été prévenu qu''on lui demande quelque chose.';
+  end if;
+
+  if exists (select 1 from public.notification n
+              where n.tenant_id = entreprise and n.kind = 'evolution'
+                and n.created_at > avant.created_at
+                and n.message = 'Des réponses arrivent, mais aucune ne se transforme : le ciblage passe devant le volume.') then
+    raise exception
+      'ÉCHEC déclencheur : un changement a été annoncé comme fait alors qu''il attend une réponse.';
+  end if;
+
+  -- ── 3. ⭐ Une seconde mesure n'empile pas une seconde proposition. Sinon la question posée au
+  --    dirigeant changerait sous ses yeux avant qu'il ait pu y répondre.
+  select p.configuration_id, p.deja_proposee into rejoue, deja
+    from public.proposer_une_configuration(
+           entreprise, employe, 'relation_client', '[]'::jsonb, '[]'::jsonb, 'auto',
+           array['relancer.prospect'], 'Autre lecture des mêmes chiffres.') p;
+
+  if rejoue <> propose or not deja then
+    raise exception
+      'ÉCHEC déclencheur : une seconde proposition a été empilée sur une question sans réponse.';
+  end if;
+
+  -- ── 4. Le refus se garde, et il rouvre la porte à une proposition suivante.
+  perform public.refuser_la_configuration(entreprise, propose);
+
+  if (select refusee_le from public.lady_configuration where id = propose) is null then
+    raise exception 'ÉCHEC déclencheur : un refus n''a laissé aucune trace.';
+  end if;
+
+  select p.configuration_id, p.deja_proposee into rejoue, deja
+    from public.proposer_une_configuration(
+           entreprise, employe, 'relation_client', '[]'::jsonb, '[]'::jsonb, 'confirm',
+           array['relancer.prospect'],
+           'Les réponses cessent : c''est le message qui ne porte pas, pas le nombre d''envois.') p;
+
+  if deja or rejoue = propose then
+    raise exception
+      'ÉCHEC déclencheur : après un refus, plus aucune réévaluation n''est possible.';
+  end if;
+
+  -- Et la chaîne reste continue derrière la version refusée : « ce qu'il y avait avant » tient.
+  if (select precedente_id from public.lady_configuration where id = rejoue) <> propose then
+    raise exception 'ÉCHEC déclencheur : la chaîne des versions saute la proposition refusée.';
+  end if;
+
+  -- ── 5. ⭐ L'accord applique — et alors seulement, l'évolution est annoncée AVEC sa preuve.
+  perform public.accepter_la_configuration(entreprise, rejoue);
+
+  select * into apres
+    from public.lady_configuration c
+   where c.tenant_id = entreprise and c.employee_id = employe and c.active;
+
+  if apres.id <> rejoue then
+    raise exception 'ÉCHEC déclencheur : le dirigeant a accepté, et rien n''a pris effet.';
+  end if;
+
+  if (select autonomy from public.employee where id = employe) <> apres.autonomie then
+    raise exception 'ÉCHEC déclencheur : les pouvoirs de l''employé ne suivent pas la version acceptée.';
+  end if;
+
+  select count(*) into annonces from public.notification n
+    join public.strategy_change s on s.id = n.strategy_change_id
+   where n.tenant_id = entreprise and n.kind = 'evolution'
+     and s.description like 'Les réponses cessent%';
+
+  if annonces <> 1 then
+    raise exception
+      'ÉCHEC déclencheur : % annonce(s) d''évolution adossée(s) au changement, une seule attendue.',
+      annonces;
+  end if;
+
+  -- ── 6. Accepter deux fois ne republie pas et ne renotifie pas : un dirigeant qui reclique
+  --    n'a pas changé d'avis deux fois.
+  perform public.accepter_la_configuration(entreprise, rejoue);
+
+  select count(*) into annonces from public.notification n
+    join public.strategy_change s on s.id = n.strategy_change_id
+   where n.tenant_id = entreprise and n.kind = 'evolution'
+     and s.description like 'Les réponses cessent%';
+
+  if annonces <> 1 then
+    raise exception 'ÉCHEC déclencheur : un second accord a réannoncé le même changement.';
+  end if;
+
+  -- ── 7. Et ce qui s'applique aujourd'hui ne se refuse pas : on en publie une autre.
+  begin
+    perform public.refuser_la_configuration(entreprise, rejoue);
+    raise exception 'ÉCHEC déclencheur : la configuration en vigueur a pu être refusée.';
+  exception when raise_exception then
+    if position('on en publie une autre' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  raise notice
+    'OK  LADY-U — les résultats PROPOSENT, le dirigeant décide, et rien ne s''applique sans lui';
+end;
+$$;
+
+
 rollback;

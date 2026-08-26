@@ -76,3 +76,32 @@ export async function trancherUneAction(
   revalidatePath("/espace");
   return { ok: true };
 }
+
+/**
+ * Répondre à une proposition de son employé.
+ *
+ * ⚠️ C'est LE geste que §10 de la vision réserve au dirigeant. Une réévaluation a beau être
+ * mesurée, chiffrée et justifiée, elle ne prend effet que si une personne dit oui. Sans ce
+ * chemin, la proposition resterait une notification sans porte de sortie — et le produit se
+ * reconfigurerait un jour tout seul, faute de mieux.
+ */
+export async function repondreALaProposition(
+  tenantId: string,
+  configurationId: string,
+  reponse: "accepter" | "refuser",
+): Promise<{ ok: boolean; message?: string }> {
+  if (!(await isAuthorizedForTenant(tenantId))) {
+    return { ok: false, message: "Vous n'avez pas accès à cette entreprise." };
+  }
+
+  const fonction =
+    reponse === "accepter" ? "accepter_la_configuration" : "refuser_la_configuration";
+
+  try {
+    await pool.query(`select ${fonction}($1, $2)`, [tenantId, configurationId]);
+    revalidatePath("/espace");
+    return { ok: true };
+  } catch {
+    return { ok: false, message: "Votre réponse n'a pas pu être enregistrée." };
+  }
+}

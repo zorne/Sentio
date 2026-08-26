@@ -23,6 +23,7 @@ export * from "./step-context.js";
 export * from "./next-step.js";
 export * from "./suite-du-run.js";
 export * from "./battement.js";
+export * from "./reevaluation.js";
 export * from "./boucle.js";
 export * from "./configuration.js";
 export * from "./composition.js";

@@ -21,6 +21,7 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 
 import { BoutonsDeDecision } from "./BoutonsDeDecision";
+import { DecisionSurLaProposition } from "./DecisionSurLaProposition";
 import { ReglageDAutonomie } from "./ReglageDAutonomie";
 import "./espace.css";
 
@@ -85,17 +86,29 @@ export default async function EspacePage() {
     );
   }
 
-  const [{ data: identites }, { data: configurations }] = await Promise.all([
+  const [{ data: identites }, { data: configurations }, { data: propositions }] = await Promise.all([
     supabase.from("identity").select("first_name, last_name").eq("id", employe.identity_id),
     supabase
       .from("lady_configuration")
       .select("id, role, priorites, autonomie, raison, created_at")
       .eq("employee_id", employe.id)
       .eq("active", true),
+    // La proposition en attente, s'il y en a une. Elle est INACTIVE : elle décrit ce que son
+    // employé ferait, pas ce qu'il fait. Rien ne bouge tant que le dirigeant n'a pas répondu.
+    supabase
+      .from("lady_configuration")
+      .select("id, role, priorites, raison, created_at")
+      .eq("employee_id", employe.id)
+      .eq("active", false)
+      .is("refusee_le", null)
+      .eq("declencheur", "resultats")
+      .order("version", { ascending: false })
+      .limit(1),
   ]);
 
   const identite = identites?.[0];
   const configuration = configurations?.[0];
+  const proposition = propositions?.[0];
   const objectif = objectifs?.[0];
 
   const { data: capacites } = configuration
@@ -175,6 +188,30 @@ export default async function EspacePage() {
           <p className="detail sobre">Pourquoi ce choix : {configuration.raison}</p>
         ) : null}
       </section>
+
+      {/* ── Ce que son employé PROPOSE. Il ne l'a pas fait : il le demande (§10). ── */}
+      {proposition ? (
+        <section className="carte proposition">
+          <h2>{prenom} propose de changer sa façon de travailler</h2>
+          <p className="detail">
+            Au vu de ses résultats, il se concentrerait plutôt sur{" "}
+            <strong>{motDuRole(proposition.role)}</strong>.
+          </p>
+          {Array.isArray(proposition.priorites) && proposition.priorites.length > 0 ? (
+            <ol className="priorites">
+              {(proposition.priorites as string[]).map((priorite) => (
+                <li key={priorite}>{priorite}</li>
+              ))}
+            </ol>
+          ) : null}
+          <p className="detail sobre">Ce qu'il a observé : {proposition.raison}</p>
+          <DecisionSurLaProposition tenantId={tenantId} configurationId={proposition.id} />
+          <p className="detail sobre">
+            Rien ne change tant que vous n'avez pas répondu. Si vous préférez ne rien changer, il
+            continue exactement comme aujourd'hui.
+          </p>
+        </section>
+      ) : null}
 
       {/* ── Ce qui attend une décision. C'est le seul endroit où Lady s'arrête. ── */}
       <section className="carte">
