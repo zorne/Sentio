@@ -409,11 +409,27 @@ export function assembleContext(input: AssembleInput): AssembledContext {
     usable.push(fact);
   }
 
-  // Les plus utilisés d'abord, puis les plus récents : c'est le tri que sert l'index
-  // `learned_fact_relevance_idx`. Le bornage vient après le tri, jamais avant.
+  // ⚠️ LES PLUS RÉCENTS D'ABORD — et surtout PAS « les plus utilisés ».
+  //
+  // Le tri par `usageCount` a existé ici, et il reposait sur un compteur que **rien n'incrémente
+  // en production**. Le classement était donc, en fait, purement chronologique — mais en le
+  // disant autrement, ce qui est la pire des deux situations : le code affirmait une pertinence
+  // qu'il ne mesurait pas.
+  //
+  // Et le rétablir aurait été pire encore. Un compteur nourri par la sélection qu'il alimente
+  // n'est pas une mesure, c'est une boucle : un fait injecté souvent est injecté souvent PARCE
+  // QU'il l'a déjà été. Les premiers faits appris deviendraient des gagnants permanents, un fait
+  // neuf partant à zéro ne serait jamais choisi, donc jamais compté — et la mémoire se figerait
+  // pour de bon au bout des cinq premières observations.
+  //
+  // La récence, elle, se mesure sans rien fausser : ce qu'un employé vient d'observer chez ce
+  // client est ce qui a le plus de chances de valoir encore. `usage_count` reste en base pour le
+  // jour où l'on saura relier un fait à un RÉSULTAT — ce qui, là, serait une vraie mesure.
+  //
+  // Le bornage vient après le tri, jamais avant.
   const ranked = usable
     .slice()
-    .sort((a, b) => b.usageCount - a.usageCount || b.createdAt.getTime() - a.createdAt.getTime());
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || a.id.localeCompare(b.id));
 
   const usedFacts = ranked.slice(0, max);
   // Les écartés viennent du classement, pas de l'ordre d'arrivée : sinon on bornerait au hasard.

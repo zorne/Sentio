@@ -1168,6 +1168,33 @@ qui compte.
 
 ---
 
+## Étape 12 terdecies — La mémoire classe par récence, et le dit
+
+**Deuxième défaut de la même famille**, trouvé en cherchant s'il y en avait d'autres : le noyau
+classait les faits appris par `usage_count`, un compteur que **rien n'incrémente en production**.
+
+Le classement réel était donc purement chronologique — mais annoncé autrement, ce qui est la pire
+des deux situations : le code affirmait une pertinence qu'il ne mesurait pas, et un index dédié
+servait un tri qui ne variait jamais.
+
+### Fait le 2026-08-26 — `20260815120025`, tri par récence
+
+⚠️ **Le compteur n'a PAS été rétabli, et c'est le point.** Un compteur nourri par la sélection
+qu'il alimente n'est pas une mesure, c'est une boucle : un fait est injecté souvent **parce qu'il
+l'a déjà été**. Les cinq premières observations deviendraient des gagnantes permanentes ; un fait
+neuf, parti à zéro, ne serait jamais choisi donc jamais compté ; et la mémoire de l'employé se
+figerait définitivement au bout de sa première semaine.
+
+La récence, elle, se mesure sans rien fausser : ce qu'un employé vient d'observer chez ce client
+est ce qui a le plus de chances de valoir encore. L'index suit, et `usage_count` reste en base —
+documenté comme volontairement non alimenté, en attendant une mesure qui relierait un fait à un
+**résultat**. Là, ce serait une vraie pertinence.
+
+Deux faits écrits par la même réflexion partagent leur horodatage : le départage par identifiant
+n'est donc pas décoratif, il rend le même run reproductible.
+
+---
+
 ## Étape 12 duodecies — La cadence appliquée est celle qui a tourné
 
 **Un défaut trouvé en relisant ce qu'on venait de construire, et il était pire qu'un oubli.**

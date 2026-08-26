@@ -106,22 +106,48 @@ describe("assemblage — l'ordre des couches", () => {
 });
 
 describe("assemblage — tri et bornage des faits appris", () => {
-  it("garde les plus utilisés, puis les plus récents", () => {
+  it("⭐⭐ garde les plus RÉCENTS — et `usageCount` n'y change rien", () => {
+    // Le tri a reposé sur `usageCount`, un compteur que rien n'incrémente en production : le
+    // classement était donc chronologique en le disant autrement. Le rétablir aurait été pire —
+    // un compteur nourri par la sélection qu'il alimente fige la mémoire sur les premiers faits
+    // appris, et un fait neuf, parti à zéro, ne serait jamais choisi donc jamais compté.
     const context = assembleContext({
       dna: DNA,
       configuration: CONFIGURATION,
       profile: [],
       facts: [
-        fact({ id: "peu" as LearnedFact["id"], fact: "Peu utilisé.", usageCount: 1 }),
-        fact({ id: "beaucoup" as LearnedFact["id"], fact: "Très utilisé.", usageCount: 50 }),
-        fact({ id: "recent" as LearnedFact["id"], fact: "Récent.", usageCount: 1, createdAt: new Date("2026-07-20") }),
+        fact({ id: "vieux" as LearnedFact["id"], fact: "Très utilisé, et vieux.", usageCount: 50, createdAt: new Date("2026-06-01") }),
+        fact({ id: "hier" as LearnedFact["id"], fact: "Observé hier.", usageCount: 0, createdAt: new Date("2026-07-20") }),
+        fact({ id: "avant-hier" as LearnedFact["id"], fact: "Observé avant-hier.", usageCount: 0, createdAt: new Date("2026-07-19") }),
       ],
       task: { objective: "prospecter" },
       maxLearnedFacts: 2,
     });
 
-    expect(context.usedFacts.map((f) => f.id)).toEqual(["beaucoup", "recent"]);
-    expect(context.excluded.map((e) => e.factId)).toEqual(["peu"]);
+    expect(context.usedFacts.map((f) => f.id)).toEqual(["hier", "avant-hier"]);
+    expect(context.excluded.map((e) => e.factId)).toEqual(["vieux"]);
+  });
+
+  it("départage deux faits du même instant de façon stable", () => {
+    // Deux faits écrits par la même réflexion partagent leur horodatage. Sans départage, deux
+    // assemblages du même contexte pourraient retenir des faits différents — et le même run
+    // deviendrait irreproductible.
+    const memeInstant = new Date("2026-07-20");
+    const entree = {
+      dna: DNA,
+      configuration: CONFIGURATION,
+      profile: [],
+      facts: [
+        fact({ id: "b" as LearnedFact["id"], fact: "Fait B.", createdAt: memeInstant }),
+        fact({ id: "a" as LearnedFact["id"], fact: "Fait A.", createdAt: memeInstant }),
+      ],
+      task: { objective: "prospecter" },
+      maxLearnedFacts: 1,
+    };
+
+    expect(assembleContext(entree).usedFacts.map((f) => f.id)).toEqual(
+      assembleContext(entree).usedFacts.map((f) => f.id),
+    );
   });
 
   it("borne le nombre de faits — le coût ne doit pas croître avec l'ancienneté du client", () => {
