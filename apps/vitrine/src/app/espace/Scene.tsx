@@ -61,6 +61,13 @@ export interface DonneesDeLaScene {
   readonly journal: readonly { readonly id: string; readonly quand: string; readonly quoi: string }[];
   /** Ce que le dirigeant voit sans cliquer. */
   readonly tableau: DonneesDuTableau;
+  /** Sa formule et ce qu'il lui reste. Nul quand aucun abonnement n'est actif. */
+  readonly formule: {
+    readonly nom: string;
+    readonly restant: number | null;
+    readonly plafond: number | null;
+    readonly jusquAu: string;
+  } | null;
 }
 
 type Panneau = "capacites" | "parler" | "objectif" | "attente" | "memoire" | "main";
@@ -398,6 +405,49 @@ export function Scene(d: DonneesDeLaScene) {
 
             {panneau === "main" ? (
               <Contenu titre="Ce que vous gardez en main">
+                {/* ── Ce qu'il paie, et ce qui lui reste. Le grief le plus répété contre les
+                       produits concurrents, après la qualité, est l'OPACITÉ : coûts qui montent
+                       sans qu'on sache pourquoi, abonnement qu'on ne sait pas résilier. La
+                       réponse n'est pas une page de tarifs — c'est de le montrer ici. ── */}
+                {d.formule ? (
+                  <div className="sc-formule">
+                    <p className="sc-dit">Formule {d.formule.nom}</p>
+                    {d.formule.restant !== null && d.formule.plafond !== null ? (
+                      <>
+                        <p className="sc-note">
+                          <strong>{d.formule.restant.toLocaleString("fr-FR")}</strong> missions
+                          restantes sur {d.formule.plafond.toLocaleString("fr-FR")}, jusqu&apos;au{" "}
+                          {d.formule.jusquAu}.
+                        </p>
+                        <span className="sc-jauge" aria-hidden="true">
+                          <i
+                            style={{
+                              width: `${Math.max(0, Math.min(100, (d.formule.restant / d.formule.plafond) * 100)).toFixed(1)}%`,
+                            }}
+                          />
+                        </span>
+                      </>
+                    ) : (
+                      <p className="sc-note">
+                        Aucune limite de missions sur cette formule. Période en cours jusqu&apos;au{" "}
+                        {d.formule.jusquAu}.
+                      </p>
+                    )}
+                    {/* ⚠️ Pas de montant : le prix vit chez le prestataire de paiement, pas en
+                        base. L'écrire ici afficherait un chiffre que rien ne garantit — et le
+                        jour où un tarif change, l'espace mentirait à celui qui paie l'autre. */}
+                    <p className="sc-note sc-sobre">
+                      Rien ne s&apos;ajoute à votre facture sans que vous l&apos;ayez décidé : au
+                      bout de ces missions, votre employée s&apos;arrête et vous le dit.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="sc-vide">
+                    Aucun abonnement actif. Votre employée ne travaillera pas tant qu&apos;il
+                    n&apos;y en a pas.
+                  </p>
+                )}
+
                 <p className="sc-note">{MOTS_DE_L_AUTONOMIE[d.autonomie]}</p>
                 <ReglageDAutonomie
                   tenantId={d.tenantId}

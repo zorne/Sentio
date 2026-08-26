@@ -166,6 +166,33 @@ export default async function EspacePage() {
 
   const parts = courbe(serie, (j) => j.contactes);
 
+  // ── Ce qu'il paie, et ce qui lui reste. Le grief le plus répété contre les produits
+  //    concurrents, après la qualité, est l'OPACITÉ : prix caché, coûts qui montent sans qu'on
+  //    sache pourquoi, abonnement qu'on ne sait pas résilier. La réponse n'est pas une page de
+  //    tarifs — c'est de montrer, dans l'espace, ce qui est en cours et ce qu'il en reste.
+  const [{ rows: abonnements }] = await Promise.all([
+    pool.query<{
+      tier: string;
+      statut: string;
+      fin_de_periode: Date;
+      plafond: number | null;
+      restant: number | null;
+    }>(
+      `select p.tier,
+              s.status as statut,
+              s.current_period_end as fin_de_periode,
+              (select q.quota_limit from plan_quota q
+                where q.plan_id = p.id and q.metric = 'tasks_per_period') as plafond,
+              missions_restantes_sur_la_periode(s.tenant_id) as restant
+         from subscription s join plan p on p.id = s.plan_id
+        where s.tenant_id = $1 and s.status = 'active'
+        limit 1`,
+      [tenantId],
+    ),
+  ]);
+
+  const abonnement = abonnements[0];
+
   const capacitesLisibles = (capacites ?? [])
     .map((ligne) => (ligne.capability as { name?: string } | null)?.name)
     .filter((nom): nom is string => typeof nom === "string" && nom.trim() !== "");
@@ -211,6 +238,16 @@ export default async function EspacePage() {
         quoi: motDuGenre(preference.kind as string),
         raison: preference.raison as string,
       }))}
+      formule={
+        abonnement === undefined
+          ? null
+          : {
+              nom: motDeLaFormule(abonnement.tier),
+              restant: abonnement.restant === null ? null : Number(abonnement.restant),
+              plafond: abonnement.plafond === null ? null : Number(abonnement.plafond),
+              jusquAu: dateCourte(new Date(abonnement.fin_de_periode).toISOString()),
+            }
+      }
       tableau={{
         ...bilan,
         jours: JOURS,
@@ -251,6 +288,22 @@ function SceneVide({ titre, mot }: { titre: string; mot: string }) {
   );
 }
 
+
+/**
+ * Le nom d'une formule, tel que le dirigeant l'a achetée.
+ *
+ * ⚠️ **Aucun prix ici.** Le montant vit chez le prestataire de paiement, pas en base : l'écrire
+ * dans le code serait afficher un chiffre que rien ne garantit, et le jour où un tarif change,
+ * l'espace mentirait à celui qui paie l'autre montant.
+ */
+function motDeLaFormule(tier: string): string {
+  const mots: Record<string, string> = {
+    start: "Start",
+    growth: "Growth",
+    scale: "Scale",
+  };
+  return mots[tier] ?? tier;
+}
 
 /** Un genre de variante est notre vocabulaire. Le dirigeant lit ce que ça change pour lui. */
 function motDuGenre(kind: string): string {
