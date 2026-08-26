@@ -2766,4 +2766,85 @@ begin
 end;
 $$;
 
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+-- LADY-S — « où en suis-je de mes 10 000 € ? » devient une question à laquelle on sait répondre.
+--
+-- Avant ce point, le produit affichait la cible et se taisait sur l'avancement — non par pudeur,
+-- mais parce que l'horizon était du texte libre et que rien ne pouvait le compter.
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  entreprise constant uuid := 'aaaaaaaa-0000-0000-0000-000000000001';
+  employe    constant uuid := 'ffffffff-0000-0000-0000-000000000001';
+  objectif   uuid;
+  mission    uuid;
+  etat       record;
+begin
+  -- Une cible nette : 10 000 € sur 30 jours, déclarée il y a 10 jours.
+  update public.objective set state = 'retire' where tenant_id = entreprise and state = 'actif';
+
+  insert into public.objective (tenant_id, metric, target_value, horizon, horizon_jours, created_at)
+  values (entreprise, 'mrr', 10000, 'par mois', 30, now() - interval '10 days')
+  returning id into objectif;
+
+  insert into public.task (tenant_id, employee_id, objective_id, subject_kind, subject_id)
+  values (entreprise, employe, objectif, 'lead', gen_random_uuid())
+  returning id into mission;
+
+  -- ── 1. Sans aucune vente, l'avancement est ZÉRO — pas une estimation, pas une projection.
+  select * into etat from public.avancement_vers_l_objectif(entreprise);
+
+  if etat.realise <> 0 then
+    raise exception 'ÉCHEC avancement : % réalisé sans la moindre vente déclarée.', etat.realise;
+  end if;
+  if etat.rythme_requis <> round(10000::numeric / 30, 2) then
+    raise exception 'ÉCHEC avancement : rythme requis « % », attendu 333,33 par jour.',
+      etat.rythme_requis;
+  end if;
+  if etat.jours_ecoules <> 10 then
+    raise exception 'ÉCHEC avancement : % jours écoulés au lieu de 10.', etat.jours_ecoules;
+  end if;
+
+  -- ── 2. ⭐ Une vente déclarée par le client compte. Et l'écart de rythme se voit.
+  insert into public.outcome (tenant_id, task_id, kind, value, declared_by)
+  values (entreprise, mission, 'sale', 2000, 'client');
+
+  select * into etat from public.avancement_vers_l_objectif(entreprise);
+
+  if etat.realise <> 2000 then
+    raise exception 'ÉCHEC avancement : % réalisé au lieu de 2000.', etat.realise;
+  end if;
+  -- 2000 en 10 jours = 200/jour, contre 333,33 requis : en retard, et le nombre le dit.
+  if etat.ecart_de_rythme >= 0 then
+    raise exception
+      'ÉCHEC avancement : un rythme de 200/jour face à 333/jour requis devrait être négatif (%).',
+      etat.ecart_de_rythme;
+  end if;
+
+  -- ── 3. ⭐⭐ Seules les ventes DÉCLARÉES PAR LE CLIENT comptent. La base l'impose déjà à
+  --    l'écriture ; on le vérifie ici parce que c'est le chiffre qu'un dirigeant lira, et qu'un
+  --    produit qui gonfle son propre résultat est le mensonge le plus tentant qui soit.
+  begin
+    insert into public.outcome (tenant_id, task_id, kind, value, declared_by)
+    values (entreprise, mission, 'sale', 8000, 'sentio');
+    raise exception 'ÉCHEC avancement : Sentio a pu déclarer une vente à la place du client.';
+  exception when check_violation then null;
+  end;
+
+  -- ── 4. Les jours écoulés sont bornés par l'horizon : au-delà, comparer un rythme observé à
+  --    une cible qui portait sur une période finie n'a plus de sens.
+  update public.objective set created_at = now() - interval '90 days' where id = objectif;
+  select * into etat from public.avancement_vers_l_objectif(entreprise);
+  if etat.jours_ecoules <> 30 then
+    raise exception
+      'ÉCHEC avancement : % jours écoulés — l''horizon de 30 jours devrait borner le compte.',
+      etat.jours_ecoules;
+  end if;
+
+  raise notice
+    'OK  LADY-S — avancement mesuré sur les ventes du client, rythmes comparés, rien de prédit';
+end;
+$$;
+
 rollback;

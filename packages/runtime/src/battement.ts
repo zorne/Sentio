@@ -119,6 +119,9 @@ async function approvisionnerUnEmploye(
   }
 
   const restantDePeriode = verdict === "ok" ? await deps.store.restantDePeriode(employe.tenantId) : null;
+  // Le rythme que la cible exige. `null` quand elle n'est pas calculable — le client n'a pas
+  // déclaré ce qu'il faut, et on ne le suppose pas à sa place.
+  const rythmeVoulu = verdict === "ok" ? await deps.store.rythmeVoulu(employe.tenantId) : null;
   const sujetsEligibles =
     gisement === null
       ? []
@@ -127,13 +130,18 @@ async function approvisionnerUnEmploye(
           employeeId: employe.employeeId,
           // On ne demande jamais plus que ce qu'on pourrait ouvrir : lire cent prospects pour en
           // retenir dix serait de la collecte sans usage.
-          limite: Math.min(reglages.missionsMaxParJour, restantDePeriode ?? reglages.missionsMaxParJour),
+          limite: Math.min(
+            reglages.missionsMaxParJour,
+            restantDePeriode ?? reglages.missionsMaxParJour,
+            rythmeVoulu ?? reglages.missionsMaxParJour,
+          ),
         });
 
   const plan = planifierLApprovisionnement({
     verdict,
     sujetsEligibles,
     restantDePeriode,
+    rythmeVoulu,
     reglages,
   });
 

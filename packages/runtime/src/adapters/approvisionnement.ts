@@ -17,6 +17,7 @@
 
 import type { ApprovisionnementStore, GisementDeMissions, RegistreDeGisements } from "@sentio/core";
 import type { SqlClient, TransactionalSqlClient } from "@sentio/db";
+import { effortRequis } from "@sentio/domain";
 import type { EmployeeId, TenantId } from "@sentio/domain";
 
 /**
@@ -133,6 +134,53 @@ export class PostgresApprovisionnementStore implements ApprovisionnementStore {
       throw new Error("peut_ouvrir_une_mission n'a rien rendu : le schéma est incomplet.");
     }
     return verdict;
+  }
+
+  /**
+   * Le rythme que la cible du dirigeant exige par jour ouvré.
+   *
+   * ⚠️ Rien n'est deviné. Le panier moyen et le taux de conversion sont des **déclarations du
+   * client**, rangées dans son profil d'entreprise ; absents, on rend `null` et la cadence
+   * retombe sur les bornes de la formule. Les supposer dimensionnerait un employé sur une
+   * entreprise imaginaire — trop peu de travail, et le client n'atteint rien ; trop, et on brûle
+   * sa réputation.
+   */
+  async rythmeVoulu(tenantId: TenantId): Promise<number | null> {
+    const [ligne] = await this.sql.query<{
+      metric: string;
+      target_value: string;
+      horizon_jours: number;
+      panier: string | null;
+      taux: string | null;
+    }>(
+      `select o.metric, o.target_value, o.horizon_jours,
+              (select p.value #>> '{}' from company_profile p
+                where p.tenant_id = o.tenant_id and p.key = 'panier_moyen'
+                  and p.status = 'actif' limit 1) as panier,
+              (select p.value #>> '{}' from company_profile p
+                where p.tenant_id = o.tenant_id and p.key = 'taux_de_conversion'
+                  and p.status = 'actif' limit 1) as taux
+         from objective o
+        where o.tenant_id = $1 and o.state = 'actif'
+        limit 1`,
+      [tenantId],
+    );
+
+    if (ligne === undefined) return null;
+
+    const effort = effortRequis({
+      metrique: ligne.metric,
+      cible: Number(ligne.target_value),
+      hypotheses: {
+        panierMoyen: ligne.panier === null ? null : Number(ligne.panier),
+        tauxDeConversion: ligne.taux === null ? null : Number(ligne.taux),
+      },
+      // Les jours ouvrés de l'horizon, pas les jours calendaires : Lady ne travaille pas le
+      // dimanche parce que personne ne lit ses messages le dimanche.
+      joursOuvres: Math.max(1, Math.round((ligne.horizon_jours * 5) / 7)),
+    });
+
+    return effort.statut === "calcule" ? effort.parJourOuvre : null;
   }
 
   async restantDePeriode(tenantId: TenantId): Promise<number | null> {

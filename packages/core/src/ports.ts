@@ -181,6 +181,15 @@ export interface ApprovisionnementStore {
   restantDePeriode(tenantId: TenantId): Promise<number | null>;
 
   /**
+   * Ce que la CIBLE du dirigeant exige par jour ouvré. `null` quand elle n'est pas calculable —
+   * le client n'a pas déclaré son panier moyen ou son taux de conversion, et on ne les devine pas.
+   *
+   * C'est ce qui fait qu'un client visant 2 000 € et un client visant 20 000 € ne reçoivent plus
+   * le même travail.
+   */
+  rythmeVoulu(tenantId: TenantId): Promise<number | null>;
+
+  /**
    * Ouvre les missions et enregistre le lot du jour, **de façon atomique**.
    *
    * Rend le nombre réellement ouvert, qui peut être inférieur au nombre demandé : un sujet déjà

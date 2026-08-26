@@ -72,7 +72,11 @@ export type PlanDApprovisionnement =
       /** Les sujets retenus, dans l'ordre rendu par le gisement. Jamais réordonnés ici. */
       readonly sujets: readonly SujetDeMission[];
       /** Ce qui a borné le lot — pour que « pourquoi seulement trois ? » ait une réponse. */
-      readonly borne: "plafond_du_jour" | "quota_de_periode" | "sujets_disponibles";
+      readonly borne:
+        | "plafond_du_jour"
+        | "quota_de_periode"
+        | "rythme_de_l_objectif"
+        | "sujets_disponibles";
     }
   | {
       readonly kind: "rien";
@@ -99,6 +103,16 @@ export interface EntreeApprovisionnement {
    * cette métrique, ce qui n'est **pas** la même chose que zéro.
    */
   readonly restantDePeriode: number | null;
+  /**
+   * Ce que la CIBLE du dirigeant exige par jour ouvré, quand elle est calculable
+   * (`packages/domain`, `effortRequis`). `null` quand elle ne l'est pas — le client n'a pas
+   * déclaré son panier moyen ou son taux de conversion, et on ne les devine pas.
+   *
+   * ⚠️ C'est une borne comme les autres : la plus basse gagne. Elle ne PERMET jamais d'ouvrir
+   * plus que le plafond du jour ou le quota de la formule — un objectif ambitieux ne donne pas le
+   * droit de dépasser ce que le client a acheté, ni de brûler sa réputation en un après-midi.
+   */
+  readonly rythmeVoulu: number | null;
   readonly reglages: ReglagesRuntime;
 }
 
@@ -170,13 +184,19 @@ export function planifierLApprovisionnement(
 
   if (entree.sujetsEligibles.length === 0) return rien("aucun_sujet_eligible");
 
-  // ── Trois bornes, et la plus basse gagne. `null` sur le quota de période veut dire « aucun
+  // ── Quatre bornes, et la plus basse gagne. `null` sur le quota de période veut dire « aucun
   //    plafond défini », pas « zéro » : les confondre arrêterait un client dont la formule n'a
   //    simplement pas encore cette métrique.
+  //
+  //    La quatrième est le RYTHME VOULU par l'objectif. Sans elle, deux clients visant 2 000 € et
+  //    20 000 € recevaient exactement le même travail : la cible ne pilotait rien. Avec elle,
+  //    Lady travaille à la hauteur de ce qu'on lui demande — sans jamais dépasser ce que le
+  //    client a acheté.
   const plafondDuJour = entree.reglages.missionsMaxParJour;
   const quota = entree.restantDePeriode ?? Number.POSITIVE_INFINITY;
+  const rythme = entree.rythmeVoulu ?? Number.POSITIVE_INFINITY;
   const disponibles = entree.sujetsEligibles.length;
-  const combien = Math.min(plafondDuJour, quota, disponibles);
+  const combien = Math.min(plafondDuJour, quota, rythme, disponibles);
 
   if (combien <= 0) {
     // Seul le quota peut valoir zéro ici : le plafond du jour est un entier strictement positif
@@ -184,12 +204,16 @@ export function planifierLApprovisionnement(
     return rien("quota_de_periode_atteint");
   }
 
+  // La borne rendue dit POURQUOI on s'est arrêté là. L'ordre compte : on nomme d'abord ce qui
+  // manque (les sujets), puis ce que le client a demandé (le rythme), puis ce qu'il a acheté.
   const borne =
     combien === disponibles
       ? ("sujets_disponibles" as const)
-      : combien === plafondDuJour
-        ? ("plafond_du_jour" as const)
-        : ("quota_de_periode" as const);
+      : combien === rythme
+        ? ("rythme_de_l_objectif" as const)
+        : combien === plafondDuJour
+          ? ("plafond_du_jour" as const)
+          : ("quota_de_periode" as const);
 
   return { kind: "ouvrir", sujets: entree.sujetsEligibles.slice(0, combien), borne };
 }
@@ -200,6 +224,9 @@ export function motifDuLot(plan: PlanDApprovisionnement): string {
   const bornes: Record<Extract<PlanDApprovisionnement, { kind: "ouvrir" }>["borne"], string> = {
     plafond_du_jour: "plafond du jour atteint",
     quota_de_periode: "quota de la formule atteint",
+    // Ce n'est pas un frein : c'est le rythme que l'objectif du dirigeant demande. En ouvrir
+    // davantage ne le rapprocherait pas de sa cible, et coûterait de la réputation.
+    rythme_de_l_objectif: "rythme demandé par l'objectif atteint",
     sujets_disponibles: "tous les sujets éligibles ont été pris",
   };
   return `${plan.sujets.length} mission(s) ouverte(s) — ${bornes[plan.borne]}.`;
