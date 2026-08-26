@@ -1168,6 +1168,38 @@ qui compte.
 
 ---
 
+## Étape 12 duodecies — La cadence appliquée est celle qui a tourné
+
+**Un défaut trouvé en relisant ce qu'on venait de construire, et il était pire qu'un oubli.**
+
+Depuis l'étape 12 quater, chaque mission reçoit un « moment de relance » tracé, et
+`resultats_par_variante` compte ce que chacun produit. Sauf que la fonction qui décide du délai
+réel lisait, elle, **la variante par défaut du métier** — la même pour tout le monde.
+
+Autrement dit : **toutes les missions relançaient au même rythme, pendant qu'on comparait leurs
+résultats comme si elles différaient.** Ce n'est pas une fonctionnalité manquante, c'est une
+mesure fausse : elle aurait fini par désigner une gagnante, écrire un `strategy_change` et
+annoncer au dirigeant une évolution qui ne changeait **rigoureusement rien**. C'est exactement la
+notification décorative que `docs/08` interdit — et elle serait arrivée par la porte de derrière,
+sans que personne l'ait décidée.
+
+### Fait le 2026-08-26 — `20260815120024`, invariant `METIER-15 / LADY-Z`
+
+La cadence se lit désormais dans cet ordre, et il n'est pas indifférent :
+
+1. **la variante de la mission** — c'est elle qui a été jouée, c'est à elle que les résultats sont
+   attribués. La mesure n'est honnête qu'à cette condition ;
+2. **la préférence de l'entreprise** — pour une mission ouverte avant l'attribution des variantes,
+   ou dont la variante a été désactivée depuis ;
+3. **la variante par défaut du métier** — le comportement défini quand rien d'autre ne parle.
+
+⚠️ Aucun repli sur une valeur écrite en dur, à aucune étape. Et l'ancienne signature —
+`cadence_de_relance(rang)`, sans entreprise ni mission — est **supprimée** : la laisser en place
+laisserait un second chemin capable de rendre la cadence d'un autre. Un appelant oublié se
+signalera par une erreur de fonction inconnue, pas par une valeur silencieusement fausse.
+
+---
+
 ## Étape 12 undecies — L'équipement des capacités, sur téléphone
 
 **Le geste marchait, la mécanique était fausse.** Sur téléphone, la couronne se transformait en

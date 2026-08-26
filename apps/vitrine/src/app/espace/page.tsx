@@ -48,7 +48,7 @@ export default async function EspacePage() {
 
   if (tenantId === undefined) {
     return (
-      <ScenteVide
+      <SceneVide
         titre="Votre espace"
         mot="Ce compte n'est rattaché à aucune entreprise. Si vous venez de régler votre abonnement, patientez quelques instants puis rechargez cette page."
       />
@@ -73,7 +73,7 @@ export default async function EspacePage() {
   //    creux se lit comme un produit inachevé (DASH-10).
   if (employe === undefined) {
     return (
-      <ScenteVide
+      <SceneVide
         titre="Personne, encore"
         mot="Aucun employé n'a rejoint votre entreprise. Il apparaîtra ici dès que votre recrutement sera confirmé."
       />
@@ -238,7 +238,7 @@ export default async function EspacePage() {
  * le paiement se propage. Lui servir un paragraphe nu à cet instant précis donnerait le sentiment
  * d'avoir acheté un formulaire.
  */
-function ScenteVide({ titre, mot }: { titre: string; mot: string }) {
+function SceneVide({ titre, mot }: { titre: string; mot: string }) {
   return (
     <main className="sc sc--vide">
       <div className="sc-scene">

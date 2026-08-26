@@ -1397,39 +1397,92 @@ end;
 $$;
 
 
--- ── METIER-15 — les variantes sont des données, et ce qui a tourné ne se réécrit pas ─────────
+-- ── METIER-15 / LADY-Z — les variantes sont des données, et LA CADENCE APPLIQUÉE EST CELLE
+--    QUI A ÉTÉ TIRÉE. Sans cette dernière condition, toutes les missions relanceraient au même
+--    rythme pendant qu'on compare leurs résultats comme si elles différaient : une mesure fausse,
+--    qui finirait par annoncer au dirigeant une évolution ne changeant rigoureusement rien.
 do $$
 declare
+  entreprise constant uuid := 'aaaaaaaa-0000-0000-0000-000000000001';
+  employe    constant uuid := 'ffffffff-0000-0000-0000-000000000001';
   espace_4_7  uuid;
   espace_3_10 uuid;
+  espace_7_14 uuid;
+  objectif    uuid;
+  fiche       uuid;
+  mission     uuid;
 begin
   select id into espace_4_7 from public.strategy_variant
    where profession = 'commercial' and kind = 'moment_de_relance' and key = 'espace_4_7';
   select id into espace_3_10 from public.strategy_variant
    where profession = 'commercial' and kind = 'moment_de_relance' and key = 'espace_3_10';
+  select id into espace_7_14 from public.strategy_variant
+   where profession = 'commercial' and kind = 'moment_de_relance' and key = 'espace_7_14';
 
-  -- 1. La cadence de relance se LIT dans la variante par défaut : c'est ce qui la rend
+  select id into objectif from public.objective
+   where tenant_id = entreprise and state = 'actif' limit 1;
+
+  insert into public.lead (tenant_id, company_name, email, source)
+  values (entreprise, 'Cadence', 'cadence-metier15@exemple.fr', 'import_client')
+  returning id into fiche;
+
+  -- ── 1. Sans rien de particulier : la variante par défaut du métier. C'est ce qui la rend
   --    ajustable sans redéploiement.
-  if public.cadence_de_relance(1) <> 4 or public.cadence_de_relance(2) <> 7 then
+  if public.cadence_de_relance(entreprise, fiche, 1) <> 4
+     or public.cadence_de_relance(entreprise, fiche, 2) <> 7 then
     raise exception 'ÉCHEC variantes : la cadence par défaut ne vient pas de la variante (% puis %).',
-      public.cadence_de_relance(1), public.cadence_de_relance(2);
+      public.cadence_de_relance(entreprise, fiche, 1),
+      public.cadence_de_relance(entreprise, fiche, 2);
   end if;
 
   -- Changer la variante par défaut change la cadence, sans toucher une ligne de code.
   update public.strategy_variant set par_defaut = false where id = espace_4_7;
   update public.strategy_variant set par_defaut = true  where id = espace_3_10;
 
-  if public.cadence_de_relance(1) <> 3 or public.cadence_de_relance(2) <> 10 then
+  if public.cadence_de_relance(entreprise, fiche, 1) <> 3
+     or public.cadence_de_relance(entreprise, fiche, 2) <> 10 then
     raise exception
       'ÉCHEC variantes : changer la variante par défaut n''a pas changé la cadence (% puis %).',
-      public.cadence_de_relance(1), public.cadence_de_relance(2);
+      public.cadence_de_relance(entreprise, fiche, 1),
+      public.cadence_de_relance(entreprise, fiche, 2);
   end if;
 
-  -- Au-delà des rangs déclarés : NULL, et surtout aucun repli sur une valeur écrite en dur.
-  if public.cadence_de_relance(3) is not null then
+  -- ── 2. ⭐ La préférence de l'entreprise passe devant le défaut du métier.
+  insert into public.tenant_variant_preference
+    (tenant_id, kind, variant_id, missions_comparees, raison)
+  values (entreprise, 'moment_de_relance', espace_7_14, 60, 'Mesuré sur 60 missions.')
+  on conflict (tenant_id, kind) do update
+    set variant_id = excluded.variant_id, raison = excluded.raison;
+
+  if public.cadence_de_relance(entreprise, fiche, 1) <> 7 then
+    raise exception
+      'ÉCHEC variantes : la préférence de l''entreprise ne passe pas devant le défaut du métier '
+      '(cadence rendue : %).', public.cadence_de_relance(entreprise, fiche, 1);
+  end if;
+
+  -- ── 3. ⭐⭐ Et la variante de LA MISSION passe devant tout. C'est la condition sans laquelle
+  --    `resultats_par_variante` compare des cadences qui n'ont jamais tourné.
+  insert into public.task (tenant_id, employee_id, objective_id, subject_kind, subject_id)
+  values (entreprise, employe, objectif, 'lead', fiche)
+  returning id into mission;
+
+  insert into public.task_variant (tenant_id, task_id, variant_id)
+  values (entreprise, mission, espace_3_10);
+
+  if public.cadence_de_relance(entreprise, fiche, 1) <> 3 then
+    raise exception
+      'ÉCHEC variantes : la mission a joué « espace_3_10 » et la cadence appliquée est % jours. '
+      'Les résultats seraient attribués à une cadence qui n''a jamais tourné.',
+      public.cadence_de_relance(entreprise, fiche, 1);
+  end if;
+
+  -- ── 4. Au-delà des rangs déclarés : NULL, et surtout aucun repli sur une valeur écrite en dur.
+  if public.cadence_de_relance(entreprise, fiche, 3) is not null then
     raise exception 'ÉCHEC variantes : un rang non déclaré a reçu une cadence.';
   end if;
 
+  delete from public.tenant_variant_preference
+   where tenant_id = entreprise and kind = 'moment_de_relance';
   update public.strategy_variant set par_defaut = false where id = espace_3_10;
   update public.strategy_variant set par_defaut = true  where id = espace_4_7;
 
