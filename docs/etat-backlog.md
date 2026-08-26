@@ -236,7 +236,7 @@
 | ☐ | **EXEC-16** Ordre total sur objective : le dernier objectif ne se déduit pas de created_at (identique dans une même transaction) | P1 | — |
 | ✅ | **EXEC-17** Approvisionnement : ouvrir les nouvelles missions du jour, de façon déterministe et bornée | P0 | [`packages/core/src/ports.ts`](../packages/core/src/ports.ts) · [`packages/runtime/src/battement.ts`](../packages/runtime/src/battement.ts) |
 | ✅ | **EXEC-18** Racine de composition du worker : environnement validé, adaptateurs assemblés, battement signé servi | P0 | [`apps/worker/src/main.ts`](../apps/worker/src/main.ts) · [`apps/worker/src/serveur.ts`](../apps/worker/src/serveur.ts) |
-| ✅ | **EXEC-19** Exécutant en fonction serveur (Deno) : runtime partagé, pilote, boucle complète et parité avec Node | P0 | [`supabase/functions/battement/index.ts`](../supabase/functions/battement/index.ts) |
+| ✅ | **EXEC-19** Exécutant en fonction serveur (Deno) : runtime partagé, pilote, boucle complète et parité avec Node | P0 | [`packages/runtime/src/attelage.ts`](../packages/runtime/src/attelage.ts) · [`packages/runtime/src/attelage.test.ts`](../packages/runtime/src/attelage.test.ts) |
 
 ---
 

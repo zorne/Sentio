@@ -852,6 +852,45 @@ pèse plus lourd qu'une déclaration.
 
 ---
 
+## Étape 12 ter — Lady agit vraiment
+
+**Pourquoi cette étape existe.** Le worker approvisionnait, décidait et journalisait — et ne
+touchait à **aucune donnée du client**. Tous les tests de boucle branchaient un faux moteur : ils
+prouvaient que le runtime appelle quelque chose, jamais qu'un employé produit un effet réel. Un
+client qui l'aurait acheté ce jour-là aurait vu un journal impeccable et une base inchangée.
+
+### Fait le 2026-08-26 — `packages/runtime/src/attelage.ts`, moteurs internes montés
+
+**Ce qui manquait, précisément.** `execute-action.ts` appelait `moteur.execute(proposition.input)`,
+c'est-à-dire passait au moteur **ce que le modèle avait écrit**. Les moteurs, eux, attendent une
+entrée typée *et* le contexte de la mission. Faute de cette traduction, aucun moteur n'était
+enregistré, et brancher le premier aurait laissé une réponse de modèle désigner sur qui agir.
+
+**L'attelage pose la règle, et elle est de sécurité : le modèle choisit le geste, jamais la
+cible.** Les identifiants — entreprise, employé, prospect — viennent de la mission, relus en base
+au moment d'agir. Un identifiant proposé par le modèle est **refusé**, pas silencieusement
+remplacé : le remplacer sans rien dire ferait d'une tentative détectée un incident invisible. La
+qualification n'accepte carrément **aucun champ** — le modèle demande qu'elle ait lieu, il ne
+l'oriente pas.
+
+**Deux moteurs sont montés**, parce que leurs effets sont internes et réversibles : `qualifier.prospect`
+et `mettre_a_jour.prospect`. Le test `agir-vraiment.integration.test.ts` vérifie la seule chose
+qui compte pour un dirigeant : **la fiche de son prospect a changé**, avec la raison écrite à
+côté.
+
+⛔ **`envoyer.prospect` et `relancer.prospect` restent non montés**, et le verrou est nommé à un
+seul endroit (`composition.ts`) : écrire à une entreprise attend un compte d'envoi réel, un
+domaine en UE et une clé hors dépôt. L'attelage sait les traduire ; c'est le moteur qui manque, et
+il manquera jusqu'à l'étape 15.
+
+**Un défaut sérieux trouvé en chemin, invisible jusque-là.** Le registre rangeait les moteurs par
+leur seul nom (`base`) — or `capability_binding` nomme « base » le moteur de *chacune* des cinq
+capacités. Monter deux moteurs ensemble pour la première fois les a fait s'écraser : « qualifier
+un prospect » exécutait « mettre à jour une fiche », silencieusement, avec les bons journaux. La
+clé est désormais **(capacité, moteur)**, et un doublon exact est refusé au lieu d'être écrasé.
+
+---
+
 # PARTIE II — METTRE EN VENTE
 
 ⛔ **Tout ce qui suit t'appartient.** Un agent prépare, explique, rédige des brouillons et vérifie

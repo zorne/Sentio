@@ -36,6 +36,7 @@ import {
   issueDepuisErreur,
   peutReprendre,
   reconstruireEtatRun,
+  type CapabilityEngine,
   type CapabilityRegistry,
   type EffectLedger,
   type EtatRun,
@@ -51,6 +52,7 @@ import { ExecutionJournal, TenantScope, type SqlClient } from "@sentio/db";
 import type { TaskId, TenantId } from "@sentio/domain";
 
 import type { HeartbeatReport } from "./heartbeat/index.js";
+import { atteler, EntreeRefusee } from "./attelage.js";
 import { decideNextStep } from "./next-step.js";
 import { appliquerLaSuite } from "./suite-du-run.js";
 
@@ -63,10 +65,7 @@ export interface BoucleDeps {
   readonly registry: CapabilityRegistry;
   readonly ledger: EffectLedger;
   /** Résout le moteur d'une capacité pour CETTE entreprise (`capability_binding`, NOYAU-18). */
-  readonly moteurPour: (
-    tenantId: TenantId,
-    capabilityKey: string,
-  ) => Promise<{ execute: (input: unknown) => Promise<unknown> }>;
+  readonly moteurPour: (tenantId: TenantId, capabilityKey: string) => Promise<CapabilityEngine>;
   readonly reglages?: ReglagesRuntime;
 }
 
@@ -245,6 +244,46 @@ async function executerUnPas(
  * d'exécuter. Le journal dit ce qui s'est passé ; la table dit ce qui est vrai maintenant. Si
  * l'accord a été révoqué entre-temps, rien ne part.
  */
+/**
+ * Le moteur d'une capacité, **attelé à cette mission**.
+ *
+ * ⚠️ C'est ici que la cible d'une action est fixée, et elle vient de la base : le sujet de la
+ * mission, relu au moment d'agir. Le modèle n'a écrit que le geste. Sans cet attelage,
+ * `execute-action.ts` passerait au moteur l'entrée brute du modèle — c'est-à-dire lui laisserait
+ * désigner sur qui agir (`attelage.ts`).
+ *
+ * Le sujet est relu à chaque action plutôt que porté par `TravailPris` : une lecture de plus sur
+ * une ligne déjà verrouillée coûte peu, et la faire ici garde le port de la file inchangé pour
+ * tous ceux qui n'agissent pas.
+ */
+function moteurAttele(
+  deps: BoucleDeps,
+  travail: TravailPris,
+): (capabilityKey: string) => Promise<{ execute: (input: unknown) => Promise<unknown> }> {
+  return async (capabilityKey: string) => {
+    const moteur = await deps.moteurPour(travail.tenantId, capabilityKey);
+
+    const [mission] = await deps.sql.query<{ subject_kind: string; subject_id: string }>(
+      "select subject_kind, subject_id from task where tenant_id = $1 and id = $2",
+      [travail.tenantId, travail.taskId],
+    );
+    if (mission === undefined) {
+      throw new EntreeRefusee(
+        "La mission a disparu entre sa prise et son exécution : rien n'est exécuté sans savoir " +
+          "sur quoi.",
+      );
+    }
+
+    return atteler(moteur, capabilityKey, {
+      tenantId: travail.tenantId,
+      employeeId: travail.employeeId,
+      taskId: travail.taskId,
+      sujetKind: mission.subject_kind,
+      sujetId: mission.subject_id,
+    });
+  };
+}
+
 async function reprendreLActionAutorisee(
   deps: BoucleDeps,
   travail: TravailPris,
@@ -277,7 +316,7 @@ async function reprendreLActionAutorisee(
       {
         registry: deps.registry,
         ledger: deps.ledger,
-        engineFor: (capabilityKey) => deps.moteurPour(travail.tenantId, capabilityKey),
+        engineFor: moteurAttele(deps, travail),
       },
       {
         tenantId: travail.tenantId,
@@ -330,7 +369,7 @@ async function unPasDeDecision(
         {
           registry: deps.registry,
           ledger: deps.ledger,
-          engineFor: (capabilityKey) => deps.moteurPour(travail.tenantId, capabilityKey),
+          engineFor: moteurAttele(deps, travail),
         },
         {
           tenantId: travail.tenantId,

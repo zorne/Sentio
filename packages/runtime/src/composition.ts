@@ -22,30 +22,37 @@
  * redéploiement. C'est la même règle que l'autonomie et les capacités activées, relues à chaque
  * pas (`next-step.ts`).
  *
- * ══ ⚠️ AUCUN MOTEUR MÉTIER N'EST ENREGISTRÉ AUJOURD'HUI ══
+ * ══ QUELS MOTEURS SONT MONTÉS, ET LESQUELS NE LE SONT PAS ══
  *
- * `moteursMetier` est vide par défaut, et c'est **délibéré**, pas un oubli :
+ * Montés par défaut, parce que leurs effets sont **internes et réversibles** :
  *
- *   · `envoyer.prospect` exige un service d'expédition réel. Le brancher ici rendrait un worker
- *     capable d'écrire à de vraies entreprises dès qu'une clé traîne dans l'environnement — avant
- *     que le compte d'envoi, le domaine en UE et la clé hors dépôt ne soient en place
- *     (`docs/adr/0018`). Ce n'est pas une décision à prendre par défaut.
- *   · les autres moteurs (`qualifier.prospect`, `rechercher.prospect`,
- *     `relancer.prospect`) n'existent pas encore, et les deux qui existent attendent une entrée
- *     que le contrat déclaré ne fournit pas — il manque une couche d'adaptation entre ce que le
- *     modèle propose et ce que le moteur consomme.
+ *   · `qualifier.prospect`    — décide si un prospect correspond à ce que le client vend ;
+ *   · `mettre_a_jour.prospect` — consigne l'état de la relation.
  *
- * Conséquence assumée, à ne pas découvrir en production : **une proposition d'action est refusée**
- * (`CapabilityUnavailable`) tant qu'aucun moteur n'est enregistré. Le worker approvisionne,
- * consomme la file, décide et journalise ; il n'agit pas encore. Le paramètre est le point
- * d'accroche : le jour venu, c'est une ligne.
+ * ⚠️ **Pas montés, et ce n'est pas un oubli** : `envoyer.prospect` et `relancer.prospect`. Leur
+ * moteur écrit à une vraie entreprise. Les brancher ici rendrait un worker capable d'écrire à de
+ * vraies personnes dès qu'une clé traîne dans l'environnement — avant que le compte d'envoi, le
+ * domaine en UE et la clé hors dépôt ne soient en place (`docs/adr/0018`). Ce n'est pas une
+ * décision à prendre par défaut. `moteursMetier` est le point d'accroche : le jour venu, c'est
+ * une ligne, et elle sera écrite exprès.
+ *
+ * ⚠️ **Le verrou est ici, dans cette liste** — pas dans l'absence d'un attelage. `attelage.ts`
+ * sait traduire une proposition d'envoi ; ce qui manque volontairement, c'est le moteur qui
+ * expédierait. Une capacité proposée sans moteur est refusée (`CapabilityUnavailable`) :
+ * l'employé le dit, il ne travaille pas à moitié.
  *
  * Réalise : EXEC-18
  */
 
+import { QualifierProspectCapability, UpdateFicheCapability } from "@sentio/capabilities";
 import { ModelGateway, OpenAICompatibleProvider, PolicyEngine, type CapabilityEngine } from "@sentio/core";
 
 import { PostgresApprovisionnementStore, RegistreDeGisementsEnMemoire } from "./adapters/approvisionnement.js";
+import {
+  JournalDesFiches,
+  PostgresFichesAQualifier,
+  PostgresLeadStatusStore,
+} from "./adapters/prospects.js";
 import { PostgresApprovalStore } from "./adapters/approvals.js";
 import { chargerLeRegistre } from "./adapters/capacites.js";
 import { PostgresEffectLedger } from "./adapters/effects.js";
@@ -101,13 +108,28 @@ export interface OptionsDeComposition {
  * douteuse, elle échouerait tard et mal. La validation est le travail de `lireLaConfiguration`,
  * qui rend tous les manquements d'un coup avant qu'une seule connexion ne s'ouvre.
  */
+/**
+ * Les moteurs dont les effets ne sortent pas de l'entreprise.
+ *
+ * Le critère n'est pas « simple à brancher », c'est **réversible**. Une qualification erronée se
+ * corrige d'un clic ; un message parti ne se rattrape pas.
+ */
+function moteursInternes(sql: TransactionalSqlClient): readonly CapabilityEngine[] {
+  return [
+    new QualifierProspectCapability(new PostgresFichesAQualifier(sql)),
+    new UpdateFicheCapability(new PostgresLeadStatusStore(sql), new JournalDesFiches(sql)),
+  ];
+}
+
 export function composerLExecutant(
   config: ConfigurationWorker,
   options: OptionsDeComposition,
 ): ExecutantMonte {
   const sql = options.sql;
   const journal = new PostgresJournalWriter(sql);
-  const moteursMetier = options.moteursMetier ?? [];
+  // Les moteurs internes sont montés par défaut. Un hôte peut en fournir d'autres — c'est ainsi
+  // que les moteurs d'envoi entreront, explicitement, le jour où l'expédition sera réelle.
+  const moteursMetier = options.moteursMetier ?? moteursInternes(sql);
   const maintenant = options.maintenant ?? (() => new Date());
 
   // ⚠️ L'ordre de cette liste EST la chaîne de repli, et il vient de la configuration

@@ -282,7 +282,9 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
       JSON.stringify({
         action: "agir",
         capacite: CAPACITE,
-        entree: { lead_id: randomUUID() },
+        // ⚠️ Vide, et c'est le sujet : depuis `attelage.ts`, le modèle ne nomme jamais la fiche
+        // sur laquelle il agit. Elle vient de la mission.
+        entree: {},
         pourquoi: "ce prospect correspond à la cible déclarée",
       }),
     );
@@ -520,7 +522,7 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     const meme = JSON.stringify({
       action: "agir",
       capacite: CAPACITE,
-      entree: { lead_id: "6f0f6b8e-0000-4000-8000-000000000001" },
+      entree: {},
       pourquoi: "le même prospect, deux fois",
     });
     reponses = [meme, meme];
