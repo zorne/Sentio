@@ -1476,6 +1476,11 @@
 }
 
 
+/* La cible d'une action : sur sa propre ligne, sous l'action. Recollée à la phrase, elle
+   produisait « Écrire à un prospect à Cabinet Martin ». */
+.ac-cible { font-size: 0.95rem; color: var(--ink-2); }
+.ac-cible strong { color: var(--mint); font-weight: 500; }
+
 /* ─── Ce qu'une action contient ──────────────────────────────────────
    Le message tel qu'il partirait. On demande au dirigeant d'autoriser
    une action irréversible : le lui cacher reviendrait à lui faire
@@ -1502,4 +1507,71 @@
   line-height: 1.75;
   color: var(--ink-2);
   white-space: pre-wrap;
+}
+
+/* ─── Ce qu'une proposition change ───────────────────────────────────
+   Deux colonnes face à face : aujourd'hui, et si vous acceptez. Une
+   phrase de résumé dit une intention ; le dirigeant, lui, valide une
+   conséquence. Il doit pouvoir comparer. */
+.ch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 0.9rem 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.ch-colonne { display: flex; flex-direction: column; gap: 0.4rem; }
+.ch-titre {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.ch-colonne strong {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 1.15rem;
+  line-height: 1.25;
+  color: var(--ink-2);
+}
+/* La colonne proposée porte la couleur : c'est celle qu'on adopte en cliquant. */
+.ch-colonne.est-proposee strong { color: var(--mint); }
+.ch-colonne ol {
+  margin: 0;
+  padding-left: 1rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+.ch-capacites {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.ch-capacites li {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  line-height: 1.6;
+}
+.ch-capacites span {
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  margin-right: 0.4rem;
+}
+.ch-capacites .est-ajout { color: var(--mint); }
+/* Ce qu'elle CESSE de faire porte la couleur de l'attention : c'est la seule perte de cet écran,
+   et celle qu'un dirigeant découvrirait autrement trois semaines plus tard. */
+.ch-capacites .est-retrait { color: var(--amber); }
+
+@media (max-width: 40rem) {
+  .ch { grid-template-columns: 1fr; gap: 0.9rem; }
+  /* Sur une colonne, une flèche remplacerait le face-à-face : un filet suffit à dire l'ordre. */
+  .ch-colonne.est-proposee { border-top: 1px solid var(--line); padding-top: 0.9rem; }
 }

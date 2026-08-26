@@ -40,6 +40,7 @@
 | 2026-08-26 | **Tableau et courbe repris** — indicateurs en colonnes, graduation, sol, bornes de dates | Une ligne seule montre une forme sans donner d'ordre de grandeur |
 | 2026-08-26 | **Plus aucun tiret dans le texte visible** | Demande du fondateur. Les tirets cadratins restent dans les commentaires de code |
 | 2026-08-26 | **Jamais un message flou** — l'accord dit QUELLE action, sur qui, avec quel texte | « Une action attend votre accord » faisait signer une page blanche |
+| 2026-08-26 | **Ce qu'une proposition change, terme à terme** — aujourd'hui / si vous acceptez | Une phrase de résumé dit une intention ; le dirigeant valide une **conséquence** |
 
 ---
 
@@ -189,6 +190,24 @@ Après 40 envois **sans une seule réponse**, l'employée s'arrête d'elle-même
 directe au reproche le plus documenté fait aux concurrents (« ~1 400 emails, 0 réponse »). Elle ne
 s'exprime **que si rien d'autre ne bloque** : un domaine suspendu *explique* le silence, et
 l'annoncer enverrait le dirigeant réécrire son message alors que le problème est technique.
+
+### Un écran de décision montre la CONSÉQUENCE, pas l'intention
+
+Règle donnée par le fondateur : *« sois plus clair dans tes messages pour que le chef sache
+exactement ce qu'il va accepter ou pas. »* Elle s'applique partout où il y a un bouton qui engage.
+
+La proposition disait *« Julie se concentrerait plutôt sur… »* : une intention. Elle affiche
+désormais la **différence terme à terme** — ce qu'elle fait aujourd'hui, ce qu'elle ferait, ce
+qu'elle **gagne** et surtout ce qu'elle **cesse de faire**, si son autonomie bouge, et que tout est
+réversible.
+
+⚠️ **`capacites_retirees` est la ligne la plus importante de cet écran.** Une configuration
+**retranche** au périmètre : ce qu'elle ne reprend pas est réellement retiré. Ne pas le montrer
+ferait accepter une perte sans le savoir, découverte trois semaines plus tard.
+
+Et chaque bouton dit ce qu'il déclenche : *« si vous autorisez, ce message part tel quel ; si vous
+refusez, il ne partira pas. »* « Autoriser » et « Refuser » sont clairs sur le geste, pas sur sa
+conséquence.
 
 ### Jamais un message flou, et surtout pas sur un accord
 

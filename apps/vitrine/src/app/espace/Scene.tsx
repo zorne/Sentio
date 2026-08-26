@@ -68,9 +68,23 @@ export interface DonneesDeLaScene {
   }[];
   readonly proposition: {
     readonly id: string;
-    readonly role: string;
-    readonly priorites: readonly string[];
     readonly raison: string;
+    /**
+     * Ce que le dirigeant accepte EXACTEMENT, terme à terme.
+     *
+     * ⚠️ `capacitesRetirees` est la ligne la plus importante : une configuration RETRANCHE au
+     * périmètre. Ne pas la montrer ferait accepter une perte sans le savoir.
+     */
+    readonly change: {
+      readonly roleActuel: string;
+      readonly rolePropose: string;
+      readonly autonomieActuelle: string;
+      readonly autonomieProposee: string;
+      readonly prioritesActuelles: readonly string[];
+      readonly prioritesProposees: readonly string[];
+      readonly capacitesAjoutees: readonly string[];
+      readonly capacitesRetirees: readonly string[];
+    } | null;
   } | null;
   readonly faits: readonly string[];
   readonly progression: readonly { readonly quoi: string; readonly raison: string }[];
@@ -425,29 +439,88 @@ export function Scene(d: DonneesDeLaScene) {
                 {d.proposition ? (
                   <div className="sc-proposition">
                     <p className="sc-dit">
-                      {d.prenom} se concentrerait plutôt sur{" "}
-                      <em>{motDuRole(d.proposition.role)}</em>.
+                      {d.prenom} propose de changer sa façon de travailler.
                     </p>
-                    <p className="sc-note">{d.proposition.raison}</p>
+                    <p className="sc-note">Ce qu&apos;elle a mesuré : {d.proposition.raison}</p>
+
+                    {d.proposition.change ? (
+                      <div className="ch">
+                        <div className="ch-colonne">
+                          <span className="ch-titre">Aujourd&apos;hui</span>
+                          <strong>{motDuRole(d.proposition.change.roleActuel)}</strong>
+                          {d.proposition.change.prioritesActuelles.length > 0 ? (
+                            <ol>
+                              {d.proposition.change.prioritesActuelles.map((p) => (
+                                <li key={p}>{p}</li>
+                              ))}
+                            </ol>
+                          ) : null}
+                        </div>
+                        <div className="ch-colonne est-proposee">
+                          <span className="ch-titre">Si vous acceptez</span>
+                          <strong>{motDuRole(d.proposition.change.rolePropose)}</strong>
+                          {d.proposition.change.prioritesProposees.length > 0 ? (
+                            <ol>
+                              {d.proposition.change.prioritesProposees.map((p) => (
+                                <li key={p}>{p}</li>
+                              ))}
+                            </ol>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {d.proposition.change &&
+                    (d.proposition.change.capacitesAjoutees.length > 0 ||
+                      d.proposition.change.capacitesRetirees.length > 0) ? (
+                      <ul className="ch-capacites">
+                        {d.proposition.change.capacitesAjoutees.map((c) => (
+                          <li key={c} className="est-ajout">
+                            <span>elle pourra</span> {c}
+                          </li>
+                        ))}
+                        {/* ⚠️ Ce qu'elle CESSE de faire, en toutes lettres et dans la couleur de
+                            l'attention. C'est la seule perte de cet écran, et c'est celle qu'un
+                            dirigeant découvrirait autrement trois semaines plus tard. */}
+                        {d.proposition.change.capacitesRetirees.map((c) => (
+                          <li key={c} className="est-retrait">
+                            <span>elle cessera de</span> {c}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+
+                    <p className="sc-note">
+                      {d.proposition.change &&
+                      d.proposition.change.autonomieActuelle !== d.proposition.change.autonomieProposee
+                        ? `Son autonomie passerait à « ${MOTS_DE_L_AUTONOMIE[d.proposition.change.autonomieProposee] ?? d.proposition.change.autonomieProposee} »`
+                        : "Son autonomie ne change pas : elle continuera de vous demander avant les mêmes actions."}
+                    </p>
+
                     <DecisionSurLaProposition
                       tenantId={d.tenantId}
                       configurationId={d.proposition.id}
                     />
+                    <p className="sc-note">
+                      Rien ne change tant que vous n&apos;avez pas répondu, et vous pourrez revenir
+                      en arrière : chaque version est conservée.
+                    </p>
                   </div>
                 ) : null}
 
                 {d.accords.map((accord) => (
                   <div key={accord.id} className="sc-accord">
-                    <p className="sc-dit">
-                      {accord.quoi}
-                      {accord.entreprise ? (
-                        <>
-                          {" à "}
-                          <em>{accord.entreprise}</em>
-                        </>
-                      ) : null}
-                      {accord.contact ? `, ${accord.contact}` : ""}
-                    </p>
+                    {/* ⚠️ L'action et la CIBLE sur deux lignes, jamais recollées en une phrase.
+                        « Écrire à un prospect » + « à Cabinet Martin » donnait « Écrire à un
+                        prospect à Cabinet Martin ». Aucune règle de grammaire ne rattrape ça
+                        proprement pour toutes les capacités : on sépare, et c'est plus lisible. */}
+                    <p className="sc-dit">{accord.quoi}</p>
+                    {accord.entreprise ? (
+                      <p className="ac-cible">
+                        <strong>{accord.entreprise}</strong>
+                        {accord.contact ? `, ${accord.contact}` : ""}
+                      </p>
+                    ) : null}
 
                     {/* Le message, tel qu'il partirait. C'est ce qu'on autorise : le lui cacher
                         reviendrait à lui faire signer une page blanche. */}
@@ -469,6 +542,12 @@ export function Scene(d: DonneesDeLaScene) {
                     <p className="sc-note">En attente depuis le {accord.depuis}.</p>
 
                     <BoutonsDeDecision approvalId={accord.id} />
+                    {/* La conséquence de chaque bouton, écrite. « Autoriser » et « Refuser » sont
+                        clairs sur le geste, pas sur ce qu'il déclenche. */}
+                    <p className="sc-note">
+                      Si vous autorisez, ce message part tel quel. Si vous refusez, il ne partira
+                      pas et cette entreprise ne sera pas recontactée sur ce point.
+                    </p>
                   </div>
                 ))}
 

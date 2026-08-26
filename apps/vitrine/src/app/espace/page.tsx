@@ -200,6 +200,24 @@ export default async function EspacePage() {
 
   const mots = motsDeLaRecolte(configuration?.role ?? null);
 
+  // ── Ce qu'une proposition change EXACTEMENT. Une phrase de résumé dit une intention ; le
+  //    dirigeant valide une conséquence. Il doit voir ce qu'elle gagne, ce qu'elle perd, et ce qui
+  //    ne bouge pas.
+  const { rows: changements } = proposition
+    ? await pool.query<{
+        role_actuel: string;
+        role_propose: string;
+        autonomie_actuelle: string;
+        autonomie_proposee: string;
+        priorites_actuelles: string[];
+        priorites_proposees: string[];
+        capacites_ajoutees: string[];
+        capacites_retirees: string[];
+      }>("select * from ce_que_change_la_proposition($1, $2)", [tenantId, proposition.id])
+    : { rows: [] };
+
+  const change = changements[0];
+
   // ── Ce qui attend un accord, avec CE QU'IL AUTORISE. Jamais « une action attend votre
   //    accord » : on demande d'autoriser une action irréversible, lui cacher laquelle rend la
   //    garde inutile ou bloquante.
@@ -273,11 +291,20 @@ export default async function EspacePage() {
         proposition
           ? {
               id: proposition.id as string,
-              role: proposition.role as string,
-              priorites: Array.isArray(proposition.priorites)
-                ? (proposition.priorites as string[])
-                : [],
               raison: proposition.raison as string,
+              change:
+                change === undefined
+                  ? null
+                  : {
+                      roleActuel: change.role_actuel,
+                      rolePropose: change.role_propose,
+                      autonomieActuelle: change.autonomie_actuelle,
+                      autonomieProposee: change.autonomie_proposee,
+                      prioritesActuelles: change.priorites_actuelles ?? [],
+                      prioritesProposees: change.priorites_proposees ?? [],
+                      capacitesAjoutees: change.capacites_ajoutees ?? [],
+                      capacitesRetirees: change.capacites_retirees ?? [],
+                    },
             }
           : null
       }
