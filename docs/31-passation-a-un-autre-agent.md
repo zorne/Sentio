@@ -30,6 +30,8 @@
 | 2026-08-26 | **Audit complet** — parcours 19 étapes, fuites, RGPD | **Une vraie fuite fermée** (chiffre d'affaires d'autrui) ; l'effacement RGPD ne fonctionnait pas |
 | 2026-08-26 | **Le garde-fou du silence** — 40 envois sans réponse ⇒ elle s'arrête | Réponse directe au reproche le plus documenté fait aux concurrents |
 | 2026-08-26 | **La formule et les plafonds** — dans le tiroir « Vous » | Réponse au deuxième grief : l'opacité. Compté sur les **vraies lignes**, jamais `usage_counter` |
+| 2026-08-26 | **Le carré et la saccade** — signalés par le fondateur en utilisant la scène | `backdrop-filter` + `transform` fait apparaître un **rectangle** ; et deux règles ne peuvent pas animer la même propriété |
+| 2026-08-26 | **Les orbes s'allument au survol** — demandé par le fondateur | Trois degrés (point, contour, lueur) ; celle qui attend garde **sa** couleur |
 
 ---
 
@@ -180,6 +182,22 @@ directe au reproche le plus documenté fait aux concurrents (« ~1 400 emails, 0
 s'exprime **que si rien d'autre ne bloque** : un domaine suspendu *explique* le silence, et
 l'annoncer enverrait le dirigeant réécrire son message alors que le problème est technique.
 
+### Deux pièges d'animation, trouvés par le fondateur en utilisant la scène
+
+Ils ne se voient ni au typecheck, ni sur une capture fixe. Il faut **cliquer**.
+
+1. **`backdrop-filter` + `transform` fait apparaître un rectangle.** Les pastilles de capacités
+   floutaient leur arrière-plan tout en étant animées : le temps de l'animation, la couche de flou
+   n'est pas découpée par le `border-radius`, et un **carré** apparaît. Le fond est désormais
+   opaque — sur du noir, ça se voit exactement pareil, et ça ne coûte plus un re-floutage par
+   image. **Ne remets pas de `backdrop-filter` sur quelque chose qui bouge.**
+
+2. **Deux règles ne peuvent pas animer la même propriété.** La parallaxe posait un `transform` au
+   repos, le survol un autre, l'ouverture un troisième (`scale(0.9)`) — la dernière **écrasait**
+   les précédentes, et la silhouette faisait un bond de côté à chaque clic. Tout tient maintenant
+   dans **une seule déclaration**, chaque terme porté par une variable (`--px`, `--py`, `--leve`,
+   `--zoom`). C'est le motif à reprendre pour toute composition de transformations.
+
 ### La formule affichée est celle qui s'applique
 Le compte de missions montré au client est **le même** que celui qui applique le plafond
 (`missions_restantes_sur_la_periode`). Deux façons de compter finiraient par diverger, et le
@@ -260,6 +278,9 @@ Chacun a coûté du temps. Ils sont listés dans l'ordre où on les rencontre.
 17. **`list-style: none` ne retire pas le retrait de 40 px.**
 18. **Toujours regarder l'écran.** Les trois quarts des défauts d'interface de ce projet ont été
     trouvés en prenant une capture, jamais en relisant le code.
+19. **Et une capture ne suffit pas pour ce qui bouge.** Le carré des pastilles et le bond de la
+    silhouette n'apparaissent qu'**au clic**, le temps d'une animation. Les deux ont été signalés
+    par le fondateur, pas trouvés par moi. Quand tu touches à une transition, **déclenche-la**.
 
 ---
 

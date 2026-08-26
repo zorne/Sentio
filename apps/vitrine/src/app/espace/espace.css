@@ -259,12 +259,20 @@
   transition: transform 0.6s var(--ease);
 }
 /* La parallaxe : quelques pixels, jamais plus. Au-delà, ce n'est plus de la profondeur, c'est un
-   objet qui glisse — et le regard suit le mouvement au lieu de suivre la silhouette. */
+   objet qui glisse — et le regard suit le mouvement au lieu de suivre la silhouette.
+   ⚠️ TOUT tient dans UNE déclaration, avec des variables pour chaque terme. Elles vivaient dans
+   trois règles séparées (repos, survol, ouvert) qui se remplaçaient l'une l'autre : à l'ouverture,
+   `scale(0.9)` écrasait la parallaxe et la silhouette FAISAIT UN BOND de côté pour revenir au
+   centre. Une propriété ne peut pas être animée par deux règles à la fois. */
 .sc-corps {
-  transform: translate3d(calc(var(--px, 0) * 9px), calc(var(--py, 0) * 7px), 0);
+  --leve: 0px;
+  --zoom: 1;
+  transform:
+    translate3d(calc(var(--px, 0) * 9px), calc(var(--py, 0) * 7px + var(--leve)), 0)
+    scale(var(--zoom));
 }
-.sc-corps:hover { transform: translate3d(calc(var(--px, 0) * 9px), calc(var(--py, 0) * 7px - 6px), 0); }
-.sc-corps.est-ouvert { transform: scale(0.9); }
+.sc-corps:hover { --leve: -6px; }
+.sc-corps.est-ouvert { --zoom: 0.9; }
 .sc-corps:focus-visible { outline: 1px solid var(--mint); outline-offset: 12px; }
 
 .sc-corps .agt-stage {
@@ -348,8 +356,12 @@
   text-transform: uppercase;
   color: var(--mint);
   border: 1px solid var(--mint-line);
-  background: rgba(3, 3, 3, 0.82);
-  backdrop-filter: blur(6px);
+  /* ⚠️ PAS de `backdrop-filter` ici, et c'est un correctif, pas une préférence.
+     Une pastille floutant son arrière-plan ET animée en `transform` fait apparaître, le temps de
+     l'animation, un RECTANGLE : la couche de flou n'est pas découpée par le `border-radius` tant
+     que la transformation court. Le fond est donc opaque — sur du noir, ça se voit exactement
+     pareil, et ça ne coûte plus un re-floutage à chaque image. */
+  background: rgba(4, 4, 5, 0.94);
   border-radius: 100px;
   padding: 0.42rem 0.9rem 0.42rem 0.75rem;
   /* Au repos : au centre, invisible, replié. */
@@ -637,9 +649,35 @@
   font-size: 12.5px;
   cursor: pointer;
   transition: color 0.3s var(--ease), border-color 0.3s var(--ease),
-              transform 0.3s var(--ease), background 0.3s var(--ease);
+              transform 0.3s var(--ease), background 0.3s var(--ease),
+              box-shadow 0.35s var(--ease);
 }
-.sc-orbe:hover { color: var(--ink); border-color: var(--line-2); transform: translateY(-2px); }
+/* Au survol, l'orbe s'ALLUME — son point d'abord, puis son contour, puis une lueur autour.
+   Trois degrés, pas un seul : un survol qui change une seule chose se remarque à peine, et
+   l'orbe doit répondre avant qu'on ait cliqué pour qu'on sache qu'elle est vivante. */
+.sc-orbe:hover {
+  color: var(--ink);
+  border-color: var(--mint-line);
+  background: rgba(46, 230, 245, 0.06);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 26px -8px rgba(46, 230, 245, 0.4);
+}
+.sc-orbe:hover .sc-orbe-point {
+  opacity: 1;
+  background: var(--mint);
+  box-shadow: 0 0 10px var(--mint);
+}
+/* Celle qui attend une réponse garde SA couleur en s'allumant. La faire virer à la menthe
+   effacerait la seule information qu'elle porte : qu'il y a quelque chose à trancher. */
+.sc-orbe.est-alerte:hover {
+  border-color: var(--amber);
+  background: rgba(245, 196, 81, 0.09);
+  box-shadow: 0 6px 26px -8px rgba(245, 196, 81, 0.45);
+}
+.sc-orbe.est-alerte:hover .sc-orbe-point {
+  background: var(--amber);
+  box-shadow: 0 0 10px var(--amber);
+}
 .sc-orbe.est-actif {
   color: var(--ink);
   border-color: var(--ink-3);
@@ -651,6 +689,8 @@
   width: 5px; height: 5px; border-radius: 50%;
   background: currentColor;
   opacity: 0.5;
+  transition: opacity 0.3s var(--ease), background 0.3s var(--ease),
+              box-shadow 0.35s var(--ease);
 }
 .sc-orbe.est-alerte { color: var(--amber); border-color: var(--amber-line); }
 .sc-orbe.est-alerte .sc-orbe-point {
@@ -1115,6 +1155,7 @@
   .sc[data-tiroir="1"] .sc-scene, .sc[data-tiroir="1"] .sc-parler,
   .sc[data-tiroir="1"] .sc-orbes { filter: none; transform: none; opacity: 0.5; }
   .sc-corps, .sc-corps:hover { transform: none; }
+  .sc-orbe:hover { box-shadow: none; }
   .sc-aura { opacity: 0.8; }
   .sc-couronne li { transition: none; }
   .sc-tiroir, .sc-voile { animation: none; }
