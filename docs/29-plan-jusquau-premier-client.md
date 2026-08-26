@@ -1081,6 +1081,46 @@ c'est la transition qui disparaît, jamais l'information.
 
 ---
 
+## Étape 12 nonies — La scène, tenue
+
+**Le défaut qui a déclenché cette passe** est arrivé par une capture d'écran du dirigeant : sur un
+écran **large et court** — un portable posé sur un bureau — la silhouette était hors champ. Il
+restait un prénom flottant au-dessus du vide.
+
+La cause est une ligne : `justify-content: center` **coupe le début du flux** dès que le contenu
+dépasse la hauteur. `safe center` recentre sans jamais rogner, et toutes les tailles de la scène
+sont désormais dictées par la hauteur **disponible** (`svh`), pas par des pixels qui tenaient sur
+l'écran du concepteur.
+
+### Fait le 2026-08-26 — barre, entrée chorégraphiée, parallaxe, profondeur de champ
+
+**Une barre fixe** — la marque à gauche, l'état du service à droite. Sans elle, la scène flottait :
+jolie, et impossible à situer. Elle reste **nette quand un tiroir s'ouvre** ; une barre qui
+s'efface avec le reste donne l'impression que l'application a disparu.
+
+**Une entrée chorégraphiée.** La scène se monte pièce par pièce, et l'ordre EST le sens : d'abord
+elle, puis son nom, puis ce qu'on peut lui dire, puis le reste. Un fondu global aurait tout mis
+sur le même plan. ⚠️ Les pièces partent à l'état **monté** : si le script ne s'exécute pas, la page
+est complète. Une animation d'entrée ne doit jamais être ce qui rend une page visible.
+
+**Des jalons au repos.** Un point discret à la place que chaque capacité occupera : la structure
+se devine avant d'être ouverte. C'est ce qui donne envie de cliquer sans qu'aucun texte ne le
+demande.
+
+**Une parallaxe de quelques pixels.** La présence suit le pointeur — c'est la différence entre une
+image posée sur un fond et quelque chose qui occupe un espace. Bornée à ±1, lissée par
+`requestAnimationFrame`, coupée au doigt et au mouvement réduit.
+
+**Une profondeur de champ.** Un tiroir ouvert fait **reculer et flouter** la scène. Sans ce
+retrait, le tiroir se posait sur elle comme une étiquette collée ; avec, il vient au premier plan.
+C'est le geste d'un plan qui change de mise au point.
+
+**Et l'état devient une pastille.** En ligne libre, il se coupait au milieu d'un groupe de mots —
+« ne retenir que les bonnes / entreprises » — et une coupure au hasard se lit comme un défaut, pas
+comme une mise en page.
+
+---
+
 ## Étape 12 octies — Lui parler, et une vraie présence
 
 **Ce que le dirigeant demandait sans le dire.** Un espace où l'on consulte des cadres, même beaux,

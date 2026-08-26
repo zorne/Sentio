@@ -70,6 +70,13 @@ const MOTS_DE_L_AUTONOMIE: Record<string, string> = {
 
 export function Scene(d: DonneesDeLaScene) {
   const [panneau, setPanneau] = useState<Panneau | null>(null);
+  // L'entrée est jouée UNE fois, au montage. Pas à chaque ouverture de tiroir : une scène qui se
+  // remonte à chaque geste donne le sentiment que la page recharge.
+  const [monte, setMonte] = useState(false);
+  useEffect(() => {
+    const t = requestAnimationFrame(() => setMonte(true));
+    return () => cancelAnimationFrame(t);
+  }, []);
 
   // Une décision en attente et une proposition sont la même chose du point de vue du dirigeant :
   // quelque chose s'est arrêté et attend sa réponse. Un seul compteur, un seul point qui bat.
@@ -77,6 +84,36 @@ export function Scene(d: DonneesDeLaScene) {
   const arrete = d.arreteDepuis !== null;
 
   const fermer = useCallback(() => setPanneau(null), []);
+
+  // ── Parallaxe. La présence suit le pointeur de quelques pixels : c'est ce qui fait la
+  //    différence entre une image posée sur un fond et quelque chose qui occupe un espace.
+  //
+  // ⚠️ Bornée à ±1 et lissée par `requestAnimationFrame` : sans la borne, un mouvement rapide
+  // envoie la silhouette de travers ; sans le lissage, on repeint à chaque événement de souris,
+  // c'est-à-dire des centaines de fois par seconde pour un déplacement de six pixels.
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (window.matchMedia("(pointer: coarse)").matches) return;
+
+    let image = 0;
+    const suivre = (e: PointerEvent) => {
+      if (image !== 0) return;
+      image = requestAnimationFrame(() => {
+        image = 0;
+        const x = (e.clientX / window.innerWidth - 0.5) * 2;
+        const y = (e.clientY / window.innerHeight - 0.5) * 2;
+        const racine = document.querySelector<HTMLElement>(".sc");
+        racine?.style.setProperty("--px", Math.max(-1, Math.min(1, x)).toFixed(3));
+        racine?.style.setProperty("--py", Math.max(-1, Math.min(1, y)).toFixed(3));
+      });
+    };
+
+    window.addEventListener("pointermove", suivre, { passive: true });
+    return () => {
+      window.removeEventListener("pointermove", suivre);
+      if (image !== 0) cancelAnimationFrame(image);
+    };
+  }, []);
 
   // Échap ferme, toujours. Une surface qu'on ouvre d'un clic et dont on ne sort qu'en cherchant
   // la petite croix est une surface dans laquelle on se sent enfermé.
@@ -90,7 +127,21 @@ export function Scene(d: DonneesDeLaScene) {
   }, [panneau, fermer]);
 
   return (
-    <main className={`sc${arrete ? " sc--arrete" : ""}`}>
+    <main
+      className={`sc${arrete ? " sc--arrete" : ""}`}
+      data-monte={monte ? "1" : "0"}
+      data-tiroir={panneau === null ? "0" : "1"}
+    >
+      {/* ── La barre. Deux informations, aux deux bords : de qui est cet espace, et est-ce que
+             ça tourne. Elle ancre la page comme un produit — sans elle, la scène flotte. ── */}
+      <header className="sc-barre">
+        <span className="sc-marque">Sentio</span>
+        <span className={`sc-vie${arrete ? " est-arretee" : ""}`}>
+          <i aria-hidden="true" />
+          {arrete ? "à l'arrêt" : "en service"}
+        </span>
+      </header>
+
       {/* ── La présence. Elle occupe l'écran, et elle est le bouton principal. ── */}
       <div className="sc-scene">
         <button
@@ -106,6 +157,26 @@ export function Scene(d: DonneesDeLaScene) {
           <span className="sc-anneau sc-anneau--large" aria-hidden="true" />
           <span className="sc-anneau sc-anneau--serre" aria-hidden="true" />
           <AgentHologramStage />
+          {/* Un point par capacité, à la place qu'elle occupera. Au repos, la STRUCTURE se
+              devine ; au clic, elle se nomme. C'est ce qui donne envie de cliquer sans qu'aucun
+              texte n'ait à le demander. */}
+          <span className="sc-jalons" aria-hidden="true">
+            {d.capacites.map((capacite, i) => {
+              const angle = (i / Math.max(d.capacites.length, 1)) * Math.PI * 2 - Math.PI / 2;
+              return (
+                <i
+                  key={capacite}
+                  style={
+                    {
+                      "--i": i,
+                      "--x": `${Math.cos(angle).toFixed(3)}`,
+                      "--y": `${Math.sin(angle).toFixed(3)}`,
+                    } as React.CSSProperties
+                  }
+                />
+              );
+            })}
+          </span>
           {/* Le halo bat quand quelque chose attend. C'est la seule chose de cette page qui
               a le droit d'appeler le regard sans qu'on le lui demande. */}
           {enAttente > 0 && !arrete ? <span className="sc-halo" aria-hidden="true" /> : null}

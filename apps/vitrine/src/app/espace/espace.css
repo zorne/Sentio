@@ -53,12 +53,73 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 2.5rem;
-  padding: 5rem 1.5rem 3rem;
+  /* ⚠️ `center` seul COUPE le haut dès que le contenu dépasse la hauteur : sur un écran large et
+     court — un portable posé sur un bureau — la silhouette se retrouvait hors champ, et l'espace
+     s'ouvrait sur un prénom flottant au-dessus du vide. Constaté sur une capture, pas déduit.
+     `safe center` recentre sans jamais rogner le début du flux ; le `padding` généreux et les
+     tailles en `svh` font le reste. */
+  justify-content: safe center;
+  gap: clamp(1.1rem, 2.4svh, 2rem);
+  padding: clamp(4rem, 9svh, 6rem) 1.5rem clamp(2rem, 5svh, 3.5rem);
   color: var(--ink);
   overflow-x: hidden;
 }
+
+/* Une profondeur, pas un fond. Le noir pur est plat ; cette lueur très large donne à la scène un
+   sol et un horizon, sans qu'aucune forme ne soit dessinée. */
+.sc::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 62% 46% at 50% 34%, rgba(46, 230, 245, 0.055), transparent 68%),
+    radial-gradient(ellipse 90% 60% at 50% 108%, rgba(244, 245, 246, 0.035), transparent 70%);
+}
+
+/* ─── La barre ───────────────────────────────────────────────────────
+   Deux informations, aux deux bords. Elle ancre la page comme un produit :
+   sans elle, la scène flotte — jolie, et impossible à situer. */
+.sc-barre {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  /* Au-dessus du voile, sous le tiroir : la scène recule, le cadre du produit reste. Une barre
+     qui s'efface avec le reste donne l'impression que l'application a disparu. */
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 58px;
+  padding: 0 clamp(1rem, 3vw, 2rem);
+  border-bottom: 1px solid var(--line);
+  background: rgba(3, 3, 3, 0.55);
+  backdrop-filter: saturate(160%) blur(14px);
+}
+.sc-marque {
+  font-family: var(--serif);
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.sc-vie {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.sc-vie i {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--mint);
+  box-shadow: 0 0 10px var(--mint-line);
+  animation: sc-pouls 2.4s ease-in-out infinite;
+}
+.sc-vie.est-arretee { color: var(--amber); }
+.sc-vie.est-arretee i { background: var(--amber); box-shadow: 0 0 10px var(--amber-line); }
 
 /* Le grain de la landing : c'est lui qui fait reconnaître la même maison
    en passant de la page publique à son espace. */
@@ -80,6 +141,43 @@
   align-items: center;
   width: min(30rem, 100%);
 }
+
+/* Un tiroir ouvert fait RECULER la scène. Sans ce retrait, le tiroir se pose sur elle comme une
+   étiquette collée ; avec, il vient au premier plan et la scène passe derrière. C'est le même
+   geste qu'un plan qui change de mise au point. */
+.sc[data-tiroir="1"] .sc-scene,
+.sc[data-tiroir="1"] .sc-parler,
+.sc[data-tiroir="1"] .sc-orbes {
+  transform: scale(0.965);
+  opacity: 0.4;
+  filter: blur(1px);
+}
+.sc-scene, .sc-parler, .sc-orbes {
+  transition: opacity 0.55s var(--ease), transform 0.55s var(--ease), filter 0.55s var(--ease);
+}
+
+/* ─── L'ENTRÉE ───────────────────────────────────────────────────────
+   La scène se monte, elle n'apparaît pas d'un bloc. L'ordre EST le sens :
+   d'abord elle, puis son nom, puis ce qu'on peut lui dire, puis le reste.
+   Un fondu global aurait tout mis sur le même plan.
+
+   Les pièces partent à l'état monté (`opacity: 1`) : si le script ne
+   s'exécute pas, la page est complète et lisible. Une animation d'entrée
+   ne doit jamais être ce qui rend une page visible. */
+.sc[data-monte="0"] .sc-scene,
+.sc[data-monte="0"] .sc-parler,
+.sc[data-monte="0"] .sc-orbes,
+.sc[data-monte="0"] .sc-barre {
+  opacity: 0;
+  transform: translateY(14px);
+}
+.sc-scene, .sc-parler, .sc-orbes, .sc-barre {
+  transition: opacity 0.9s var(--ease), transform 0.9s var(--ease);
+}
+.sc[data-monte="1"] .sc-scene   { transition-delay: 0.05s; }
+.sc[data-monte="1"] .sc-barre   { transition-delay: 0.5s; }
+.sc[data-monte="1"] .sc-parler  { transition-delay: 0.62s; }
+.sc[data-monte="1"] .sc-orbes   { transition-delay: 0.74s; }
 
 /* ─── LA PRÉSENCE ────────────────────────────────────────────────────
    Trois couches, et chacune dit quelque chose :
@@ -146,8 +244,10 @@
    ce qu'on veut savoir d'une employée, on le lui demande à elle. */
 .sc-corps {
   position: relative;
-  width: min(46vh, 300px);
-  height: min(56vh, 380px);
+  /* Dictée par la hauteur DISPONIBLE. Une taille en pixels tenait sur l'écran du concepteur et
+     débordait sur celui du client. */
+  width: clamp(180px, 34svh, 300px);
+  height: clamp(230px, 44svh, 380px);
   border: none;
   background: none;
   padding: 0;
@@ -155,7 +255,12 @@
   border-radius: 50%;
   transition: transform 0.6s var(--ease);
 }
-.sc-corps:hover { transform: translateY(-6px); }
+/* La parallaxe : quelques pixels, jamais plus. Au-delà, ce n'est plus de la profondeur, c'est un
+   objet qui glisse — et le regard suit le mouvement au lieu de suivre la silhouette. */
+.sc-corps {
+  transform: translate3d(calc(var(--px, 0) * 9px), calc(var(--py, 0) * 7px), 0);
+}
+.sc-corps:hover { transform: translate3d(calc(var(--px, 0) * 9px), calc(var(--py, 0) * 7px - 6px), 0); }
 .sc-corps.est-ouvert { transform: scale(0.9); }
 .sc-corps:focus-visible { outline: 1px solid var(--mint); outline-offset: 12px; }
 
@@ -185,6 +290,32 @@
   0%, 100% { opacity: 0.15; transform: translate(-50%, -50%) scale(0.94); }
   50%      { opacity: 0.55; transform: translate(-50%, -50%) scale(1.04); }
 }
+
+/* Les jalons — un point par capacité, à la place qu'elle occupera.
+   Au repos la STRUCTURE se devine ; au clic elle se nomme. C'est ce qui
+   donne envie de cliquer sans qu'aucun texte n'ait à le demander. */
+.sc-jalons {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 0; height: 0;
+  pointer-events: none;
+}
+.sc-jalons i {
+  position: absolute;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--mint);
+  opacity: 0.32;
+  transform:
+    translate(-50%, -50%)
+    translate(calc(var(--x) * 52%), calc(var(--y) * 52%))
+    translate(calc(var(--x) * clamp(90px, 17svh, 128px)), calc(var(--y) * clamp(90px, 17svh, 128px)));
+  transition: opacity 0.4s var(--ease), transform 0.6s var(--ease);
+  transition-delay: calc(var(--i) * 45ms);
+}
+.sc-corps:hover .sc-jalons i { opacity: 0.65; }
+/* Ouverts, les jalons s'effacent : ce sont les pastilles qui prennent le relais, au même endroit. */
+.sc-corps.est-ouvert .sc-jalons i { opacity: 0; }
 
 /* ─── La couronne de capacités ───────────────────────────────────────
    Chaque capacité part du CENTRE et rejoint sa place sur le cercle, avec
@@ -250,20 +381,39 @@
 .sc-identite h1 {
   font-family: var(--serif);
   font-weight: 400;
-  font-size: clamp(2.8rem, 9vw, 4.4rem);
+  font-size: clamp(2.4rem, 7svh, 4.2rem);
   line-height: 0.95;
   letter-spacing: -0.035em;
 }
+/* L'état est une PASTILLE, pas une phrase posée sous le nom.
+   ⚠️ Écrit en ligne libre, il se coupait en deux au milieu d'un groupe de mots — « ne retenir que
+   les bonnes / entreprises » — et une coupure au hasard se lit comme un défaut, pas comme une
+   mise en page. Une pastille ne se coupe pas : elle rétrécit ou elle passe à la ligne entière. */
 .sc-etat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 1rem;
+  padding: 0.4rem 0.9rem 0.4rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 100px;
   font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.14em;
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-3);
-  margin-top: 0.85rem;
-  max-width: 42ch;
+  max-width: min(90vw, 34rem);
 }
+.sc-etat::before {
+  content: "";
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--mint);
+  flex: 0 0 auto;
+}
+
 .sc-arret-mot { color: var(--amber); }
+.sc-etat:has(.sc-arret-mot) { border-color: var(--amber-line); }
+.sc-etat:has(.sc-arret-mot)::before { background: var(--amber); }
 
 /* ─── Lui parler ─────────────────────────────────────────────────────
    ⚠️ Exclu de la règle de base des boutons, comme `.oui` a dû l'être :
@@ -616,7 +766,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
-  min-height: 6rem;
+  /* Pas de hauteur minimale : un fil vide réservait un trou sous la première phrase, et un vide
+     qui ne se remplit jamais se lit comme un élément qui n'a pas chargé. */
   max-height: 38svh;
   overflow-y: auto;
 }
@@ -707,7 +858,8 @@
 /* ─── Petits écrans ──────────────────────────────────────────────── */
 @media (max-width: 40rem) {
   .sc { gap: 1.8rem; padding: 3.5rem 1rem 2rem; }
-  .sc-corps { width: min(52vw, 220px); height: min(42vh, 290px); }
+  .sc-corps { width: min(52vw, 220px); height: clamp(210px, 34svh, 290px); }
+  .sc-barre { height: 50px; }
   /* ⚠️ PAS DE COURONNE SUR UN TÉLÉPHONE. Une pastille placée à ±40 % de
      la largeur porte encore sa propre largeur : sur 375 px, les deux
      capacités latérales sortent de l'écran et se font couper par le
@@ -752,7 +904,16 @@
    transition qui disparaît, pas l'information. */
 @media (prefers-reduced-motion: reduce) {
   .sc-halo, .sc-orbe.est-alerte .sc-orbe-point { animation: none; opacity: 0.8; }
-  .sc-aura, .sc-anneau, .sc-parler-onde, .cv-attente i, .cv-tour { animation: none; }
+  .sc-aura, .sc-anneau, .sc-parler-onde, .cv-attente i, .cv-tour, .sc-vie i { animation: none; }
+  /* L'entrée est jouée d'un coup : la page est là, tout de suite. */
+  .sc-scene, .sc-parler, .sc-orbes, .sc-barre { transition: none; }
+  .sc[data-monte="0"] .sc-scene, .sc[data-monte="0"] .sc-parler,
+  .sc[data-monte="0"] .sc-orbes, .sc[data-monte="0"] .sc-barre {
+    opacity: 1; transform: none;
+  }
+  .sc[data-tiroir="1"] .sc-scene, .sc[data-tiroir="1"] .sc-parler,
+  .sc[data-tiroir="1"] .sc-orbes { filter: none; transform: none; opacity: 0.5; }
+  .sc-corps, .sc-corps:hover { transform: none; }
   .sc-aura { opacity: 0.8; }
   .sc-couronne li { transition: none; }
   .sc-tiroir, .sc-voile { animation: none; }
