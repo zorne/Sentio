@@ -103,7 +103,7 @@ export default async function Home({
           </Link>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <span className="user-chip">
-              {tenantId === DEMO_TENANT_ID ? "Mode démo — sans connexion" : agentInstance?.name}
+              {tenantId === DEMO_TENANT_ID ? "Mode démo, sans connexion" : agentInstance?.name}
             </span>
             <Link href={`/decisions${tenant ? `?tenant=${tenant}` : ""}`} className="nav-back">
               Décisions{unreadDecisions > 0 ? ` (${unreadDecisions})` : ""}
@@ -168,7 +168,7 @@ export default async function Home({
 
           <details style={{ marginBottom: 32 }}>
             <summary style={{ cursor: "pointer", fontSize: 13.5, color: "var(--text-tertiary)", marginBottom: 12 }}>
-              Vos prospects ({leads?.length ?? 0}) — votre employé les trouve désormais lui-même, ajout manuel toujours possible
+              Vos prospects ({leads?.length ?? 0}). Votre employé les trouve lui-même, et vous pouvez toujours en ajouter
             </summary>
 
             <div style={{ margin: "16px 0" }}>
@@ -192,7 +192,7 @@ export default async function Home({
                 ))
               ) : (
                 <div className="empty">
-                  Aucun prospect pour le moment — votre employé en cherchera automatiquement une fois lancé.
+                  Aucun prospect pour le moment. Votre employé en cherchera dès qu&apos;il sera lancé.
                 </div>
               )}
             </div>

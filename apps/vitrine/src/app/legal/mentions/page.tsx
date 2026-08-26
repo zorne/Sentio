@@ -10,7 +10,7 @@
  */
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Mentions légales — Sentio" };
+export const metadata: Metadata = { title: "Mentions légales | Sentio" };
 
 export default function MentionsPage() {
   return (
@@ -21,7 +21,7 @@ export default function MentionsPage() {
       <div className="legal-todo">
         <strong>À compléter avant ouverture au public.</strong> Sentio
         n&apos;est pas encore constituée en société. Les mentions ci-dessous
-        sont des placeholders — remplacez-les dès l&apos;immatriculation.
+        seront complétées dès l&apos;immatriculation de la société.
         L&apos;ouverture d&apos;un site marchand sans mentions légales
         conformes est passible de sanctions (article 6-III LCEN).
       </div>

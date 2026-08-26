@@ -82,7 +82,7 @@ export function ProspectingConfig({
           />
         </label>
         <label style={{ fontSize: 12.5, color: "var(--text-tertiary)" }}>
-          Quelle(s) offre(s) l&apos;agent doit-il mettre en avant ?
+          Quelle(s) offre(s) votre employé doit-il mettre en avant ?
           <textarea
             value={offer}
             onChange={(e) => setOffer(e.target.value)}

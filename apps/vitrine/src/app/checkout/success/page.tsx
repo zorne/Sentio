@@ -18,7 +18,7 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import "@/app/landing.css";
 
 export const metadata: Metadata = {
-  title: "Sentio — Paiement confirmé",
+  title: "Paiement confirmé | Sentio",
 };
 
 export default async function CheckoutSuccessPage({
@@ -72,7 +72,7 @@ export default async function CheckoutSuccessPage({
           <>
             <p style={{ color: "var(--text-secondary)", fontSize: 13.5, marginBottom: 16 }}>
               Paiement reçu. Un email a été envoyé à <strong>{email}</strong> avec un lien pour
-              accéder à votre employé — pas de mot de passe à retenir.
+              accéder à votre employé. Aucun mot de passe à retenir.
             </p>
             <Link href="/" className="btn btn-secondary">Retour à l&apos;accueil</Link>
           </>

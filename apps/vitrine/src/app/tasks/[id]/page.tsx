@@ -55,7 +55,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
             Sentio
           </Link>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <span className="user-chip">Mode démo — sans connexion</span>
+            <span className="user-chip">Mode démo, sans connexion</span>
             <Link href="/dashboard" className="nav-back" aria-label="Retour au dashboard">← Dashboard</Link>
           </div>
         </div>

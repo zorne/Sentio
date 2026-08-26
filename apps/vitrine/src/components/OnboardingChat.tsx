@@ -94,7 +94,7 @@ export function OnboardingChat({
                 font: "inherit",
               }}
             >
-              Passer voir un exemple d&apos;agent
+              Passer voir un exemple d&apos;employé
             </button>
           </div>
         </>

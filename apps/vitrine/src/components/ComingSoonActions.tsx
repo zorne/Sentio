@@ -8,7 +8,7 @@ export function ComingSoonActions({ role }: { role: AgentRole }) {
   return (
     <div>
       <p className="lp-hero-sub" style={{ margin: "0 0 16px" }}>
-        {role.displayName} n&apos;est pas encore actif — seul l&apos;employé Commercial
+        {role.displayName} n&apos;est pas encore actif. Seul l&apos;employé Commercial
         travaille réellement aujourd&apos;hui. Vous serez prévenu·e dès que celui-ci sera prêt.
       </p>
       <div className="lp-hero-act">

@@ -25,7 +25,17 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 /** @type {{ fichier: string, ligne: number, regle: string, message: string }[]} */
 const manquements = [];
 
+/**
+ * Un même défaut ne se signale qu'une fois par ligne et par règle. Un texte visible est souvent
+ * capté deux fois — comme chaîne de caractères, puis comme contenu d'élément —, et lire deux fois
+ * le même reproche fait douter du contrôle plutôt que du code.
+ */
+const dejaSignales = new Set();
+
 function signaler(fichier, ligne, regle, message) {
+  const empreinte = `${fichier}:${ligne}:${regle}`;
+  if (dejaSignales.has(empreinte)) return;
+  dejaSignales.add(empreinte);
   manquements.push({ fichier: relative(REPO_ROOT, fichier), ligne, regle, message });
 }
 
@@ -120,67 +130,60 @@ async function verifierFonctions() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. L'interface ne touche jamais une donnée directement.
+// 2. L'interface ne parle jamais à un fournisseur de modèle.
 //
-// Règle 2 de l'adr/0022. Un client de base dans un fichier d'interface, et l'étanchéité entre la
-// vitrine et les données ne tient plus qu'à la discipline.
+// ⚠️ CE QUE CETTE RÈGLE REMPLACE, ET POURQUOI ELLE A CHANGÉ DE CIBLE.
+//
+// Elle visait `apps/web/src` — l'ancienne vitrine SvelteKit. Ce dossier a été supprimé, et
+// personne n'a cherché qui le nommait : la règle a continué de tourner, de lire **zéro fichier**,
+// et de répondre « rien à signaler ». Un contrôle vert parce qu'il ne regarde nulle part est pire
+// qu'un contrôle absent : le second, on sait qu'on ne l'a pas.
+//
+// Ce qu'elle tient maintenant, c'est le critère 5 du point de bascule de `docs/27` §9 : aucun
+// appel direct à un fournisseur d'inférence depuis `apps/vitrine`. C'est le pendant, côté
+// interface, de la règle 5 qui tient déjà `apps/worker` — et il est plus important ici, parce que
+// c'est l'interface qui reçoit ce qu'un visiteur tape.
+//
+// On ne reprend PAS l'indice générique `fetch(` : une interface appelle légitimement son propre
+// serveur. Restent les trois motifs qui désignent réellement un fournisseur — adresse, SDK, clé.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const DOSSIER_PORTE = join("src", "lib", "server-functions");
-
-const TRACES_INFRASTRUCTURE = [
-  { motif: /createClient\s*\(/, quoi: "un client de base de données" },
-  { motif: /@supabase\//, quoi: "une bibliothèque d'accès aux données" },
-  { motif: /\bSUPABASE_[A-Z_]+/, quoi: "une variable d'environnement de la plateforme" },
+/**
+ * ⚠️ DÉROGATIONS NOMMÉES, FICHIER PAR FICHIER — jamais par dossier.
+ *
+ * C'est la même discipline que `DEROGATIONS_PAR_FONCTION` plus haut : une exception qui porte un
+ * nom se relit ; une exception qui porte un dossier s'élargit toute seule. Un SECOND fichier qui
+ * toucherait une clé de fournisseur serait refusé, et il faudrait revenir ici — donc en parler.
+ *
+ * Les deux fichiers listés ne font que **constater la présence** de la clé, jamais l'appel : le
+ * conseiller passe par `buildAdvisorGateway()`. Ils disparaîtront quand `apps/vitrine` lira le
+ * Gateway du cœur (`docs/27`, phase 3).
+ */
+const FICHIERS_TOLERES_FOURNISSEUR = [
+  join("src", "app", "api", "advisor", "route.ts"),
+  join("src", "lib", "diagnostic-envelope.integration.test.ts"),
 ];
 
-async function verifierInterface() {
-  const racine = join(REPO_ROOT, "apps", "web", "src");
-  const fichiers = await fichiersDe(racine, [".ts", ".svelte"]);
+async function verifierInterfaceSansFournisseur() {
+  const racine = join(REPO_ROOT, "apps", "vitrine", "src");
+  const fichiers = await fichiersDe(racine, [".ts", ".tsx"]);
 
   for (const fichier of fichiers) {
+    if (FICHIERS_TOLERES_FOURNISSEUR.some((tolere) => fichier.endsWith(tolere))) continue;
     const contenu = await readFile(fichier, "utf8");
-    const estLaPorte = fichier.includes(DOSSIER_PORTE);
 
     for (const { texte, numero } of lignesDe(contenu)) {
-      for (const { motif, quoi } of TRACES_INFRASTRUCTURE) {
+      if (texte.trimStart().startsWith("*") || texte.trimStart().startsWith("//")) continue;
+      for (const { motif, quoi } of TRACES_FOURNISSEUR) {
+        if (quoi === "un appel réseau direct") continue;
         if (motif.test(texte)) {
           signaler(
             fichier,
             numero,
-            "aucune donnée depuis l'interface",
-            `contient ${quoi}. L'interface parle à une fonction serveur, jamais à une table ` +
-              `(adr/0022, règle 2).`,
-          );
-        }
-      }
-
-      // `fetch` n'est pas interdit : il est **localisé**. Une seule porte, pour qu'on sache où
-      // regarder quand une donnée part quelque part.
-      if (!estLaPorte && /\bfetch\s*\(/.test(texte)) {
-        signaler(
-          fichier,
-          numero,
-          "une seule porte réseau",
-          `appelle « fetch ». Tout appel sortant vit dans src/lib/server-functions/ ` +
-            `(adr/0022, règle 2).`,
-        );
-      }
-    }
-
-    // Un composant ne doit pas embarquer de code du domaine : il n'en connaît que la forme.
-    // Les tests en sont exclus : ils s'exécutent sous Node, rien de ce qu'ils importent n'est
-    // livré au navigateur — et un test qui ne peut pas appeler le domaine ne vérifie rien.
-    if (!fichier.endsWith(".test.ts") && (fichier.endsWith(".svelte") || !estLaPorte)) {
-      for (const { texte, numero } of lignesDe(contenu)) {
-        const trouve = /(?:^|\s)import\s+(?!type\s)([^;]*?)from\s+["'](@sentio\/[^"']+)["']/.exec(texte);
-        if (trouve !== null && !trouve[1].includes("type ")) {
-          signaler(
-            fichier,
-            numero,
-            "le domaine ne descend pas dans le navigateur",
-            `importe « ${trouve[2]} » en valeur. Une règle métier ne s'exécute pas dans le ` +
-              `navigateur : seuls ses types y sont connus (import type) — adr/0022, règles 3 et 5.`,
+            "l'interface ne parle pas à un fournisseur",
+            `contient ${quoi}. Une interface affiche et déclenche : elle ne choisit pas un ` +
+              `fournisseur, ne porte pas sa clé et ne compte pas son coût. Cela vit dans ` +
+              `packages/core (docs/27 §9, critère 5 ; AGENTS.md invariant 5).`,
           );
         }
       }
@@ -189,62 +192,188 @@ async function verifierInterface() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3. Aucun texte visible en dehors du fichier de libellés.
+// 3. Le lexique et la typographie de ce qu'un client LIT.
 //
-// C'est la condition du contrôle de lexique (docs/17-lexique.md) : un texte écrit dans un composant
-// échappe à tout contrôle. On repère ce qui ressemble à une phrase — deux mots ou plus — dans le
-// balisage d'un composant, ou dans un attribut lu par une personne.
+// ⚠️ CE CONTRÔLE A EXISTÉ, PUIS IL A DISPARU SANS QUE PERSONNE NE LE DÉCIDE.
+//
+// L'ancienne vitrine tenait tout son texte dans un `labels.ts` que l'intégration continue
+// relisait. Le fichier est parti avec SvelteKit, et le contrôle avec lui — `AGENTS.md` le note
+// déjà : « le lexique s'applique toujours, il n'est simplement plus défendu par une machine ».
+//
+// Il l'est de nouveau, et sans exiger de fichier de libellés : Next.js répartit le texte dans les
+// composants, et imposer un `labels.ts` à React reviendrait à décrire l'interface deux fois. On
+// lit donc le texte là où il est.
+//
+// Deux règles, deux sources :
+//
+//   · LE LEXIQUE — `docs/17-lexique.md`, qui reste la source unique. Les mots sont recopiés ici
+//     parce qu'un script ne lit pas un tableau Markdown de façon fiable ; le document fait foi,
+//     et ce fichier le cite.
+//   · LES TIRETS — demande explicite du fondateur : aucun tiret dans un texte visible. Un tiret
+//     cadratin est un raccourci d'écriture ; une virgule, un deux-points ou une phrase de plus
+//     disent la même chose sans faire buter l'œil. Les commentaires de code n'en sont pas
+//     concernés, et ce contrôle ne les lit pas.
+//
+// ⚠️ DEUX ZONES EXEMPTÉES DE LEXIQUE, ET PAS UNE DE PLUS (`docs/17`, « les zones exemptées ») :
+// les pages légales, où le vocabulaire juridique exact prime, et l'information de transparence du
+// diagnostic, obligatoire depuis l'article 50 du règlement européen sur l'IA. Un contrôle qui
+// ferait échouer l'intégration continue sur une mention légale obligatoire finirait désactivé —
+// et c'est tout le contrôle qu'on perdrait.
+//
+// **Les tirets, eux, ne sont exemptés nulle part** : la typographie d'une page légale se lit
+// autant que celle d'une page de vente.
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Ce qui ressemble à une phrase : deux mots ou plus. */
 const PHRASE = /[A-Za-zÀ-ÿ]{2,}\s+[A-Za-zÀ-ÿ]{2,}/;
-const ATTRIBUTS_LUS = /\b(?:aria-label|title|alt|placeholder)\s*=\s*"([^"{}]*)"/g;
 
 /**
- * Retire `<script>`, `<style>`, les commentaires et les expressions `{…}` du balisage — en
- * **conservant le nombre de lignes**, sans quoi les numéros signalés désigneraient la mauvaise ligne
- * et le message deviendrait plus agaçant qu'utile.
+ * Retire les commentaires en **conservant le nombre de lignes** : sans ça, les numéros signalés
+ * désigneraient la mauvaise ligne, et le message deviendrait plus agaçant qu'utile.
+ *
+ * C'est ce qui autorise les tirets cadratins dans les commentaires de ce dépôt — ils y sont
+ * partout, et le fondateur les y a explicitement laissés.
  */
-function baliseSeule(contenu) {
+function sansCommentaires(contenu) {
   const memesLignes = (trouve) => "\n".repeat((trouve.match(/\n/g) ?? []).length);
   return contenu
-    .replace(/<script[\s\S]*?<\/script>/g, memesLignes)
-    .replace(/<style[\s\S]*?<\/style>/g, memesLignes)
-    .replace(/<!--[\s\S]*?-->/g, memesLignes)
-    .replace(/\{[\s\S]*?\}/g, (trouve) => `{}${memesLignes(trouve)}`);
+    .replace(/\/\*[\s\S]*?\*\//g, memesLignes)
+    .replace(/(^|[^:"'`])\/\/[^\n]*/g, (_, avant) => avant);
+}
+
+/** Les mots interdits de `docs/17-lexique.md`. Le document fait foi ; ceci le cite. */
+const MOTS_INTERDITS =
+  /\b(IA|intelligences? artificielles?|bots?|assistants?|agents?|automations?|automatisations?|automatisée?s?|GPT|prompts?|tokens?|workflows?|pipelines?|modèles?|tâches? système)\b/i;
+
+/**
+ * Le tiret cadratin et le demi-cadratin, et eux seuls.
+ *
+ * ⚠️ POURQUOI PAS LE TIRET COURT ISOLÉ PAR DES ESPACES.
+ *
+ * Il y était, et il ne signalait que des soustractions : « const SOL = H - 4 »,
+ * « a.seq - b.seq », « PROFILE.length - 1 ». Trente signalements, zéro vrai. Distinguer une
+ * soustraction d'une respiration typographique dans une ligne de composant demanderait
+ * d'analyser le JSX, pas de le lire ligne à ligne.
+ *
+ * Et ça ne coûte presque rien : les quarante-neuf tirets trouvés à l'audit du 2026-08-26 étaient
+ * tous des cadratins. Un contrôle qui attrape le vrai cas sans crier sur le code se garde ; un
+ * contrôle qui crie se désactive.
+ */
+const TIRET_VISIBLE = /[—–]/;
+
+/** Le texte d'une page légale, et la phrase de transparence du diagnostic. */
+function estExempteDeLexique(fichier) {
+  return (
+    fichier.includes(join("app", "legal")) ||
+    fichier.includes(join("components", "legal")) ||
+    fichier.includes(join("components", "diagnostic"))
+  );
+}
+
+/**
+ * Ce qui ressemble à du code plutôt qu'à une phrase : liste de classes CSS, chemin, identifiant.
+ * Sans ce filtre, `chat-bubble--assistant` serait signalé comme un manquement au lexique, le
+ * contrôle crierait sur du vrai, et on le désactiverait au bout de trois jours.
+ */
+function ressembleADuCode(texte) {
+  if (texte.includes("/") || texte.includes("_")) return true;
+  if (/^[a-z0-9 -]+$/.test(texte) && texte.includes("-")) return true;
+  return false;
+}
+
+/** Un mot lisible, seul, suffit : « Sentio — Dashboard » ne contient aucune PHRASE. */
+const UN_MOT = /[A-Za-zÀ-ÿ]{2,}/;
+
+/**
+ * Les morceaux de texte qu'une personne lira, dans une ligne de composant.
+ *
+ * ⚠️ TROIS SOURCES, ET LA TROISIÈME A ÉTÉ AJOUTÉE APRÈS COUP.
+ *
+ * La première version ne lisait que le texte encadré par deux balises sur la MÊME ligne, plus les
+ * lignes entièrement faites de texte. Elle laissait donc passer la forme la plus courante en JSX :
+ * un paragraphe dont la ligne commence par du texte et se termine par une balise en ligne, comme
+ * « Le lien vous connecte directement — <b>pas de mot de passe</b>. ». Quatre tirets bien visibles
+ * sur le site sont passés à travers, et ils n'ont été trouvés qu'en lisant la page rendue.
+ *
+ * On retire donc les balises et les expressions, et **ce qui reste est du texte**. Cette
+ * extraction ne vaut que pour les fichiers `.tsx` : ailleurs, une ligne dépouillée de ses
+ * accolades est du code, pas une phrase.
+ */
+function textesVisiblesDe(ligne, estUnComposant) {
+  const morceaux = [];
+
+  if (estUnComposant) {
+    const horsBalises = ligne.replace(/<[^>]*>/g, "\n").replace(/\{[^{}]*\}/g, "\n");
+    for (const morceau of horsBalises.split("\n")) {
+      // Une ligne de code dépouillée de ses balises reste du code. « = » et « ; » suffisent à
+      // les séparer : une déclaration en porte au moins un, une phrase de paragraphe jamais.
+      // Sans ce filtre, « const agentInstanceId = params.get("agent") » était signalé comme un
+      // manquement au lexique, ce qui est faux — et trois faux signalements suffisent à faire
+      // désactiver un contrôle.
+      //
+      // ⚠️ Les entités HTML d'abord, et c'est tout sauf un détail : « &apos; » se termine par un
+      // point-virgule. Sans ce retrait, le filtre écartait toute phrase française contenant une
+      // apostrophe — c'est-à-dire presque toutes, et il l'a fait en silence.
+      const sansEntites = morceau.replace(/&[a-zA-Z]+;/g, "'");
+      if (sansEntites.includes("=") || sansEntites.includes(";")) continue;
+      if (UN_MOT.test(sansEntites)) morceaux.push(sansEntites);
+    }
+  }
+
+  // Les attributs lus par une personne, et les chaînes qui portent du texte : titre d'onglet,
+  // description, libellé de bouton, message d'erreur.
+  for (const trouve of ligne.matchAll(/"([^"\\]{6,})"|'([^'\\]{6,})'|`([^`\\$]{6,})`/g)) {
+    const chaine = trouve[1] ?? trouve[2] ?? trouve[3];
+    if (UN_MOT.test(chaine)) morceaux.push(chaine);
+  }
+
+  return morceaux;
 }
 
 async function verifierTextesVisibles() {
-  const fichiers = await fichiersDe(join(REPO_ROOT, "apps", "web", "src"), [".svelte"]);
+  const fichiers = await fichiersDe(join(REPO_ROOT, "apps", "vitrine", "src"), [".ts", ".tsx"], [
+    ".test.ts",
+    ".test.tsx",
+  ]);
 
   for (const fichier of fichiers) {
-    const contenu = await readFile(fichier, "utf8");
-    const balise = baliseSeule(contenu);
-
-    for (const { texte, numero } of lignesDe(balise)) {
-      const horsBalises = texte.replace(/<[^>]*>/g, "\n");
-      for (const morceau of horsBalises.split("\n")) {
-        if (PHRASE.test(morceau.trim())) {
-          signaler(
-            fichier,
-            numero,
-            "les textes visibles vivent dans un seul endroit",
-            `contient du texte en dur : « ${morceau.trim().slice(0, 40)} ». Le déplacer dans ` +
-              `src/lib/labels.ts, seul endroit que le contrôle de lexique sait lire ` +
-              `(docs/17-lexique.md, CONF-08).`,
-          );
-        }
-      }
-    }
+    const contenu = sansCommentaires(await readFile(fichier, "utf8"));
+    const exempte = estExempteDeLexique(fichier);
+    const estUnComposant = fichier.endsWith(".tsx");
 
     for (const { texte, numero } of lignesDe(contenu)) {
-      for (const trouve of texte.matchAll(ATTRIBUTS_LUS)) {
-        if (PHRASE.test(trouve[1] ?? "")) {
+      for (const morceau of textesVisiblesDe(texte, estUnComposant)) {
+        const visible = morceau.trim();
+        if (visible.length < 4 || ressembleADuCode(visible)) continue;
+
+        // ⚠️ DEUX SEUILS, ET PAS UN SEUL.
+        //
+        // Le lexique ne se juge que sur une PHRASE : un mot isolé est presque toujours un nom de
+        // classe ou un identifiant, et le contrôle crierait sur du code. Un tiret, lui, se voit
+        // dans un titre de deux mots. Exiger une phrase pour les deux laissait passer
+        // « Sentio — Dashboard », qui ne contient aucun couple de mots adjacents : c'était
+        // pourtant le titre d'onglet de toute l'application.
+        if (TIRET_VISIBLE.test(visible)) {
           signaler(
             fichier,
             numero,
-            "les textes visibles vivent dans un seul endroit",
-            `écrit un texte lu par une personne dans un attribut : « ${trouve[1]} ». Le déplacer ` +
-              `dans src/lib/labels.ts.`,
+            "aucun tiret dans un texte visible",
+            `écrit « ${visible.slice(0, 60)} ». Le tiret est un raccourci : une virgule, un ` +
+              `deux-points ou une phrase de plus disent la même chose sans faire buter l'œil. ` +
+              `Demande explicite du fondateur ; les commentaires de code n'en sont pas concernés.`,
+          );
+        }
+
+        if (exempte || !PHRASE.test(visible)) continue;
+        const interdit = MOTS_INTERDITS.exec(visible);
+        if (interdit !== null) {
+          signaler(
+            fichier,
+            numero,
+            "le lexique est imposé",
+            `écrit « ${interdit[0]} » dans « ${visible.slice(0, 50)} ». Ce mot est interdit dans ` +
+              `un texte visible par un client (docs/17-lexique.md, source unique). On dit ` +
+              `« employé numérique » ou « collaborateur », jamais le vocabulaire technique interne.`,
           );
         }
       }
@@ -385,7 +514,7 @@ async function verifierAutonomieAuRecrutement() {
 
 async function main() {
   await verifierFonctions();
-  await verifierInterface();
+  await verifierInterfaceSansFournisseur();
   await verifierTextesVisibles();
   await verifierDomainePur();
   await verifierAppelsModele();

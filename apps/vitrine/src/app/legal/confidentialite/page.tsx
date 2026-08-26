@@ -10,7 +10,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Politique de confidentialité — Sentio",
+  title: "Politique de confidentialité | Sentio",
   description: "Comment Sentio collecte, utilise et protège vos données personnelles.",
 };
 
@@ -21,10 +21,8 @@ export default function ConfidentialitePage() {
       <p className="legal-updated">Dernière mise à jour · à définir avant mise en ligne publique</p>
 
       <div className="legal-todo">
-        <strong>Document en cours de finalisation.</strong> Ce texte décrit fidèlement
-        les traitements techniques réels de Sentio, mais doit être relu par un
-        conseil juridique avant toute ouverture au public. Certains champs
-        (raison sociale, DPO, DPA sous-traitants) sont laissés en attente.
+        Cette politique décrit les traitements réellement en place. La raison sociale et les
+        contrats de sous-traitance seront complétés ici dès l&apos;immatriculation de la société.
       </div>
 
       <h2>1. Qui est responsable de vos données</h2>
@@ -47,7 +45,7 @@ export default function ConfidentialitePage() {
       <p>
         Prospects, notes, brouillons d&apos;emails, historique de missions.
         Vous en restez propriétaire. Elles sont hébergées dans votre espace
-        cloisonné et ne sont accessibles à personne d&apos;autre — pas même
+        cloisonné et ne sont accessibles à personne d&apos;autre, pas même
         aux autres clients de Sentio.
       </p>
 
@@ -57,6 +55,20 @@ export default function ConfidentialitePage() {
         automatiquement (horodatage, décision, outil utilisé, résultat). Ce
         journal est un dispositif de traçabilité et d&apos;audit ; il ne peut
         être ni modifié ni effacé, y compris par l&apos;employé lui-même.
+      </p>
+
+      <h3>Ce que vous nous dites pendant le diagnostic en ligne</h3>
+      <p>
+        Le diagnostic est une conversation où vous décrivez votre activité,
+        votre clientèle et ce qui vous ralentit. Ce que vous écrivez est
+        transmis à un fournisseur de modèle situé aux États-Unis, encadré par
+        les clauses contractuelles types de la Commission européenne, pour la
+        seule durée de l&apos;échange. Rien n&apos;en est conservé tant que
+        vous ne recrutez pas.
+      </p>
+      <p>
+        N&apos;y écrivez pas de donnée sensible ni de secret d&apos;affaires :
+        le diagnostic sert à cerner un besoin, pas à recevoir un dossier.
       </p>
 
       <h3>Données techniques</h3>
@@ -85,10 +97,10 @@ export default function ConfidentialitePage() {
         </thead>
         <tbody>
           <tr><td>Compte actif</td><td>Toute la durée de l&apos;abonnement</td></tr>
-          <tr><td>Après résiliation</td><td>30 jours (récupération possible), puis suppression</td></tr>
-          <tr><td>Journal d&apos;exécution</td><td>13 mois (obligation d&apos;audit)</td></tr>
-          <tr><td>Factures</td><td>10 ans (obligation comptable, article L123-22 Code de commerce)</td></tr>
-          <tr><td>Logs techniques</td><td>90 jours maximum</td></tr>
+          <tr><td>Après résiliation</td><td>30 jours, le temps que vous puissiez récupérer vos données, puis suppression sur demande</td></tr>
+          <tr><td>Journal d&apos;exécution</td><td>13 mois, puis purge</td></tr>
+          <tr><td>Factures</td><td>10 ans (obligation comptable, article L123-22 du Code de commerce)</td></tr>
+          <tr><td>Adresses journalisées pour la limitation d&apos;abus</td><td>Le jour en cours</td></tr>
         </tbody>
       </table>
 
@@ -102,8 +114,10 @@ export default function ConfidentialitePage() {
 
       <h2>6. Sous-traitants (article 28 RGPD)</h2>
       <p>
-        Nous recourons aux sous-traitants suivants, chacun soumis à un Data
-        Processing Agreement :
+        Nous recourons aux sous-traitants suivants. Le contrat de
+        sous-traitance prévu à l&apos;article 28 est en cours de
+        formalisation avec chacun d&apos;eux, et cette page indiquera sa date
+        de signature.
       </p>
       <table>
         <thead>
@@ -112,8 +126,8 @@ export default function ConfidentialitePage() {
         <tbody>
           <tr><td>Supabase Inc.</td><td>Base de données, authentification, stockage</td><td>UE (eu-north-1, Suède)</td></tr>
           <tr><td>Vercel Inc.</td><td>Hébergement de l&apos;application</td><td>UE (régions privilégiées)</td></tr>
-          <tr><td>Google (Gemini)</td><td>Modèle d&apos;IA (traitement des données réelles clients)</td><td>UE — clause no-train du tier payant</td></tr>
-          <tr><td>Groq Inc.</td><td>Modèle d&apos;IA (uniquement données de test/conseiller public)</td><td>États-Unis</td></tr>
+          <tr><td>Google (Gemini)</td><td>Modèle d&apos;IA (traitement des données réelles clients)</td><td>Union européenne, sans entraînement sur vos données</td></tr>
+          <tr><td>Groq Inc.</td><td>Conseiller public et diagnostic en ligne</td><td>États-Unis</td></tr>
         </tbody>
       </table>
       <div className="legal-todo">
@@ -129,12 +143,12 @@ export default function ConfidentialitePage() {
         Vous disposez à tout moment des droits suivants (articles 15 à 22 RGPD) :
       </p>
       <ul>
-        <li><strong>Accès</strong> — obtenir une copie de vos données</li>
-        <li><strong>Rectification</strong> — corriger une donnée inexacte</li>
-        <li><strong>Effacement</strong> — supprimer votre compte et les données associées</li>
-        <li><strong>Portabilité</strong> — récupérer vos données dans un format lisible</li>
-        <li><strong>Opposition</strong> — vous opposer à un traitement particulier</li>
-        <li><strong>Limitation</strong> — geler un traitement en cas de contestation</li>
+        <li><strong>Accès</strong> : obtenir une copie de vos données</li>
+        <li><strong>Rectification</strong> : corriger une donnée inexacte</li>
+        <li><strong>Effacement</strong> : supprimer votre compte et les données associées</li>
+        <li><strong>Portabilité</strong> : récupérer vos données dans un format lisible</li>
+        <li><strong>Opposition</strong> : vous opposer à un traitement particulier</li>
+        <li><strong>Limitation</strong> : geler un traitement en cas de contestation</li>
       </ul>
       <p>
         Pour exercer ces droits, consultez la page{" "}
@@ -146,8 +160,8 @@ export default function ConfidentialitePage() {
         <li>Cloisonnement des données au niveau base (Row-Level Security)</li>
         <li>Chiffrement TLS en transit et au repos</li>
         <li>Journal d&apos;audit permanent, non modifiable</li>
-        <li>Accès aux données limité aux collaborateurs qui en ont besoin</li>
-        <li>Sauvegardes automatiques quotidiennes, restauration testée</li>
+        <li>Accès aux données limité à ce qui est nécessaire pour vous servir</li>
+        <li>Sauvegardes chiffrées, dont la restauration est vérifiée à chaque prise</li>
       </ul>
 
       <h2>9. Cookies</h2>

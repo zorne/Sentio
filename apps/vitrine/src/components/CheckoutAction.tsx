@@ -56,7 +56,7 @@ export function CheckoutAction({
         </span>
         <p className="lp-hero-sub" style={{ margin: "0 0 24px", maxWidth: "48ch" }}>
           Email envoyé à <strong>{email}</strong>. Ouvrez-le et cliquez sur le lien pour accéder à
-          votre employé — pas de mot de passe à retenir.
+          votre employé. Aucun mot de passe à retenir.
         </p>
         <div className="lp-hero-act">
           <Link href="/" className="lp-btn lp-btn--ghost">
@@ -74,7 +74,7 @@ export function CheckoutAction({
           {plan.name} · en attente de paiement
         </span>
         <p className="lp-hero-sub" style={{ margin: "0 0 20px", maxWidth: "48ch" }}>
-          Le paiement en ligne n&apos;est pas encore activé sur cette formule — votre choix est
+          Le paiement en ligne n&apos;est pas encore activé sur cette formule. Votre choix est
           bien noté. En attendant, laissez votre email pour recevoir votre employé dès maintenant.
         </p>
         <form onSubmit={sendAccess} className="form-inline" style={{ marginBottom: error ? 8 : 0 }}>

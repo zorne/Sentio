@@ -73,7 +73,7 @@ function AgentPageContent() {
           )}
 
           <p className="lp-hero-sub">
-            {name} écoute en continu pendant que vous rédigez — pas besoin d&apos;attendre
+            {name} écoute en continu pendant que vous rédigez, sans que vous ayez à attendre
             la fin pour qu&apos;il commence à comprendre.
           </p>
         </div>

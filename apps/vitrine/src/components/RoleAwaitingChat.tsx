@@ -66,7 +66,7 @@ export function RoleAwaitingChat({
 
     next.push({
       role: "assistant",
-      content: `Merci ! Je note tout ça — ${role.displayName} arrive très bientôt, vous serez prévenu·e dès qu'il est prêt.`,
+      content: `Merci, je note tout ça. ${role.displayName} arrive très bientôt, et vous serez prévenu dès qu'il est prêt.`,
     });
     setMessages(next);
     setDone(true);

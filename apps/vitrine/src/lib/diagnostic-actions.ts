@@ -36,7 +36,7 @@ export type DiagnosticTurnResult =
   | { readonly kind: "panne"; readonly message: string };
 
 const LIMITE_VISITEUR =
-  "Nous avons échangé longuement aujourd'hui. Revenez demain pour continuer — rien n'est perdu.";
+  "Nous avons échangé longuement aujourd'hui. Revenez demain pour continuer : rien n'est perdu.";
 const LIMITE_ADRESSE =
   "Beaucoup d'échanges sont partis de votre réseau aujourd'hui. Réessayez un peu plus tard.";
 const PANNE = "Nous n'avons pas pu vous répondre à l'instant. Réessayez dans un moment.";

@@ -254,47 +254,6 @@ const APRES_RECRUTEMENT = [
   },
 ];
 
-// ── Le retard ────────────────────────────────────────────────────────
-// Une conviction, annoncée comme telle. Aucune étude n'est citée parce
-// qu'aucune n'est vérifiée — et une statistique inventée sur ce sujet
-// serait exactement le genre de page qu'un dirigeant a déjà vue trente
-// fois, donc contre-productive en plus d'être fausse.
-const RETARD = [
-  {
-    cle: "conviction",
-    rang: "Ce que nous pensons",
-    titre: "Ça deviendra la norme",
-    texte: (
-      <>
-        Comme le site web, comme le terminal de paiement. <b>Plus personne ne se demande s&apos;il
-        en faut un</b>. On se demande seulement pourquoi certains n&apos;en ont toujours pas.
-      </>
-    ),
-  },
-  {
-    cle: "ecart",
-    rang: "Ce que ça implique",
-    titre: "L'écart se creuse lentement",
-    texte: (
-      <>
-        Pas d&apos;un coup, et c&apos;est ce qui le rend difficile à voir : <b>un prospect relancé
-        pendant que le vôtre attend</b>, répété chaque jour pendant deux ans.
-      </>
-    ),
-  },
-  {
-    cle: "cout",
-    rang: "Ce que ça vous coûte",
-    titre: "Attendre a un prix",
-    texte: (
-      <>
-        Et ce n&apos;est pas celui de l&apos;abonnement. C&apos;est <b>le temps qu&apos;il faudra
-        pour rattraper</b> ceux qui n&apos;auront pas attendu.
-      </>
-    ),
-  },
-];
-
 export default function LandingPage() {
   return (
     <div className="lp">
@@ -426,34 +385,6 @@ export default function LandingPage() {
                   <div className="lp-memo-day">{a.rang}</div>
                   <div className="lp-memo-fact">
                     <b>{a.titre}.</b> {a.texte}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ── LE RETARD ───────────────────────────────────────────── */}
-      <section className="lp-sec" id="retard">
-        <div className="lp-shell">
-          <Reveal className="lp-sec-head">
-            <span className="lp-mono">Le retard</span>
-            <h2>Dans quelques années, la question ne se posera plus.</h2>
-            <p>
-              Nous n&apos;avons pas d&apos;étude à vous citer, et nous n&apos;allons pas en inventer
-              une. Nous avons une conviction : la voici en clair, à vous d&apos;en faire ce que vous
-              voulez.
-            </p>
-          </Reveal>
-
-          <Reveal>
-            <div className="lp-memo">
-              {RETARD.map((r) => (
-                <div className="lp-memo-cell" key={r.cle}>
-                  <div className="lp-memo-day">{r.rang}</div>
-                  <div className="lp-memo-fact">
-                    <b>{r.titre}.</b> {r.texte}
                   </div>
                 </div>
               ))}

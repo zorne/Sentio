@@ -15,7 +15,7 @@ import "@/app/landing.css";
 import "./diagnostic.css";
 
 export const metadata: Metadata = {
-  title: "Sentio — Parlez-moi de votre entreprise",
+  title: "Parlez-moi de votre entreprise | Sentio",
   description: "Décrivez votre entreprise à Sentio, qui vous présente le collaborateur numérique adapté.",
 };
 

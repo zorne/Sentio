@@ -10,7 +10,7 @@ import "@/app/landing.css";
 import "./checkout.css";
 
 export const metadata: Metadata = {
-  title: "Sentio — Récapitulatif de commande",
+  title: "Récapitulatif de commande | Sentio",
 };
 
 export default async function CheckoutPage({
@@ -59,8 +59,11 @@ export default async function CheckoutPage({
             </div>
             <p className="lp-plan-note">{plan.tagline}</p>
 
+            {/* Les points saillants, pas les vingt lignes de la formule : un récapitulatif de
+                commande sert à confirmer un montant et une échéance. La décision est déjà prise,
+                et re-vendre à cet instant repousse le bouton sous la ligne de flottaison. */}
             <ul className="cko-features">
-              {plan.fullFeatures.map((f) => (
+              {plan.highlights.map((f) => (
                 <li key={f}>{f}</li>
               ))}
             </ul>

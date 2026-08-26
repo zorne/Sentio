@@ -6,7 +6,7 @@ import { PLAN_ORDER, PLANS } from "@/lib/plans";
 import "@/app/landing.css";
 
 export const metadata: Metadata = {
-  title: "Sentio — Ce qui se passe après",
+  title: "Ce qui se passe après | Sentio",
   description:
     "Le déroulé complet après le recrutement : votre espace privé, le cadrage de votre employé numérique, et ce qu'il attend de vous pour travailler.",
 };
@@ -50,7 +50,7 @@ const ETAPES = [
     titre: "Vous ouvrez votre espace",
     texte: (
       <>
-        Le lien reçu par email vous connecte directement — <b>pas de mot de passe à retenir</b>.
+        Le lien reçu par email vous connecte directement, <b>sans mot de passe à retenir</b>.
         Tout se passe ensuite dans cet espace privé : vous ne revenez plus sur cette page.
       </>
     ),
@@ -105,7 +105,7 @@ const ATTENDU = [
     titre: "Votre client idéal",
     texte: (
       <>
-        Secteur, taille, situation — ce qui fait qu&apos;un prospect vaut votre temps. Écrit avec
+        Secteur, taille, situation : ce qui fait qu&apos;un prospect vaut votre temps. Écrit avec
         vos mots, en trois lignes, pas dans un formulaire à cases.
       </>
     ),
@@ -125,7 +125,7 @@ const ATTENDU = [
     titre: "Le dernier mot",
     texte: (
       <>
-        Quelques secondes par envoi. C&apos;est le seul geste récurrent qu&apos;on vous demande — et
+        Quelques secondes par envoi. C&apos;est le seul geste récurrent qu&apos;on vous demande, et
         c&apos;est celui qu&apos;on refuse de vous retirer.
       </>
     ),
@@ -188,7 +188,7 @@ export default async function PlansPage({
               <h2>Deux réponses, puis votre accord.</h2>
               <p>
                 Un employé numérique ne devine pas votre métier. Ce qu&apos;il attend de vous tient
-                en trois choses — et aucune ne demande de compétence technique.
+                en trois choses, et aucune ne demande de compétence technique.
               </p>
             </div>
 
@@ -212,7 +212,7 @@ export default async function PlansPage({
               <span className="lp-mono">Formules</span>
               <h2>Choisissez la génération de votre équipe.</h2>
               <p>
-                Trois paliers, pas trois quotas différents — chacun change ce que vos collaborateurs
+                Trois paliers, pas trois quotas différents : chacun change ce que vos collaborateurs
                 numériques sont capables de faire seuls.
               </p>
             </div>
