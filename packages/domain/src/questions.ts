@@ -273,7 +273,7 @@ export function repondre(question: Question, ctx: ContexteDeReponse): Reponse {
         statut: "repond",
         phrase:
           `${pluriel(t.reponses, "entreprise m'a répondu", "entreprises m'ont répondu")} ${quand}` +
-          (suite.length === 0 ? "." : ` — ${suite.join(", ")}.`),
+          (suite.length === 0 ? "." : `, ${suite.join(", ")}.`),
       };
     }
 
@@ -296,7 +296,7 @@ export function repondre(question: Question, ctx: ContexteDeReponse): Reponse {
         statut: "repond",
         phrase:
           `${pluriel(t.ventes, "vente déclarée", "ventes déclarées")} ${quand}, pour ` +
-          `${t.chiffreAffaires.toLocaleString("fr-FR")} € — ` +
+          `${t.chiffreAffaires.toLocaleString("fr-FR")} €, soit ` +
           `${panier.toLocaleString("fr-FR")} € en moyenne.` +
           (reste === null || reste === 0
             ? ""

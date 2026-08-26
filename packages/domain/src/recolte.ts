@@ -33,8 +33,8 @@ export interface MotsDeLaRecolte {
 const NEUTRE: MotsDeLaRecolte = {
   titre: "Ce qui a abouti",
   vide:
-    "Rien n'a encore abouti. Vous verrez ici les entreprises qui ont donné une suite — un " +
-    "rendez-vous ou une vente.",
+    "Rien n'a encore abouti. Vous verrez ici les entreprises qui ont donné une suite : un " +
+    "rendez-vous, ou une vente.",
 };
 
 const PAR_ROLE: Record<string, MotsDeLaRecolte> = {
@@ -42,10 +42,10 @@ const PAR_ROLE: Record<string, MotsDeLaRecolte> = {
     titre: "Les entreprises qui ont répondu",
     vide:
       "Aucune entreprise n'a encore donné suite. Vous verrez ici celles qui répondent " +
-      "vraiment — pas celles qui ont simplement reçu un message.",
+      "vraiment, pas celles qui ont simplement reçu un message.",
   },
   qualification: {
-    titre: "Les bonnes entreprises, celles qui donnent suite",
+    titre: "Les entreprises qui donnent suite",
     vide:
       "Aucune entreprise retenue n'a encore donné suite. C'est ce que la qualification cherche " +
       "à obtenir : moins d'entreprises approchées, et davantage qui répondent.",

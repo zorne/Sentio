@@ -61,6 +61,26 @@ export interface DonneesDeLaScene {
   readonly journal: readonly { readonly id: string; readonly quand: string; readonly quoi: string }[];
   /** Ce que le dirigeant voit sans cliquer. */
   readonly tableau: DonneesDuTableau;
+  /**
+   * Ce qu'il faut savoir avant chaque rendez-vous obtenu.
+   *
+   * ⚠️ Chaque élément porte sa PROVENANCE. Le texte des réponses reçues n'est stocké nulle part :
+   * ce qui vient de l'échange, ce sont les **notes consignées** par l'employée.
+   */
+  readonly rendezVous: readonly {
+    readonly leadId: string;
+    readonly entreprise: string;
+    readonly contact: string | null;
+    readonly fonction: string | null;
+    readonly secteur: string | null;
+    readonly pourquoiRetenue: string | null;
+    readonly dernierObjet: string | null;
+    readonly dernierEnvoi: string | null;
+    readonly messagesEnvoyes: number;
+    readonly depuis: string | null;
+    readonly obtenuLe: string;
+    readonly notes: readonly { readonly note: string; readonly quand: string }[];
+  }[];
   /** Ce qui a abouti — NOMMÉ selon le rôle, jamais dérivé d'un métier en base (adr/0029). */
   readonly recolte: {
     readonly titre: string;
@@ -96,6 +116,7 @@ type Panneau =
   | "attente"
   | "memoire"
   | "recolte"
+  | "rendezvous"
   | "main";
 
 const MOTS_DE_L_AUTONOMIE: Record<string, string> = {
@@ -308,6 +329,13 @@ export function Scene(d: DonneesDeLaScene) {
           onClick={() => setPanneau(panneau === "recolte" ? null : "recolte")}
         />
         <Orbe
+          nom="Avant vos rendez-vous"
+          icone="rendezvous"
+          compte={d.rendezVous.length}
+          actif={panneau === "rendezvous"}
+          onClick={() => setPanneau(panneau === "rendezvous" ? null : "rendezvous")}
+        />
+        <Orbe
           nom="Votre objectif"
           icone="objectif"
           actif={panneau === "objectif"}
@@ -406,6 +434,87 @@ export function Scene(d: DonneesDeLaScene) {
               </Contenu>
             ) : null}
 
+            {panneau === "rendezvous" ? (
+              <Contenu titre="Avant vos rendez-vous">
+                {d.rendezVous.length > 0 ? (
+                  <div className="rv">
+                    {d.rendezVous.map((r) => (
+                      <article key={r.leadId} className="rv-fiche">
+                        <header>
+                          <strong>{r.entreprise}</strong>
+                          {r.contact ? (
+                            <span className="rv-qui">
+                              {r.contact}
+                              {r.fonction ? `, ${r.fonction}` : ""}
+                            </span>
+                          ) : null}
+                          <time>obtenu le {r.obtenuLe}</time>
+                        </header>
+
+                        {/* ⚠️ Chaque ligne dit D'OÙ elle vient. Un briefing dont on ignore la
+                            provenance ne se défend pas en réunion. */}
+                        {r.notes.length > 0 ? (
+                          <ul className="rv-notes">
+                            {r.notes.map((n) => (
+                              <li key={n.quand}>
+                                <span className="rv-source">Ce qu&apos;elle a retenu, le {n.quand}</span>
+                                {n.note}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="rv-rien">
+                            Rien n&apos;a été consigné sur cet échange. Je ne garde pas le texte
+                            des réponses reçues, seulement ce que j&apos;en ai noté.
+                          </p>
+                        )}
+
+                        <dl className="rv-faits">
+                          {r.pourquoiRetenue ? (
+                            <>
+                              <dt>Pourquoi elle a été retenue</dt>
+                              <dd>{r.pourquoiRetenue}</dd>
+                            </>
+                          ) : null}
+                          {r.dernierObjet ? (
+                            <>
+                              <dt>Dernier message envoyé</dt>
+                              <dd>
+                                « {r.dernierObjet} »{r.dernierEnvoi ? `, envoyé le ${r.dernierEnvoi}` : ""}
+                              </dd>
+                            </>
+                          ) : null}
+                          {r.secteur ? (
+                            <>
+                              <dt>Secteur</dt>
+                              <dd>{r.secteur}</dd>
+                            </>
+                          ) : null}
+                          {r.messagesEnvoyes > 0 ? (
+                            <>
+                              <dt>Échange</dt>
+                              <dd>
+                                {r.messagesEnvoyes.toLocaleString("fr-FR")} message
+                                {r.messagesEnvoyes > 1 ? "s" : ""} envoyé
+                                {r.messagesEnvoyes > 1 ? "s" : ""}
+                                {r.depuis ? `, depuis le ${r.depuis}` : ""}
+                              </dd>
+                            </>
+                          ) : null}
+                        </dl>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="sc-vide">
+                    Aucun rendez-vous en attente. Vous verrez ici, avant chacun, ce qu&apos;il faut
+                    savoir : ce qu&apos;elle a retenu de l&apos;échange, ce qui a été écrit, et
+                    pourquoi cette entreprise a été retenue.
+                  </p>
+                )}
+              </Contenu>
+            ) : null}
+
             {panneau === "recolte" ? (
               <Contenu titre={d.recolte.titre}>
                 {d.recolte.lignes.length > 0 ? (
@@ -414,11 +523,11 @@ export function Scene(d: DonneesDeLaScene) {
                       <li key={`${ligne.entreprise}-${ligne.quand}`}>
                         <span className="rc-qui">
                           <strong>{ligne.entreprise}</strong>
-                          {ligne.contact ? <em> — {ligne.contact}</em> : null}
+                          {ligne.contact ? <em>, {ligne.contact}</em> : null}
                         </span>
                         <span className="rc-quoi">
                           {ligne.quoi}
-                          {ligne.valeur > 0 ? ` · ${ligne.valeur.toLocaleString("fr-FR")} €` : ""}
+                          {ligne.valeur > 0 ? ` pour ${ligne.valeur.toLocaleString("fr-FR")} €` : ""}
                         </span>
                         <time>{ligne.quand}</time>
                       </li>
@@ -570,7 +679,7 @@ function Orbe({
   );
 }
 
-type NomDIcone = "boite" | "progres" | "recolte" | "objectif" | "vous";
+type NomDIcone = "boite" | "progres" | "recolte" | "rendezvous" | "objectif" | "vous";
 
 /**
  * Les icônes, dessinées à la main en SVG.
@@ -617,6 +726,16 @@ function Icone({ nom }: { nom: NomDIcone }) {
           <path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9L12 16.9 6.7 19.7l1.1-5.9L3.5 9.7l5.9-.8z" />
         </svg>
       );
+    // Deux personnes face à face : un rendez-vous, c'est une conversation à préparer.
+    case "rendezvous":
+      return (
+        <svg {...commun}>
+          <circle cx="8" cy="9" r="2.6" />
+          <circle cx="16" cy="9" r="2.6" />
+          <path d="M3 19c0-2.6 2.2-4 5-4s5 1.4 5 4" />
+          <path d="M13.5 19c0-2.6 1.9-4 4.5-4 1.4 0 2.6.4 3.5 1.1" />
+        </svg>
+      );
     case "objectif":
       return (
         <svg {...commun}>
@@ -658,7 +777,7 @@ function Jauge({ mot, c }: { mot: string; c: Consommation }) {
       <span className="ab-jauge-nombre">
         {c.fait.toLocaleString("fr-FR")}
         {c.plafond === null ? (
-          <em> — sans plafond</em>
+          <em>, sans plafond</em>
         ) : (
           <em> sur {c.plafond.toLocaleString("fr-FR")}</em>
         )}

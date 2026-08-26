@@ -47,39 +47,46 @@ export interface DonneesDuTableau {
 export function Tableau(d: DonneesDuTableau) {
   return (
     <section className="tb" aria-label="Ce que votre employée a produit">
-      <div className="tb-chiffres">
+      {/* ── Les indicateurs. Une valeur, un libellé, un filet entre chacun : alignés sur une
+             ligne de base commune, ils se lisent d'un balayage. Empilés sans structure, ils se
+             lisent un par un. ── */}
+      <dl className="tb-chiffres">
         <Pastille valeur={d.contactes} mot="entreprises approchées" />
-        <Pastille valeur={d.reponses} mot="ont répondu" />
+        <Pastille valeur={d.reponses} mot="réponses reçues" />
         <Pastille valeur={d.entreprisesEngagees} mot="ont donné une suite" accent />
         <Pastille
           valeur={d.ventes}
-          mot={d.ventes > 0 ? `ventes — ${d.chiffreAffaires.toLocaleString("fr-FR")} €` : "vente"}
+          mot="ventes déclarées"
+          {...(d.ventes > 0 && { precision: `${d.chiffreAffaires.toLocaleString("fr-FR")} €` })}
           accent
         />
-      </div>
+      </dl>
 
       <div className="tb-taux">
-        <div className="tb-taux-nombre">
-          {d.taux.statut === "mesure" ? (
-            <>
+        {d.taux.statut === "mesure" ? (
+          <>
+            <p className="tb-taux-nombre">
               <strong>{d.taux.valeur.toLocaleString("fr-FR")} %</strong>
-              <span>
-                de réponses, sur {d.taux.sur.toLocaleString("fr-FR")} entreprises approchées
-              </span>
-            </>
-          ) : (
-            <>
-              {/* ⚠️ Pas de « — » ni de case vide : on dit ce qui manque. Un taux calculé sur trop
-                  peu d'envois afficherait 50 % le premier jour et 8 % la semaine suivante, et le
-                  dirigeant croirait que tout s'écroule. */}
+              <span>taux de réponse</span>
+            </p>
+            <p className="tb-taux-base">
+              Mesuré sur {d.taux.sur.toLocaleString("fr-FR")} entreprises approchées.
+            </p>
+          </>
+        ) : (
+          <>
+            {/* ⚠️ Pas de « — » ni de case vide : on dit ce qui manque. Un taux calculé sur trop
+                peu d'envois afficherait 50 % le premier jour et 8 % la semaine suivante, et le
+                dirigeant croirait que tout s'écroule. */}
+            <p className="tb-taux-nombre">
               <strong className="tb-pas-encore">pas encore de taux</strong>
-              <span>
-                {d.taux.manque.toLocaleString("fr-FR")} entreprises de plus à approcher pour
-                qu&apos;un pourcentage veuille dire quelque chose
-              </span>
-            </>
-          )}
-        </div>
+            </p>
+            <p className="tb-taux-base">
+              Il faut {d.taux.manque.toLocaleString("fr-FR")} entreprises de plus pour qu&apos;un
+              pourcentage veuille dire quelque chose.
+            </p>
+          </>
+        )}
         <Tendance evolution={d.evolution} />
       </div>
 
@@ -88,11 +95,24 @@ export function Tableau(d: DonneesDuTableau) {
   );
 }
 
-function Pastille({ valeur, mot, accent }: { valeur: number; mot: string; accent?: boolean }) {
+function Pastille({
+  valeur,
+  mot,
+  precision,
+  accent,
+}: {
+  valeur: number;
+  mot: string;
+  precision?: string;
+  accent?: boolean;
+}) {
   return (
     <div className={`tb-pastille${accent ? " est-accent" : ""}`}>
-      <strong>{valeur.toLocaleString("fr-FR")}</strong>
-      <span>{mot}</span>
+      <dt>{mot}</dt>
+      <dd>
+        <strong>{valeur.toLocaleString("fr-FR")}</strong>
+        {precision ? <span>{precision}</span> : null}
+      </dd>
     </div>
   );
 }
@@ -106,8 +126,10 @@ function Tendance({ evolution }: { evolution: DonneesDuTableau["evolution"] }) {
   }
   return (
     <p className={`tb-tendance tb-tendance--${evolution.sens}`}>
-      {evolution.sens === "hausse" ? "▲" : "▼"} {evolution.points.toLocaleString("fr-FR")} points
-      {evolution.sens === "hausse" ? " de mieux" : " de moins"} sur la seconde moitié de la période
+      <span className="tb-delta">
+        {evolution.sens === "hausse" ? "▲" : "▼"} {evolution.points.toLocaleString("fr-FR")} pts
+      </span>
+      sur la seconde moitié de la période
     </p>
   );
 }
@@ -115,12 +137,20 @@ function Tendance({ evolution }: { evolution: DonneesDuTableau["evolution"] }) {
 /**
  * La courbe des entreprises approchées, jour par jour.
  *
- * ⚠️ **Tous les jours sont là, y compris les jours vides.** Une courbe qui saute les jours sans
- * travail relie lundi à jeudi en ligne droite et donne à voir une progression continue là où il
- * ne s'est rien passé.
+ * ══ CE QUI LA REND LISIBLE, ET PAS SEULEMENT JOLIE ══
  *
- * Une seule série : donc une seule couleur, et aucune légende — le titre la nomme. Les valeurs ne
- * sont pas écrites sur chaque point (ce serait illisible) : elles apparaissent au survol.
+ * Une ligne seule n'est pas un graphique : elle montre une forme sans donner d'ordre de grandeur.
+ * Trois ajouts suffisent, et aucun de plus :
+ *
+ *   · **une graduation haute**, qui porte le maximum de la période. Sans elle, la même courbe
+ *     décrit aussi bien 4 envois par jour que 400 ;
+ *   · **une ligne de sol**, pour que le zéro soit une position et non une absence ;
+ *   · **les deux bornes de dates**, aux extrémités. Un axe complet serait illisible sur 300 px
+ *     de large — et personne n'a besoin de lire le douzième jour.
+ *
+ * ⚠️ Toujours **une seule série**, donc une seule couleur et **aucune légende** : la légende du
+ * dessous la nomme. Et jamais un point sur chaque jour : quatorze marqueurs transforment une
+ * tendance en nuage. Le point n'apparaît qu'au survol, là où le regard est déjà.
  */
 function Courbe({
   points,
@@ -134,47 +164,60 @@ function Courbe({
   if (points.length < 2) return null;
 
   const L = 300;
-  const H = 64;
+  const H = 72;
   // Une marge latérale : sans elle, le trait du premier et du dernier jour est coupé en deux par
-  // le bord du cadre — et le point de survol du dernier jour déborde du conteneur.
+  // le bord du cadre, et le point de survol du dernier jour déborde du conteneur.
   const MARGE = 3;
-  const x = (i: number) => MARGE + (i / (points.length - 1)) * (L - MARGE * 2);
-  // Le tracé garde une marge en haut et en bas : une courbe qui touche le bord se lit comme
-  // tronquée, et son maximum devient indistinguable d'un dépassement.
-  const y = (part: number) => H - MARGE - part * (H - MARGE * 3);
+  const HAUT = 10; // la graduation haute vit ici
+  const SOL = H - 4;
 
-  const trace = points.map((p, i) => `${i === 0 ? "M" : "L"} ${x(i).toFixed(1)} ${y(p.part).toFixed(1)}`).join(" ");
-  const surface = `${trace} L ${x(points.length - 1).toFixed(1)} ${H} L ${MARGE} ${H} Z`;
+  const x = (i: number) => MARGE + (i / (points.length - 1)) * (L - MARGE * 2);
+  const y = (part: number) => SOL - part * (SOL - HAUT);
+
+  const trace = points
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${x(i).toFixed(1)} ${y(p.part).toFixed(1)}`)
+    .join(" ");
+  const surface = `${trace} L ${x(points.length - 1).toFixed(1)} ${SOL} L ${MARGE} ${SOL} Z`;
   const actif = survole === null ? null : points[survole];
+  const maximum = Math.max(...points.map((p) => p.valeur), 0);
 
   return (
     <figure className="tb-courbe">
       <figcaption>
-        Entreprises approchées, jour par jour — {jours} derniers jours
-        {actif ? (
-          <span className="tb-point-lu">
-            {dateCourte(actif.jour)} · {actif.valeur.toLocaleString("fr-FR")}
-          </span>
-        ) : null}
+        <span>Entreprises approchées, jour par jour</span>
+        <span className="tb-fenetre">{jours} derniers jours</span>
       </figcaption>
 
-      <svg viewBox={`0 0 ${L} ${H}`} preserveAspectRatio="none" role="img" aria-label={`Entreprises approchées sur ${jours} jours`}>
+      <svg
+        viewBox={`0 0 ${L} ${H}`}
+        preserveAspectRatio="none"
+        role="img"
+        aria-label={`Entreprises approchées sur ${jours} jours, maximum ${maximum} en une journée`}
+      >
         <defs>
           {/* Le remplissage s'éteint vers le bas : il donne du poids à la courbe sans dessiner
               un bloc de couleur qui écraserait le trait. */}
           <linearGradient id="tb-degrade" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--mint)" stopOpacity="0.55" />
+            <stop offset="0%" stopColor="var(--mint)" stopOpacity="0.5" />
             <stop offset="100%" stopColor="var(--mint)" stopOpacity="0" />
           </linearGradient>
         </defs>
+
+        {/* La graduation et le sol : récessifs, en pointillé pour le haut — une ligne pleine
+            entrerait en concurrence avec la courbe qu'elle sert à mesurer. */}
+        <line className="tb-graduation" x1={MARGE} y1={HAUT} x2={L - MARGE} y2={HAUT} />
+        <line className="tb-sol" x1={MARGE} y1={SOL} x2={L - MARGE} y2={SOL} />
+
         <path className="tb-surface" d={surface} />
         <path className="tb-trace" d={trace} />
+
         {actif ? (
           <>
-            <line className="tb-viseur" x1={x(survole!)} y1={0} x2={x(survole!)} y2={H} />
+            <line className="tb-viseur" x1={x(survole!)} y1={HAUT} x2={x(survole!)} y2={SOL} />
             <circle className="tb-pointeur" cx={x(survole!)} cy={y(actif.part)} r={3} />
           </>
         ) : null}
+
         {/* Des cibles de survol plus larges que les points : viser un point de 3 px à la souris
             est un exercice, pas une lecture. */}
         {points.map((p, i) => (
@@ -190,6 +233,23 @@ function Courbe({
           />
         ))}
       </svg>
+
+      {/* L'échelle et les bornes, en dehors du SVG : le texte d'un SVG étiré par
+          `preserveAspectRatio="none"` se déforme avec lui. */}
+      <div className="tb-echelle">
+        <span className="tb-max">{maximum.toLocaleString("fr-FR")} le jour le plus fort</span>
+        <span className="tb-bornes">
+          {points[0] ? dateCourte(points[0].jour) : ""}
+          <i />
+          {points[points.length - 1] ? dateCourte(points[points.length - 1]!.jour) : ""}
+        </span>
+      </div>
+
+      <p className={`tb-lu${actif ? " est-lu" : ""}`}>
+        {actif
+          ? `${dateCourte(actif.jour)} : ${actif.valeur.toLocaleString("fr-FR")} approchées`
+          : "Survolez la courbe pour lire un jour."}
+      </p>
     </figure>
   );
 }

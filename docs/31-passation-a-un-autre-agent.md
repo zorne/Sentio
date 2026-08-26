@@ -36,6 +36,9 @@
 | 2026-08-26 | **La barre devient des icônes** — boîte aux lettres à point rouge, progrès, récolte, objectif, vous | Le nom apparaît au survol ; cinq libellés alignés redeviennent un menu |
 | 2026-08-26 | **La récolte** — ce qui a abouti, NOMMÉ selon le rôle | La base ne connaît aucun métier ; seul le vocabulaire change. C'est la frontière d'`adr/0029` |
 | 2026-08-26 | **Julie en dit plus** — taux, panier moyen, reste à faire, les deux rythmes | Même seuil de taux que le tableau de bord ; jamais un verdict, toujours deux nombres |
+| 2026-08-26 | **Avant vos rendez-vous** — un briefing par entreprise qui a donné un rendez-vous | ⚠️ **Le texte des réponses reçues n'est stocké nulle part.** Ce qui vient de l'échange, ce sont les **notes consignées** |
+| 2026-08-26 | **Tableau et courbe repris** — indicateurs en colonnes, graduation, sol, bornes de dates | Une ligne seule montre une forme sans donner d'ordre de grandeur |
+| 2026-08-26 | **Plus aucun tiret dans le texte visible** | Demande du fondateur. Les tirets cadratins restent dans les commentaires de code |
 
 ---
 
@@ -185,6 +188,21 @@ Après 40 envois **sans une seule réponse**, l'employée s'arrête d'elle-même
 directe au reproche le plus documenté fait aux concurrents (« ~1 400 emails, 0 réponse »). Elle ne
 s'exprime **que si rien d'autre ne bloque** : un domaine suspendu *explique* le silence, et
 l'annoncer enverrait le dirigeant réécrire son message alors que le problème est technique.
+
+### On ne stocke PAS le texte des réponses reçues
+
+Le briefing d'avant rendez-vous ne peut donc **pas** citer ce que le prospect a écrit. Sentio
+enregistre ce qu'il **envoie** (`outbound_message`) et ce que le client **déclare** (`outcome`) —
+jamais le contenu de ce qui arrive.
+
+Ce qui porte des mots venus de l'échange, ce sont les **notes consignées** par l'employée
+(`execution_event`, `fiche_mise_a_jour`, `payload.note`). C'est la pièce la plus précieuse du
+briefing, et la seule de cette nature.
+
+⚠️ **Chaque élément est affiché avec sa provenance.** Un briefing dont on ignore d'où vient chaque
+ligne ne se défend pas en réunion — et c'est exactement là qu'on en a besoin. Ne jamais faire
+semblant de citer une réponse : devant un client qui a le message sous les yeux, le mensonge se
+voit en une seconde.
 
 ### La récolte est nommée par le rôle, jamais dérivée d'un métier
 
@@ -394,6 +412,8 @@ entrée qui n'apprend rien à un lecteur qui ne connaît pas le projet n'a rien 
 2. **Elle propose, elle n'applique pas** — pour tout ce qui touche à son rôle.
 3. **Les garanties vivent dans la base.** Si c'est mécaniquement décidable, ajoute un contrôle et
    branche-le sur `verify` ; n'écris jamais « à vérifier à la revue ».
-4. **Signale ce que tu découvres.** Les manques structurels trouvés en codant sont ce qu'il
+4. **Pas de tiret cadratin dans le texte visible** — demande explicite du fondateur. Une virgule,
+   un deux-points ou une phrase de plus. Les commentaires de code n'en sont pas concernés.
+5. **Signale ce que tu découvres.** Les manques structurels trouvés en codant sont ce qu'il
    attend le plus — les taire est la vraie faute.
-5. **Regarde l'écran.** Le code qui compile n'est pas le produit que le client voit.
+6. **Regarde l'écran.** Le code qui compile n'est pas le produit que le client voit.

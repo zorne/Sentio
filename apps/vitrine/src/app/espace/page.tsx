@@ -201,6 +201,25 @@ export default async function EspacePage() {
 
   const mots = motsDeLaRecolte(configuration?.role ?? null);
 
+  // ── De quoi préparer chaque rendez-vous obtenu.
+  //    ⚠️ Le texte des réponses reçues n'est stocké nulle part : ce qui porte des mots venus de
+  //    l'échange, ce sont les NOTES consignées par l'employée. Chaque élément est affiché avec sa
+  //    provenance — un briefing dont on ignore d'où vient chaque ligne ne se défend pas en réunion.
+  const { rows: rendezVous } = await pool.query<{
+    lead_id: string;
+    entreprise: string;
+    contact: string | null;
+    fonction: string | null;
+    secteur: string | null;
+    pourquoi_retenue: string | null;
+    dernier_objet: string | null;
+    dernier_envoi: Date | null;
+    messages_envoyes: number;
+    premier_contact: Date | null;
+    rendez_vous_le: Date;
+    notes: { note: string; quand: string }[];
+  }>("select * from avant_le_rendez_vous($1, $2)", [tenantId, 60]);
+
   const capacitesLisibles = (capacites ?? [])
     .map((ligne) => (ligne.capability as { name?: string } | null)?.name)
     .filter((nom): nom is string => typeof nom === "string" && nom.trim() !== "");
@@ -273,6 +292,23 @@ export default async function EspacePage() {
               },
             }
       }
+      rendezVous={rendezVous.map((r) => ({
+        leadId: r.lead_id,
+        entreprise: r.entreprise,
+        contact: r.contact,
+        fonction: r.fonction,
+        secteur: r.secteur,
+        pourquoiRetenue: r.pourquoi_retenue,
+        dernierObjet: r.dernier_objet,
+        dernierEnvoi: r.dernier_envoi ? dateCourte(r.dernier_envoi.toISOString()) : null,
+        messagesEnvoyes: Number(r.messages_envoyes),
+        depuis: r.premier_contact ? dateCourte(r.premier_contact.toISOString()) : null,
+        obtenuLe: dateCourte(r.rendez_vous_le.toISOString()),
+        notes: (r.notes ?? []).map((n) => ({
+          note: n.note,
+          quand: dateCourte(new Date(n.quand).toISOString()),
+        })),
+      }))}
       recolte={{
         titre: mots.titre,
         vide: mots.vide,

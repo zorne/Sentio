@@ -507,55 +507,82 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.3rem;
+  gap: 1.4rem;
   width: min(40rem, 100%);
 }
 
-/* ⚠️ Une GRILLE, pas un `flex-wrap`. À quatre pastilles de largeurs inégales, le retour à la
-   ligne laissait trois valeurs sur une rangée et la quatrième seule en dessous — un ordre qui
-   n'a aucun sens et qu'on lit comme un défaut de gabarit. Une grille garde quatre colonnes, puis
-   deux, et jamais trois-et-une. */
+/* ─── Les indicateurs ────────────────────────────────────────────────
+   Quatre colonnes égales, séparées par un filet. Alignés sur une ligne
+   de base commune, ils se lisent d'un balayage ; empilés sans structure,
+   ils se lisent un par un. */
 .tb-chiffres {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 0.9rem 1.2rem;
   width: 100%;
+  margin: 0;
 }
 .tb-pastille {
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse;
   align-items: center;
   gap: 0.3rem;
   text-align: center;
+  padding: 0 0.5rem;
+  border-left: 1px solid var(--line);
 }
-.tb-pastille strong {
+.tb-pastille:first-child { border-left: none; }
+/* Le libellé AU-DESSUS dans le flux, en dessous à l'écran (`column-reverse`) : le balisage reste
+   « terme puis définition », ce qui est ce qu'un lecteur d'écran doit entendre. */
+.tb-pastille dt {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  line-height: 1.4;
+}
+.tb-pastille dd {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+}
+.tb-pastille dd strong {
   font-family: var(--serif);
   font-weight: 400;
-  font-size: 1.85rem;
+  font-size: 2rem;
   line-height: 1;
   letter-spacing: -0.02em;
   color: var(--ink);
 }
-/* ⚠️ Le mot reste en encre neutre, jamais dans la couleur de la donnée : une étiquette colorée
-   se lit comme un état, et « ont répondu » n'en est pas un. La couleur ne sert qu'à distinguer
-   ce qui a produit un RÉSULTAT — les deux pastilles de droite. */
-.tb-pastille span {
+/* La précision (le chiffre d'affaires) vit SOUS la valeur, plus petite : c'est une seconde
+   lecture, pas un second indicateur. */
+.tb-pastille dd span {
   font-family: var(--mono);
   font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-3);
+  letter-spacing: 0.06em;
+  color: var(--ink-2);
 }
-.tb-pastille.est-accent strong { color: var(--mint); }
+.tb-pastille.est-accent dd strong { color: var(--mint); }
 
+/* ─── Le taux ────────────────────────────────────────────────────────
+   Une valeur, son nom, sa base. Le nom À CÔTÉ de la valeur et non
+   au-dessus : « 14,4 % taux de réponse » se lit comme une phrase. */
 .tb-taux {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.35rem;
   text-align: center;
 }
-.tb-taux-nombre { display: flex; align-items: baseline; gap: 0.55rem; flex-wrap: wrap; justify-content: center; }
+.tb-taux-nombre {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
 .tb-taux-nombre strong {
   font-family: var(--serif);
   font-weight: 400;
@@ -563,9 +590,16 @@
   line-height: 1;
   letter-spacing: -0.03em;
 }
-.tb-taux-nombre span { font-size: 0.85rem; color: var(--ink-2); }
+.tb-taux-nombre span {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.tb-taux-base { font-size: 0.85rem; color: var(--ink-2); max-width: 46ch; line-height: 1.5; }
 /* Un taux qu'on ne peut pas encore calculer s'écrit en toutes lettres. Une case vide, un tiret
-   ou un « 0 % » se lisent tous les trois comme un échec — or il ne s'est rien passé de mal. */
+   ou un « 0 % » se lisent tous les trois comme un échec, or il ne s'est rien passé de mal. */
 .tb-pas-encore {
   font-family: var(--mono) !important;
   font-size: 11px !important;
@@ -575,39 +609,43 @@
 }
 
 .tb-tendance {
+  /* ⚠️ `flex-wrap: nowrap` et un texte qui peut rétrécir : en enveloppant, la phrase se cassait
+     en deux lignes CENTRÉES à côté de la pastille, et l'ensemble se lisait comme un défaut de
+     gabarit plutôt que comme une variation. */
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
   font-family: var(--mono);
-  font-size: 10.5px;
+  font-size: 10px;
   letter-spacing: 0.06em;
   color: var(--ink-3);
   max-width: 46ch;
   line-height: 1.6;
 }
+.tb-delta {
+  flex: 0 0 auto;
+  border: 1px solid currentColor;
+  border-radius: 100px;
+  padding: 0.2rem 0.5rem;
+  white-space: nowrap;
+}
 .tb-tendance--hausse { color: var(--mint); }
 .tb-tendance--baisse { color: var(--amber); }
-.tb-tendance--muette { color: var(--ink-3); }
+.tb-tendance--muette { color: var(--ink-3); display: block; text-align: center; }
 
-.tb-courbe { width: 100%; }
-.tb-courbe svg {
-  display: block;
-  width: 100%;
-  /* Assez haute pour qu'une variation se voie. À 44 px étirés sur 600, la courbe s'aplatissait
-     au point de ne plus rien montrer — un graphique qui ne montre rien occupe de la place pour
-     rien. */
-  height: 64px;
+@media (max-width: 40rem) {
+  /* Sur un téléphone, la phrase passe SOUS la pastille plutôt que de se comprimer. */
+  .tb-tendance { flex-direction: column; gap: 0.35rem; text-align: center; }
 }
-/* Trait fin, sans point sur chaque jour : un marqueur par jour transforme une tendance en
-   nuage de points. Le point n'apparaît qu'au survol, là où on regarde. */
-.tb-trace {
-  fill: none;
-  stroke: var(--mint);
-  stroke-width: 1.5;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-  vector-effect: non-scaling-stroke;
-}
-.tb-surface { fill: url(#tb-degrade); fill-opacity: 0.14; stroke: none; }
-.tb-viseur { stroke: var(--line-2); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.tb-pointeur { fill: var(--mint); }
+
+/* ─── La courbe ──────────────────────────────────────────────────────
+   Une ligne seule montre une forme sans donner d'ordre de grandeur.
+   Trois ajouts la rendent lisible, et aucun de plus : une graduation
+   haute qui porte le maximum, une ligne de sol, et les deux bornes de
+   dates. Un axe complet serait illisible sur cette largeur. */
+.tb-courbe { width: 100%; display: flex; flex-direction: column; gap: 0.4rem; }
+.tb-courbe svg { display: block; width: 100%; height: 72px; }
 
 .tb-courbe figcaption {
   display: flex;
@@ -618,9 +656,61 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-3);
-  margin-bottom: 0.5rem;
 }
-.tb-point-lu { color: var(--mint); }
+.tb-fenetre { color: var(--ink-3); opacity: 0.75; }
+
+/* Trait fin, sans point sur chaque jour : quatorze marqueurs transforment une tendance en nuage
+   de points. Le point n'apparaît qu'au survol, là où le regard est déjà. */
+.tb-trace {
+  fill: none;
+  stroke: var(--mint);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.tb-surface { fill: url(#tb-degrade); fill-opacity: 0.16; stroke: none; }
+
+/* Récessifs, tous les deux. La graduation est pointillée : une ligne pleine entrerait en
+   concurrence avec la courbe qu'elle sert à mesurer. */
+.tb-graduation {
+  stroke: var(--line-2);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+  vector-effect: non-scaling-stroke;
+}
+.tb-sol { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.tb-viseur { stroke: var(--line-2); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.tb-pointeur { fill: var(--mint); }
+
+.tb-echelle {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.tb-max { color: var(--ink-2); }
+.tb-bornes { display: inline-flex; align-items: center; gap: 0.5rem; }
+/* Un filet entre les deux dates : il dit que l'espace entre elles est du temps, pas une liste. */
+.tb-bornes i { width: 2.5rem; height: 1px; background: var(--line); display: inline-block; }
+
+/* La lecture d'un jour survolé occupe une ligne RÉSERVÉE. Sans elle, le texte apparaissant au
+   survol pousserait la courbe vers le haut, et le graphique bougerait sous le pointeur. */
+.tb-lu {
+  min-height: 1.1rem;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  opacity: 0.55;
+  transition: opacity 0.25s var(--ease), color 0.25s var(--ease);
+}
+.tb-lu.est-lu { color: var(--mint); opacity: 1; }
 
 /* ════════════════════════════════════════════════════════════════════
    LES ORBES — quatre mots, et c'est tout ce que la page dit au repos
@@ -1298,4 +1388,89 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-3);
+}
+
+/* ─── Avant un rendez-vous ───────────────────────────────────────────
+   Une fiche par entreprise, et chaque élément porte SA PROVENANCE. Un
+   briefing dont on ignore d'où vient chaque ligne ne se défend pas en
+   réunion — et c'est précisément là qu'on en a besoin. */
+.rv { display: flex; flex-direction: column; gap: 1.4rem; }
+
+.rv-fiche {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--mint-line);
+  border-radius: 12px;
+  background: rgba(244, 245, 246, 0.018);
+}
+.rv-fiche header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.8rem;
+}
+.rv-fiche header strong {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 1.3rem;
+  letter-spacing: -0.015em;
+}
+.rv-qui { font-size: 0.88rem; color: var(--ink-2); }
+.rv-fiche header time {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* Ce qu'elle a retenu de l'échange : la matière la plus précieuse de la
+   fiche, donc la plus lisible. En mono — c'est une note prise sur le
+   vif, pas une phrase rédigée. */
+.rv-notes { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+.rv-notes li {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ink);
+  padding-left: 0.9rem;
+  border-left: 1px solid var(--mint-line);
+}
+.rv-source {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 0.2rem;
+}
+.rv-rien { font-size: 0.88rem; line-height: 1.6; color: var(--ink-3); }
+
+.rv-faits {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--line);
+}
+.rv-faits dt {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+  padding-top: 0.15em;
+}
+.rv-faits dd { margin: 0; font-size: 0.88rem; line-height: 1.5; color: var(--ink-2); }
+
+@media (max-width: 40rem) {
+  .rv-faits { grid-template-columns: 1fr; gap: 0.1rem; }
+  .rv-faits dd { margin-bottom: 0.5rem; }
+  .rv-fiche header time { margin-left: 0; width: 100%; }
 }
