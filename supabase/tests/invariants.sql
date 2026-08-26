@@ -3009,4 +3009,131 @@ end;
 $$;
 
 
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+-- LADY-V — ce qu'une entreprise a appris ne profite QU'À ELLE.
+--
+-- C'est la promesse la plus lourde de conséquences de tout l'apprentissage : les résultats d'un
+-- client ne doivent jamais se mélanger à ceux d'un autre. Une moyenne du produit ferait converger
+-- tous les employés vers le ton qui plaît au client médian — et ferait fuiter, par la bande, ce
+-- qui marche chez un concurrent.
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  entreprise constant uuid := 'aaaaaaaa-0000-0000-0000-000000000001';
+  voisine    constant uuid := 'bbbbbbbb-0000-0000-0000-000000000002';
+  employe    constant uuid := 'ffffffff-0000-0000-0000-000000000001';
+  employe_v  uuid;
+  objectif   uuid;
+  variante   uuid;
+  autre_var  uuid;
+  mission    uuid;
+  compte     integer;
+begin
+  select id into variante from public.strategy_variant
+   where kind = 'registre' and key = 'specialise';
+  select id into autre_var from public.strategy_variant
+   where kind = 'registre' and key = 'courant';
+
+  if variante is null or autre_var is null then
+    raise exception 'ÉCHEC progression : les registres de langage ne sont pas semés.';
+  end if;
+
+  select id into objectif from public.objective
+   where tenant_id = entreprise and state = 'actif' limit 1;
+
+  -- ── 1. Une mission ouverte mais JAMAIS travaillée ne dit rien de sa variante.
+  insert into public.task (tenant_id, employee_id, objective_id, subject_kind, subject_id)
+  values (entreprise, employe, objectif, 'lead', gen_random_uuid())
+  returning id into mission;
+
+  insert into public.task_variant (tenant_id, task_id, variant_id)
+  values (entreprise, mission, variante);
+
+  select missions into compte from public.resultats_par_variante(entreprise)
+   where variant_id = variante;
+
+  if coalesce(compte, 0) <> 0 then
+    raise exception
+      'ÉCHEC progression : une mission jamais travaillée compte pour % . Une variante récente '
+      'paraîtrait mauvaise parce qu''elle porte des missions pas encore jouées.', compte;
+  end if;
+
+  -- ── 2. Travaillée, elle compte.
+  insert into public.execution_event (tenant_id, employee_id, task_id, kind)
+  values (entreprise, employe, mission, 'action_executee');
+
+  select missions into compte from public.resultats_par_variante(entreprise)
+   where variant_id = variante;
+
+  if compte <> 1 then
+    raise exception 'ÉCHEC progression : % mission comptée au lieu de 1.', compte;
+  end if;
+
+  -- ── 3. ⭐⭐ Ce que fait la VOISINE ne compte jamais chez elle.
+  insert into public.employee (tenant_id, employee_definition_id, identity_id)
+  select voisine, 'dddddddd-0000-0000-0000-000000000001', id
+    from public.reserve_identity('commercial')
+  returning id into employe_v;
+
+  insert into public.objective (tenant_id, metric, target_value, horizon)
+  values (voisine, 'chiffre_affaires', 5000, 'mois')
+  returning id into objectif;
+
+  insert into public.task (tenant_id, employee_id, objective_id, subject_kind, subject_id)
+  values (voisine, employe_v, objectif, 'lead', gen_random_uuid())
+  returning id into mission;
+
+  insert into public.task_variant (tenant_id, task_id, variant_id)
+  values (voisine, mission, variante);
+  insert into public.execution_event (tenant_id, employee_id, task_id, kind)
+  values (voisine, employe_v, mission, 'action_executee');
+  insert into public.outcome (tenant_id, task_id, kind, value, declared_by)
+  values (voisine, mission, 'sale', 9000, 'client');
+
+  select missions into compte from public.resultats_par_variante(entreprise)
+   where variant_id = variante;
+
+  if compte <> 1 then
+    raise exception
+      'ÉCHEC progression : % missions comptées chez la première entreprise — les résultats de la '
+      'voisine ont fuité. C''est la promesse la plus lourde de tout l''apprentissage.', compte;
+  end if;
+
+  select ventes into compte from public.resultats_par_variante(entreprise)
+   where variant_id = variante;
+
+  if compte <> 0 then
+    raise exception 'ÉCHEC progression : % vente(s) d''une autre entreprise comptée(s) ici.', compte;
+  end if;
+
+  -- ── 4. Une préférence par genre, et pas deux : sinon deux registres s'appliqueraient.
+  insert into public.tenant_variant_preference
+    (tenant_id, kind, variant_id, missions_comparees, raison)
+  values (entreprise, 'registre', variante, 50, 'Mesuré sur 50 missions.');
+
+  begin
+    insert into public.tenant_variant_preference
+      (tenant_id, kind, variant_id, missions_comparees, raison)
+    values (entreprise, 'registre', autre_var, 50, 'Une seconde préférence.');
+    raise exception 'ÉCHEC progression : deux registres préférés pour la même entreprise.';
+  exception when unique_violation then null;
+  end;
+
+  -- ── 5. Une variante qui a servi ne se supprime pas : les résultats mesurés lui appartiennent.
+  begin
+    delete from public.strategy_variant where id = variante;
+    raise exception 'ÉCHEC progression : une variante déjà jouée a pu être supprimée.';
+  exception
+    when raise_exception then
+      if position('ne se supprime pas' in sqlerrm) = 0 then raise; end if;
+    when foreign_key_violation then null;
+  end;
+
+  raise notice
+    'OK  LADY-V — résultats comptés par entreprise, jamais mélangés, une préférence par genre';
+end;
+$$;
+
+
 rollback;

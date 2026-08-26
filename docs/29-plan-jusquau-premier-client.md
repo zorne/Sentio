@@ -891,6 +891,55 @@ clé est désormais **(capacité, moteur)**, et un doublon exact est refusé au 
 
 ---
 
+## Étape 12 quater — L'employé progresse, et il le prouve
+
+**Pourquoi cette étape existe.** Le produit promettait un employé qui s'améliore. Trois pièces
+étaient posées, aucune reliée : `learned_fact` était lue à chaque pas et **écrite par personne** ;
+`strategy_variant` décrivait des façons de travailler que **rien ne jouait** ; la vue qui compte
+les résultats comptait sur zéro ligne. Autrement dit, l'employé recommençait chaque mission comme
+la première, et « il progresse » était une phrase.
+
+### Fait le 2026-08-26 — `20260815120020`, `reflexion.ts`, `progression.ts`
+
+**1. Il essaie — et on sait ce qu'il a essayé.** Chaque mission reçoit à son ouverture, au plus
+une par genre, une façon de travailler tirée de manière reproductible (la même mission donne
+toujours la même). Sans cette trace, `outcome` compte des résultats pour personne.
+
+**2. Le registre de langage est l'un de ces genres.** Parler courant, professionnel, technique ou
+dans le jargon de la niche n'est pas un réglage décrété : c'est une façon de faire qui **se
+compare** aux autres sur des résultats. C'est ce que demande un client quand il dit « qu'il parle
+comme mes clients ».
+
+**3. Il retient.** La réflexion d'après-run existe enfin : à la fin d'un run **terminé**, l'employé
+relit son journal et propose 0 à 3 faits, filtrés par le tri déjà écrit (trop court, trop long,
+contredit l'ADN, déjà connu). L'auteur est `apprentissage`, jamais `client` — c'est le dirigeant
+qui doit pouvoir contredire ce que son employé a cru comprendre, pas l'inverse. ⚠️ **La mémoire
+est un bonus, jamais une condition de succès** : la réflexion tourne *après* que la mission est
+close et son verrou rendu, et une réflexion qui échoue journalise puis se tait.
+
+**4. Il garde ce qui marche chez CE client.** `resultats_par_variante(entreprise)` compte, sur ses
+missions **réellement travaillées**, ce que chaque façon de faire a produit. Le départage exige un
+signal : au moins 20 missions par variante comparée, et un écart d'au moins 20 % — sinon rien ne
+bouge. Une vente pèse plus qu'un rendez-vous, qui pèse plus qu'une réponse, et le niveau de
+comparaison est choisi **pour toute la comparaison** : sans cela, la façon de faire qui fait
+beaucoup répondre sans jamais vendre gagnerait.
+
+**Ce qui s'applique seul, et ce qui ne le fait jamais.** Changer de manière à l'intérieur du rôle
+est réversible et interne : ça s'applique sans accord — mais **jamais en silence**, chaque
+changement écrit un `strategy_change` et une notification adossée à sa preuve. Changer de RÔLE
+reste soumis à l'accord du dirigeant (étape 12 bis, §10 de la vision).
+
+**Un cinquième des missions continue d'explorer**, même quand une préférence existe. Une
+préférence qu'on n'explore plus n'est plus une mesure, c'est une conviction — et le jour où le
+marché change, personne ne le voit. C'est un coût assumé, et il est écrit dans l'espace client.
+
+**L'invariant `LADY-V` garde la promesse la plus lourde de tout l'apprentissage** : les résultats
+d'une entreprise ne se mélangent jamais à ceux d'une autre. Une moyenne du produit ferait
+converger tous les employés vers le ton qui plaît au client médian — et ferait fuiter, par la
+bande, ce qui marche chez un concurrent.
+
+---
+
 # PARTIE II — METTRE EN VENTE
 
 ⛔ **Tout ce qui suit t'appartient.** Un agent prépare, explique, rédige des brouillons et vérifie

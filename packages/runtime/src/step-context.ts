@@ -46,6 +46,7 @@ import {
   type AssembledContext,
   type EtatRun,
   type SectorKnowledge,
+  type VarianteAppliquee,
 } from "@sentio/core";
 import { ExecutionJournal, TenantScope, forTenant, globalRepositories, type SqlClient } from "@sentio/db";
 import type { CompanyProfileEntry, LearnedFact } from "@sentio/domain";
@@ -78,6 +79,47 @@ export type ChargementContexte =
 
 /** Clé de `company_profile` où le client déclare son secteur. */
 const CLE_SECTEUR = "secteur";
+
+/**
+ * La façon de travailler cette mission-ci, telle qu'elle a été TIRÉE À SON OUVERTURE.
+ *
+ * ⚠️ On lit ce qui a été attribué ; on ne le rechoisit pas. Rechoisir au moment du pas ferait
+ * dépendre la variante de l'état des variantes actives ce jour-là — donc deux pas d'une même
+ * mission pourraient jouer deux angles différents, et les résultats seraient attribués à une
+ * stratégie qui n'a pas tourné.
+ *
+ * Une mission ouverte avant que les variantes ne soient attribuées n'en a aucune : la couche est
+ * alors absente, et déclarée comme telle. On ne lui en invente pas une après coup.
+ */
+async function chargerLesVariantes(
+  sql: SqlClient,
+  tenantId: string,
+  taskId: string,
+): Promise<readonly VarianteAppliquee[]> {
+  const lignes = await sql.query<{ kind: string; content: Record<string, unknown> }>(
+    `select v.kind, v.content
+       from task_variant tv
+       join strategy_variant v on v.id = tv.variant_id
+      where tv.tenant_id = $1 and tv.task_id = $2
+      order by v.kind`,
+    [tenantId, taskId],
+  );
+
+  return lignes.flatMap((ligne) => {
+    const consigne = ligne.content["consigne"];
+    // Une variante sans consigne lisible ne se traduit pas en instruction — un « moment de
+    // relance », par exemple, agit sur la cadence en base, pas sur ce que l'employé lit.
+    if (typeof consigne !== "string" || consigne.trim() === "") return [];
+    const aEviter = ligne.content["a_eviter"];
+    return [
+      {
+        kind: ligne.kind,
+        consigne,
+        ...(typeof aEviter === "string" && aEviter.trim() !== "" && { aEviter }),
+      },
+    ];
+  });
+}
 
 /**
  * Choisit le profil sectoriel à injecter.
@@ -183,6 +225,7 @@ export async function loadStepContext(
 
   // ── Couche 2 — le secteur. Facultative par construction.
   const secteur = await chargerSecteur(sql, profil);
+  const variantes = await chargerLesVariantes(sql, input.tenantId, input.taskId);
 
   // ── La configuration active — ce que Lady fait pour CETTE entreprise, et pourquoi.
   //
@@ -261,6 +304,7 @@ export async function loadStepContext(
           },
         }),
     ...(secteur !== undefined && { sector: secteur }),
+    ...(variantes.length > 0 && { variantes }),
     profile: profil,
     facts: faits,
     task: {

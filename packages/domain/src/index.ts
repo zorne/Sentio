@@ -37,6 +37,7 @@ export {
   type ResultatDeComposition,
 } from "./composition.js";
 export * from "./effort.js";
+export * from "./progression.js";
 export * from "./reevaluation.js";
 export * from "./configuration.js";
 export * from "./acquisition.js";

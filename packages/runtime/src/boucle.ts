@@ -54,6 +54,7 @@ import type { TaskId, TenantId } from "@sentio/domain";
 import type { HeartbeatReport } from "./heartbeat/index.js";
 import { atteler, EntreeRefusee } from "./attelage.js";
 import { decideNextStep } from "./next-step.js";
+import { reflechirApresLeRun } from "./reflexion.js";
 import { appliquerLaSuite } from "./suite-du-run.js";
 
 export interface BoucleDeps {
@@ -222,6 +223,27 @@ async function executerUnPas(
     { journal: deps.journal, file: deps.file },
     { tenantId, taskId, employeeId, suite },
   );
+
+  // ── La réflexion, une fois le travail FINI et rendu à la file.
+  //
+  // ⚠️ Après `appliquerLaSuite`, jamais avant : la mission est déjà close et son verrou rendu,
+  // donc rien de ce qui suit ne peut la retenir ni la faire échouer. C'est la traduction en code
+  // de « la mémoire est un bonus, jamais une condition de succès ».
+  //
+  // Et seulement sur un run TERMINÉ : réfléchir sur un run reporté ou suspendu ferait retenir
+  // des conclusions tirées d'un travail à moitié fait.
+  if (suite.kind === "terminer" && suite.issue === "termine") {
+    await reflechirApresLeRun(
+      { sql: deps.sql, gateway: deps.gateway, journal: deps.journal, reglages },
+      {
+        tenantId,
+        taskId,
+        employeeId,
+        dataClass: options.dataClass ?? "real",
+        envelope: options.envelope ?? "sold_employees",
+      },
+    );
+  }
 }
 
 /**

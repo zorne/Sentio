@@ -89,3 +89,6 @@
 /* Une proposition n'est pas une nouvelle parmi d'autres : c'est la seule chose de cette page qui
    attend une réponse. Elle se distingue, sans crier. */
 .espace .carte.proposition { border-left: 3px solid var(--text-primary, currentColor); }
+
+.espace .faits, .espace .progression { margin: 0.4rem 0 0; padding-left: 1.1rem; }
+.espace .faits li, .espace .progression li { margin: 0.25rem 0; }

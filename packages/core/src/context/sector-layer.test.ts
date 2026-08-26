@@ -185,18 +185,20 @@ describe("une couche absente se déclare, elle ne se remplace pas", () => {
     expect(textOf(contexte.turns).concat("\n")).not.toContain("menuiserie");
   });
 
-  it("déclare aussi l'absence de contexte entreprise et de faits appris", () => {
+  it("déclare aussi l'absence de façon de travailler, de contexte entreprise et de faits appris", () => {
     const contexte = assembler();
     expect([...contexte.missingLayers].sort()).toEqual([
+      "facon_de_travailler",
       "faits_appris",
       "profil_entreprise",
       "secteur",
     ]);
   });
 
-  it("ne déclare rien d'absent quand les trois couches parlent", () => {
+  it("ne déclare rien d'absent quand toutes les couches parlent", () => {
     const contexte = assembler({
       sector: SECTEUR_COMPLET,
+      variantes: [{ kind: "angle", consigne: "Ouvrir sur un problème concret." }],
       profile: [profileEntry("cible", "architectes")],
       facts: [fact("Julie préfère le matin")],
     });

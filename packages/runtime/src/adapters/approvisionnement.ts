@@ -15,9 +15,15 @@
  * Réalise : EXEC-17
  */
 
-import type { ApprovisionnementStore, GisementDeMissions, RegistreDeGisements } from "@sentio/core";
+import {
+  choisirLesVariantes,
+  empreinteStable,
+  type ApprovisionnementStore,
+  type GisementDeMissions,
+  type RegistreDeGisements,
+} from "@sentio/core";
 import type { SqlClient, TransactionalSqlClient } from "@sentio/db";
-import { effortRequis } from "@sentio/domain";
+import { effortRequis, PART_D_EXPLORATION } from "@sentio/domain";
 import type { EmployeeId, TenantId } from "@sentio/domain";
 
 /**
@@ -242,6 +248,15 @@ export class PostgresApprovisionnementStore implements ApprovisionnementStore {
       );
 
       if (creees.length > 0) {
+        // ── La FAÇON de travailler chaque mission, tirée au moment où elle s'ouvre.
+        //
+        // ⚠️ Ici, et pas au premier pas : le choix est dérivé de l'identifiant de la mission
+        // (`choisirLesVariantes`), donc il faut que la mission existe — et l'écrire dans la même
+        // transaction garantit qu'aucune mission ne tourne sans qu'on sache ce qu'elle a joué.
+        // Une mission jouée dont la variante n'est pas tracée est une mesure perdue : `outcome`
+        // la comptera pour personne.
+        await this.attribuerLesVariantes(tx, input.tenantId, creees.map((row) => row.id));
+
         // La priorité vient de la formule, en données — jamais d'une condition sur son nom
         // (`FOND-17`, et la promesse « priorité d'exécution » des formules supérieures).
         await tx.query(
@@ -265,6 +280,87 @@ export class PostgresApprovisionnementStore implements ApprovisionnementStore {
 
       return creees.length;
     });
+  }
+
+  /**
+   * Attribue à chaque mission au plus une variante par genre.
+   *
+   * Les variantes sont **globales** (`docs/adr/0011`) : elles sont rédigées par Sentio et ne
+   * dérivent d'aucune donnée client. La répartition, elle, est déterministe — la même mission
+   * donne toujours la même variante, y compris après un rejeu. Un tirage au sort rendrait le
+   * produit inexplicable : « pourquoi mon employé a-t-il écrit comme ça ? » n'aurait pas de
+   * réponse.
+   */
+  private async attribuerLesVariantes(
+    tx: SqlClient,
+    tenantId: TenantId,
+    missions: readonly string[],
+  ): Promise<void> {
+    const lignes = await tx.query<{
+      id: string;
+      kind: string;
+      key: string;
+      actif: boolean;
+      par_defaut: boolean;
+    }>(
+      `select v.id, v.kind, v.key, v.actif, v.par_defaut
+         from strategy_variant v
+        where v.actif
+          and v.profession = (
+            select d.gisement from employee e
+              join employee_definition d on d.id = e.employee_definition_id
+             where e.tenant_id = $1 limit 1)
+        order by v.kind, v.key`,
+      [tenantId],
+    );
+
+    if (lignes.length === 0) return;
+
+    const variantes = lignes.map((ligne) => ({
+      id: ligne.id,
+      kind: ligne.kind,
+      key: ligne.key,
+      actif: ligne.actif,
+      parDefaut: ligne.par_defaut,
+    }));
+
+    // Ce qui a déjà gagné chez CETTE entreprise (EVOL-04). Vide au début : rien n'a été mesuré.
+    const preferences = new Map(
+      (
+        await tx.query<{ kind: string; variant_id: string }>(
+          "select kind, variant_id from tenant_variant_preference where tenant_id = $1",
+          [tenantId],
+        )
+      ).map((ligne) => [ligne.kind, ligne.variant_id]),
+    );
+
+    for (const mission of missions) {
+      const tirees = choisirLesVariantes(variantes, mission);
+      if (tirees.length === 0) continue;
+
+      // ⚠️ EXPLORATION. Une part des missions ignore la préférence et rejoue le tirage entre
+      // toutes les variantes — sinon plus rien n'est mesuré, la préférence ne peut plus jamais
+      // être démentie, et le jour où le marché change personne ne le voit. La part est dérivée de
+      // l'identifiant de la mission, donc reproductible : la même mission explore toujours, ou
+      // n'explore jamais.
+      const explore =
+        empreinteStable(`${mission}:exploration`) % 1000 < Math.round(PART_D_EXPLORATION * 1000);
+
+      const choisies = explore
+        ? tirees
+        : tirees.map((tiree) => {
+            const preferee = preferences.get(tiree.kind);
+            if (preferee === undefined) return tiree;
+            return variantes.find((variante) => variante.id === preferee) ?? tiree;
+          });
+
+      await tx.query(
+        `insert into task_variant (tenant_id, task_id, variant_id)
+         select $1, $2, unnest($3::uuid[])
+         on conflict do nothing`,
+        [tenantId, mission, choisies.map((variante) => variante.id)],
+      );
+    }
   }
 
   /** Un jour sans travail s'écrit aussi : sinon « rien ne s'est passé » ressemble à une panne. */

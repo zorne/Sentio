@@ -61,6 +61,7 @@ import { PostgresJournalWriter } from "./adapters/journal.js";
 import { PostgresUsageLedger } from "./adapters/ledger.js";
 import { PostgresMoteurs } from "./adapters/moteurs.js";
 import { approvisionnerLeJour } from "./battement.js";
+import { faireProgresserLesEmployes } from "./progression.js";
 import { reevaluerLesEmployes } from "./reevaluation.js";
 import { executerLesTravauxDus } from "./boucle.js";
 import { createHeartbeatHandler, type HeartbeatReport } from "./heartbeat/index.js";
@@ -207,10 +208,16 @@ export function composerLExecutant(
     //    naît inactive et attend le dirigeant (§10 de la vision).
     const reevaluation = await reevaluerLesEmployes({ sql, journal }, instant);
 
+    // 4. Retenir ce qui marche CHEZ CE CLIENT (EVOL-04). Contrairement à la réévaluation, ceci
+    //    s'applique seul : le rôle ne bouge pas, seule la manière change — et chaque changement
+    //    est annoncé, adossé à sa preuve.
+    const progression = await faireProgresserLesEmployes({ sql, journal }, instant);
+
     options.log?.({
       route: "battement",
       approvisionnement,
       reevaluation,
+      progression,
       // Une capacité écartée du registre est un contrat illisible en base : ça se voit, ça ne se
       // devine pas.
       capacitesEcartees: ecartees,

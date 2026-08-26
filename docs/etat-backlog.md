@@ -17,7 +17,7 @@
 
 ## Avancement
 
-**136 tâches sur 185** portent une preuve dans le dépôt.
+**137 tâches sur 185** portent une preuve dans le dépôt.
 
 | Lot | Fait | Total | |
 |---|---|---|---|
@@ -28,7 +28,7 @@
 | Recrutement & Paiement (Lot 5) | 6 | 10 | `████████████········` |
 | Dashboard (Lot 6) | 8 | 21 | `████████············` |
 | Exécution autonome (Lot 3) | 13 | 19 | `██████████████······` |
-| Évolution (Lot 7) | 0 | 8 | `····················` |
+| Évolution (Lot 7) | 1 | 8 | `███·················` |
 | Conformité & Lancement (Lot 8) | 3 | 10 | `██████··············` |
 | Vérification (transverse) | 7 | 9 | `████████████████····` |
 ---
@@ -126,7 +126,7 @@
 | ✅ | **METIER-11** Garde-fou : respect immédiat des désinscriptions | P0 | [`packages/domain/src/optout.ts`](../packages/domain/src/optout.ts) |
 | ✅ | **METIER-12** Capacité "relancer un prospect" : contrat + moteur | P1 | [`packages/capabilities/src/email/follow-up.ts`](../packages/capabilities/src/email/follow-up.ts) · [`supabase/migrations/20260812120002_relance.sql`](../supabase/migrations/20260812120002_relance.sql) |
 | ✅ | **METIER-13** Capacité "mettre à jour une fiche CRM" : contrat + moteur | P0 | [`packages/capabilities/src/prospects/update-fiche.ts`](../packages/capabilities/src/prospects/update-fiche.ts) |
-| ✅ | **METIER-14** Réflexion post-run spécifique au Commercial (0 à 3 faits par run) | P1 | [`packages/core/src/runtime/reflexion.ts`](../packages/core/src/runtime/reflexion.ts) |
+| ✅ | **METIER-14** Réflexion post-run spécifique au Commercial (0 à 3 faits par run) | P1 | [`packages/runtime/src/reflexion.ts`](../packages/runtime/src/reflexion.ts) · [`packages/core/src/runtime/reflexion.ts`](../packages/core/src/runtime/reflexion.ts) |
 | ✅ | **METIER-15** Variantes de stratégie du Commercial (angles d'accroche, moments de relance) | P1 | [`packages/core/src/runtime/variantes.ts`](../packages/core/src/runtime/variantes.ts) · [`supabase/migrations/20260812120003_variantes_de_strategie.sql`](../supabase/migrations/20260812120003_variantes_de_strategie.sql) |
 | ✅ | **METIER-16** Migration : table suppression_entry (exclusions par entreprise - clients, concurrents, comptes sensibles) | P0 | [`supabase/migrations/20260729120038_prospection.sql`](../supabase/migrations/20260729120038_prospection.sql) |
 | ✅ | **METIER-17** Garde-fou : vérification des exclusions avant tout envoi (bloquant, pas consultatif) | P0 | [`supabase/migrations/20260729120038_prospection.sql`](../supabase/migrations/20260729120038_prospection.sql) |
@@ -247,7 +247,7 @@
 | ☐ | **EVOL-01** Écriture des faits appris (learned_fact) depuis la réflexion post-run | P0 | — |
 | ☐ | **EVOL-02** Application des modifications proposées au profil entreprise par l'apprentissage | P2 | — |
 | ☐ | **EVOL-03** Notification client sur modification du profil entreprise par l'apprentissage | P2 | — |
-| ☐ | **EVOL-04** Sélection de la variante gagnante à partir des outcomes mesurés | P2 | — |
+| ✅ | **EVOL-04** Sélection de la variante gagnante à partir des outcomes mesurés | P2 | [`packages/domain/src/progression.ts`](../packages/domain/src/progression.ts) · [`packages/runtime/src/progression.ts`](../packages/runtime/src/progression.ts) |
 | ☐ | **EVOL-05** Écriture de strategy_change à chaque évolution réelle | P0 | — |
 | ☐ | **EVOL-06** Notification d'évolution adossée strictement à strategy_change | P0 | — |
 | ☐ | **EVOL-07** Interface client : consulter les faits appris | P1 | — |

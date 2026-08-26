@@ -111,6 +111,18 @@ export default async function EspacePage() {
   const proposition = propositions?.[0];
   const objectif = objectifs?.[0];
 
+  // Ce qu'il a appris, et ce qu'il a retenu de ses propres résultats. Les deux lectures passent
+  // par le client à session : RLS borne déjà chacune à cette entreprise.
+  const [{ data: faits }, { data: progression }] = await Promise.all([
+    supabase
+      .from("learned_fact")
+      .select("id, fact")
+      .eq("status", "actif")
+      .order("usage_count", { ascending: false })
+      .limit(5),
+    supabase.from("tenant_variant_preference").select("kind, raison"),
+  ]);
+
   const { data: capacites } = configuration
     ? await supabase
         .from("lady_configuration_capability")
@@ -230,6 +242,46 @@ export default async function EspacePage() {
         )}
       </section>
 
+      {/* ── Ce qu'il a appris, et ce qu'il a retenu de ses propres résultats. ── */}
+      <section className="carte">
+        <h2>Ce qu'il a appris de vous</h2>
+        {faits && faits.length > 0 ? (
+          <ul className="faits">
+            {faits.map((fait) => (
+              <li key={fait.id}>{fait.fact}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="vide">
+            Il n'a encore rien retenu. C'est normal au début : il ne retient que ce qu'il a
+            réellement observé en travaillant pour vous, jamais ce qui semblerait plausible.
+          </p>
+        )}
+
+        {progression && progression.length > 0 ? (
+          <>
+            <p className="detail">Ce qui marche le mieux chez vous, à ce jour :</p>
+            <ul className="progression">
+              {progression.map((preference) => (
+                <li key={preference.kind}>
+                  <strong>{motDuGenre(preference.kind)}</strong> — {preference.raison}
+                </li>
+              ))}
+            </ul>
+            <p className="detail sobre">
+              Une partie de son travail continue d'essayer d'autres façons de faire : sans cela,
+              il ne pourrait plus jamais s'apercevoir que quelque chose a changé.
+            </p>
+          </>
+        ) : (
+          <p className="detail sobre">
+            Il essaie plusieurs façons de travailler et compare ce qu'elles produisent. Tant qu'il
+            n'a pas assez de résultats pour trancher, il ne change rien — et il ne vous annoncera
+            pas de progrès qu'il n'a pas mesuré.
+          </p>
+        )}
+      </section>
+
       {/* ── Le réglage le plus lourd du produit. Il publie une version, il ne modifie rien. ── */}
       <section className="carte">
         <h2>Son autonomie</h2>
@@ -277,6 +329,16 @@ function motDuRole(role: string): string {
     pilotage: "vous rendre compte de ce qui avance",
   };
   return mots[role] ?? role;
+}
+
+/** Un genre de variante est notre vocabulaire. Le dirigeant lit ce que ça change pour lui. */
+function motDuGenre(kind: string): string {
+  const mots: Record<string, string> = {
+    registre: "Sa façon de s'exprimer",
+    angle: "Sa façon d'aborder une entreprise",
+    moment_de_relance: "Le moment où il relance",
+  };
+  return mots[kind] ?? "Sa façon de travailler";
 }
 
 function motDeLaMetrique(metric: string): string {
