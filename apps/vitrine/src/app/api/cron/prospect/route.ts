@@ -10,6 +10,7 @@
 // ════════════════════════════════════════════════════════════════════
 
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { Client } from "pg";
 import { launchSalesRunInternal } from "@/lib/agent-actions";
 import { DEMO_TENANT_ID } from "@sentio/vitrine-core/wiring";
@@ -18,8 +19,25 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
-  const auth = req.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  // ⚠️ ÉCHOUER FERMÉ, JAMAIS OUVERT.
+  //
+  // Cette comparaison se faisait directement contre `process.env.CRON_SECRET`. Quand la variable
+  // manque, l'expression vaut la chaîne « Bearer undefined » — qu'un inconnu envoie comme
+  // n'importe quel autre en-tête. Le contrôle s'ouvrait donc précisément dans le cas où il
+  // aurait dû se fermer : celui où personne n'a posé le secret.
+  //
+  // Ce que la route déclenche derrière n'est pas une lecture : un cycle de prospection complet
+  // sur une entreprise réelle, donc de vrais emails vers de vraies entreprises.
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    console.error("[cron] CRON_SECRET absente : la route refuse de s'exécuter.");
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  // Comparaison à temps constant : la durée d'un refus ne dit rien du secret attendu.
+  const attendu = Buffer.from(`Bearer ${secret}`);
+  const recu = Buffer.from(req.headers.get("authorization") ?? "");
+  if (recu.length !== attendu.length || !timingSafeEqual(recu, attendu)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

@@ -13,6 +13,9 @@ import { Client } from "pg";
 import { buildOnboardingDeps, ONBOARDING_SYSTEM_PROMPT } from "@sentio/vitrine-core/wiring";
 import type { ConversationTurn } from "@sentio/vitrine-core/gateway";
 
+import { pool } from "@/lib/db";
+import { checkDiagnosticRateLimit, resolveDiagnosticVisitor } from "@/lib/diagnostic-rate-limit";
+
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
@@ -24,7 +27,26 @@ export interface OnboardingResult {
   agentInstanceId?: string;
 }
 
+/** Ce qu'on répond quand le plafond du jour est atteint. Sobre : rien n'a échoué, une règle a
+ *  fermé la porte, et le visiteur n'a pas à comprendre pourquoi. */
+const LIMITE =
+  "Nous avons beaucoup échangé aujourd'hui. Revenez demain pour reprendre où nous en sommes.";
+
 export async function onboardingChat(history: ChatMessage[]): Promise<OnboardingResult> {
+  // ⚠️ L'ACCUEIL N'AVAIT AUCUN PLAFOND, ALORS QUE LE DIAGNOSTIC EN A DEUX.
+  //
+  // C'est une Server Action publique, sans session, qui appelle un modèle. Sans plafond, elle
+  // est une facture d'inférence ouverte à qui écrit une boucle — et la clé est partagée avec le
+  // conseiller et le diagnostic, donc l'épuiser d'un côté éteint les trois.
+  //
+  // Le budget est VOLONTAIREMENT le même que celui du diagnostic, par visiteur et par adresse :
+  // ce qui coûte, c'est le total qu'une personne consomme sur les portes publiques, pas ce
+  // qu'elle consomme sur chacune. Deux compteurs séparés doubleraient le plafond réel sans que
+  // personne ne l'ait décidé.
+  const { visitorId, ipHash } = await resolveDiagnosticVisitor();
+  const verdict = await checkDiagnosticRateLimit(pool, visitorId, ipHash);
+  if (!verdict.allowed) return { reply: LIMITE };
+
   const db = new Client({ connectionString: process.env.SUPABASE_DB_URL! });
   await db.connect();
   try {
