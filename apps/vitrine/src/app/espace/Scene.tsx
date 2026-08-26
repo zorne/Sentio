@@ -61,6 +61,18 @@ export interface DonneesDeLaScene {
   readonly journal: readonly { readonly id: string; readonly quand: string; readonly quoi: string }[];
   /** Ce que le dirigeant voit sans cliquer. */
   readonly tableau: DonneesDuTableau;
+  /** Ce qui a abouti — NOMMÉ selon le rôle, jamais dérivé d'un métier en base (adr/0029). */
+  readonly recolte: {
+    readonly titre: string;
+    readonly vide: string;
+    readonly lignes: readonly {
+      readonly entreprise: string;
+      readonly contact: string | null;
+      readonly quoi: string;
+      readonly valeur: number;
+      readonly quand: string;
+    }[];
+  };
   /** Sa formule et ce qu'il lui reste. Nul quand aucun abonnement n'est actif. */
   readonly formule: {
     readonly nom: string;
@@ -77,7 +89,14 @@ export interface Consommation {
   readonly plafond: number | null;
 }
 
-type Panneau = "capacites" | "parler" | "objectif" | "attente" | "memoire" | "main";
+type Panneau =
+  | "capacites"
+  | "parler"
+  | "objectif"
+  | "attente"
+  | "memoire"
+  | "recolte"
+  | "main";
 
 const MOTS_DE_L_AUTONOMIE: Record<string, string> = {
   confirm: "Vous validez chaque action qui sort de l'entreprise.",
@@ -262,26 +281,41 @@ export function Scene(d: DonneesDeLaScene) {
       <Tableau {...d.tableau} />
 
       {/* ── Les orbes. Quatre mots, pas une phrase. ── */}
+      {/* ── La barre. Des icônes, pas des mots : le nom apparaît au survol.
+             ⚠️ Ce qui attend une réponse est une NOTIFICATION — une boîte aux lettres avec un
+             point rouge — et pas une pastille de plus. C'est le seul élément de cette barre qui
+             a le droit d'appeler le regard, et il ne le fait que s'il a quelque chose à dire. ── */}
       <nav className="sc-orbes" aria-label="Son travail">
         <Orbe
-          nom="Objectif"
-          actif={panneau === "objectif"}
-          onClick={() => setPanneau(panneau === "objectif" ? null : "objectif")}
-        />
-        <Orbe
           nom="À décider"
+          icone="boite"
           compte={enAttente}
           alerte={enAttente > 0}
           actif={panneau === "attente"}
           onClick={() => setPanneau(panneau === "attente" ? null : "attente")}
         />
         <Orbe
-          nom="Mémoire"
+          nom="Ce qu'elle a appris"
+          icone="progres"
           actif={panneau === "memoire"}
           onClick={() => setPanneau(panneau === "memoire" ? null : "memoire")}
         />
         <Orbe
+          nom={d.recolte.titre}
+          icone="recolte"
+          compte={d.recolte.lignes.length}
+          actif={panneau === "recolte"}
+          onClick={() => setPanneau(panneau === "recolte" ? null : "recolte")}
+        />
+        <Orbe
+          nom="Votre objectif"
+          icone="objectif"
+          actif={panneau === "objectif"}
+          onClick={() => setPanneau(panneau === "objectif" ? null : "objectif")}
+        />
+        <Orbe
           nom="Vous"
+          icone="vous"
           alerte={arrete}
           actif={panneau === "main"}
           onClick={() => setPanneau(panneau === "main" ? null : "main")}
@@ -369,6 +403,30 @@ export function Scene(d: DonneesDeLaScene) {
                 {enAttente === 0 ? (
                   <p className="sc-vide">Rien n&apos;attend votre réponse.</p>
                 ) : null}
+              </Contenu>
+            ) : null}
+
+            {panneau === "recolte" ? (
+              <Contenu titre={d.recolte.titre}>
+                {d.recolte.lignes.length > 0 ? (
+                  <ul className="rc">
+                    {d.recolte.lignes.map((ligne) => (
+                      <li key={`${ligne.entreprise}-${ligne.quand}`}>
+                        <span className="rc-qui">
+                          <strong>{ligne.entreprise}</strong>
+                          {ligne.contact ? <em> — {ligne.contact}</em> : null}
+                        </span>
+                        <span className="rc-quoi">
+                          {ligne.quoi}
+                          {ligne.valeur > 0 ? ` · ${ligne.valeur.toLocaleString("fr-FR")} €` : ""}
+                        </span>
+                        <time>{ligne.quand}</time>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="sc-vide">{d.recolte.vide}</p>
+                )}
               </Contenu>
             ) : null}
 
@@ -479,12 +537,14 @@ export function Scene(d: DonneesDeLaScene) {
 
 function Orbe({
   nom,
+  icone,
   compte,
   alerte,
   actif,
   onClick,
 }: {
   nom: string;
+  icone: NomDIcone;
   compte?: number;
   alerte?: boolean;
   actif: boolean;
@@ -496,12 +556,84 @@ function Orbe({
       className={`sc-orbe${actif ? " est-actif" : ""}${alerte ? " est-alerte" : ""}`}
       onClick={onClick}
       aria-pressed={actif}
+      aria-label={nom}
+      title={nom}
     >
-      <span className="sc-orbe-point" aria-hidden="true" />
+      <Icone nom={icone} />
+      {/* Le nom n'apparaît qu'au survol : une barre de cinq libellés redevient un menu, et la
+          page cesse d'être une scène. */}
       <span className="sc-orbe-nom">{nom}</span>
-      {compte !== undefined && compte > 0 ? <span className="sc-orbe-compte">{compte}</span> : null}
+      {compte !== undefined && compte > 0 ? (
+        <span className={`sc-orbe-compte${alerte ? " est-alerte" : ""}`}>{compte}</span>
+      ) : null}
     </button>
   );
+}
+
+type NomDIcone = "boite" | "progres" | "recolte" | "objectif" | "vous";
+
+/**
+ * Les icônes, dessinées à la main en SVG.
+ *
+ * ⚠️ Aucune bibliothèque : cinq traits ne valent pas une dépendance livrée au navigateur, et une
+ * police d'icônes ferait apparaître des carrés le temps de son chargement. `currentColor` partout,
+ * pour qu'elles s'allument avec le reste de l'orbe sans une seule règle de plus.
+ */
+function Icone({ nom }: { nom: NomDIcone }) {
+  const commun = {
+    width: 15,
+    height: 15,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.6,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+
+  switch (nom) {
+    // La boîte aux lettres : c'est l'image que tout le monde reconnaît pour « il y a quelque
+    // chose pour vous, et personne ne l'ouvrira à votre place ».
+    case "boite":
+      return (
+        <svg {...commun}>
+          <path d="M3 8.5 12 14l9-5.5" />
+          <rect x="3" y="5" width="18" height="14" rx="2.5" />
+        </svg>
+      );
+    // Une courbe qui monte : ce qu'elle a appris se voit à ce qui progresse.
+    case "progres":
+      return (
+        <svg {...commun}>
+          <path d="M3 17.5 9 11l4 4 7.5-8" />
+          <path d="M15 3.5h5.5V9" />
+        </svg>
+      );
+    // Une étoile : ce qui a abouti, et qui compte plus que le volume.
+    case "recolte":
+      return (
+        <svg {...commun}>
+          <path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9L12 16.9 6.7 19.7l1.1-5.9L3.5 9.7l5.9-.8z" />
+        </svg>
+      );
+    case "objectif":
+      return (
+        <svg {...commun}>
+          <circle cx="12" cy="12" r="8.5" />
+          <circle cx="12" cy="12" r="4" />
+          <circle cx="12" cy="12" r="0.6" fill="currentColor" />
+        </svg>
+      );
+    // Une personne : ce que le dirigeant garde en main.
+    case "vous":
+      return (
+        <svg {...commun}>
+          <circle cx="12" cy="8" r="3.5" />
+          <path d="M5 20c0-3.6 3.1-5.5 7-5.5s7 1.9 7 5.5" />
+        </svg>
+      );
+  }
 }
 
 /**

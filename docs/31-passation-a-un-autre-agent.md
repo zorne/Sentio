@@ -32,6 +32,10 @@
 | 2026-08-26 | **La formule et les plafonds** — dans le tiroir « Vous » | Réponse au deuxième grief : l'opacité. Compté sur les **vraies lignes**, jamais `usage_counter` |
 | 2026-08-26 | **Le carré et la saccade** — signalés par le fondateur en utilisant la scène | `backdrop-filter` + `transform` fait apparaître un **rectangle** ; et deux règles ne peuvent pas animer la même propriété |
 | 2026-08-26 | **Les orbes s'allument au survol** — demandé par le fondateur | Trois degrés (point, contour, lueur) ; celle qui attend garde **sa** couleur |
+| 2026-08-26 | **Aucune orbe allumée au repos** | Une lumière permanente cesse d'être un signal en deux jours — elle devient un décor |
+| 2026-08-26 | **La barre devient des icônes** — boîte aux lettres à point rouge, progrès, récolte, objectif, vous | Le nom apparaît au survol ; cinq libellés alignés redeviennent un menu |
+| 2026-08-26 | **La récolte** — ce qui a abouti, NOMMÉ selon le rôle | La base ne connaît aucun métier ; seul le vocabulaire change. C'est la frontière d'`adr/0029` |
+| 2026-08-26 | **Julie en dit plus** — taux, panier moyen, reste à faire, les deux rythmes | Même seuil de taux que le tableau de bord ; jamais un verdict, toujours deux nombres |
 
 ---
 
@@ -181,6 +185,24 @@ Après 40 envois **sans une seule réponse**, l'employée s'arrête d'elle-même
 directe au reproche le plus documenté fait aux concurrents (« ~1 400 emails, 0 réponse »). Elle ne
 s'exprime **que si rien d'autre ne bloque** : un domaine suspendu *explique* le silence, et
 l'annoncer enverrait le dirigeant réécrire son message alors que le problème est technique.
+
+### La récolte est nommée par le rôle, jamais dérivée d'un métier
+
+Le fondateur a demandé une pastille montrant « les prospects qui ont répondu positivement », puis
+a ajouté lui-même la nuance qui compte : *« chaque agent peut avoir un rôle différent, donc il y
+aura des agents qui ne vont pas forcément envoyer des messages de prospection. »*
+
+⚠️ **C'est le piège exact que `adr/0029` existe pour éviter.** Écrire « prospect » dans la requête
+SQL ferait rentrer la prospection dans le noyau, et un employé qui reprend les demandes entrantes
+n'aurait jamais rien à montrer là.
+
+Ce qui est posé : `recolte_du_client()` rend les entreprises qui ont donné une **suite** — un
+rendez-vous ou une vente — quel que soit le travail qui l'a produite. Elle ne connaît aucun métier.
+C'est `motsDeLaRecolte(role)`, dans le domaine, qui **nomme** le panneau. **Le rôle décide des
+mots ; les faits sont les mêmes pour tout le monde.**
+
+Et le repli d'un rôle inconnu est **neutre**, jamais celui de la prospection : servir « vos
+prospects » à un employé administratif serait spécialiser le noyau par le vocabulaire.
 
 ### Deux pièges d'animation, trouvés par le fondateur en utilisant la scène
 

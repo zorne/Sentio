@@ -38,6 +38,7 @@ export {
 } from "./composition.js";
 export * from "./effort.js";
 export * from "./progression.js";
+export * from "./recolte.js";
 export * from "./questions.js";
 export * from "./statistiques.js";
 export * from "./reevaluation.js";

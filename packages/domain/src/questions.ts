@@ -41,6 +41,9 @@ export interface AvancementMesure {
   readonly realise: number;
   readonly joursEcoules: number;
   readonly horizonJours: number;
+  /** Ce qu'il faudrait par jour pour tenir la cible, et ce qui se fait réellement. Mesurés. */
+  readonly rythmeRequis: number;
+  readonly rythmeObserve: number;
 }
 
 export type Intention =
@@ -66,6 +69,24 @@ export interface ContexteDeReponse {
   readonly avancement: AvancementMesure | null;
   readonly role: string | null;
   readonly arretee: boolean;
+  /** Entreprises DISTINCTES qui ont donné une suite — rendez-vous ou vente. */
+  readonly entreprisesEngagees: number;
+}
+
+/**
+ * En dessous, aucun taux n'est prononcé — même dans une conversation.
+ *
+ * ⚠️ Le même seuil que le tableau de bord (`statistiques.ts`), et pas par élégance : un dirigeant
+ * qui lit « 14 % » sur son écran et s'entend dire « 50 % » par son employée cesse de croire les
+ * deux. Deux surfaces qui parlent des mêmes faits doivent appliquer la même règle.
+ */
+const ENVOIS_MINIMAUX_POUR_UN_TAUX = 30;
+
+/** Un taux, ou rien. Jamais un « environ ». */
+function tauxDit(reussites: number, sur: number): string | null {
+  if (sur < ENVOIS_MINIMAUX_POUR_UN_TAUX) return null;
+  const valeur = Math.round((reussites / sur) * 1000) / 10;
+  return `${valeur.toLocaleString("fr-FR")} %`;
 }
 
 export type Reponse =
@@ -193,37 +214,95 @@ export function repondre(question: Question, ctx: ContexteDeReponse): Reponse {
           : null,
         t.reponses > 0 ? `reçu ${pluriel(t.reponses, "réponse", "réponses")}` : null,
         t.rendezVous > 0 ? `décroché ${pluriel(t.rendezVous, "rendez-vous", "rendez-vous")}` : null,
+        t.ventes > 0 ? `et ${pluriel(t.ventes, "vente déclarée", "ventes déclarées")}` : null,
       ].filter((m): m is string => m !== null);
-      return { statut: "repond", phrase: `${morceaux.join(", ")} ${quand}.` };
+
+      // La suite : ce qui n'a pas encore été travaillé. C'est ce qu'un dirigeant demande ensuite,
+      // et le dire tout de suite évite la question.
+      const reste = Math.max(t.missionsOuvertes - t.missionsAgies, 0);
+      const suite =
+        reste > 0
+          ? ` Il me reste ${pluriel(reste, "mission ouverte", "missions ouvertes")} à travailler.`
+          : "";
+
+      return { statut: "repond", phrase: `${morceaux.join(", ")} ${quand}.${suite}` };
     }
 
-    case "prospection":
-      return {
-        statut: "repond",
-        phrase:
-          t.messagesEnvoyes === 0
-            ? `Je n'ai approché aucune entreprise ${quand}.`
-            : `J'ai approché ${pluriel(t.messagesEnvoyes, "entreprise", "entreprises")} ${quand}.`,
-      };
+    case "prospection": {
+      if (t.messagesEnvoyes === 0) {
+        return { statut: "repond", phrase: `Je n'ai approché aucune entreprise ${quand}.` };
+      }
+      const taux = tauxDit(t.reponses, t.messagesEnvoyes);
+      const suite = [
+        t.reponses > 0 ? `${pluriel(t.reponses, "a répondu", "ont répondu")}` : "aucune n'a répondu",
+        taux === null ? null : `soit ${taux}`,
+        ctx.entreprisesEngagees > 0
+          ? `et ${pluriel(ctx.entreprisesEngagees, "a donné une suite", "ont donné une suite")}`
+          : null,
+      ].filter((m): m is string => m !== null);
 
-    case "reponses":
       return {
         statut: "repond",
         phrase:
-          t.reponses === 0
-            ? `Personne ne m'a répondu ${quand}.`
-            : `${pluriel(t.reponses, "entreprise m'a répondu", "entreprises m'ont répondu")} ${quand}.`,
+          `J'ai approché ${pluriel(t.messagesEnvoyes, "entreprise", "entreprises")} ${quand}. ` +
+          `${suite.join(", ")}.`,
       };
+    }
 
-    case "ventes":
+    case "reponses": {
+      if (t.reponses === 0) {
+        const taux = tauxDit(0, t.messagesEnvoyes);
+        return {
+          statut: "repond",
+          phrase:
+            `Personne ne m'a répondu ${quand}` +
+            (taux === null
+              ? "."
+              : `, sur ${pluriel(t.messagesEnvoyes, "entreprise approchée", "entreprises approchées")}.`),
+        };
+      }
+      const taux = tauxDit(t.reponses, t.messagesEnvoyes);
+      const suite = [
+        taux === null ? null : `${taux} de celles que j'ai approchées`,
+        t.rendezVous > 0
+          ? `${pluriel(t.rendezVous, "a débouché sur un rendez-vous", "ont débouché sur un rendez-vous")}`
+          : null,
+      ].filter((m): m is string => m !== null);
+
       return {
         statut: "repond",
         phrase:
-          t.ventes === 0
-            ? `Aucune vente déclarée ${quand}. Je ne compte que ce que vous déclarez vous-même.`
-            : `${pluriel(t.ventes, "vente déclarée", "ventes déclarées")} ${quand}, pour ` +
-              `${t.chiffreAffaires.toLocaleString("fr-FR")} €.`,
+          `${pluriel(t.reponses, "entreprise m'a répondu", "entreprises m'ont répondu")} ${quand}` +
+          (suite.length === 0 ? "." : ` — ${suite.join(", ")}.`),
       };
+    }
+
+    case "ventes": {
+      if (t.ventes === 0) {
+        return {
+          statut: "repond",
+          phrase: `Aucune vente déclarée ${quand}. Je ne compte que ce que vous déclarez vous-même.`,
+        };
+      }
+      // Le panier moyen est une DIVISION de deux nombres mesurés, pas une estimation. On l'arrondit
+      // à l'euro : afficher des centimes sur une moyenne donnerait une précision qui n'existe pas.
+      const panier = Math.round(t.chiffreAffaires / t.ventes);
+      const reste =
+        ctx.avancement === null
+          ? null
+          : Math.max(ctx.avancement.cible - ctx.avancement.realise, 0);
+
+      return {
+        statut: "repond",
+        phrase:
+          `${pluriel(t.ventes, "vente déclarée", "ventes déclarées")} ${quand}, pour ` +
+          `${t.chiffreAffaires.toLocaleString("fr-FR")} € — ` +
+          `${panier.toLocaleString("fr-FR")} € en moyenne.` +
+          (reste === null || reste === 0
+            ? ""
+            : ` Il vous reste ${reste.toLocaleString("fr-FR")} € pour atteindre votre objectif.`),
+      };
+    }
 
     case "objectif": {
       if (ctx.avancement === null) {
@@ -236,12 +315,22 @@ export function repondre(question: Question, ctx: ContexteDeReponse): Reponse {
       }
       const a = ctx.avancement;
       const reste = Math.max(a.horizonJours - a.joursEcoules, 0);
+
+      // ⚠️ Le rythme est le seul endroit où l'on dit si ça va tenir — et on le dit avec les deux
+      // nombres, jamais avec un verdict. « Vous n'y arriverez pas » serait une prédiction ;
+      // « il en faudrait 333 par jour, j'en fais 200 » est un fait que le dirigeant interprète.
+      const rythme =
+        a.rythmeRequis > 0
+          ? ` Pour tenir, il en faudrait ${Math.round(a.rythmeRequis).toLocaleString("fr-FR")} ` +
+            `par jour ; j'en suis à ${Math.round(a.rythmeObserve).toLocaleString("fr-FR")}.`
+          : "";
+
       return {
         statut: "repond",
         phrase:
           `${a.realise.toLocaleString("fr-FR")} sur ${a.cible.toLocaleString("fr-FR")} ` +
           `${a.metrique}, en ${pluriel(a.joursEcoules, "jour", "jours")}. ` +
-          `Il vous reste ${pluriel(reste, "jour", "jours")}.`,
+          `Il vous reste ${pluriel(reste, "jour", "jours")}.${rythme}`,
       };
     }
 

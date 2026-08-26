@@ -23,6 +23,7 @@ import { redirect } from "next/navigation";
 
 import {
   courbe,
+  motsDeLaRecolte,
   evolutionDuTauxDeReponse,
   tauxDeReponse,
   type JourDeTravail,
@@ -187,6 +188,19 @@ export default async function EspacePage() {
 
   const abonnement = abonnements[0];
 
+  // ── Ce qui a abouti. La fonction ne connaît AUCUN métier : elle rend les entreprises qui ont
+  //    donné une suite. C'est le rôle qui NOMME la récolte, ici et nulle part ailleurs — sans quoi
+  //    on spécialiserait le noyau par le vocabulaire (adr/0029).
+  const { rows: recolte } = await pool.query<{
+    entreprise: string;
+    contact: string | null;
+    quoi: string;
+    valeur: string;
+    quand: Date;
+  }>("select * from recolte_du_client($1, $2)", [tenantId, 30]);
+
+  const mots = motsDeLaRecolte(configuration?.role ?? null);
+
   const capacitesLisibles = (capacites ?? [])
     .map((ligne) => (ligne.capability as { name?: string } | null)?.name)
     .filter((nom): nom is string => typeof nom === "string" && nom.trim() !== "");
@@ -259,6 +273,17 @@ export default async function EspacePage() {
               },
             }
       }
+      recolte={{
+        titre: mots.titre,
+        vide: mots.vide,
+        lignes: recolte.map((ligne) => ({
+          entreprise: ligne.entreprise,
+          contact: ligne.contact,
+          quoi: ligne.quoi,
+          valeur: Number(ligne.valeur),
+          quand: dateCourte(ligne.quand.toISOString()),
+        })),
+      }}
       tableau={{
         ...bilan,
         jours: JOURS,

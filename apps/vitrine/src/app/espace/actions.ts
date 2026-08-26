@@ -185,7 +185,17 @@ export async function demanderALEmployee(
         realise: string;
         jours_ecoules: number;
         horizon_jours: number;
+        rythme_requis: string;
+        rythme_observe: string;
       }>("select * from avancement_vers_l_objectif($1)", [tenantId])
+      .then((r) => r.rows);
+
+    // Les entreprises qui ont donné une suite : le même compte que celui du tableau de bord.
+    const [bilan] = await pool
+      .query<{ entreprises_engagees: number }>(
+        "select entreprises_engagees from bilan_de_l_employe($1, $2)",
+        [tenantId, 30],
+      )
       .then((r) => r.rows);
 
     const [employe] = await pool
@@ -218,7 +228,10 @@ export async function demanderALEmployee(
               realise: Number(avancement.realise),
               joursEcoules: Number(avancement.jours_ecoules),
               horizonJours: Number(avancement.horizon_jours),
+              rythmeRequis: Number(avancement.rythme_requis),
+              rythmeObserve: Number(avancement.rythme_observe),
             },
+      entreprisesEngagees: Number(bilan?.entreprises_engagees ?? 0),
       role: employe?.role ? motDuRolePourElle(employe.role) : null,
       arretee: employe?.en_pause_depuis !== null && employe?.en_pause_depuis !== undefined,
     });

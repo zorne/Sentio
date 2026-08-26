@@ -634,68 +634,102 @@
   z-index: 4;
 }
 
+/* ⚠️ UNE ICÔNE, PAS UN LIBELLÉ. Cinq mots alignés redeviennent un menu, et la page cesse d'être
+   une scène. Le nom apparaît au survol — et il reste toujours lisible par un lecteur d'écran
+   (`aria-label`) et au survol système (`title`). */
 .sc-orbe {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
-  height: 40px;
-  padding: 0 1rem;
-  border-radius: 100px;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 50%;
   border: 1px solid var(--line);
   background: rgba(244, 245, 246, 0.02);
   color: var(--ink-3);
   font: inherit;
-  font-size: 12.5px;
   cursor: pointer;
   transition: color 0.3s var(--ease), border-color 0.3s var(--ease),
               transform 0.3s var(--ease), background 0.3s var(--ease),
               box-shadow 0.35s var(--ease);
 }
-/* Au survol, l'orbe s'ALLUME — son point d'abord, puis son contour, puis une lueur autour.
-   Trois degrés, pas un seul : un survol qui change une seule chose se remarque à peine, et
-   l'orbe doit répondre avant qu'on ait cliqué pour qu'on sache qu'elle est vivante. */
-.sc-orbe:hover {
-  color: var(--ink);
-  border-color: var(--mint-line);
-  background: rgba(46, 230, 245, 0.06);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 26px -8px rgba(46, 230, 245, 0.4);
-}
-.sc-orbe:hover .sc-orbe-point {
-  opacity: 1;
-  background: var(--mint);
-  box-shadow: 0 0 10px var(--mint);
-}
-/* Celle qui attend une réponse garde SA couleur en s'allumant. La faire virer à la menthe
-   effacerait la seule information qu'elle porte : qu'il y a quelque chose à trancher. */
-.sc-orbe.est-alerte:hover {
-  border-color: var(--amber);
-  background: rgba(245, 196, 81, 0.09);
-  box-shadow: 0 6px 26px -8px rgba(245, 196, 81, 0.45);
-}
-.sc-orbe.est-alerte:hover .sc-orbe-point {
-  background: var(--amber);
-  box-shadow: 0 0 10px var(--amber);
-}
-.sc-orbe.est-actif {
-  color: var(--ink);
-  border-color: var(--ink-3);
-  background: rgba(244, 245, 246, 0.05);
-}
-.sc-orbe:focus-visible { outline: 1px solid var(--mint); outline-offset: 3px; }
 
-.sc-orbe-point {
-  width: 5px; height: 5px; border-radius: 50%;
-  background: currentColor;
-  opacity: 0.5;
-  transition: opacity 0.3s var(--ease), background 0.3s var(--ease),
-              box-shadow 0.35s var(--ease);
+/* Le nom : une étiquette qui monte au survol. `pointer-events: none` pour qu'elle ne s'interpose
+   jamais entre le pointeur et l'orbe — sinon l'étiquette qu'on vient de faire apparaître empêche
+   de cliquer sur ce qu'elle nomme. */
+.sc-orbe-nom {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  transform: translate(-50%, 4px);
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  background: rgba(4, 4, 5, 0.94);
+  border: 1px solid var(--line);
+  border-radius: 100px;
+  padding: 0.3rem 0.65rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s var(--ease), transform 0.25s var(--ease);
 }
-.sc-orbe.est-alerte { color: var(--amber); border-color: var(--amber-line); }
-.sc-orbe.est-alerte .sc-orbe-point {
-  opacity: 1;
-  animation: sc-pouls 1.8s ease-in-out infinite;
+
+/* ⚠️ AU REPOS, AUCUNE ORBE N'EST ALLUMÉE — pas même celle qui a quelque chose en attente.
+   Elle l'était : contour ambré, point à pleine opacité, pulsation. Le résultat était une barre
+   dont un élément brillait en permanence, et une lumière permanente cesse d'être un signal au
+   bout de deux jours — elle devient un décor.
+
+   Ce qui attend se dit par le COMPTE, en ambre : c'est un fait, il est petit, et il disparaît
+   quand il n'y a plus rien. L'appel au regard, lui, est déjà porté par le halo qui bat autour de
+   la silhouette — un seul endroit sur cette page a le droit d'appeler, et ce n'est pas une
+   pastille de menu.
+
+   Ce qui attend une décision porte donc UN POINT, posé sur la boîte aux lettres — le signal
+   universel « il y a du courrier ». Rouge : c'est la seule chose de cette page qui ne peut pas
+   attendre, et l'ambre est déjà pris par « ça s'est arrêté ». */
+.sc-orbe-compte.est-alerte {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 0.25rem;
+  border-radius: 100px;
+  background: #f0544c;
+  color: #0a0a0b;
+  border: 2px solid var(--void);
+  font-family: var(--mono);
+  font-size: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Il bat, mais lentement. Un point rouge fixe se fond dans le décor en deux jours ; un point qui
+   clignote vite devient une alarme, et on finit par fermer l'onglet. */
+.sc-orbe-compte.est-alerte { animation: sc-pouls 2.6s ease-in-out infinite; }
+
+/* Le compte des autres orbes n'est pas une alerte : c'est une quantité. Il reste discret. */
+.sc-orbe-compte:not(.est-alerte) {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 0.2rem;
+  border-radius: 100px;
+  background: var(--void);
+  border: 1px solid var(--mint-line);
+  color: var(--mint);
+  font-family: var(--mono);
+  font-size: 8.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 @keyframes sc-pouls { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
 
@@ -1144,7 +1178,7 @@
    immobile. Les capacités déployées gardent donc leur place ; c'est la
    transition qui disparaît, pas l'information. */
 @media (prefers-reduced-motion: reduce) {
-  .sc-halo, .sc-orbe.est-alerte .sc-orbe-point { animation: none; opacity: 0.8; }
+  .sc-halo, .sc-orbe-compte.est-alerte { animation: none; opacity: 1; }
   .sc-aura, .sc-anneau, .sc-parler-onde, .cv-attente i, .cv-tour, .sc-vie i { animation: none; }
   /* L'entrée est jouée d'un coup : la page est là, tout de suite. */
   .sc-scene, .sc-parler, .sc-orbes, .sc-barre { transition: none; }
@@ -1226,3 +1260,42 @@
    chose. Prévenir à 100 % serait annoncer un arrêt déjà survenu. */
 .ab-jauge.est-serre .ab-jauge-nombre { color: var(--amber); }
 .ab-jauge.est-serre .ab-jauge-piste i { background: var(--amber); }
+
+
+/* ─── La récolte ─────────────────────────────────────────────────────
+   Ce qui a abouti. Une ligne par entreprise, jamais un tableau : le
+   dirigeant lit trois noms, pas une grille. */
+.rc {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.rc li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.15rem 1rem;
+  padding-left: 0.9rem;
+  border-left: 2px solid var(--mint-line);
+}
+.rc-qui { font-size: 0.97rem; color: var(--ink); }
+.rc-qui em { font-style: normal; color: var(--ink-3); }
+.rc-quoi {
+  grid-column: 1;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mint);
+}
+.rc time {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}

@@ -35,9 +35,12 @@ const ctx = (over: Partial<ContexteDeReponse> = {}): ContexteDeReponse => ({
     realise: 2000,
     joursEcoules: 10,
     horizonJours: 30,
+    rythmeRequis: 333.33,
+    rythmeObserve: 200,
   },
   role: "ne retenir que les bonnes entreprises",
   arretee: false,
+  entreprisesEngagees: 1,
   ...over,
 });
 
@@ -109,6 +112,46 @@ describe("Aucun chiffre n'est inventé", () => {
     }));
     expect(r.phrase).toContain("1 entreprise ");
     expect(r.phrase).not.toContain("1 entreprises");
+  });
+});
+
+describe("Elle en dit plus que le strict minimum — mais rien d'estimé", () => {
+  it("⭐ la journée dit aussi ce qu'il reste à travailler", () => {
+    // C'est la question suivante d'un dirigeant, toujours. La devancer évite un aller-retour.
+    const r = demander("qu'as-tu fait aujourd'hui ?", ctx());
+    expect(r.phrase).toContain("reste 3 missions ouvertes");
+  });
+
+  it("⭐⭐ elle ne prononce un taux qu'au-dessus du seuil — le MÊME que le tableau de bord", () => {
+    // Un dirigeant qui lit « 14 % » sur son écran et s'entend dire « 50 % » par son employée
+    // cesse de croire les deux.
+    const petit = demander("combien d'entreprises approchées ?", ctx({
+      travail: { ...TRAVAIL, messagesEnvoyes: 9, reponses: 3 },
+    }));
+    expect(petit.phrase).not.toMatch(/%/);
+
+    const assez = demander("combien d'entreprises approchées ?", ctx({
+      travail: { ...TRAVAIL, messagesEnvoyes: 40, reponses: 6 },
+    }));
+    expect(assez.phrase).toContain("15 %");
+  });
+
+  it("⭐ les ventes disent le panier moyen — une division de deux nombres mesurés", () => {
+    const r = demander("combien de ventes ?", ctx({
+      travail: { ...TRAVAIL, ventes: 4, chiffreAffaires: 18000 },
+    }));
+    expect(r.phrase).toContain((4500).toLocaleString("fr-FR"));
+    // Et ce qu'il reste pour la cible, puisqu'un objectif est déclaré.
+    expect(r.phrase).toContain("pour atteindre votre objectif");
+  });
+
+  it("⭐⭐ l'objectif donne les DEUX rythmes, jamais un verdict", () => {
+    // « Vous n'y arriverez pas » serait une prédiction. « Il en faudrait 333 par jour, j'en fais
+    // 200 » est un fait, que le dirigeant interprète lui-même.
+    const r = demander("où en est mon objectif ?", ctx());
+    expect(r.phrase).toContain("333");
+    expect(r.phrase).toContain("200");
+    expect(r.phrase).not.toMatch(/n'y arriverez pas|impossible|trop tard/);
   });
 });
 
