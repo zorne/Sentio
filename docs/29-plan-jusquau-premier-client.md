@@ -1081,6 +1081,53 @@ c'est la transition qui disparaît, jamais l'information.
 
 ---
 
+## Étape 12 octies — Lui parler, et une vraie présence
+
+**Ce que le dirigeant demandait sans le dire.** Un espace où l'on consulte des cadres, même beaux,
+reste un tableau de bord. Ce qu'on veut avec quelqu'un qui travaille pour soi, c'est **lui
+demander**.
+
+### Fait le 2026-08-26 — `20260815120022`, `questions.ts`, `Conversation.tsx`
+
+**Un bouton « Lui parler », sous son nom.** Pas rangé avec les autres : on parle à quelqu'un, on
+ne consulte pas un menu. Il ouvre une conversation où l'on pose de vraies questions — *qu'as-tu
+fait aujourd'hui ? combien d'entreprises approchées cette semaine ? combien m'ont répondu ? où en
+est mon objectif ?*
+
+⚠️ **AUCUN MODÈLE NE RÉPOND.** La question est rapprochée d'une **liste fermée d'intentions**,
+puis la réponse est un gabarit rempli avec des comptes **lus en base**
+(`travail_sur_la_periode`). C'est le choix le plus important de cette étape, et il coûte quelque
+chose : elle ne répond qu'à ce qu'elle sait compter.
+
+La raison n'est pas de la prudence de principe. Un modèle qui compte lui-même se trompe d'une
+unité une fois sur cinquante — et cette fois-là, il l'affirmera avec le même aplomb que les
+quarante-neuf autres. **Un dirigeant à qui l'on annonce « 12 réponses » quand il y en a 9 ne
+refait jamais confiance aux 49 chiffres suivants.** C'est l'invariant 4 du dépôt, appliqué là où
+il coûte le plus cher : la seule surface où le client parle à son employée.
+
+Une question incomprise reçoit donc **la liste de ce qu'elle sait dire**, jamais une réponse
+approximative. Deviner produirait un chiffre juste à la question d'à côté — la pire réponse fausse
+qui soit, parce qu'elle est vraie ailleurs et que rien ne la démasque.
+
+**Deux règles de conversation, trouvées en écrivant les tests :**
+
+1. *« Combien de prospects m'ont répondu ? »* contient deux indices, et c'est « répondu » qui porte
+   la question. Sans pondération, la réponse aurait été juste — à une autre question.
+2. *« Et hier ? »* ne contient aucun mot d'intention. C'est pourtant la relance la plus naturelle
+   d'un échange : une fenêtre de temps seule vaut désormais « raconte-moi ta journée ».
+
+**Et l'arrêt passe avant tout chiffre.** À un dirigeant qui a mis son employée en pause et l'a
+oublié, répondre « 0 message envoyé » est exact et parfaitement trompeur.
+
+**La présence a été refaite.** Trois couches derrière la silhouette, et chacune dit quelque chose :
+une lueur qui respire très lentement (elle est allumée), et deux anneaux ouverts qui tournent à
+des vitesses différentes **en sens opposés** — deux rotations parallèles se lisent comme un défaut,
+deux rotations contraires comme un mécanisme. Rien ne clignote et rien n'accélère : une interface
+qui s'agite en permanence fatigue en trois jours, et il ne reste alors plus rien pour signaler ce
+qui compte.
+
+---
+
 # PARTIE II — METTRE EN VENTE
 
 ⛔ **Tout ce qui suit t'appartient.** Un agent prépare, explique, rédige des brouillons et vérifie

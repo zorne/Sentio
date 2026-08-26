@@ -32,6 +32,9 @@ importers:
       '@sentio/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@sentio/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@sentio/vitrine-core':
         specifier: workspace:*
         version: link:../../packages/vitrine-core

@@ -81,6 +81,67 @@
   width: min(30rem, 100%);
 }
 
+/* ─── LA PRÉSENCE ────────────────────────────────────────────────────
+   Trois couches, et chacune dit quelque chose :
+
+     · la lueur         → elle est allumée ;
+     · les deux anneaux → elle tourne, à deux vitesses différentes, dans
+       deux sens opposés. C'est ce qui donne l'impression d'un mécanisme
+       vivant plutôt que d'une image qui pivote ;
+     · le souffle       → une respiration très lente, à peine perceptible.
+       C'est elle qui fait la différence entre « présent » et « affiché ».
+
+   ⚠️ Rien de tout cela ne clignote ni n'accélère. Une interface qui
+   s'agite en permanence fatigue en trois jours — et il ne reste alors
+   plus rien pour signaler ce qui compte vraiment. */
+.sc-aura {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 132%; aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(46, 230, 245, 0.13), transparent 58%);
+  filter: blur(6px);
+  pointer-events: none;
+  animation: sc-respire 7s ease-in-out infinite;
+}
+@keyframes sc-respire {
+  0%, 100% { opacity: 0.62; transform: translate(-50%, -50%) scale(1); }
+  50%      { opacity: 1;    transform: translate(-50%, -50%) scale(1.045); }
+}
+
+.sc-anneau {
+  position: absolute;
+  left: 50%; top: 50%;
+  border-radius: 50%;
+  border: 1px solid rgba(46, 230, 245, 0.16);
+  pointer-events: none;
+}
+/* L'anneau extérieur : lent, dans le sens des aiguilles. Il est ouvert
+   (une portion transparente) — c'est l'ouverture qui rend la rotation
+   visible sur un cercle parfait. */
+.sc-anneau--large {
+  width: 104%; aspect-ratio: 1;
+  border-color: transparent;
+  border-top-color: rgba(46, 230, 245, 0.3);
+  border-right-color: rgba(46, 230, 245, 0.1);
+  animation: sc-tourne 26s linear infinite;
+}
+/* L'intérieur : plus rapide, en sens inverse. Deux rotations opposées se
+   lisent comme un mécanisme ; deux rotations parallèles, comme un défaut. */
+.sc-anneau--serre {
+  width: 84%; aspect-ratio: 1;
+  border-color: transparent;
+  border-bottom-color: rgba(46, 230, 245, 0.22);
+  border-left-color: rgba(46, 230, 245, 0.07);
+  animation: sc-tourne 17s linear infinite reverse;
+}
+@keyframes sc-tourne {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
 /* La silhouette EST le bouton. Pas d'icône « voir plus » à côté d'elle :
    ce qu'on veut savoir d'une employée, on le lui demande à elle. */
 .sc-corps {
@@ -203,6 +264,54 @@
   max-width: 42ch;
 }
 .sc-arret-mot { color: var(--amber); }
+
+/* ─── Lui parler ─────────────────────────────────────────────────────
+   ⚠️ Exclu de la règle de base des boutons, comme `.oui` a dû l'être :
+   cette règle porte des `:not()`, dont la spécificité compte celle de
+   leurs arguments, et elle écrasait la menthe en silence.
+
+   Le geste principal après la silhouette elle-même. Il porte la menthe —
+   c'est une adresse à quelqu'un, pas une consultation — et une onde très
+   lente en part, comme une voix. */
+.sc-parler {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  height: 46px;
+  padding: 0 1.6rem;
+  border-radius: 100px;
+  border: 1px solid var(--mint-line);
+  background: var(--mint-dim);
+  color: var(--mint);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.3s var(--ease), background 0.3s var(--ease),
+              box-shadow 0.4s var(--ease);
+}
+.sc-parler:hover {
+  transform: translateY(-2px);
+  background: rgba(46, 230, 245, 0.2);
+  box-shadow: 0 10px 36px rgba(46, 230, 245, 0.16);
+}
+.sc-parler.est-actif { background: rgba(46, 230, 245, 0.22); }
+.sc-parler:focus-visible { outline: 1px solid var(--mint); outline-offset: 3px; }
+
+.sc-parler-onde {
+  position: absolute;
+  inset: -1px;
+  border-radius: 100px;
+  border: 1px solid var(--mint-line);
+  animation: sc-onde 3.4s var(--ease) infinite;
+  pointer-events: none;
+}
+@keyframes sc-onde {
+  0%   { opacity: 0.5; transform: scale(1); }
+  70%  { opacity: 0;   transform: scale(1.22); }
+  100% { opacity: 0;   transform: scale(1.22); }
+}
 
 /* ════════════════════════════════════════════════════════════════════
    LES ORBES — quatre mots, et c'est tout ce que la page dit au repos
@@ -458,7 +567,7 @@
    le style dépendant d'un détail d'arborescence : le jour où le tiroir
    passe dans un portail, tous ses boutons redeviennent des boutons de
    navigateur, et rien ne le signale. */
-.sc button:not(.sc-orbe):not(.sc-corps):not(.sc-fermer),
+.sc button:not(.sc-orbe):not(.sc-corps):not(.sc-fermer):not(.sc-parler),
 .sc-tiroir button:not(.sc-fermer) {
   font: inherit;
   font-size: 13px;
@@ -476,7 +585,7 @@
   transition: transform 0.3s var(--ease), background 0.3s var(--ease),
               border-color 0.3s var(--ease), color 0.3s var(--ease);
 }
-.sc button:not(.sc-orbe):not(.sc-corps):not(.sc-fermer):hover:not(:disabled),
+.sc button:not(.sc-orbe):not(.sc-corps):not(.sc-fermer):not(.sc-parler):hover:not(:disabled),
 .sc-tiroir button:not(.sc-fermer):hover:not(:disabled) {
   color: var(--ink);
   border-color: var(--ink-3);
@@ -496,6 +605,100 @@
 .sc .autonomie, .sc-tiroir .autonomie { display: flex; gap: 0.45rem; flex-wrap: wrap; }
 .sc .autonomie button.actif, .sc-tiroir .autonomie button.actif { color: var(--ink); border-color: var(--ink-3); background: rgba(244, 245, 246, 0.05); }
 .sc .erreur, .sc-tiroir .erreur { font-family: var(--mono); font-size: 11px; color: var(--amber); font-style: normal; }
+
+/* ════════════════════════════════════════════════════════════════════
+   LA CONVERSATION
+   ════════════════════════════════════════════════════════════════════ */
+
+.cv { display: flex; flex-direction: column; gap: 1rem; }
+
+.cv-fil {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-height: 6rem;
+  max-height: 38svh;
+  overflow-y: auto;
+}
+.cv-invite { color: var(--ink-3); font-size: 0.9rem; }
+
+.cv-tour { animation: sc-arrive 0.45s var(--ease); }
+@keyframes sc-arrive {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* La question du dirigeant est alignée à droite et discrète : c'est lui
+   qui parle, il sait déjà ce qu'il a dit. */
+.cv-tour--moi { align-self: flex-end; max-width: 85%; }
+.cv-tour--moi p {
+  font-size: 0.92rem;
+  color: var(--ink-3);
+  text-align: right;
+}
+
+/* Ce qu'ELLE dit garde la voix humaine — sérif, comme partout où le
+   produit parle à la première personne. */
+.cv-tour--elle { max-width: 92%; }
+.cv-tour--elle p {
+  font-family: var(--serif);
+  font-size: 1.3rem;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+
+/* Les trois points. Un état d'attente muet se lit comme une panne. */
+.cv-attente { display: inline-flex; gap: 5px; padding: 0.5rem 0; }
+.cv-attente i {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--mint);
+  opacity: 0.3;
+  animation: sc-pouls 1.2s ease-in-out infinite;
+}
+.cv-attente i:nth-child(2) { animation-delay: 0.16s; }
+.cv-attente i:nth-child(3) { animation-delay: 0.32s; }
+
+/* Les questions suggérées ne sont pas de la décoration : ce sont les
+   rails. Un champ libre sans elles laisserait croire à un assistant
+   général, et chaque question hors piste serait vécue comme une panne. */
+.cv-rails {
+  list-style: none;
+  padding: 0;
+  margin-top: 0.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.cv-rails--depart { margin-top: 0; }
+.cv-rails button {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 100px;
+  padding: 0.42rem 0.8rem;
+  cursor: pointer;
+  transition: color 0.3s var(--ease), border-color 0.3s var(--ease);
+}
+.cv-rails button:hover { color: var(--mint); border-color: var(--mint-line); }
+
+.cv-saisie { display: flex; gap: 0.5rem; }
+.cv-saisie input {
+  flex: 1;
+  font: inherit;
+  font-size: 0.92rem;
+  height: 38px;
+  padding: 0 1rem;
+  border-radius: 100px;
+  border: 1px solid var(--line-2);
+  background: rgba(244, 245, 246, 0.03);
+  color: var(--ink);
+}
+.cv-saisie input::placeholder { color: var(--ink-3); }
+.cv-saisie input:focus { outline: none; border-color: var(--mint-line); }
 
 /* ─── Un employé arrêté : la scène entière se retire ─────────────── */
 .sc--arrete .sc-corps { opacity: 0.45; filter: saturate(0.35); }
@@ -549,6 +752,8 @@
    transition qui disparaît, pas l'information. */
 @media (prefers-reduced-motion: reduce) {
   .sc-halo, .sc-orbe.est-alerte .sc-orbe-point { animation: none; opacity: 0.8; }
+  .sc-aura, .sc-anneau, .sc-parler-onde, .cv-attente i, .cv-tour { animation: none; }
+  .sc-aura { opacity: 0.8; }
   .sc-couronne li { transition: none; }
   .sc-tiroir, .sc-voile { animation: none; }
   .sc-corps, .sc-orbe, .sc button { transition: none; }

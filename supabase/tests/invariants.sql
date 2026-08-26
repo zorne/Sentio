@@ -3263,4 +3263,128 @@ end;
 $$;
 
 
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+-- LADY-X — « qu'est-ce que tu as fait aujourd'hui ? » ne compte QUE ce qui a eu lieu.
+--
+-- C'est la surface où le dirigeant PARLE à son employée : un chiffre faux ici coûte plus cher
+-- que partout ailleurs, parce qu'il est donné à la première personne et qu'on le croit.
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  entreprise constant uuid := 'aaaaaaaa-0000-0000-0000-000000000001';
+  voisine    constant uuid := 'bbbbbbbb-0000-0000-0000-000000000002';
+  employe    constant uuid := 'ffffffff-0000-0000-0000-000000000001';
+  employe_v  uuid;
+  objectif   uuid;
+  hier       uuid;
+  ce_matin   uuid;
+  jamais     uuid;
+  avant      record;
+  t          record;
+  debut      constant timestamptz := date_trunc('day', now());
+  fin        constant timestamptz := date_trunc('day', now()) + interval '1 day';
+begin
+  -- ⚠️ On mesure des ÉCARTS, pas des totaux. Les blocs précédents de cette suite travaillent sur
+  -- la même entreprise dans la même transaction : une assertion sur un total absolu tiendrait
+  -- aujourd'hui et casserait le jour où quelqu'un ajoute un bloc plus haut — en accusant ce
+  -- bloc-ci. Un contrôle qui échoue pour la mauvaise raison est pire qu'un contrôle absent.
+  select * into avant from public.travail_sur_la_periode(entreprise, debut, fin);
+
+  select id into objectif from public.objective
+   where tenant_id = entreprise and state = 'actif' limit 1;
+
+  -- ── Une mission d'HIER, travaillée hier.
+  insert into public.task (tenant_id, employee_id, objective_id, subject_kind, subject_id, created_at)
+  values (entreprise, employe, objectif, 'lead', gen_random_uuid(), now() - interval '1 day')
+  returning id into hier;
+  insert into public.execution_event (tenant_id, employee_id, task_id, kind, created_at)
+  values (entreprise, employe, hier, 'action_executee', now() - interval '1 day');
+
+  -- ── Une mission de CE MATIN, travaillée ce matin.
+  insert into public.task (tenant_id, employee_id, objective_id, subject_kind, subject_id)
+  values (entreprise, employe, objectif, 'lead', gen_random_uuid())
+  returning id into ce_matin;
+  insert into public.execution_event (tenant_id, employee_id, task_id, kind)
+  values (entreprise, employe, ce_matin, 'action_executee');
+
+  -- ── Une mission ouverte ce matin et JAMAIS travaillée.
+  insert into public.task (tenant_id, employee_id, objective_id, subject_kind, subject_id)
+  values (entreprise, employe, objectif, 'lead', gen_random_uuid())
+  returning id into jamais;
+
+  select * into t from public.travail_sur_la_periode(entreprise, debut, fin);
+
+  -- ── 1. ⭐ Le travail d'hier n'est pas celui d'aujourd'hui.
+  if t.missions_agies - avant.missions_agies <> 1 then
+    raise exception
+      'ÉCHEC nouvelles : % missions travaillées de plus, une seule l''a été aujourd''hui. Le '
+      'travail d''hier a débordé sur la question du jour.', t.missions_agies - avant.missions_agies;
+  end if;
+
+  -- ── 2. ⭐⭐ Une mission ouverte et jamais travaillée n'est PAS du travail fait.
+  --    L'annoncer comme tel serait le premier mensonge du produit — et le plus facile.
+  if t.missions_ouvertes - avant.missions_ouvertes <> 2 then
+    raise exception 'ÉCHEC nouvelles : % missions ouvertes de plus au lieu de 2.',
+      t.missions_ouvertes - avant.missions_ouvertes;
+  end if;
+  if (t.missions_agies - avant.missions_agies) = (t.missions_ouvertes - avant.missions_ouvertes) then
+    raise exception
+      'ÉCHEC nouvelles : ouvrir une mission compte comme l''avoir travaillée. Un dirigeant à qui '
+      'l''on annonce du travail qui n''a pas eu lieu ne croira plus aucun chiffre ensuite.';
+  end if;
+
+  -- ── 3. Une issue déclarée aujourd'hui est une nouvelle d'aujourd'hui, même sur du travail
+  --    plus ancien : c'est ce que le dirigeant veut savoir en demandant « quoi de neuf ».
+  insert into public.outcome (tenant_id, task_id, kind, declared_by)
+  values (entreprise, hier, 'response', 'client');
+
+  select * into t from public.travail_sur_la_periode(entreprise, debut, fin);
+  if t.reponses - avant.reponses <> 1 then
+    raise exception 'ÉCHEC nouvelles : % réponse(s) de plus au lieu de 1.',
+      t.reponses - avant.reponses;
+  end if;
+
+  -- ── 4. ⭐⭐ Ce que fait la VOISINE ne se raconte jamais ici.
+  insert into public.employee (tenant_id, employee_definition_id, identity_id)
+  select voisine, 'dddddddd-0000-0000-0000-000000000001', id
+    from public.reserve_identity('commercial')
+  returning id into employe_v;
+
+  -- La voisine a déjà un objectif actif si un bloc précédent lui en a posé un : on le reprend
+  -- plutôt que d'en poser un second, qu'une entreprise n'a pas le droit d'avoir.
+  select id into objectif from public.objective
+   where tenant_id = voisine and state = 'actif' limit 1;
+
+  if objectif is null then
+    insert into public.objective (tenant_id, metric, target_value, horizon)
+    values (voisine, 'chiffre_affaires', 5000, 'mois') returning id into objectif;
+  end if;
+
+  insert into public.task (tenant_id, employee_id, objective_id, subject_kind, subject_id)
+  values (voisine, employe_v, objectif, 'lead', gen_random_uuid()) returning id into jamais;
+  insert into public.execution_event (tenant_id, employee_id, task_id, kind)
+  values (voisine, employe_v, jamais, 'action_executee');
+  insert into public.outcome (tenant_id, task_id, kind, value, declared_by)
+  values (voisine, jamais, 'sale', 7000, 'client');
+
+  select * into t from public.travail_sur_la_periode(entreprise, debut, fin);
+
+  if t.missions_agies - avant.missions_agies <> 1
+     or t.ventes - avant.ventes <> 0
+     or t.chiffre_affaires - avant.chiffre_affaires <> 0 then
+    raise exception
+      'ÉCHEC nouvelles : le travail d''une autre entreprise remonte dans ces nouvelles '
+      '(% missions, % ventes, % €).',
+      t.missions_agies - avant.missions_agies,
+      t.ventes - avant.ventes,
+      t.chiffre_affaires - avant.chiffre_affaires;
+  end if;
+
+  raise notice
+    'OK  LADY-X — les nouvelles du jour ne comptent que ce jour, ce travail, cette entreprise';
+end;
+$$;
+
+
 rollback;

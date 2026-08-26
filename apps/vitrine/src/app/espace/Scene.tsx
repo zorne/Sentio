@@ -32,6 +32,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AgentHologramStage } from "@/components/landing/AgentHologramStage";
 
 import { ArretDUrgence } from "./ArretDUrgence";
+import { Conversation } from "./Conversation";
 import { BoutonsDeDecision } from "./BoutonsDeDecision";
 import { DecisionSurLaProposition } from "./DecisionSurLaProposition";
 import { ReglageDAutonomie } from "./ReglageDAutonomie";
@@ -59,7 +60,7 @@ export interface DonneesDeLaScene {
   readonly journal: readonly { readonly id: string; readonly quand: string; readonly quoi: string }[];
 }
 
-type Panneau = "capacites" | "objectif" | "attente" | "memoire" | "main";
+type Panneau = "capacites" | "parler" | "objectif" | "attente" | "memoire" | "main";
 
 const MOTS_DE_L_AUTONOMIE: Record<string, string> = {
   confirm: "Vous validez chaque action qui sort de l'entreprise.",
@@ -99,6 +100,11 @@ export function Scene(d: DonneesDeLaScene) {
           aria-expanded={panneau === "capacites"}
           aria-label={`Ce que ${d.prenom} sait faire`}
         >
+          {/* Les trois couches de présence. Elles vivent DERRIÈRE l'hologramme, jamais devant :
+              ce qu'on regarde est elle, pas la mise en scène. */}
+          <span className="sc-aura" aria-hidden="true" />
+          <span className="sc-anneau sc-anneau--large" aria-hidden="true" />
+          <span className="sc-anneau sc-anneau--serre" aria-hidden="true" />
           <AgentHologramStage />
           {/* Le halo bat quand quelque chose attend. C'est la seule chose de cette page qui
               a le droit d'appeler le regard sans qu'on le lui demande. */}
@@ -141,7 +147,18 @@ export function Scene(d: DonneesDeLaScene) {
         </div>
       </div>
 
-      {/* ── Les orbes. Cinq mots, pas une phrase. ── */}
+      {/* ── Lui parler. Le geste que tout le monde cherche en premier : il est donc SOUS son
+             nom, pas rangé avec les autres — on parle à quelqu'un, on ne consulte pas un menu. ── */}
+      <button
+        type="button"
+        className={`sc-parler${panneau === "parler" ? " est-actif" : ""}`}
+        onClick={() => setPanneau(panneau === "parler" ? null : "parler")}
+      >
+        <span className="sc-parler-onde" aria-hidden="true" />
+        Lui parler
+      </button>
+
+      {/* ── Les orbes. Quatre mots, pas une phrase. ── */}
       <nav className="sc-orbes" aria-label="Son travail">
         <Orbe
           nom="Objectif"
@@ -191,6 +208,12 @@ export function Scene(d: DonneesDeLaScene) {
                 {d.raisonDeLaConfiguration ? (
                   <p className="sc-note">{d.raisonDeLaConfiguration}</p>
                 ) : null}
+              </Contenu>
+            ) : null}
+
+            {panneau === "parler" ? (
+              <Contenu titre={`Demandez à ${d.prenom}`}>
+                <Conversation tenantId={d.tenantId} prenom={d.prenom} />
               </Contenu>
             ) : null}
 

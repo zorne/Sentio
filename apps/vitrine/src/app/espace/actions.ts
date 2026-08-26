@@ -16,6 +16,7 @@
 // vérifiée AVANT, explicitement.
 // ════════════════════════════════════════════════════════════════════
 
+import { demander, lireLaQuestion } from "@sentio/domain";
 import { revalidatePath } from "next/cache";
 
 import { pool } from "@/lib/db";
@@ -138,4 +139,147 @@ export async function arreterOuReprendre(
   } catch {
     return { ok: false, message: "L'action n'a pas pu être enregistrée." };
   }
+}
+
+/**
+ * Poser une question à son employée.
+ *
+ * ⚠️ **Aucun modèle n'intervient.** La question est rapprochée d'une intention connue
+ * (`@sentio/domain`, `demander`), puis la réponse est un gabarit rempli avec des comptes **lus en
+ * base**. Brancher un modèle ici marcherait presque toujours — et le jour où il se tromperait
+ * d'une unité, il l'affirmerait avec le même aplomb. Un dirigeant à qui l'on annonce « 12
+ * réponses » quand il y en a 9 ne refait pas confiance aux 49 chiffres suivants.
+ *
+ * Les lectures passent par le pool de service parce qu'elles appellent des fonctions
+ * `security definer` révoquées au public ; l'appartenance est donc vérifiée AVANT, explicitement.
+ */
+export async function demanderALEmployee(
+  tenantId: string,
+  question: string,
+): Promise<{ ok: boolean; phrase?: string; suggestions?: readonly string[]; message?: string }> {
+  if (!(await isAuthorizedForTenant(tenantId))) {
+    return { ok: false, message: "Vous n'avez pas accès à cette entreprise." };
+  }
+
+  // Une question n'est pas un document. La borne protège la base de lectures inutiles et le
+  // rapprochement d'un texte qui n'en est pas un.
+  const dit = question.slice(0, 400);
+
+  try {
+    const { debut, fin } = fenetreDe(dit);
+
+    const [travail] = await pool.query<{
+      missions_ouvertes: number;
+      missions_agies: number;
+      messages_envoyes: number;
+      reponses: number;
+      rendez_vous: number;
+      ventes: number;
+      chiffre_affaires: string;
+    }>("select * from travail_sur_la_periode($1, $2, $3)", [tenantId, debut, fin]).then((r) => r.rows);
+
+    const [avancement] = await pool
+      .query<{
+        metrique: string;
+        cible: string;
+        realise: string;
+        jours_ecoules: number;
+        horizon_jours: number;
+      }>("select * from avancement_vers_l_objectif($1)", [tenantId])
+      .then((r) => r.rows);
+
+    const [employe] = await pool
+      .query<{ en_pause_depuis: string | null; role: string | null }>(
+        `select e.en_pause_depuis,
+                (select c.role from lady_configuration c
+                  where c.employee_id = e.id and c.active) as role
+           from employee e where e.tenant_id = $1 limit 1`,
+        [tenantId],
+      )
+      .then((r) => r.rows);
+
+    const reponse = demander(dit, {
+      prenom: "",
+      travail: {
+        missionsOuvertes: Number(travail?.missions_ouvertes ?? 0),
+        missionsAgies: Number(travail?.missions_agies ?? 0),
+        messagesEnvoyes: Number(travail?.messages_envoyes ?? 0),
+        reponses: Number(travail?.reponses ?? 0),
+        rendezVous: Number(travail?.rendez_vous ?? 0),
+        ventes: Number(travail?.ventes ?? 0),
+        chiffreAffaires: Number(travail?.chiffre_affaires ?? 0),
+      },
+      avancement:
+        avancement === undefined
+          ? null
+          : {
+              metrique: avancement.metrique,
+              cible: Number(avancement.cible),
+              realise: Number(avancement.realise),
+              joursEcoules: Number(avancement.jours_ecoules),
+              horizonJours: Number(avancement.horizon_jours),
+            },
+      role: employe?.role ? motDuRolePourElle(employe.role) : null,
+      arretee: employe?.en_pause_depuis !== null && employe?.en_pause_depuis !== undefined,
+    });
+
+    return reponse.statut === "repond"
+      ? { ok: true, phrase: reponse.phrase }
+      : { ok: true, phrase: reponse.phrase, suggestions: reponse.suggestions };
+  } catch {
+    return { ok: false, message: "Je n'ai pas pu aller chercher la réponse." };
+  }
+}
+
+/**
+ * La fenêtre de temps, calculée ICI — c'est-à-dire dans le fuseau du serveur, pas en UTC dans la
+ * base.
+ *
+ * ⚠️ La base ne doit pas décider quand commence « hier » : un dirigeant qui demande à 8 h ce qui
+ * s'est passé la veille recevrait une réponse décalée d'un jour, sans que rien ne le signale.
+ * C'est aussi pourquoi `travail_sur_la_periode` prend deux instants et pas une date.
+ */
+function fenetreDe(question: string): { debut: Date; fin: Date } {
+  const q = lireLaQuestion(question);
+  const debutDuJour = new Date();
+  debutDuJour.setHours(0, 0, 0, 0);
+
+  const finDuJour = new Date(debutDuJour);
+  finDuJour.setDate(finDuJour.getDate() + 1);
+
+  switch (q?.fenetre) {
+    case "hier": {
+      const hier = new Date(debutDuJour);
+      hier.setDate(hier.getDate() - 1);
+      return { debut: hier, fin: debutDuJour };
+    }
+    case "semaine": {
+      const debut = new Date(debutDuJour);
+      debut.setDate(debut.getDate() - 7);
+      return { debut, fin: finDuJour };
+    }
+    case "periode": {
+      // « Depuis le début » : large, mais borné — une fenêtre ouverte scannerait tout l'historique
+      // pour répondre à une question de conversation.
+      const debut = new Date(debutDuJour);
+      debut.setFullYear(debut.getFullYear() - 1);
+      return { debut, fin: finDuJour };
+    }
+    default:
+      return { debut: debutDuJour, fin: finDuJour };
+  }
+}
+
+/** Le rôle est une clé technique ; elle en parle comme d'un travail. */
+function motDuRolePourElle(role: string): string {
+  const mots: Record<string, string> = {
+    prospection: "aller chercher de nouvelles entreprises",
+    qualification: "ne retenir que les bonnes entreprises",
+    relation_client: "reprendre vos demandes entrantes",
+    administration_commerciale: "tenir vos fiches à jour",
+    administration: "vos tâches administratives",
+    suivi: "surveiller vos échéances",
+    pilotage: "vous rendre compte de ce qui avance",
+  };
+  return mots[role] ?? role;
 }
