@@ -1037,6 +1037,50 @@ boutons passent l'un sous l'autre avec une cible assez large pour un pouce.
 
 ---
 
+## Étape 12 septies — L'espace devient une scène
+
+**Pourquoi cette étape existe.** La version précédente était juste : huit cartes, chaque phrase
+défendable, tout vérifié. Et personne n'ouvre ça douze fois par jour. Un dirigeant ne vient pas
+lire un rapport sur son employée — il vient **voir si elle tourne**, et **s'il y a quelque chose à
+décider**. Deux questions, auxquelles un mur de texte répond mal.
+
+### Fait le 2026-08-26 — `Scene.tsx`, l'espace comme présence
+
+**Au repos, la page ne dit presque rien** : une silhouette qui tourne, un prénom en sérif, une
+ligne d'état, quatre orbes d'un mot. C'est tout. Les deux questions sont répondues sans lire —
+la silhouette est là, et un point ambré bat s'il y a quelque chose à trancher.
+
+**La silhouette EST le bouton.** On clique dessus, et ses capacités s'équipent autour d'elle, en
+couronne, chacune partant du centre avec un décalage. Ce n'est pas un effet : ça dit une chose
+vraie — **ce sont ses pouvoirs à elle**, pas une liste posée à côté. La silhouette réutilise
+`AgentHologram3D`, le buste filaire déjà écrit pour la landing : anonyme par choix de produit, on
+vend un employé, pas l'avatar d'une personne qui n'existe pas.
+
+**Tout le reste est derrière un geste**, dans un tiroir qui monte de sous la scène. Rien n'a été
+retiré : l'accord, la proposition, le réglage d'autonomie, l'arrêt, la mémoire, le journal — tout
+est resté, **rangé au lieu d'être empilé**. Ce qui ATTEND une personne garde seul le droit
+d'appeler le regard.
+
+**Le mouvement dit quelque chose, ou il n'existe pas.** Le halo ne bat que si quelque chose
+attend ; les capacités jaillissent du centre ; les tiroirs montent. Aucune animation d'ambiance —
+une page qu'on ouvre douze fois par jour et qui se rejoue douze fois devient une page qu'on
+n'ouvre plus. `prefers-reduced-motion` laisse la scène **compréhensible**, pas seulement immobile :
+c'est la transition qui disparaît, jamais l'information.
+
+**Trois défauts trouvés à l'écran, pas à la relecture :**
+
+1. la couronne déployée tombait pile sur le prénom — c'est la scène qui **reflowe** pour lui faire
+   de la place (`margin-top`, jamais `transform` : un décalage par transform aurait poussé le nom
+   sur les orbes, qui ne bougent pas) ;
+2. les accents de couleur des boutons ne s'appliquaient pas : la règle de base porte un `:not()`,
+   dont la spécificité compte celle de son argument — `.oui` perdait contre elle, **sans qu'aucune
+   erreur ne le dise** ;
+3. sur 375 px, une pastille placée à ±40 % de la largeur porte encore sa propre largeur : les deux
+   capacités latérales sortaient de l'écran. Sur téléphone, la couronne devient une **colonne** —
+   le geste est le même, la forme s'adapte.
+
+---
+
 # PARTIE II — METTRE EN VENTE
 
 ⛔ **Tout ce qui suit t'appartient.** Un agent prépare, explique, rédige des brouillons et vérifie
