@@ -30,7 +30,7 @@ export function DecisionSurLaProposition({
 
   return (
     <span className="decision">
-      <button type="button" onClick={() => repondre("accepter")} disabled={enCours}>
+      <button type="button" onClick={() => repondre("accepter")} disabled={enCours} className="oui">
         Accepter ce changement
       </button>
       <button

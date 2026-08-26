@@ -993,7 +993,7 @@ l'arrêt) sans que personne ne regarde l'ensemble. Le résultat n'était pas lai
 hiérarchisé**, ce qui est pire — un dirigeant qui ouvre son espace ne devait plus savoir où
 regarder.
 
-### Fait le 2026-08-26 — `/espace`, mise en page et petits écrans
+### Fait le 2026-08-26 — `/espace`, mise en page, direction artistique et petits écrans
 
 **L'ordre suit ce que le lecteur a à faire**, pas l'ordre dans lequel les fonctionnalités ont été
 écrites :
@@ -1008,6 +1008,26 @@ regarder.
 consultée tous les jours occupe la meilleure place pour ne rien dire 364 jours sur 365. Quand
 l'employé EST arrêté, en revanche, ça ne se lit pas au milieu de neuf cadres identiques : l'état
 devient un bandeau rouge sous le titre, et le bouton de reprise est dedans.
+
+**La direction artistique est celle de la landing, reprise telle quelle** plutôt qu'une seconde
+inventée à côté. `landing.css` pose une grammaire à trois voix, et l'espace la parle :
+
+| Voix | Typographie | Ce qu'elle porte dans l'espace |
+|---|---|---|
+| humaine | sérif éditorial (Instrument Serif) | le prénom de l'employé, l'objectif, ce qu'on propose |
+| machine | monospace | les étiquettes, les dates, les états, ce qu'il a appris |
+| interface | Inter | tout le reste, et elle s'efface |
+
+⚠️ **La couleur porte le même sens que sur la landing, pas un sens local.** L'ambre y signifie
+« ça s'est arrêté et ça attend une personne » — donc ici : une proposition sans réponse, et un
+employé à l'arrêt. La menthe y signifie « c'est acquis, c'est mesuré » — donc ici : ce qui a été
+retenu des résultats, et le bouton qui accepte. Un rouge « danger » avait été essayé pour l'arrêt
+puis retiré : il n'existe nulle part dans la landing, et **un employé qu'on met en pause n'est pas
+une erreur, c'est une décision**.
+
+Deux blocs ambrés se suivent quand l'employé est arrêté ET qu'une proposition attend. Ils
+s'annuleraient s'ils avaient la même forme : l'arrêt est donc un **bandeau** — un trait dans la
+marge, sans fond ni angles arrondis — et la proposition reste une carte.
 
 **Trois défauts trouvés en regardant, pas en relisant :** les listes gardaient le retrait de 40 px
 que `list-style: none` ne supprime pas (chaque liste se décalait par rapport au titre de sa carte),

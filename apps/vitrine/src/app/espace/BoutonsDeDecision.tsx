@@ -22,7 +22,7 @@ export function BoutonsDeDecision({ approvalId }: { approvalId: string }) {
 
   return (
     <span className="decision">
-      <button type="button" onClick={() => trancher("granted")} disabled={enCours}>
+      <button type="button" onClick={() => trancher("granted")} disabled={enCours} className="oui">
         Autoriser
       </button>
       <button type="button" onClick={() => trancher("refused")} disabled={enCours} className="refus">
