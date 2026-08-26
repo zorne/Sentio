@@ -3947,4 +3947,81 @@ end;
 $$;
 
 
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+-- LADY-AH — ce que le client lit sur sa formule est ce qui lui sera réellement appliqué.
+--
+-- Le risque n'est pas d'afficher un chiffre faux : c'est d'afficher un chiffre **vrai ailleurs**.
+-- Si l'espace comptait les missions autrement que la garde qui applique le plafond, le dirigeant
+-- lirait « il vous en reste 12 » pendant qu'on lui refuse la treizième — et il n'aurait aucun
+-- moyen de comprendre pourquoi.
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  entreprise constant uuid := 'aaaaaaaa-0000-0000-0000-000000000001';
+  employe    constant uuid := 'ffffffff-0000-0000-0000-000000000001';
+  objectif   uuid;
+  a          record;
+  restant    integer;
+begin
+  select id into objectif from public.objective
+   where tenant_id = entreprise and state = 'actif' limit 1;
+
+  select * into a from public.abonnement_du_client(entreprise);
+
+  if a.formule is null then
+    raise exception 'ÉCHEC formule : aucune formule rendue pour une entreprise abonnée.';
+  end if;
+
+  -- ── 1. ⭐⭐ Le compte affiché et le compte qui applique le plafond sont LE MÊME.
+  select public.missions_restantes_sur_la_periode(entreprise) into restant;
+
+  if restant is not null and a.missions_plafond is not null
+     and a.missions_plafond - a.missions_utilisees <> restant then
+    raise exception
+      'ÉCHEC formule : l''espace annonce % missions restantes, la garde en compte %. Le dirigeant '
+      'lirait un chiffre vrai ailleurs, et se verrait refuser une mission sans comprendre.',
+      a.missions_plafond - a.missions_utilisees, restant;
+  end if;
+
+  -- ── 2. Une mission de plus se voit des deux côtés, du même montant.
+  insert into public.task (tenant_id, employee_id, objective_id, subject_kind, subject_id)
+  values (entreprise, employe, objectif, 'lead', gen_random_uuid());
+
+  declare
+    apres record;
+  begin
+    select * into apres from public.abonnement_du_client(entreprise);
+    if apres.missions_utilisees - a.missions_utilisees <> 1 then
+      raise exception
+        'ÉCHEC formule : une mission ouverte et le compteur bouge de %.',
+        apres.missions_utilisees - a.missions_utilisees;
+    end if;
+  end;
+
+  -- ── 3. ⭐ Les plafonds viennent de `plan_quota`, pas d'une valeur écrite dans l'interface.
+  --    Changer une formule doit rester une modification de données (TEST-09).
+  if a.missions_plafond is distinct from
+     (select q.quota_limit::integer from public.plan_quota q
+       join public.subscription s on s.plan_id = q.plan_id
+      where s.tenant_id = entreprise and s.status = 'active'
+        and q.metric = 'tasks_per_period') then
+    raise exception 'ÉCHEC formule : le plafond affiché ne vient pas de plan_quota.';
+  end if;
+
+  -- ── 4. Sans abonnement actif, la fonction ne rend RIEN — elle n'invente pas une formule.
+  if exists (select 1 from public.abonnement_du_client('bbbbbbbb-0000-0000-0000-000000000002')
+              where formule is not null)
+     and not exists (select 1 from public.subscription
+                      where tenant_id = 'bbbbbbbb-0000-0000-0000-000000000002' and status = 'active')
+  then
+    raise exception 'ÉCHEC formule : une formule est rendue pour une entreprise sans abonnement.';
+  end if;
+
+  raise notice
+    'OK  LADY-AH — la formule affichée est celle qui s''applique, et les plafonds viennent des données';
+end;
+$$;
+
+
 rollback;

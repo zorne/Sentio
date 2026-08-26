@@ -170,26 +170,20 @@ export default async function EspacePage() {
   //    concurrents, après la qualité, est l'OPACITÉ : prix caché, coûts qui montent sans qu'on
   //    sache pourquoi, abonnement qu'on ne sait pas résilier. La réponse n'est pas une page de
   //    tarifs — c'est de montrer, dans l'espace, ce qui est en cours et ce qu'il en reste.
-  const [{ rows: abonnements }] = await Promise.all([
-    pool.query<{
-      tier: string;
-      statut: string;
-      fin_de_periode: Date;
-      plafond: number | null;
-      restant: number | null;
-    }>(
-      `select p.tier,
-              s.status as statut,
-              s.current_period_end as fin_de_periode,
-              (select q.quota_limit from plan_quota q
-                where q.plan_id = p.id and q.metric = 'tasks_per_period') as plafond,
-              missions_restantes_sur_la_periode(s.tenant_id) as restant
-         from subscription s join plan p on p.id = s.plan_id
-        where s.tenant_id = $1 and s.status = 'active'
-        limit 1`,
-      [tenantId],
-    ),
-  ]);
+  //
+  //    ⚠️ Tout vient de `abonnement_du_client()`, qui compte les VRAIES LIGNES. `usage_counter`
+  //    ne reçoit que les jetons d'inférence : afficher un compteur de messages depuis cette table
+  //    afficherait zéro pour toujours (LADY-AH).
+  const { rows: abonnements } = await pool.query<{
+    formule: string;
+    periode_finit_le: Date;
+    missions_utilisees: number;
+    missions_plafond: number | null;
+    messages_periode: number;
+    messages_plafond_periode: number | null;
+    messages_aujourdhui: number;
+    messages_plafond_jour: number | null;
+  }>("select * from abonnement_du_client($1)", [tenantId]);
 
   const abonnement = abonnements[0];
 
@@ -242,10 +236,27 @@ export default async function EspacePage() {
         abonnement === undefined
           ? null
           : {
-              nom: motDeLaFormule(abonnement.tier),
-              restant: abonnement.restant === null ? null : Number(abonnement.restant),
-              plafond: abonnement.plafond === null ? null : Number(abonnement.plafond),
-              jusquAu: dateCourte(new Date(abonnement.fin_de_periode).toISOString()),
+              nom: motDeLaFormule(abonnement.formule),
+              jusquAu: dateCourte(abonnement.periode_finit_le.toISOString()),
+              missions: {
+                fait: Number(abonnement.missions_utilisees),
+                plafond:
+                  abonnement.missions_plafond === null ? null : Number(abonnement.missions_plafond),
+              },
+              messages: {
+                fait: Number(abonnement.messages_periode),
+                plafond:
+                  abonnement.messages_plafond_periode === null
+                    ? null
+                    : Number(abonnement.messages_plafond_periode),
+              },
+              messagesDuJour: {
+                fait: Number(abonnement.messages_aujourdhui),
+                plafond:
+                  abonnement.messages_plafond_jour === null
+                    ? null
+                    : Number(abonnement.messages_plafond_jour),
+              },
             }
       }
       tableau={{

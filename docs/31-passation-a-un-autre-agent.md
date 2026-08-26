@@ -9,6 +9,30 @@
 
 ---
 
+## 0. Journal de passation — tenu à chaque livraison
+
+> **Règle donnée par le fondateur le 2026-08-26 :** *« à chaque chose que tu fais, je veux que tu
+> le précises dans le fichier mémoire pour l'autre Claude. »*
+>
+> **Donc : toute livraison s'inscrit ici, en une ligne ou deux, avec ce qu'elle a changé pour le
+> client et ce qu'elle a coûté à trouver.** Ce journal est ce qu'un agent lit en premier pour
+> savoir où en est réellement le produit — avant même `docs/29`, qui raconte le plan, pas l'état.
+
+| Date | Ce qui a été livré | Ce qu'il faut en retenir |
+|---|---|---|
+| 2026-08-26 | **Le déclencheur** — les résultats mesurés deviennent une proposition de configuration | Elle **propose**, elle n'applique pas. Version inactive + notification `proposition`, jamais `evolution` |
+| 2026-08-26 | **Lady agit vraiment** — l'attelage, et les deux premiers moteurs | Le modèle choisit le geste, **jamais la cible**. Défaut trouvé : deux moteurs nommés « base » s'écrasaient |
+| 2026-08-26 | **L'employée progresse** — mémoire, registre de langage, ce qui marche chez ce client | Seuils de signal partout ; un cinquième des missions continue d'explorer |
+| 2026-08-26 | **Les deux limites du dirigeant** — cliquet d'autonomie, bouton d'arrêt | L'arrêt verrouille **trois** endroits ; un seul laisserait passer ce que les deux autres retiennent |
+| 2026-08-26 | **L'espace devient une scène** — présence, tiroirs, direction artistique de la landing | Au repos la page ne dit presque rien. Ce qui attend une personne a seul le droit d'appeler |
+| 2026-08-26 | **Lui parler** — conversation avec l'employée | **Aucun modèle ne répond.** Liste fermée d'intentions + gabarit rempli avec des comptes lus en base |
+| 2026-08-26 | **Ce que ça donne** — quatre chiffres et une courbe, sans cliquer | Aucun taux sous 30 envois ; pas de « taux de rétention », qui serait inventé |
+| 2026-08-26 | **Audit complet** — parcours 19 étapes, fuites, RGPD | **Une vraie fuite fermée** (chiffre d'affaires d'autrui) ; l'effacement RGPD ne fonctionnait pas |
+| 2026-08-26 | **Le garde-fou du silence** — 40 envois sans réponse ⇒ elle s'arrête | Réponse directe au reproche le plus documenté fait aux concurrents |
+| 2026-08-26 | **La formule et les plafonds** — dans le tiroir « Vous » | Réponse au deuxième grief : l'opacité. Compté sur les **vraies lignes**, jamais `usage_counter` |
+
+---
+
 ## 1. À qui tu parles
 
 Le fondateur s'appelle **Eelco**. Il travaille **seul** sur Sentio et prévoit de le maintenir seul
@@ -155,6 +179,21 @@ Après 40 envois **sans une seule réponse**, l'employée s'arrête d'elle-même
 directe au reproche le plus documenté fait aux concurrents (« ~1 400 emails, 0 réponse »). Elle ne
 s'exprime **que si rien d'autre ne bloque** : un domaine suspendu *explique* le silence, et
 l'annoncer enverrait le dirigeant réécrire son message alors que le problème est technique.
+
+### La formule affichée est celle qui s'applique
+Le compte de missions montré au client est **le même** que celui qui applique le plafond
+(`missions_restantes_sur_la_periode`). Deux façons de compter finiraient par diverger, et le
+dirigeant lirait « il vous en reste 12 » pendant qu'on lui refuse la treizième — un chiffre vrai
+ailleurs, donc impossible à comprendre. Vérifié par l'invariant `LADY-AH`.
+
+⚠️ **Et aucun montant n'est affiché.** Le prix vit chez le prestataire de paiement, pas en base.
+L'écrire dans l'espace afficherait un chiffre que rien ne garantit — le jour où un tarif change,
+l'espace mentirait à celui qui paie.
+
+⚠️ **Les compteurs viennent des vraies lignes, pas de `usage_counter`.** Cette table ne reçoit que
+les **jetons d'inférence** : les lignes `outbound_messages_per_period` et `tasks_per_period` de
+`plan_quota` existent, mais rien ne les y écrit. Afficher un compteur que personne n'alimente
+afficherait zéro pour toujours.
 
 ### La mémoire classe par récence, pas par usage
 `learned_fact.usage_count` existe et est **volontairement non alimenté**. Un compteur nourri par

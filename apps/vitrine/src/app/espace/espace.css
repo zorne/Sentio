@@ -1120,3 +1120,68 @@
   .sc-tiroir, .sc-voile { animation: none; }
   .sc-corps, .sc-orbe, .sc button { transition: none; }
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   LA FORMULE — ce qu'il paie, et ce qu'il lui reste
+   ────────────────────────────────────────────────────────────────────
+   Le grief le plus répété contre les produits d'en face, après la
+   qualité des messages, est l'OPACITÉ : ne pas savoir ce qu'on
+   consomme. La réponse n'est pas une page de tarifs — c'est de le
+   montrer là où le client vit.
+
+   ⚠️ Des nombres, jamais des pourcentages. « 41 sur 300 » se lit ; un
+   pourcentage oblige à refaire le calcul dans l'autre sens pour obtenir
+   ce qu'on cherche vraiment — ce qu'il reste.
+   ════════════════════════════════════════════════════════════════════ */
+
+.sc-formule {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding-bottom: 1rem;
+  margin-bottom: 0.3rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.ab-jauge {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.25rem 1rem;
+  align-items: baseline;
+}
+.ab-jauge-mot {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.ab-jauge-nombre {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink);
+  text-align: right;
+}
+.ab-jauge-nombre em { font-style: normal; color: var(--ink-3); }
+
+/* La piste occupe les deux colonnes : le trait doit courir sous les deux
+   informations qu'il résume, pas à côté de l'une d'elles. */
+.ab-jauge-piste {
+  grid-column: 1 / -1;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+.ab-jauge-piste i {
+  display: block;
+  height: 100%;
+  background: var(--mint);
+  border-radius: 2px;
+  transition: width 0.6s var(--ease);
+}
+
+/* À 80 %, on prévient — pendant qu'il reste le temps d'y faire quelque
+   chose. Prévenir à 100 % serait annoncer un arrêt déjà survenu. */
+.ab-jauge.est-serre .ab-jauge-nombre { color: var(--amber); }
+.ab-jauge.est-serre .ab-jauge-piste i { background: var(--amber); }

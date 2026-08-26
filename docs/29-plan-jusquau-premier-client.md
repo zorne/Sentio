@@ -1291,6 +1291,37 @@ court.
 
 ---
 
+## Étape 12 quaterdecies — Ce qu'il paie, et ce qu'il lui reste
+
+**Le deuxième grief le plus répété** dans les avis publics sur les produits concurrents, après la
+qualité des messages, est l'**opacité** : prix qui n'apparaît qu'après un appel commercial, coûts
+d'options imprévisibles, et — le plus cité de tous — des abonnements qu'on n'arrive pas à
+résilier. Le sentiment décrit est toujours le même : **ne pas savoir ce qu'on consomme**.
+
+### Fait le 2026-08-26 — `20260815120032`, le tiroir « Vous »
+
+La formule, la date où la période repart, et trois jauges : missions ce mois, messages ce mois,
+messages aujourd'hui. Chacune écrit **le nombre et la limite** — « 412 sur 500 », jamais « 82 % ».
+Un pourcentage oblige le lecteur à refaire le calcul dans l'autre sens pour obtenir ce qu'il
+cherche : ce qu'il lui reste.
+
+À **80 %**, la jauge passe à l'ambre. Prévenir à 100 % serait annoncer un arrêt déjà survenu.
+
+⚠️ **Aucun montant n'est affiché**, et c'est délibéré : le prix vit chez le prestataire de
+paiement, pas en base. L'écrire ici afficherait un chiffre que rien ne garantit — et le jour où un
+tarif change, l'espace mentirait à celui qui paie.
+
+⚠️ **Les compteurs viennent des vraies lignes.** `usage_counter` ne reçoit que les jetons
+d'inférence : les lignes `outbound_messages_per_period` et `tasks_per_period` de `plan_quota`
+existent, mais **rien ne les y écrit**. Afficher un compteur que personne n'alimente afficherait
+zéro pour toujours — c'est la même famille de défaut que les deux trouvées la veille.
+
+**Et le compte affiché est celui qui s'applique.** L'invariant `LADY-AH` vérifie que l'espace et la
+garde comptent pareil : sinon le dirigeant lirait « il vous en reste 12 » pendant qu'on lui refuse
+la treizième — un chiffre vrai ailleurs, donc impossible à comprendre.
+
+---
+
 # PARTIE II — METTRE EN VENTE
 
 ⛔ **Tout ce qui suit t'appartient.** Un agent prépare, explique, rédige des brouillons et vérifie

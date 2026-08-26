@@ -64,10 +64,17 @@ export interface DonneesDeLaScene {
   /** Sa formule et ce qu'il lui reste. Nul quand aucun abonnement n'est actif. */
   readonly formule: {
     readonly nom: string;
-    readonly restant: number | null;
-    readonly plafond: number | null;
     readonly jusquAu: string;
+    readonly missions: Consommation;
+    readonly messages: Consommation;
+    readonly messagesDuJour: Consommation;
   } | null;
+}
+
+/** Ce qui a été consommé, et la limite. Jamais un pourcentage — voir `Jauge`. */
+export interface Consommation {
+  readonly fait: number;
+  readonly plafond: number | null;
 }
 
 type Panneau = "capacites" | "parler" | "objectif" | "attente" | "memoire" | "main";
@@ -412,33 +419,18 @@ export function Scene(d: DonneesDeLaScene) {
                 {d.formule ? (
                   <div className="sc-formule">
                     <p className="sc-dit">Formule {d.formule.nom}</p>
-                    {d.formule.restant !== null && d.formule.plafond !== null ? (
-                      <>
-                        <p className="sc-note">
-                          <strong>{d.formule.restant.toLocaleString("fr-FR")}</strong> missions
-                          restantes sur {d.formule.plafond.toLocaleString("fr-FR")}, jusqu&apos;au{" "}
-                          {d.formule.jusquAu}.
-                        </p>
-                        <span className="sc-jauge" aria-hidden="true">
-                          <i
-                            style={{
-                              width: `${Math.max(0, Math.min(100, (d.formule.restant / d.formule.plafond) * 100)).toFixed(1)}%`,
-                            }}
-                          />
-                        </span>
-                      </>
-                    ) : (
-                      <p className="sc-note">
-                        Aucune limite de missions sur cette formule. Période en cours jusqu&apos;au{" "}
-                        {d.formule.jusquAu}.
-                      </p>
-                    )}
+                    <p className="sc-note">Période en cours jusqu&apos;au {d.formule.jusquAu}.</p>
+
+                    <Jauge mot="missions ce mois" c={d.formule.missions} />
+                    <Jauge mot="messages ce mois" c={d.formule.messages} />
+                    <Jauge mot="messages aujourd&apos;hui" c={d.formule.messagesDuJour} />
+
                     {/* ⚠️ Pas de montant : le prix vit chez le prestataire de paiement, pas en
                         base. L'écrire ici afficherait un chiffre que rien ne garantit — et le
-                        jour où un tarif change, l'espace mentirait à celui qui paie l'autre. */}
-                    <p className="sc-note sc-sobre">
+                        jour où un tarif change, l'espace mentirait à celui qui paie. */}
+                    <p className="sc-note">
                       Rien ne s&apos;ajoute à votre facture sans que vous l&apos;ayez décidé : au
-                      bout de ces missions, votre employée s&apos;arrête et vous le dit.
+                      bout de ces plafonds, votre employée s&apos;arrête et vous le dit.
                     </p>
                   </div>
                 ) : (
@@ -509,6 +501,42 @@ function Orbe({
       <span className="sc-orbe-nom">{nom}</span>
       {compte !== undefined && compte > 0 ? <span className="sc-orbe-compte">{compte}</span> : null}
     </button>
+  );
+}
+
+/**
+ * Une jauge — et surtout PAS un pourcentage.
+ *
+ * Le nombre consommé ET la limite sont écrits en toutes lettres : « 41 sur 300 ». Un pourcentage
+ * obligerait le lecteur à refaire le calcul dans l'autre sens pour obtenir ce qu'il cherche
+ * vraiment, c'est-à-dire ce qu'il lui reste.
+ *
+ * ⚠️ Sans plafond, aucune piste n'est dessinée : une jauge sans bord se lit comme une jauge
+ * pleine, donc comme une limite atteinte.
+ */
+function Jauge({ mot, c }: { mot: string; c: Consommation }) {
+  const part = c.plafond === null || c.plafond === 0 ? 0 : Math.min(c.fait / c.plafond, 1);
+  // À 80 %, on le signale — pendant qu'il reste le temps d'y faire quelque chose. Prévenir à
+  // 100 % serait annoncer un arrêt déjà survenu.
+  const serre = c.plafond !== null && part >= 0.8;
+
+  return (
+    <div className={`ab-jauge${serre ? " est-serre" : ""}`}>
+      <span className="ab-jauge-mot">{mot}</span>
+      <span className="ab-jauge-nombre">
+        {c.fait.toLocaleString("fr-FR")}
+        {c.plafond === null ? (
+          <em> — sans plafond</em>
+        ) : (
+          <em> sur {c.plafond.toLocaleString("fr-FR")}</em>
+        )}
+      </span>
+      {c.plafond === null ? null : (
+        <span className="ab-jauge-piste" aria-hidden="true">
+          <i style={{ width: `${(part * 100).toFixed(1)}%` }} />
+        </span>
+      )}
+    </div>
   );
 }
 
