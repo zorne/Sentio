@@ -171,10 +171,26 @@ section { padding: 48px 0; }
 .empty { padding: 48px 20px; text-align: center; color: var(--text-tertiary); font-size: 14px; }
 
 .form-inline { display: flex; gap: 12px; align-items: center; }
-.form-inline input {
+
+/* Les champs d'une pile verticale : connexion, choix du mot de passe.
+   Le style vivait uniquement sous `.form-inline`, donc tout formulaire disposé autrement
+   retombait sur l'habillage par défaut du navigateur — des boîtes blanches sur fond noir. */
+.form-inline input,
+.form-stack input {
   flex: 1; padding: 10px 14px; border-radius: 8px;
   background: var(--bg-elevated); border: 1px solid var(--border-default);
   color: var(--text-primary); font-family: inherit; font-size: 13.5px;
+}
+.form-stack { display: grid; gap: 12px; }
+.form-stack input:focus-visible {
+  outline: none;
+  border-color: var(--text-tertiary);
+}
+/* Le gestionnaire de mots de passe du navigateur repeint le champ qu'il a rempli.
+   Sans ça, un champ prérempli redevient blanc au chargement. */
+.form-stack input:-webkit-autofill {
+  -webkit-text-fill-color: var(--text-primary);
+  -webkit-box-shadow: 0 0 0 1000px var(--bg-elevated) inset;
 }
 
 .approve-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }

@@ -4,7 +4,13 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { claimTenantsForCurrentUser, confirmMagicLink } from "@/lib/auth-actions";
 
-export function ConfirmLoginButton({ code }: { code: string }) {
+export function ConfirmLoginButton({
+  code,
+  destination,
+}: {
+  code: string;
+  destination: string;
+}) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -22,7 +28,10 @@ export function ConfirmLoginButton({ code }: { code: string }) {
               setError(error);
             } else {
               await claimTenantsForCurrentUser();
-              router.push("/dashboard");
+              // ⚠️ PAS « /dashboard ». Sans paramètre, cette page affiche le tenant de
+              // DÉMONSTRATION : le client qui venait de payer voyait des prospects qui
+              // n'étaient pas les siens (constat B2 de `docs/32`). Son espace, c'est `/espace`.
+              router.push(destination);
               router.refresh();
             }
           });
@@ -32,7 +41,7 @@ export function ConfirmLoginButton({ code }: { code: string }) {
       </button>
       {error && (
         <p style={{ color: "var(--red)", fontSize: 12.5, marginTop: 12 }}>
-          {error} — <a href="/login" style={{ color: "inherit" }}>redemander un lien</a>
+          {error} <a href="/login" style={{ color: "inherit" }}>Redemander un lien</a>
         </p>
       )}
     </>
