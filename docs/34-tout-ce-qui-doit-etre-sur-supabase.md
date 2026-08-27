@@ -148,6 +148,19 @@ C'est le préalable que ta mémoire projet nomme déjà : l'opt-out avant toute 
 ⚠️ **L'adresse de retour est le point d'oubli le plus probable de toute cette page.** Rien ne
 prévient : les emails partent, le client clique, et il tombe sur une erreur.
 
+### 3.4 bis La région d'exécution du site
+
+`apps/vitrine/vercel.json` fixe `"regions": ["cdg1"]`, c'est-à-dire Paris.
+
+⚠️ **Ce n'est pas une préférence, c'est une déclaration opposable.** La politique de
+confidentialité écrit noir sur blanc que l'application est déployée « avec exécution privilégiée
+en région européenne ». Sans ce fichier, Vercel exécute par défaut aux États-Unis, et la page
+mentirait à qui la lit — sur le seul point qu'un dirigeant européen vérifie avant de confier ses
+données.
+
+Le laisser au réglage de la console serait pire : un réglage se perd à la recréation du projet,
+un fichier versionné voyage avec le code.
+
 ### 3.5 Ce qui ne va PAS sur Supabase
 
 À poser chez l'hébergeur de l'interface, jamais ici. Les mélanger fait chercher au mauvais endroit
