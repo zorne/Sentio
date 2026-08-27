@@ -33,6 +33,8 @@
 // ════════════════════════════════════════════════════════════════════
 
 import type { Metadata } from "next";
+
+import { DONNEES_EXPLIQUEES } from "@sentio/domain";
 import Link from "next/link";
 import { Nav } from "@/components/landing/Nav";
 import { RecruitLink } from "@/components/landing/RecruitLink";
@@ -244,13 +246,23 @@ const JAMAIS = [
     ),
   },
   {
-    cle: "etancheite",
-    rang: "Rien ne traverse d'un client à l'autre",
-    titre: "Vos données ne servent qu'à vous",
+    cle: "usage",
+    rang: DONNEES_EXPLIQUEES.titre,
+    titre: "Il apprend de vous, pour vous",
     texte: (
       <>
-        Aucune donnée d&apos;une entreprise n&apos;atteint une autre entreprise. <b>Jamais, même
-        agrégée</b>, même si on nous le demandait.
+        {DONNEES_EXPLIQUEES.corps} <b>Il ne part de rien</b> et devient le vôtre.
+      </>
+    ),
+  },
+  {
+    cle: "etancheite",
+    rang: "Rien ne traverse d'un client à l'autre",
+    titre: "Et ça s'arrête à votre entreprise",
+    texte: (
+      <>
+        Aucune donnée ne circule vers un autre client. <b>Jamais, même agrégée, même
+        anonymisée</b>, même si on nous le demandait.
       </>
     ),
   },
@@ -407,7 +419,7 @@ export default function LandingPage() {
             <span className="lp-mono">Ce qui n&apos;arrivera jamais</span>
             <h2>Ce qu&apos;il ne fera pas compte plus que le reste.</h2>
             <p>
-              Chacune de ces cinq lignes est tenue par la base de données, pas par une promesse.
+              Chacune de ces lignes est tenue par la base de données, pas par une promesse.
               Elles ne se désactivent pas, et nous ne pouvons pas les lever nous-mêmes.
             </p>
           </Reveal>

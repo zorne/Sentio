@@ -190,3 +190,12 @@
   line-height: 1.6;
   color: #e88f7a;
 }
+
+/* Ce qu'on dit de ses données, au moment où il commence à en donner. Discret : une réassurance
+   qui crie donne l'impression qu'il y a quelque chose à se faire pardonner. */
+.diag-donnees {
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.42);
+}

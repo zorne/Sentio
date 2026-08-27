@@ -25,6 +25,8 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { RecruitLink } from "@/components/landing/RecruitLink";
 import { diagnosticTurn, type DiagnosticMessage, type EmployeePresentation } from "@/lib/diagnostic-actions";
+import { DONNEES_EN_UNE_PHRASE } from "@sentio/domain";
+
 import { enregistrerLeDiagnostic } from "@/lib/recrutement-actions";
 
 const OUVERTURE = "Parlez-moi de votre entreprise.";
@@ -161,6 +163,10 @@ export function DiagnosticExperience() {
       )}
 
       <div className="diag-input-row">
+        {/* ⚠️ La réassurance est ICI, au moment où il commence à parler, et pas sur une page
+            « confidentialité » qu'il n'ouvrira jamais. C'est le premier instant où il donne
+            quelque chose : c'est là qu'il se demande où ça va. */}
+        <p className="diag-donnees">{DONNEES_EN_UNE_PHRASE}</p>
         <textarea
           ref={textareaRef}
           className="diag-input"

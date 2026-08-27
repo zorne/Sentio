@@ -19,16 +19,19 @@ import { useState, useTransition } from "react";
 
 import { recruterSurLaRecommandation } from "@/lib/recrutement-actions";
 
+// ⚠️ LE FORMULAIRE EST OUVERT D'EMBLÉE, ET C'EST UNE FRICTION EN MOINS.
+//
+// Il y avait un bouton « Choisir », qui révélait le formulaire, qu'il fallait ensuite remplir.
+// Deux gestes pour une seule décision, sur le dernier écran du parcours : c'est exactement là
+// qu'on perd des gens. Le formulaire est visible tout de suite, et le bouton final reste le seul
+// moment où quelque chose s'engage.
 export function ChoisirLaFormule({
   recommandation,
   tier,
-  nom,
 }: {
   recommandation: string;
   tier: string;
-  nom: string;
 }) {
-  const [ouvert, setOuvert] = useState(false);
   const [entreprise, setEntreprise] = useState("");
   const [email, setEmail] = useState("");
   const [erreur, setErreur] = useState<string | null>(null);
@@ -44,14 +47,6 @@ export function ChoisirLaFormule({
           qu&apos;il ne fera jamais, et comment entrer chez vous.
         </p>
       </div>
-    );
-  }
-
-  if (!ouvert) {
-    return (
-      <button className="lp-btn lp-btn--primary fm-carte-cta" onClick={() => setOuvert(true)}>
-        Choisir {nom}
-      </button>
     );
   }
 

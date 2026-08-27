@@ -35,6 +35,8 @@
 // typographie sont tenus — plutôt que de les relire à chaque modification.
 // ════════════════════════════════════════════════════════════════════════════════════════════
 
+import { DONNEES_EN_DEUX_PHRASES } from "./promesse-sur-les-donnees.js";
+
 /** Ce que la base sait de l'employée au moment où on présente son arrivée. */
 export interface PresentationDeLEmployee {
   /** Le prénom réservé par `reserve_identity()`. Jamais réutilisé entre deux employées. */
@@ -78,6 +80,14 @@ const CE_QU_ELLE_NE_FERA_JAMAIS: readonly string[] = [
   "Rien de ce qui appartient à quelqu'un d'autre n'est visible ici. Aucune donnée d'une entreprise n'atteint une autre entreprise, jamais, même agrégée.",
 ];
 
+/**
+ * Ce que ses données deviennent, dit dans le document qu'il garde.
+ *
+ * ⚠️ C'est ici que ça compte le plus. Une page se relit quand on la cherche ; cet email est
+ * rouvert le jour où le doute arrive, souvent des semaines après. La promesse doit y être.
+ */
+const CE_QUE_DEVIENNENT_VOS_DONNEES = DONNEES_EN_DEUX_PHRASES;
+
 /** Le garde-fou du silence, dit au client avant qu'il ait à s'en inquiéter. */
 const LE_SILENCE =
   "Et après quarante entreprises approchées sans la moindre réponse, le travail s'arrête de lui-même et vous êtes prévenu. Un collaborateur qui continue de parler dans le vide vous coûte votre réputation, pas seulement son temps.";
@@ -117,6 +127,8 @@ export function redigerLaPresentation(faits: PresentationDeLEmployee): EmailRedi
     ...CE_QU_ELLE_NE_FERA_JAMAIS.map((ligne) => `  · ${ligne}`),
     "",
     LE_SILENCE,
+    "",
+    CE_QUE_DEVIENNENT_VOS_DONNEES,
     "",
     "CRÉER VOTRE ACCÈS",
     "",
@@ -181,6 +193,7 @@ ${
     ${CE_QU_ELLE_NE_FERA_JAMAIS.map((ligne) => puce(echapper(ligne))).join("\n    ")}
   </table>
   <p style="margin:6px 0 0 0;color:#5c5a53;font-size:14px;line-height:1.65;">${echapper(LE_SILENCE)}</p>
+  <p style="margin:14px 0 0 0;color:#5c5a53;font-size:14px;line-height:1.65;">${echapper(CE_QUE_DEVIENNENT_VOS_DONNEES)}</p>
 </td></tr>
 
 <tr><td style="padding:30px 40px 0 40px;"><div style="height:1px;background:#e3e1dc;"></div></td></tr>

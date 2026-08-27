@@ -22,7 +22,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { decrireLaFormule, PRIX_PENDANT_LA_BETA, type FormuleDecrite } from "@sentio/domain";
+import {
+  decrireLaFormule,
+  DONNEES_EN_DEUX_PHRASES,
+  PRIX_PENDANT_LA_BETA,
+  type FormuleDecrite,
+} from "@sentio/domain";
 
 import { ChoisirLaFormule } from "@/components/ChoisirLaFormule";
 import { Logomark } from "@/components/Logomark";
@@ -104,7 +109,7 @@ export default async function FormulesPage({
               </ul>
 
               {formule.disponible ? (
-                <ChoisirLaFormule recommandation={reco} tier={formule.tier} nom={formule.nom} />
+                <ChoisirLaFormule recommandation={reco} tier={formule.tier} />
               ) : (
                 /* ⚠️ On dit pourquoi elle est fermée. « Bientôt disponible » sans raison est
                    exactement le genre de phrase qui fait patienter des gens pour rien. */
@@ -116,6 +121,7 @@ export default async function FormulesPage({
           ))}
         </div>
 
+        <p className="fm-note">{DONNEES_EN_DEUX_PHRASES}</p>
         <p className="fm-note">
           Aucun moyen de paiement ne vous est demandé, à aucun moment. Le jour où des formules
           payantes existeront, vous serez prévenu avant, et rien ne sera prélevé sans votre accord.

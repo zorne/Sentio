@@ -16,6 +16,8 @@ import { redirect } from "next/navigation";
 
 import { DefinirLeMotDePasse } from "@/components/DefinirLeMotDePasse";
 import { Logomark } from "@/components/Logomark";
+import { DONNEES_EN_UNE_PHRASE } from "@sentio/domain";
+
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export const metadata: Metadata = {
@@ -51,6 +53,16 @@ export default async function AccesPage() {
           lire.
         </p>
         <DefinirLeMotDePasse />
+        <p
+          style={{
+            margin: "18px 0 0",
+            fontSize: 12.5,
+            lineHeight: 1.6,
+            color: "var(--text-tertiary)",
+          }}
+        >
+          {DONNEES_EN_UNE_PHRASE}
+        </p>
       </div>
     </section>
   );

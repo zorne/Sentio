@@ -62,6 +62,8 @@
 | 2026-08-27 | **Le parcours en deux temps** : conversation → `/formules` → email | La recommandation est ÉCRITE d'abord, seul son identifiant voyage. C'est la forme que prendra le parcours payant : le paiement s'intercalera là, rien d'autre ne bougera |
 | 2026-08-27 | **Les formules sortent de la BASE**, avec leurs vraies limites | Aucun prix : il vit chez le prestataire de paiement (`docs/31` §5). Un palier non commercialisable se montre fermé au lieu de se vendre |
 | 2026-08-27 | **La scène raconte avant, pendant, après** — et le devis oublié ressort à la fin | Demande commerciale du fondateur. ⚠️ Ce qui persuade n'est pas une promesse mais une **reconnaissance** : sa propre semaine, jamais un pourcentage. Trois premiers temps à panneau VIDE, parce qu'il n'y a personne |
+| 2026-08-27 | **La promesse sur les données, écrite UNE fois** et reprise à chaque écran où le client donne quelque chose | Six formulations divergent en trois mois. Elle dit d'abord à quoi les données SERVENT, pas ce qu'on n'en fait pas : c'est la vraie question. Six tests la surveillent |
+| 2026-08-27 | **Une friction en moins sur le dernier écran** | Le formulaire de fin était derrière un bouton « Choisir ». Deux gestes pour une décision, là où l'on perd des gens |
 | 2026-08-27 | **La base est tranchée** ([`adr/0030`](adr/0030-une-seule-base-celle-du-coeur.md)) : c'est le projet du CŒUR | `docs/27` penchait pour l'autre, pour garder ses comptes. Argument tombé : **aucun compte réel**, et la base est en pause depuis le 6 août, donc elle n'a rien pu recevoir depuis |
 | 2026-08-27 | **L'ancienne génération retirée** : 5 pages, le cron, 11 composants, 8 modules, et **le second moteur métier de `vitrine-core`** | La vitrine n'importe plus que 2 sous-chemins au lieu de 4. ⚠️ Trouvé en retirant : le diagnostic public écrivait dans `diagnostic_rate_limit`, table qui **n'existait que dans l'ancien schéma** |
 | 2026-08-27 | **Le locataire de démonstration n'existe plus** (constat B10 refermé) | N'importe quel visiteur inscrit pouvait y lancer un vrai cycle et LIRE ce que les autres y avaient fait. Une exception d'accès qui survit à sa fonctionnalité est un trou |
@@ -314,6 +316,26 @@ l'espace mentirait à celui qui paie.
 les **jetons d'inférence** : les lignes `outbound_messages_per_period` et `tasks_per_period` de
 `plan_quota` existent, mais rien ne les y écrit. Afficher un compteur que personne n'alimente
 afficherait zéro pour toujours.
+
+### Ce qu'on promet sur les données s'écrit à UN seul endroit
+
+`packages/domain/src/promesse-sur-les-donnees.ts`, repris par la landing, le diagnostic, les
+formules, l'écran du mot de passe et l'email de présentation.
+
+Demande du fondateur le 2026-08-27 : rassurer sur les données **à presque chaque écran**. Écrite
+six fois, la promesse diverge en trois mois : une page dira « jamais partagées », une autre
+« jamais vendues », et le client qui lit les deux se demandera laquelle est vraie.
+
+⚠️ **Elle dit d'abord à quoi les données SERVENT.** « Nous ne vendons pas vos données » est ce que
+tout le monde écrit et que personne ne lit. Ce qu'un dirigeant veut savoir est plus précis : à
+quoi elles servent, et jusqu'où elles vont. L'ordre compte : commencer par l'interdit donne
+l'impression qu'on se défend.
+
+Et chaque mot est adossé à quelque chose : l'usage au contexte à trois couches, l'amélioration à
+la réflexion d'après-mission, l'étanchéité à `verify_tenant_isolation` et `adr/0014`. Six tests
+refusent une échappatoire (« en principe », « sauf », « dans la mesure »), un chiffre de résultat,
+un mot du lexique ou un tiret. Si l'une des trois cessait d'être vraie, **c'est ce fichier qu'il
+faudrait corriger en premier**.
 
 ### RLS répond à « qui a le droit de voir », pas à « laquelle des miennes »
 

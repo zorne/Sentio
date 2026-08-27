@@ -52,3 +52,4 @@ export * from "./optout.js";
 export * from "./heartbeat-signature.js";
 export * from "./email-presentation.js";
 export * from "./formules.js";
+export * from "./promesse-sur-les-donnees.js";
