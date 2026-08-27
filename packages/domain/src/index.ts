@@ -50,3 +50,4 @@ export * from "./liste-attente.js";
 export * from "./diagnostic-request.js";
 export * from "./optout.js";
 export * from "./heartbeat-signature.js";
+export * from "./email-presentation.js";
