@@ -72,15 +72,15 @@ export interface EmailRedige {
  *   4. étanchéité entre entreprises       → `verify_tenant_isolation`, `adr/0014`.
  */
 const CE_QU_ELLE_NE_FERA_JAMAIS: readonly string[] = [
-  "Elle n'écrit à personne sans votre accord. Chaque message vous est soumis avant de partir, avec son texte exact et le nom de l'entreprise à qui il s'adresse.",
-  "Elle ne s'accorde jamais plus de liberté. N'importe quoi peut la rendre plus prudente ; vous seul pouvez la rendre plus autonome, et ça se défait aussi vite que ça se donne.",
-  "Elle ne change jamais de métier toute seule. Si ses résultats lui suggèrent autre chose, elle vous le propose et attend. Rien ne bouge tant que vous n'avez pas répondu.",
-  "Elle ne voit rien de ce qui appartient à quelqu'un d'autre. Aucune donnée d'une entreprise n'atteint une autre entreprise, jamais, même agrégée.",
+  "Aucun message ne part sans votre accord. Chaque envoi vous est soumis avant, avec son texte exact et le nom de l'entreprise à qui il s'adresse.",
+  "Cette autonomie ne s'élargit jamais toute seule. N'importe quoi peut la restreindre ; vous seul pouvez l'ouvrir, et ça se retire aussi vite que ça se donne.",
+  "Le métier ne change jamais sans vous. Si les résultats suggèrent autre chose, la proposition vous est soumise et rien ne bouge tant que vous n'avez pas répondu.",
+  "Rien de ce qui appartient à quelqu'un d'autre n'est visible ici. Aucune donnée d'une entreprise n'atteint une autre entreprise, jamais, même agrégée.",
 ];
 
 /** Le garde-fou du silence, dit au client avant qu'il ait à s'en inquiéter. */
 const LE_SILENCE =
-  "Et si elle approche quarante entreprises sans obtenir la moindre réponse, elle s'arrête d'elle-même et vous le dit. Un collaborateur qui continue de parler dans le vide vous coûte votre réputation, pas seulement son temps.";
+  "Et après quarante entreprises approchées sans la moindre réponse, le travail s'arrête de lui-même et vous êtes prévenu. Un collaborateur qui continue de parler dans le vide vous coûte votre réputation, pas seulement son temps.";
 
 function echapper(texte: string): string {
   return texte
@@ -106,13 +106,13 @@ export function redigerLaPresentation(faits: PresentationDeLEmployee): EmailRedi
   const texte = [
     `${prenom} rejoint ${entreprise}.`,
     "",
-    `Elle commence aujourd'hui. Son métier : ${role}.`,
-    `Ce que vous lui avez demandé d'atteindre : ${objectif}.`,
+    `Le travail commence aujourd'hui. Métier : ${role}.`,
+    `Ce que vous avez demandé d'atteindre : ${objectif}.`,
     "",
-    listeDesPriorites.length > 0 ? "Ce sur quoi elle se concentre :" : "",
+    listeDesPriorites.length > 0 ? "Ce sur quoi le travail se concentre :" : "",
     ...listeDesPriorites.map((p) => `  · ${p}`),
     "",
-    "CE QU'ELLE NE FERA JAMAIS",
+    "CE QUI N'ARRIVERA JAMAIS",
     "",
     ...CE_QU_ELLE_NE_FERA_JAMAIS.map((ligne) => `  · ${ligne}`),
     "",
@@ -158,14 +158,14 @@ export function redigerLaPresentation(faits: PresentationDeLEmployee): EmailRedi
 </td></tr>
 
 <tr><td style="padding:20px 40px 0 40px;color:#3a3a38;font-size:15px;line-height:1.65;">
-  <p style="margin:0 0 10px 0;">Elle commence aujourd'hui. Son métier : <strong style="color:#16150f;">${echapper(role)}</strong>.</p>
-  <p style="margin:0;">Ce que vous lui avez demandé d'atteindre : <strong style="color:#16150f;">${echapper(objectif)}</strong>.</p>
+  <p style="margin:0 0 10px 0;">Le travail commence aujourd'hui. Métier : <strong style="color:#16150f;">${echapper(role)}</strong>.</p>
+  <p style="margin:0;">Ce que vous avez demandé d'atteindre : <strong style="color:#16150f;">${echapper(objectif)}</strong>.</p>
 </td></tr>
 
 ${
   listeDesPriorites.length > 0
     ? `<tr><td style="padding:26px 40px 0 40px;">
-  <div style="font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:#8a877f;padding-bottom:12px;">Ce sur quoi elle se concentre</div>
+  <div style="font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:#8a877f;padding-bottom:12px;">Ce sur quoi le travail se concentre</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
     ${listeDesPriorites.map((p) => puce(echapper(p))).join("\n    ")}
   </table>
@@ -176,7 +176,7 @@ ${
 <tr><td style="padding:14px 40px 0 40px;"><div style="height:1px;background:#e3e1dc;"></div></td></tr>
 
 <tr><td style="padding:26px 40px 0 40px;">
-  <div style="font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:#8a877f;padding-bottom:14px;">Ce qu'elle ne fera jamais</div>
+  <div style="font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:#8a877f;padding-bottom:14px;">Ce qui n'arrivera jamais</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
     ${CE_QU_ELLE_NE_FERA_JAMAIS.map((ligne) => puce(echapper(ligne))).join("\n    ")}
   </table>

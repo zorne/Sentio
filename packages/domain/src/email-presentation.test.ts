@@ -49,12 +49,12 @@ describe("l'email de présentation", () => {
     const email = redigerLaPresentation(FAITS);
 
     for (const version of [email.texte, email.html]) {
-      expect(version).toContain("sans votre accord");
-      expect(version).toContain("vous seul pouvez la rendre plus autonome");
-      expect(version).toContain("ne change jamais de métier toute seule");
+      expect(version).toContain("Aucun message ne part sans votre accord");
+      expect(version).toContain("vous seul pouvez l'ouvrir");
+      expect(version).toContain("Le métier ne change jamais sans vous");
       expect(version).toContain("Aucune donnée d'une entreprise n'atteint une autre entreprise");
       // Le garde-fou du silence, dit avant que le client ait à s'en inquiéter.
-      expect(version).toContain("quarante entreprises sans obtenir la moindre réponse");
+      expect(version).toContain("quarante entreprises approchées sans la moindre réponse");
     }
   });
 
@@ -103,6 +103,35 @@ describe("l'email de présentation", () => {
     expect(email.objet).not.toMatch(/[—–]/);
     expect(email.texte).not.toMatch(/[—–]/);
     expect(visible).not.toMatch(/[—–]/);
+  });
+
+  it("⭐⭐ ne présume JAMAIS du genre de l'employée", () => {
+    // ⚠️ Le réservoir d'identités est MIXTE : Camille, Julien, Cédric, Julie. Le prénom est tiré
+    // au sort par `reserve_identity()`, et rien dans `identity` ne dit s'il est masculin ou
+    // féminin.
+    //
+    // Un email qui écrit « elle » se trompe donc une fois sur deux, dans le paragraphe même où il
+    // présente cette personne au dirigeant. Et c'est le document qu'il garde : contrairement à
+    // une page, on ne peut pas le corriger après l'envoi.
+    //
+    // La parade n'est pas de deviner le genre, c'est de ne pas en avoir besoin : on parle du
+    // travail, de l'autonomie, des messages. Ça se trouve être une meilleure écriture, parce que
+    // la garantie passe devant la personne.
+    const email = redigerLaPresentation(FAITS);
+    const genre = /\b(elle|il|la sienne|le sien)\b/i;
+    const visible = email.html.replace(/<[^>]*>/g, " ").replace(/&[a-z]+;/g, "'");
+
+    for (const [ou, texte] of [
+      ["objet", email.objet],
+      ["texte", email.texte],
+      ["html", visible],
+    ] as const) {
+      // « il » reste permis quand il désigne le LIEN ou un MESSAGE, jamais une personne.
+      const sansObjets = texte
+        .replace(/ce lien ne fonctionne qu'une fois, et il expire/gi, "")
+        .replace(/l'entreprise à qui il s'adresse/gi, "");
+      expect(genre.exec(sansObjets)?.[0] ?? null, `genre présumé dans ${ou}`).toBeNull();
+    }
   });
 
   it("échappe ce qui vient du client : un nom d'entreprise ne devient pas du balisage", () => {

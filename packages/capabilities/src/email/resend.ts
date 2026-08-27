@@ -60,6 +60,7 @@ export class ResendEmailProvider implements EmailProvider {
           ...(email.replyTo === undefined ? {} : { reply_to: formatAddress(email.replyTo) }),
           subject: email.subject,
           text: email.text,
+          ...(email.html === undefined ? {} : { html: email.html }),
           ...(email.headers === undefined ? {} : { headers: email.headers }),
         }),
         signal: controller.signal,

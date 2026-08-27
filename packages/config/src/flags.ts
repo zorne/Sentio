@@ -23,6 +23,23 @@ export interface FeatureFlags {
 
   /** Le paiement est ouvert. Bloqué tant que le lot 8 (conformité) n'est pas terminé. */
   checkoutEnabled: boolean;
+
+  /**
+   * Le diagnostic peut recruter DIRECTEMENT, sans paiement.
+   *
+   * ⚠️ CE DRAPEAU DONNE LE PRODUIT. Ouvert, n'importe quel visiteur qui finit une conversation
+   * repart avec une entreprise, une employée et un accès. Il existe pour que le fondateur puisse
+   * traverser son propre parcours de bout en bout, exactement comme un client, sans passer par
+   * l'achat.
+   *
+   * Il est fermé par défaut, et il doit le rester en ligne. Le dépôt a déjà payé la leçon :
+   * `CheckoutAction` livrait un compte à qui cliquait sur « Procéder au paiement » quand la clé
+   * de paiement manquait (constat B4 de `docs/32`). Une porte ouverte par omission finit toujours
+   * par être trouvée.
+   *
+   * → `docs/33-le-parcours-gratuit.md`
+   */
+  recrutementSansPaiement: boolean;
 }
 
 /**
@@ -33,4 +50,5 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   inferenceOptOutProven: false,
   publicDiagnosticEnabled: false,
   checkoutEnabled: false,
+  recrutementSansPaiement: false,
 };

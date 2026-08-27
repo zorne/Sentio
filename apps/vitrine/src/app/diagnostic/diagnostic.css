@@ -150,3 +150,43 @@
 @media (prefers-reduced-motion: reduce) {
   .diag-line, .diag-present, .diag-thinking span { animation: none !important; }
 }
+
+/* ── Le dernier pas : le dirigeant donne son entreprise, et reçoit son employée. ──────────── */
+.diag-recrute {
+  display: grid;
+  gap: 12px;
+  margin-top: 28px;
+  padding-top: 26px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.diag-recrute input {
+  padding: 12px 15px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f4f3f0;
+  font-family: inherit;
+  font-size: 14px;
+}
+.diag-recrute input:focus-visible {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.34);
+}
+.diag-recrute-note {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.46);
+}
+.diag-recrute-mot {
+  margin: 6px 0 0;
+  font-size: 15px;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.82);
+}
+.diag-recrute-erreur {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #e88f7a;
+}

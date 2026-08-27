@@ -30,7 +30,20 @@ export type { DiagnosticMessage, EmployeePresentation };
 
 export type DiagnosticTurnResult =
   | { readonly kind: "message"; readonly reply: string }
-  | { readonly kind: "presentation"; readonly presentation: EmployeePresentation }
+  | {
+      readonly kind: "presentation";
+      readonly presentation: EmployeePresentation;
+      /**
+       * Le profil qui a produit cette employée.
+       *
+       * ⚠️ Il fait l'aller-retour par le navigateur, et il n'autorise RIEN par lui-même : au
+       * recrutement, le serveur rejoue la composition à partir de lui plutôt que de croire ce
+       * qui revient (`recrutement-actions.ts`). Sans ce transport, il faudrait garder l'état de
+       * chaque conversation côté serveur, et deux visiteurs simultanés partageraient un jour le
+       * même — exactement ce que le fondateur redoute le plus.
+       */
+      readonly profil: unknown;
+    }
   | { readonly kind: "hors_perimetre"; readonly reason: string }
   | { readonly kind: "limite"; readonly message: string }
   | { readonly kind: "panne"; readonly message: string };
@@ -70,7 +83,7 @@ async function runTurn(history: DiagnosticMessage[]): Promise<DiagnosticTurnResu
   }
 
   const presentation = await presentEmployee(decision, { present: createModelPresent(gateway) });
-  return { kind: "presentation", presentation };
+  return { kind: "presentation", presentation, profil: step.profil };
 }
 
 /**

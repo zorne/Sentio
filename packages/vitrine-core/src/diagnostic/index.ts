@@ -15,7 +15,12 @@
 // ════════════════════════════════════════════════════════════════════
 
 import { INFERENCE_ENVELOPES } from "@sentio/config";
-import { parseDiagnosticProfile, recommend, type RecommendationDecision } from "@sentio/domain";
+import {
+  parseDiagnosticProfile,
+  recommend,
+  type DiagnosticProfile,
+  type RecommendationDecision,
+} from "@sentio/domain";
 import { EnvelopeGuard, ModelGateway } from "../gateway/index.js";
 import type {
   ConversationTurn,
@@ -52,7 +57,21 @@ export interface DiagnosticMessage {
 
 export type DiagnosticStepResult =
   | { readonly stage: "conversation"; readonly reply: string }
-  | { readonly stage: "decided"; readonly decision: RecommendationDecision };
+  | {
+      readonly stage: "decided";
+      readonly decision: RecommendationDecision;
+      /**
+       * Le profil qui a produit cette décision, tel que la conversation l'a compris.
+       *
+       * ⚠️ Il est rendu pour être ÉCRIT au moment du recrutement : sans lui, on saurait ce que
+       * Sentio a décidé, jamais à partir de quoi. Un dirigeant qui demande « pourquoi cette
+       * configuration » n'aurait aucune réponse, et une réévaluation n'aurait rien à comparer.
+       *
+       * Il n'autorise rien par lui-même : la configuration est RECOMPOSÉE côté serveur à partir
+       * de lui, jamais reprise de ce qui revient du navigateur.
+       */
+      readonly profil: DiagnosticProfile;
+    };
 
 /** Ce qu'un tour de modèle peut rendre : soit on continue à parler, soit un candidat de profil
  *  est prêt à être vérifié. Jamais les deux — c'est le modèle qui choisit, via l'appel d'outil. */
@@ -77,13 +96,15 @@ export interface DiagnosticStepDeps {
  */
 function tryDecide(
   candidate: unknown,
-): { readonly decision: RecommendationDecision } | { readonly hint: readonly string[] } {
+):
+  | { readonly decision: RecommendationDecision; readonly profil: DiagnosticProfile }
+  | { readonly hint: readonly string[] } {
   const parsed = parseDiagnosticProfile(candidate);
   if (!parsed.ok) return { hint: parsed.violations.map((v) => v.field) };
 
   const decision = recommend(parsed.profile);
   if (decision.status === "incomplet") return { hint: decision.missing };
-  return { decision };
+  return { decision, profil: parsed.profile };
 }
 
 /**
@@ -104,13 +125,17 @@ export async function stepDiagnostic(
   if ("reply" in first) return { stage: "conversation", reply: first.reply };
 
   const firstTry = tryDecide(first.candidate);
-  if ("decision" in firstTry) return { stage: "decided", decision: firstTry.decision };
+  if ("decision" in firstTry) {
+    return { stage: "decided", decision: firstTry.decision, profil: firstTry.profil };
+  }
 
   const second = await deps.converse({ history, hint: firstTry.hint });
   if ("reply" in second) return { stage: "conversation", reply: second.reply };
 
   const secondTry = tryDecide(second.candidate);
-  if ("decision" in secondTry) return { stage: "decided", decision: secondTry.decision };
+  if ("decision" in secondTry) {
+    return { stage: "decided", decision: secondTry.decision, profil: secondTry.profil };
+  }
 
   return {
     stage: "conversation",

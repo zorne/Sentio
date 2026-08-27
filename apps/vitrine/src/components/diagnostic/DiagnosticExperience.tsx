@@ -22,9 +22,10 @@
 // Réalise : ACQUIS-12
 // ════════════════════════════════════════════════════════════════════
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { RecruitLink } from "@/components/landing/RecruitLink";
 import { diagnosticTurn, type DiagnosticMessage, type EmployeePresentation } from "@/lib/diagnostic-actions";
+import { recruterDepuisLeDiagnostic } from "@/lib/recrutement-actions";
 
 const OUVERTURE = "Parlez-moi de votre entreprise.";
 
@@ -38,7 +39,11 @@ type Exchange = { readonly question: string; readonly answer: string };
 type Phase =
   | { readonly kind: "conversation" }
   | { readonly kind: "thinking" }
-  | { readonly kind: "presentation"; readonly presentation: EmployeePresentation }
+  | {
+      readonly kind: "presentation";
+      readonly presentation: EmployeePresentation;
+      readonly profil: unknown;
+    }
   | { readonly kind: "hors_perimetre"; readonly reason: string }
   | { readonly kind: "limite"; readonly message: string };
 
@@ -75,7 +80,7 @@ export function DiagnosticExperience() {
     }
     if (result.kind === "presentation") {
       setTrail((t) => [...t, { question: askedPrompt, answer }]);
-      setPhase({ kind: "presentation", presentation: result.presentation });
+      setPhase({ kind: "presentation", presentation: result.presentation, profil: result.profil });
       return;
     }
     if (result.kind === "hors_perimetre") {
@@ -105,7 +110,7 @@ export function DiagnosticExperience() {
   }
 
   if (phase.kind === "presentation") {
-    return <Presentation presentation={phase.presentation} />;
+    return <Presentation presentation={phase.presentation} profil={phase.profil} />;
   }
 
   if (phase.kind === "hors_perimetre") {
@@ -185,7 +190,13 @@ export function DiagnosticExperience() {
   );
 }
 
-function Presentation({ presentation }: { presentation: EmployeePresentation }) {
+function Presentation({
+  presentation,
+  profil,
+}: {
+  presentation: EmployeePresentation;
+  profil: unknown;
+}) {
   return (
     <div className="diag-present">
       <span className="diag-present-eyebrow">Le profil recommandé</span>
@@ -209,9 +220,88 @@ function Presentation({ presentation }: { presentation: EmployeePresentation }) 
       <p className="diag-present-why">{presentation.whyRecommended}</p>
       <p className="diag-present-outcome">{presentation.expectedOutcome}</p>
 
-      <RecruitLink href="/plans?agent=commercial" className="lp-btn lp-btn--primary diag-present-cta">
-        Recruter {presentation.firstName}
-      </RecruitLink>
+      <Recruter prenom={presentation.firstName} profil={profil} />
     </div>
+  );
+}
+
+/**
+ * Le dernier pas : ce que le dirigeant donne de lui.
+ *
+ * ⚠️ DEUX CHAMPS, ET PAS UN DE PLUS. Tout le reste est déjà su : la conversation a extrait son
+ * secteur, sa cible, son objectif et ce qui le bloque. Redemander ce qu'on sait déjà donne le
+ * sentiment de n'avoir pas été écouté, juste après vingt minutes passées à être écouté.
+ *
+ * ⚠️ Et on ne demande RIEN avant d'avoir montré l'employée. Un formulaire posé plus tôt
+ * transformerait le diagnostic en collecte d'adresses, ce qu'il n'est pas.
+ */
+function Recruter({ prenom, profil }: { prenom: string; profil: unknown }) {
+  const [entreprise, setEntreprise] = useState("");
+  const [email, setEmail] = useState("");
+  const [erreur, setErreur] = useState<string | null>(null);
+  const [parti, setParti] = useState<{ prenom: string; adresse: string } | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  if (parti !== null) {
+    return (
+      <div className="diag-recrute">
+        <span className="diag-present-eyebrow">C&apos;est fait</span>
+        <p className="diag-recrute-mot">
+          {parti.prenom} a rejoint votre entreprise. Nous venons d&apos;écrire à{" "}
+          <strong>{parti.adresse}</strong> : ce message vous explique ce qu&apos;elle fera, ce
+          qu&apos;elle ne fera jamais, et comment entrer chez vous.
+        </p>
+        <p className="diag-recrute-note">
+          Ouvrez-le et choisissez votre mot de passe. Le lien qu&apos;il contient ne fonctionne
+          qu&apos;une fois.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <form
+      className="diag-recrute"
+      onSubmit={(evenement) => {
+        evenement.preventDefault();
+        setErreur(null);
+        startTransition(async () => {
+          const resultat = await recruterDepuisLeDiagnostic({ profil }, { entreprise, email });
+          if (resultat.kind === "refus") {
+            setErreur(resultat.message);
+            return;
+          }
+          setParti({ prenom: resultat.prenom, adresse: resultat.adresse });
+        });
+      }}
+    >
+      <span className="diag-present-eyebrow">Pour lui donner votre entreprise</span>
+      <input
+        type="text"
+        placeholder="Le nom de votre entreprise"
+        aria-label="Le nom de votre entreprise"
+        value={entreprise}
+        onChange={(evenement) => setEntreprise(evenement.target.value)}
+        required
+        disabled={pending}
+      />
+      <input
+        type="email"
+        placeholder="Votre adresse email"
+        aria-label="Votre adresse email"
+        value={email}
+        onChange={(evenement) => setEmail(evenement.target.value)}
+        required
+        disabled={pending}
+      />
+      <button className="lp-btn lp-btn--primary diag-present-cta" type="submit" disabled={pending}>
+        {pending ? "Un instant…" : `Recruter ${prenom}`}
+      </button>
+      {erreur !== null && <p className="diag-recrute-erreur">{erreur}</p>}
+      <p className="diag-recrute-note">
+        Vous recevrez sa présentation par email. Rien ne part vers vos clients tant que vous
+        n&apos;avez pas donné votre accord.
+      </p>
+    </form>
   );
 }

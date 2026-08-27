@@ -42,6 +42,9 @@ importers:
       '@react-three/fiber':
         specifier: ^9.6.1
         version: 9.7.0(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.185.1)
+      '@sentio/capabilities':
+        specifier: workspace:*
+        version: link:../../packages/capabilities
       '@sentio/config':
         specifier: workspace:*
         version: link:../../packages/config

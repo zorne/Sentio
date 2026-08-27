@@ -43,6 +43,7 @@ const FLAGS: FeatureFlags = {
   inferenceOptOutProven: true,
   publicDiagnosticEnabled: false,
   checkoutEnabled: false,
+  recrutementSansPaiement: false,
 };
 
 describeIfDatabase("Le noyau contre un vrai Postgres", () => {
