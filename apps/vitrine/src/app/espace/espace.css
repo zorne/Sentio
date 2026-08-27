@@ -1703,3 +1703,28 @@
   color: rgba(255, 255, 255, 0.82);
 }
 .decision .toujours:disabled { opacity: 0.5; cursor: default; }
+
+/* ── Le point rouge : « il y a du nouveau », sans nombre ──────────────────────────────────────
+   Demandé par le fondateur, mais sur ce qu'il n'a PAS ENCORE VU, jamais sur « elle travaille ».
+   Elle travaille en permanence : un point allumé sur son activité serait allumé toujours, donc
+   invisible en deux jours. C'est sa propre décision du 2026-08-26, et elle tient.
+
+   Sans nombre, exprès : on sait qu'il y a du neuf, pas combien. Écrire le total en rouge dirait
+   « douze choses vous attendent » quand une seule est nouvelle, et le rouge perdrait son crédit. */
+.sc-orbe-point {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 100px;
+  background: #f0544c;
+  border: 2px solid var(--void);
+  /* Le même battement lent que la boîte aux lettres : deux signaux qui pulsent différemment se
+     lisent comme deux urgences différentes, ce qu'ils ne sont pas. */
+  animation: sc-pouls 2.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sc-orbe-point { animation: none; }
+}

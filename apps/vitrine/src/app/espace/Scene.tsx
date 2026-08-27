@@ -36,6 +36,7 @@ import { ArretDUrgence } from "./ArretDUrgence";
 import { Conversation } from "./Conversation";
 import { BoutonsDeDecision } from "./BoutonsDeDecision";
 import { CeQuElleAFait, type ActionFaite } from "./CeQuElleAFait";
+import { useNouveaute } from "./nouveautes";
 import { DecisionSurLaProposition } from "./DecisionSurLaProposition";
 import { ReglageDAutonomie } from "./ReglageDAutonomie";
 import { Tableau, type DonneesDuTableau } from "./Tableau";
@@ -217,6 +218,14 @@ export function Scene(d: DonneesDeLaScene) {
   // Une décision en attente et une proposition sont la même chose du point de vue du dirigeant :
   // quelque chose s'est arrêté et attend sa réponse. Un seul compteur, un seul point qui bat.
   const enAttente = d.accords.length + (d.proposition ? 1 : 0);
+
+  // ⚠️ LE POINT ROUGE S'ALLUME SUR CE QU'IL N'A PAS VU, PAS SUR « ELLE TRAVAILLE ».
+  //
+  // L'empreinte est la date de l'action la plus récente : elle change quand elle agit, et une
+  // seule fois. Un compte aurait suffi, mais il retomberait à la même valeur si une action sort
+  // de la fenêtre pendant qu'une autre entre, et le point s'éteindrait sans qu'on ait regardé.
+  const empreinteDuTravail = d.ceQuElleAFait[0]?.quand ?? null;
+  const travailNouveau = useNouveaute("ce-quelle-a-fait", d.tenantId, empreinteDuTravail);
   const arrete = d.arreteDepuis !== null;
 
   const fermer = useCallback(() => setPanneau(null), []);
@@ -412,8 +421,14 @@ export function Scene(d: DonneesDeLaScene) {
           nom="Ce qu'elle a fait"
           icone="recolte"
           compte={d.ceQuElleAFait.length}
+          pointSeul={travailNouveau.nouveau}
           actif={panneau === "journal"}
-          onClick={() => setPanneau(panneau === "journal" ? null : "journal")}
+          onClick={() => {
+            // Regarder, c'est avoir vu. Le point s'éteint au moment où le tiroir s'ouvre, pas
+            // après une lecture qu'on ne saurait pas mesurer.
+            travailNouveau.marquerVu();
+            setPanneau(panneau === "journal" ? null : "journal");
+          }}
         />
         <Orbe
           nom="À décider"
@@ -911,6 +926,7 @@ function Orbe({
   icone,
   compte,
   alerte,
+  pointSeul,
   actif,
   onClick,
 }: {
@@ -918,6 +934,14 @@ function Orbe({
   icone: NomDIcone;
   compte?: number;
   alerte?: boolean;
+  /**
+   * Un point rouge sans nombre.
+   *
+   * ⚠️ Il sert quand on sait qu'il y a du NOUVEAU sans savoir combien. Afficher le total en rouge
+   * dirait « douze choses vous attendent » alors qu'une seule est nouvelle : un chiffre juste
+   * ailleurs, faux ici, et le dirigeant cesse de croire le rouge.
+   */
+  pointSeul?: boolean;
   actif: boolean;
   onClick: () => void;
 }) {
@@ -934,7 +958,9 @@ function Orbe({
       {/* Le nom n'apparaît qu'au survol : une barre de cinq libellés redevient un menu, et la
           page cesse d'être une scène. */}
       <span className="sc-orbe-nom">{nom}</span>
-      {compte !== undefined && compte > 0 ? (
+      {pointSeul === true ? (
+        <span className="sc-orbe-point" aria-hidden="true" />
+      ) : compte !== undefined && compte > 0 ? (
         <span className={`sc-orbe-compte${alerte ? " est-alerte" : ""}`}>{compte}</span>
       ) : null}
     </button>
