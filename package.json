@@ -21,6 +21,7 @@
     "functions:deploy": "pnpm run functions:verify && supabase functions deploy diagnostic",
     "prepare": "git config core.hooksPath .githooks",
     "deploiement:verifier": "node scripts/verifier-le-deploiement.mjs",
+    "supabase:inventaire": "node scripts/inventaire-supabase.mjs",
     "sauvegarde": "node scripts/sauvegarder.mjs",
     "surveiller": "node scripts/surveiller.mjs",
     "inviter": "vite-node scripts/inviter.ts"

@@ -54,6 +54,8 @@
 | 2026-08-27 | **On n'atterrit plus sur la démonstration après connexion** | `/dashboard` sans paramètre montrait le tenant de démo à celui qui venait de payer (B2). C'est `/espace` |
 | 2026-08-27 | **Chacun le sien, même à huit en même temps** — `LADY-W`, 3 tests d'intégration concurrents | ⚠️ **Vrai défaut trouvé** : l'espace lisait employé, objectif, notifications et mémoire SANS filtrer par entreprise. RLS protège d'autrui, **pas de soi-même** |
 | 2026-08-27 | **Le rattachement verrouille son attente** (`20260815120037`) | Deux arrivées simultanées de la MÊME adresse rattachaient deux fois la même entreprise, et laissaient la seconde orpheline. Échec reproduit 3 fois sur 3 avant le correctif |
+| 2026-08-27 | **L'inventaire du Supabase** ([`docs/34`](34-tout-ce-qui-doit-etre-sur-supabase.md)) — `pnpm run supabase:inventaire` | La référence est la base locale reconstruite par les migrations : **aucun fichier d'attendu à tenir à jour, donc aucun à oublier**. Compare une base réelle et énumère les absents |
+| 2026-08-27 | **Trois secrets manquaient au contrôle de déploiement** | ⚠️ `SENTIO_PAIEMENT_SECRET`, `SENTIO_OPTOUT_SECRET`, `SENTIO_ALLOWED_ORIGINS`. Chacun **échoue fermé** : le paiement ne recrute plus, la désinscription est invalide, le diagnostic est muet. En silence |
 
 ---
 
