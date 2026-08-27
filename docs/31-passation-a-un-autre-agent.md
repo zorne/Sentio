@@ -57,6 +57,8 @@
 | 2026-08-27 | **L'inventaire du Supabase** ([`docs/34`](34-tout-ce-qui-doit-etre-sur-supabase.md)) — `pnpm run supabase:inventaire` | La référence est la base locale reconstruite par les migrations : **aucun fichier d'attendu à tenir à jour, donc aucun à oublier**. Compare une base réelle et énumère les absents |
 | 2026-08-27 | **Trois secrets manquaient au contrôle de déploiement** | ⚠️ `SENTIO_PAIEMENT_SECRET`, `SENTIO_OPTOUT_SECRET`, `SENTIO_ALLOWED_ORIGINS`. Chacun **échoue fermé** : le paiement ne recrute plus, la désinscription est invalide, le diagnostic est muet. En silence |
 | 2026-08-27 | **La base est tranchée** ([`adr/0030`](adr/0030-une-seule-base-celle-du-coeur.md)) : c'est le projet du CŒUR | `docs/27` penchait pour l'autre, pour garder ses comptes. Argument tombé : **aucun compte réel**, et la base est en pause depuis le 6 août, donc elle n'a rien pu recevoir depuis |
+| 2026-08-27 | **L'ancienne génération retirée** : 5 pages, le cron, 11 composants, 8 modules, et **le second moteur métier de `vitrine-core`** | La vitrine n'importe plus que 2 sous-chemins au lieu de 4. ⚠️ Trouvé en retirant : le diagnostic public écrivait dans `diagnostic_rate_limit`, table qui **n'existait que dans l'ancien schéma** |
+| 2026-08-27 | **Le locataire de démonstration n'existe plus** (constat B10 refermé) | N'importe quel visiteur inscrit pouvait y lancer un vrai cycle et LIRE ce que les autres y avaient fait. Une exception d'accès qui survit à sa fonctionnalité est un trou |
 
 ---
 

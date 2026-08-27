@@ -458,6 +458,8 @@ relecture.
 | **B13** les cinq secrets non documentés | ✅ documentés dans `.env.local.example` |
 | **C1** la politique de confidentialité affirmait des choses fausses | ✅ les DPA, la ligne Groq, les durées de conservation et la sauvegarde disent maintenant ce qui est vrai |
 | **C2** deux traitements non déclarés | ✅ la conversation du diagnostic et le cookie `sentio_diag_visitor` sont déclarés |
+| **A3.4** la landing annonçait « un cycle toutes les 20 minutes » | ✅ carte retirée : la planification était commentée, et le cycle lui-même est parti avec l'ancienne génération |
+| **B10** le locataire de démonstration, ouvert à tout compte connecté | ✅ l'exception d'accès n'existe plus, et les pages qui s'en servaient non plus |
 
 ⚠️ **Ces textes légaux restent des brouillons à faire relire par un juriste.** Ils ne mentent
 plus, ce qui n'est pas la même chose qu'être complets.

@@ -1,25 +1,42 @@
 // ════════════════════════════════════════════════════════════════════
-// Vérification d'accès tenant — remplace la confiance aveugle en `?tenant=`
-// (ADR-018, "à restaurer avant tout vrai second client"). Deux niveaux :
+// A-t-on le droit d'agir sur cette entreprise ?
 //
-//   · tenant démo  → une session Supabase suffit, sans appartenance. Il
-//     ne contient aucune donnée client réelle, mais ce n'est pas une
-//     raison de l'exposer : un visiteur qui tapait /dashboard tombait
-//     dessus, et un tableau de bord de test sur un site marchand se lit
-//     comme un produit inachevé. Se connecter suffit à y revenir.
-//   · tout autre tenant → session ET appartenance réelle (tenant_member),
-//     jamais juste "l'URL le dit".
+// ══ CE QUI A DISPARU ICI, ET POURQUOI C'EST UNE BONNE NOUVELLE ══
 //
-// Le cron de prospection n'est pas concerné : il s'authentifie par
-// CRON_SECRET, passe par launchSalesRunInternal, et exclut explicitement
-// le tenant démo de sa requête.
+// Il y avait deux niveaux : une session suffisait pour le locataire de
+// DÉMONSTRATION, et il fallait une appartenance réelle pour tout autre.
+// L'exception se défendait tant que le site montrait une démonstration à
+// des visiteurs.
+//
+// Elle ne se défend plus, pour deux raisons qui suffisent chacune :
+//
+//   · les pages qui l'utilisaient ont été retirées (`adr/0030`) ;
+//   · l'audit avait relevé ce qu'elle coûtait (constat B10 de
+//     `docs/32`) : n'importe quel visiteur inscrit pouvait lancer un
+//     vrai cycle sur ce locataire, et LIRE ce que les autres visiteurs
+//     y avaient fait. Le journal porte les entrées et sorties d'outils,
+//     donc les entreprises consultées et les messages rédigés.
+//
+// La garantie tenait à une seule ligne de code, celle qui décidait que
+// ce locataire ne contenait « que du test ». Elle n'existe plus : il
+// n'y a maintenant qu'une seule règle, et elle ne connaît aucune
+// exception.
+//
+// ⚠️ Une exception d'accès qui survit à la fonctionnalité qui la
+// justifiait n'est plus une exception : c'est un trou.
 // ════════════════════════════════════════════════════════════════════
 
 import { redirect } from "next/navigation";
+
 import { pool } from "./db";
 import { createSupabaseServerClient } from "./supabase-server";
-import { DEMO_TENANT_ID } from "@sentio/vitrine-core/wiring";
 
+/**
+ * Vrai si le compte connecté appartient réellement à cette entreprise.
+ *
+ * ⚠️ L'appartenance est lue en base, jamais déduite de l'URL. Un identifiant d'entreprise qui
+ * voyage dans une adresse est un identifiant qu'on peut changer à la main.
+ */
 export async function isAuthorizedForTenant(tenantId: string): Promise<boolean> {
   const supabase = await createSupabaseServerClient();
   const {
@@ -27,17 +44,14 @@ export async function isAuthorizedForTenant(tenantId: string): Promise<boolean> 
   } = await supabase.auth.getUser();
   if (!user) return false;
 
-  if (tenantId === DEMO_TENANT_ID) return true;
-
   const { rows } = await pool.query(
     `select 1 from tenant_member where tenant_id = $1 and user_id = $2`,
-    [tenantId, user.id]
+    [tenantId, user.id],
   );
   return rows.length > 0;
 }
 
-/** Pour les Server Components (pages) : redirige vers /login plutôt que
- *  de laisser fuiter les données d'un tenant qui n'est pas le vôtre. */
+/** Pour une page : rediriger vaut mieux que laisser fuiter l'entreprise de quelqu'un d'autre. */
 export async function requireTenantAccess(tenantId: string): Promise<void> {
   if (!(await isAuthorizedForTenant(tenantId))) redirect("/login");
 }

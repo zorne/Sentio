@@ -45,9 +45,17 @@ export const metadata: Metadata = {
 // ── Disponibilité ────────────────────────────────────────────────────
 // Le seul argument économique qu'on puisse tenir sans client pour le
 // prouver : une comparaison d'heures. 1 607 h est la durée légale du
-// travail en France, 8 760 h le nombre d'heures d'une année, et les
-// vingt minutes sont la fréquence réelle du cron (.github/workflows/
-// prospect-cron.yml). Trois chiffres vérifiables, zéro pourcentage
+// travail en France et 8 760 h le nombre d'heures d'une année. Deux
+// chiffres vérifiables par n'importe qui, zéro pourcentage
+//
+// ⚠️ UNE TROISIÈME CARTE A ÉTÉ RETIRÉE : « un cycle toutes les 20
+// minutes, c'est la fréquence programmée ». Elle se présentait comme le
+// chiffre le plus vérifiable des trois, et elle était fausse — la
+// planification était commentée dans le dépôt (constat A3.4 de
+// docs/32), et le cycle lui-même a été retiré avec l'ancienne
+// génération (adr/0030). Ne pas la remettre sans une planification qui
+// tourne vraiment : c'est la seule des trois qu'un client pourrait
+// prendre en défaut.
 // inventé — une allégation chiffrée invérifiable est une pratique
 // commerciale trompeuse (art. L121-2), et nous n'avons aucune donnée
 // client derrière un « +40 % de CA ».
@@ -71,17 +79,6 @@ const DISPONIBILITE = [
       <>
         Il n&apos;y a pas de calcul caché derrière ce nombre : <b>c&apos;est une année entière</b>.
         Pas de pause déjeuner, pas de vendredi après-midi, pas de mois d&apos;août.
-      </>
-    ),
-  },
-  {
-    cle: "rythme",
-    rang: "Le rythme réel",
-    titre: "Un cycle toutes les 20 minutes",
-    texte: (
-      <>
-        Ce n&apos;est pas une façon de parler : <b>c&apos;est la fréquence programmée</b>, nuit et
-        week-end compris. Il reprend son travail pendant que vous dormez.
       </>
     ),
   },
