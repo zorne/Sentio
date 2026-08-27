@@ -579,3 +579,9 @@ html { scroll-behavior: smooth; }
 .lp-scrollnav a:hover .lp-sn-dot { opacity: 1; }
 @media (max-width: 900px) { .lp-scrollnav { display: none; } }
 @media (prefers-reduced-motion: reduce) { .lp-sn-lbl { opacity: 1 !important; transform: none !important; } }
+
+/* ── Le temps d'avant : le panneau est éteint, parce qu'il n'y a personne. ────────────────────
+   C'est le seul état de la scène où il ne se passe rien, et c'est ce qui doit se voir. */
+.lp-tone-sans { border-color: rgba(255, 255, 255, 0.07); background: rgba(255, 255, 255, 0.012); }
+.lp-tone-sans .lp-out-body { color: rgba(255, 255, 255, 0.3); }
+.lp-state-sans { color: rgba(255, 255, 255, 0.28); }
