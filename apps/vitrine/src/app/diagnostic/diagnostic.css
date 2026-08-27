@@ -11,9 +11,30 @@
 
 .diag-page {
   min-height: 100svh; background: var(--void); color: var(--ink);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 100px 24px 60px;
+  display: flex; flex-direction: column; align-items: center;
+  /* ⚠️ `safe center` et non `center` : sur un écran court, un centrage strict coupe le HAUT,
+     et c'est la question qui disparaît. Piège 14 de `docs/31`, déjà payé une fois. */
+  justify-content: safe center;
+  padding: 110px 24px 70px;
   position: relative;
+  overflow: hidden;
+}
+
+/* ── La présence ──────────────────────────────────────────────────────────────────────────────
+   Une seule lueur, très basse, derrière la question. Elle ne décore pas : elle donne un centre
+   optique à une page qui n'a que du texte, et fait qu'on se sent DANS quelque chose plutôt que
+   devant un formulaire.
+
+   ⚠️ Fixe et sans animation. Une lueur qui respire attirerait l'œil en permanence, alors que la
+   seule chose qui doit appeler ici est la question elle-même. */
+.diag-page::before {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: min(78vw, 900px); height: min(78vw, 900px);
+  transform: translate(-50%, -58%);
+  background: radial-gradient(circle, rgba(190, 240, 220, 0.05) 0%, rgba(190, 240, 220, 0) 62%);
+  pointer-events: none;
 }
 
 .diag-brand {
@@ -31,11 +52,17 @@
 }
 
 /* ── La traînée — le passé de la conversation, jamais un journal ───── */
+/* ⚠️ Le passé RECULE, il ne s'empile pas. Les échanges plus anciens s'effacent, ce qui garde une
+   seule chose lisible à l'écran : la question posée maintenant. Une pile de bulles ferait relire
+   au dirigeant ce qu'il vient d'écrire au lieu de répondre. */
 .diag-trail {
-  display: flex; flex-direction: column; gap: 18px; margin-bottom: 40px;
+  display: flex; flex-direction: column; gap: 18px; margin-bottom: 46px;
   width: 100%;
+  animation: lp-rise 0.7s var(--ease);
 }
 .diag-trail-item { transition: opacity 0.6s var(--ease); }
+.diag-trail-item:first-child { opacity: 0.38; }
+.diag-trail-item:nth-child(2) { opacity: 0.62; }
 .diag-trail-q {
   font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; color: var(--ink-3);
   margin-bottom: 4px;
@@ -46,11 +73,16 @@
 }
 
 /* ── La ligne courante — le même vocabulaire que le Seuil (lp-th-title) ── */
+/* La question porte la page à elle seule : elle a donc le droit d'être grande. Le maximum monte
+   de 42 à 54 px, parce qu'un écran de 1500 px de large laissait la phrase flotter au milieu du
+   vide sans jamais l'occuper. */
 .diag-line {
   font-family: var(--serif); font-weight: 400;
-  font-size: clamp(26px, 4.4vw, 42px); line-height: 1.2; letter-spacing: -0.02em;
-  margin-bottom: 40px;
+  font-size: clamp(28px, 4.8vw, 54px); line-height: 1.16; letter-spacing: -0.025em;
+  margin-bottom: 46px;
+  max-width: 17ch;
   animation: lp-rise 0.7s var(--ease);
+  position: relative;
 }
 
 .diag-thinking {
@@ -65,16 +97,27 @@
 .diag-thinking span:nth-child(3) { animation-delay: 0.4s; }
 
 /* ── La réponse — une ligne d'écriture, jamais une boîte de chat ───── */
+/* ⚠️ UNE LIGNE D'ÉCRITURE, PAS UNE BOÎTE DE CHAT, et ce choix est tenu.
+   Un champ encadré ferait ressembler la page à un formulaire, et on n'écrit pas trois phrases
+   sur son entreprise dans un formulaire. Le trait s'épaissit et s'éclaire quand on écrit :
+   c'est le seul retour dont on a besoin. */
 .diag-input-row {
-  width: 100%; display: flex; align-items: flex-end; gap: 14px;
-  border-bottom: 1px solid var(--line); padding-bottom: 14px;
-  transition: border-color 0.3s var(--ease);
+  width: 100%; display: flex; align-items: flex-end; gap: 16px;
+  border-bottom: 1px solid var(--line); padding-bottom: 16px;
+  transition: border-color 0.3s var(--ease), box-shadow 0.3s var(--ease);
+  animation: lp-rise 0.7s var(--ease) 0.12s backwards;
 }
-.diag-input-row:focus-within { border-color: var(--mint-line); }
+.diag-input-row:focus-within {
+  border-color: var(--mint-line);
+  box-shadow: 0 1px 0 0 var(--mint-line);
+}
 .diag-input {
   flex: 1; background: transparent; border: none; outline: none; resize: none;
   font-family: var(--serif); font-size: 18px; color: var(--ink); line-height: 1.5;
-  min-height: 28px; max-height: 200px; text-align: center;
+  min-height: 34px; max-height: 240px; text-align: center;
+  /* Le champ grandit avec le texte (voir le composant). Au-delà de la hauteur maximale il défile,
+     plutôt que de repousser la question hors de l'écran. */
+  overflow-y: auto;
 }
 .diag-input::placeholder { color: var(--ink-3); }
 .diag-input:disabled { opacity: 0.4; }
@@ -86,11 +129,6 @@
 }
 .diag-send:hover:not(:disabled) { background: var(--ink); color: #060707; border-color: var(--ink); }
 .diag-send:disabled { opacity: 0.3; cursor: default; }
-
-.diag-hint {
-  margin-top: 16px; font-family: var(--mono); font-size: 11px; color: var(--ink-3);
-  letter-spacing: 0.02em; animation: lp-rise 0.8s var(--ease) 0.3s backwards;
-}
 
 .diag-back {
   margin-top: 28px; font-family: var(--mono); font-size: 12px; color: var(--ink-3);
@@ -191,11 +229,18 @@
   color: #e88f7a;
 }
 
-/* Ce qu'on dit de ses données, au moment où il commence à en donner. Discret : une réassurance
-   qui crie donne l'impression qu'il y a quelque chose à se faire pardonner. */
+/* ── Ce qu'on fait de ce qu'il dit ─────────────────────────────────────────────────────────────
+   ⚠️ SOUS la ligne d'écriture, jamais dedans. Placée avant le champ, elle en devenait un élément
+   de la même rangée : le placeholder se retrouvait écrasé, et la phrase se lisait comme une
+   étiquette de formulaire. Ici elle se lit comme une note de bas de page, ce qu'elle est.
+
+   Discrète, exprès. Une réassurance qui crie donne le sentiment qu'il y a quelque chose à se
+   faire pardonner. */
 .diag-donnees {
-  margin: 0 0 12px;
+  margin-top: 18px;
+  max-width: 52ch;
   font-size: 12.5px;
-  line-height: 1.6;
-  color: rgba(255, 255, 255, 0.42);
+  line-height: 1.62;
+  color: var(--ink-3);
+  animation: lp-rise 0.8s var(--ease) 0.24s backwards;
 }

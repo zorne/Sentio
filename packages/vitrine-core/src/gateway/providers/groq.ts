@@ -23,13 +23,42 @@ import { GatewayError } from "../index.js";
 
 const BASE_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-/** Chaîne de modèles Groq, dans l'ordre d'essai. Ordre : le plus capable
- *  d'abord. Tous ont un quota commun côté Groq (par compte, par jour) mais
- *  des limites par-minute distinctes — bascule utile en pointe. */
-const DEFAULT_MODEL_CHAIN = [
-  "llama-3.3-70b-versatile",
-  "llama-3.1-8b-instant",
-];
+/**
+ * Chaîne de modèles, dans l'ordre d'essai : le plus capable d'abord.
+ *
+ * ⚠️ CETTE LISTE A DÉJÀ TUÉ LE DIAGNOSTIC UNE FOIS, ET SANS PRÉVENIR.
+ *
+ * Elle nommait `llama-3.3-70b-versatile` et `llama-3.1-8b-instant`. Groq les a retirés, et
+ * l'appel a commencé à répondre « le modèle n'existe pas ». Côté visiteur : « nous n'avons pas
+ * pu vous répondre », à chaque question, pour toujours. Le produit n'était pas en panne, il
+ * était devenu muet, ce qui ne se voit dans aucune alerte.
+ *
+ * Deux leçons, et la seconde compte plus que la première :
+ *
+ *   1. **un fournisseur retire ses modèles sans prévenir.** Ce n'est pas un incident, c'est le
+ *      fonctionnement normal du marché : ce qui marche aujourd'hui sera retiré un jour ;
+ *   2. **le nom d'un modèle n'a donc rien à faire en dur.** `SENTIO_GROQ_MODELES` permet de le
+ *      changer sans redéployer, c'est-à-dire en quelques minutes plutôt qu'en une soirée.
+ *
+ * ⚠️ ET LE MODÈLE DOIT SAVOIR APPELER UN OUTIL. Le diagnostic n'extrait pas un profil en lisant
+ * du texte libre : il passe par un appel d'outil (`EXTRACTION_TOOL`). Un modèle qui ne les
+ * gère pas répondrait poliment sans jamais rien conclure, ce qui est pire qu'une erreur.
+ */
+const DEFAULT_MODEL_CHAIN = ["openai/gpt-oss-120b", "openai/gpt-oss-20b"];
+
+/**
+ * La chaîne effectivement essayée.
+ *
+ * ⚠️ Aucune validation du contenu : on ne connaît pas la liste des modèles de Groq, et refuser
+ * un nom qu'on ne reconnaît pas empêcherait précisément la correction d'urgence pour laquelle
+ * cette variable existe.
+ */
+function chaineDeModeles(): readonly string[] {
+  const brut = process.env["SENTIO_GROQ_MODELES"];
+  if (brut === undefined) return DEFAULT_MODEL_CHAIN;
+  const noms = brut.split(",").map((n) => n.trim()).filter((n) => n !== "");
+  return noms.length > 0 ? noms : DEFAULT_MODEL_CHAIN;
+}
 
 const MAX_LOOPS = 2;
 const DEFAULT_BACKOFF_MS = 2000;
@@ -67,7 +96,7 @@ function sleep(ms: number): Promise<void> {
 export class GroqProvider implements ModelProvider {
   readonly name = "groq" as const;
 
-  constructor(private readonly modelChain: string[] = DEFAULT_MODEL_CHAIN) {}
+  constructor(private readonly modelChain: readonly string[] = chaineDeModeles()) {}
 
   async generate(req: GenerateRequest, cred: TenantCredential): Promise<GenerateResult> {
     let lastError: Error | null = null;

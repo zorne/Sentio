@@ -335,11 +335,6 @@ export default function LandingPage() {
             <span>Il travaille seul.</span>
             <span>Il vous demande.</span>
           </h1>
-          <p className="lp-hero-sub">
-            Un employé numérique composé pour votre entreprise, à partir de ce que vous racontez.
-            Il ouvre vos données, arbitre et agit, la nuit, le dimanche, en août. Vous voyez chaque
-            décision, et rien d&apos;irréversible ne part sans vous.
-          </p>
           <div className="lp-hero-act">
             <RecruitLink href="/diagnostic" className="lp-btn lp-btn--primary">
               Recruter mon employé

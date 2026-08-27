@@ -25,8 +25,6 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { RecruitLink } from "@/components/landing/RecruitLink";
 import { diagnosticTurn, type DiagnosticMessage, type EmployeePresentation } from "@/lib/diagnostic-actions";
-import { DONNEES_EN_UNE_PHRASE } from "@sentio/domain";
-
 import { enregistrerLeDiagnostic } from "@/lib/recrutement-actions";
 
 const OUVERTURE = "Parlez-moi de votre entreprise.";
@@ -60,6 +58,22 @@ export function DiagnosticExperience() {
   useEffect(() => {
     textareaRef.current?.focus();
   }, [phase]);
+
+  // ⚠️ LE CHAMP GRANDIT AVEC CE QU'ON ÉCRIT, ET ÇA MANQUAIT.
+  //
+  // Il était figé sur une ligne : au-delà d'une phrase, le dirigeant écrivait dans une fente et
+  // ne voyait plus le début de sa réponse. Sur un écran qui lui demande de raconter son
+  // entreprise, c'est le contraire de ce qu'on lui demande de faire, et ça se répare en trois
+  // lignes.
+  //
+  // La hauteur est remise à zéro AVANT d'être relue : sans ça, `scrollHeight` garde la hauteur
+  // précédente et le champ ne redescend jamais quand on efface.
+  useEffect(() => {
+    const champ = textareaRef.current;
+    if (champ === null) return;
+    champ.style.height = "auto";
+    champ.style.height = `${champ.scrollHeight}px`;
+  }, [value]);
 
   async function submit() {
     const answer = value.trim();
@@ -163,10 +177,6 @@ export function DiagnosticExperience() {
       )}
 
       <div className="diag-input-row">
-        {/* ⚠️ La réassurance est ICI, au moment où il commence à parler, et pas sur une page
-            « confidentialité » qu'il n'ouvrira jamais. C'est le premier instant où il donne
-            quelque chose : c'est là qu'il se demande où ça va. */}
-        <p className="diag-donnees">{DONNEES_EN_UNE_PHRASE}</p>
         <textarea
           ref={textareaRef}
           className="diag-input"
@@ -186,12 +196,22 @@ export function DiagnosticExperience() {
           →
         </button>
       </div>
-      {trail.length === 0 && phase.kind !== "thinking" && (
-        <p className="diag-hint">
-          Rien n&apos;est conservé. Ce que vous dites sert uniquement, et tout de suite, à calibrer
-          l&apos;employé numérique qu&apos;on va vous présenter.
-        </p>
-      )}
+      {/* ⚠️ UNE SEULE PHRASE, ET ELLE RESTE VISIBLE TOUT DU LONG.
+          Il y en avait deux : une réassurance générale, et un indice qui disait presque la même
+          chose sous une autre forme. Deux textes qui se répètent sous une ligne de saisie ne
+          rassurent pas deux fois, ils font douter du premier.
+
+          Celle qui reste est la plus PRÉCISE pour ce moment-là : rien n'est conservé tant qu'il
+          n'a pas recruté, et ce qu'il dit sert tout de suite. La promesse générale sur les
+          données vit ailleurs, là où elle est vraie autrement : sur l'accueil, au choix de la
+          formule, dans l'email.
+
+          Et elle ne disparaît plus après la première réponse. Elle disparaissait exactement au
+          moment où il commençait à en dire le plus. */}
+      <p className="diag-donnees">
+        Rien n&apos;est conservé tant que vous n&apos;avez pas recruté. Ce que vous dites sert
+        tout de suite, et uniquement, à composer l&apos;employé qu&apos;on va vous présenter.
+      </p>
     </div>
   );
 }
