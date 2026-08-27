@@ -20,22 +20,6 @@
   overflow: hidden;
 }
 
-/* ── La présence ──────────────────────────────────────────────────────────────────────────────
-   Une seule lueur, très basse, derrière la question. Elle ne décore pas : elle donne un centre
-   optique à une page qui n'a que du texte, et fait qu'on se sent DANS quelque chose plutôt que
-   devant un formulaire.
-
-   ⚠️ Fixe et sans animation. Une lueur qui respire attirerait l'œil en permanence, alors que la
-   seule chose qui doit appeler ici est la question elle-même. */
-.diag-page::before {
-  content: "";
-  position: absolute;
-  top: 50%; left: 50%;
-  width: min(78vw, 900px); height: min(78vw, 900px);
-  transform: translate(-50%, -58%);
-  background: radial-gradient(circle, rgba(190, 240, 220, 0.05) 0%, rgba(190, 240, 220, 0) 62%);
-  pointer-events: none;
-}
 
 .diag-brand {
   position: fixed; top: 28px; left: 28px; z-index: 10;
@@ -243,4 +227,40 @@
   line-height: 1.62;
   color: var(--ink-3);
   animation: lp-rise 0.8s var(--ease) 0.24s backwards;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════════════════
+   LA FORME QUI SE PRÉCISE
+
+   Elle remplace la lueur fixe : une lueur ne dit rien, une forme qui gagne un trait à chaque
+   réponse dit qu'on avance. C'est la promesse de la page d'accueil, tenue à l'écran.
+
+   ⚠️ Très bas en contraste, et derrière le texte. Elle donne un centre optique à une page qui
+   n'a que des mots ; le jour où on la remarque avant la question, elle est trop forte.
+   ════════════════════════════════════════════════════════════════════════════════════════════ */
+.diag-forme {
+  position: absolute;
+  top: 50%; left: 50%;
+  /* Assez large pour que le premier anneau entoure tout le bloc de texte. Voir le composant :
+     un cercle plus petit tombait au milieu de la conversation. */
+  width: min(196vh, 142vw, 1500px);
+  height: min(196vh, 142vw, 1500px);
+  transform: translate(-50%, -52%);
+  color: var(--mint, #bef0dc);
+  pointer-events: none;
+  z-index: 0;
+}
+/* Chaque anneau se referme en fondu quand il est atteint. Le mouvement ne part que d'une
+   réponse : rien ne bouge tant que le dirigeant n'a rien dit. */
+.diag-forme circle {
+  transition:
+    stroke-dasharray 1.2s var(--ease),
+    opacity 1.2s var(--ease);
+}
+
+/* Le contenu passe devant, sans quoi la forme mangerait la lecture. */
+.diag-stage, .diag-input-row, .diag-donnees, .diag-line, .diag-trail, .diag-thinking { position: relative; z-index: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .diag-forme circle { transition: none; }
 }

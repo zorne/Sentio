@@ -24,6 +24,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { RecruitLink } from "@/components/landing/RecruitLink";
+import { FormeQuiSePrecise } from "./FormeQuiSePrecise";
 import { diagnosticTurn, type DiagnosticMessage, type EmployeePresentation } from "@/lib/diagnostic-actions";
 import { enregistrerLeDiagnostic } from "@/lib/recrutement-actions";
 
@@ -153,6 +154,11 @@ export function DiagnosticExperience() {
 
   return (
     <div className="diag-stage">
+      {/* ⚠️ Elle est DERRIÈRE, et elle ne bouge qu'à chaque réponse. Voir le composant : ce qui
+          se passe à l'écran pendant qu'on parle doit venir de ce qui vient d'être dit, jamais
+          d'une animation qui vit toute seule. */}
+      <FormeQuiSePrecise etapes={trail.length} />
+
       {trail.length > 0 && (
         <div className="diag-trail" aria-hidden="true">
           {trail.slice(-3).map((ex, i, arr) => (
