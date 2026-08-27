@@ -22,17 +22,24 @@
     "prepare": "git config core.hooksPath .githooks",
     "deploiement:verifier": "node scripts/verifier-le-deploiement.mjs",
     "sauvegarde": "node scripts/sauvegarder.mjs",
-    "surveiller": "node scripts/surveiller.mjs"
+    "surveiller": "node scripts/surveiller.mjs",
+    "inviter": "vite-node scripts/inviter.ts"
   },
   "devDependencies": {
+    "@types/pg": "^8.20.0",
     "@typescript-eslint/eslint-plugin": "^8.18.0",
     "@typescript-eslint/parser": "^8.18.0",
     "eslint": "^9.17.0",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vite-node": "2.1.9"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild"
     ]
+  },
+  "dependencies": {
+    "@sentio/domain": "workspace:*",
+    "pg": "^8.22.0"
   }
 }

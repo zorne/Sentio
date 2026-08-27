@@ -48,6 +48,10 @@
 | 2026-08-27 | **`CRON_SECRET` et `SENTIO_IP_HASH_SALT` échouent fermé** | Les deux échouaient OUVERT quand ils manquaient. Le sel avait une valeur de repli **écrite dans git** |
 | 2026-08-27 | **L'accueil a enfin un plafond**, le même que le diagnostic | Server Action publique qui appelait un modèle sans aucune limite : facture ouverte à qui écrit une boucle |
 | 2026-08-27 | **La garde « une fois par jour » ne tenait pas la nuit** | ⚠️ Défaut réel trouvé en lançant `verify` à 00 h 12. Voir piège 20 : Node compte en UTC, `::date::timestamptz` compte dans le fuseau de la session |
+| 2026-08-27 | **Le parcours gratuit** ([`docs/33`](33-le-parcours-gratuit.md)) — `pnpm run inviter` | Une COMMANDE, jamais une route : une page qui donne le produit sera trouvée. Référence `invitation:` pour que le gratuit reste distinguable du payant à jamais |
+| 2026-08-27 | **L'email de présentation** — le seul document que le client garde | Il porte ce qu'elle ne fera JAMAIS, jamais un mot de passe. Neuf tests tiennent son lexique et sa typographie |
+| 2026-08-27 | **Identifiant et mot de passe** sur l'espace, à la place du seul lien magique | Demande du fondateur. Le client pose son mot de passe sur `/acces`, jamais reçu par email. Même message d'erreur adresse inconnue / mauvais mot de passe, sinon le formulaire devient un annuaire |
+| 2026-08-27 | **On n'atterrit plus sur la démonstration après connexion** | `/dashboard` sans paramètre montrait le tenant de démo à celui qui venait de payer (B2). C'est `/espace` |
 
 ---
 

@@ -7,7 +7,17 @@ settings:
 importers:
 
   .:
+    dependencies:
+      '@sentio/domain':
+        specifier: workspace:*
+        version: link:packages/domain
+      pg:
+        specifier: ^8.22.0
+        version: 8.22.0
     devDependencies:
+      '@types/pg':
+        specifier: ^8.20.0
+        version: 8.20.0
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.18.0
         version: 8.65.0(@typescript-eslint/parser@8.65.0(eslint@9.39.5)(typescript@5.9.3))(eslint@9.39.5)(typescript@5.9.3)
@@ -20,6 +30,9 @@ importers:
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
+      vite-node:
+        specifier: 2.1.9
+        version: 2.1.9(@types/node@26.1.2)
 
   apps/vitrine:
     dependencies:
