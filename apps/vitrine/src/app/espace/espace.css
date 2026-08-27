@@ -1585,3 +1585,30 @@
   text-transform: uppercase;
   color: var(--sc-faible, rgba(255, 255, 255, 0.42));
 }
+
+/* ── Ce qu'elle fait en ce moment ─────────────────────────────────────────────────────────────
+   Une ligne par chose ouverte, son état en toutes lettres. Pas de tableau : le dirigeant compte
+   d'un coup d'œil, il ne lit pas des colonnes. */
+.sc-missions { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.sc-missions li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.sc-missions li:last-child { border-bottom: none; padding-bottom: 0; }
+
+.sc-etat { font-size: 13.5px; color: rgba(255, 255, 255, 0.86); }
+/* Deux états seulement se distinguent, et ce sont les deux qui appellent une personne. Colorer
+   les six ferait un sapin de Noël où plus rien ne ressort. */
+.sc-etat--waiting_approval { color: var(--sc-ambre, #f5c451); }
+.sc-etat--needs_attention { color: var(--sc-ambre, #f5c451); }
+
+.sc-mission-depuis {
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.34);
+  white-space: nowrap;
+}

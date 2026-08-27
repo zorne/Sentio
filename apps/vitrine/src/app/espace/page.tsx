@@ -24,6 +24,7 @@ import { redirect } from "next/navigation";
 import {
   courbe,
   motsDeLaRecolte,
+  motsDuTravail,
   evolutionDuTauxDeReponse,
   tauxDeReponse,
   type JourDeTravail,
@@ -149,6 +150,22 @@ export default async function EspacePage() {
       .limit(5),
     supabase.from("tenant_variant_preference").select("kind, raison").eq("tenant_id", tenantId),
   ]);
+
+  // ── CE QU'ELLE FAIT EN CE MOMENT ────────────────────────────────────────────────────────
+  //
+  // ⚠️ L'écran ne montrait AUCUNE mission. Il disait ce qu'elle sait faire, ce qu'elle a obtenu et
+  // ce qu'elle a appris, jamais ce qu'elle est en train de faire. C'est pourtant la première
+  // question d'un dirigeant qui ouvre son espace, et la seule à laquelle un employé humain
+  // répondrait sans qu'on la pose.
+  //
+  // `task` porte déjà six états génériques et se lit sous RLS : rien à construire côté base.
+  const { data: missions } = await supabase
+    .from("task")
+    .select("id, state, subject_kind, created_at")
+    .eq("tenant_id", tenantId)
+    .in("state", ["pending", "in_progress", "waiting_approval", "needs_attention"])
+    .order("created_at", { ascending: false })
+    .limit(8);
 
   const { data: capacites } = configuration
     ? await supabase
@@ -307,6 +324,12 @@ export default async function EspacePage() {
       employeeId={employe.id}
       prenom={identite?.first_name ?? "Votre employé"}
       role={configuration?.role ?? null}
+      mots={motsDuTravail(configuration?.role ?? null)}
+      missions={(missions ?? []).map((m) => ({
+        id: m.id as string,
+        etat: m.state as string,
+        depuis: dateCourte(m.created_at as string),
+      }))}
       arreteDepuis={employe.en_pause_depuis ? dateCourte(employe.en_pause_depuis) : null}
       autonomie={employe.autonomy as "confirm" | "confirm_once" | "auto"}
       capacites={capacitesLisibles}
@@ -416,6 +439,7 @@ export default async function EspacePage() {
       }}
       tableau={{
         ...bilan,
+        mots: motsDuTravail(configuration?.role ?? null).indicateurs,
         jours: JOURS,
         taux: tauxDeReponse(bilan),
         evolution: evolutionDuTauxDeReponse(serie),

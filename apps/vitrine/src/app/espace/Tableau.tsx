@@ -22,9 +22,19 @@
 // aucune légende — le titre la nomme.
 // ════════════════════════════════════════════════════════════════════
 
+import type { MotsDesIndicateurs } from "@sentio/domain";
 import { useState } from "react";
 
 export interface DonneesDuTableau {
+  /**
+   * Les mots de son travail, décidés par son RÔLE.
+   *
+   * ⚠️ Ce tableau annonçait « entreprises approchées » et « ventes déclarées » en dur. Ces mots
+   * sont justes pour une employée qui prospecte, et faux dès que le diagnostic en compose une qui
+   * tient une comptabilité ou reprend des demandes. Les faits sont les mêmes pour tout le monde ;
+   * seuls les mots changent (`adr/0029`).
+   */
+  readonly mots: MotsDesIndicateurs;
   readonly contactes: number;
   readonly reponses: number;
   readonly rendezVous: number;
@@ -51,9 +61,9 @@ export function Tableau(d: DonneesDuTableau) {
              ligne de base commune, ils se lisent d'un balayage. Empilés sans structure, ils se
              lisent un par un. ── */}
       <dl className="tb-chiffres">
-        <Pastille valeur={d.contactes} mot="entreprises approchées" />
-        <Pastille valeur={d.reponses} mot="réponses reçues" />
-        <Pastille valeur={d.entreprisesEngagees} mot="ont donné une suite" accent />
+        <Pastille valeur={d.contactes} mot={d.mots.touches} />
+        <Pastille valeur={d.reponses} mot={d.mots.reponses} />
+        <Pastille valeur={d.entreprisesEngagees} mot={d.mots.suites} accent />
         <Pastille
           valeur={d.ventes}
           mot="ventes déclarées"
@@ -70,7 +80,7 @@ export function Tableau(d: DonneesDuTableau) {
               <span>taux de réponse</span>
             </p>
             <p className="tb-taux-base">
-              Mesuré sur {d.taux.sur.toLocaleString("fr-FR")} entreprises approchées.
+              Mesuré sur {d.taux.sur.toLocaleString("fr-FR")} {d.mots.touches}.
             </p>
           </>
         ) : (
@@ -90,7 +100,7 @@ export function Tableau(d: DonneesDuTableau) {
         <Tendance evolution={d.evolution} />
       </div>
 
-      <Courbe points={d.courbe} jours={d.jours} />
+      <Courbe points={d.courbe} jours={d.jours} mots={d.mots} />
     </section>
   );
 }
@@ -135,7 +145,7 @@ function Tendance({ evolution }: { evolution: DonneesDuTableau["evolution"] }) {
 }
 
 /**
- * La courbe des entreprises approchées, jour par jour.
+ * La courbe de ce qui a été traité, jour par jour, dans les mots de son rôle.
  *
  * ══ CE QUI LA REND LISIBLE, ET PAS SEULEMENT JOLIE ══
  *
@@ -155,9 +165,11 @@ function Tendance({ evolution }: { evolution: DonneesDuTableau["evolution"] }) {
 function Courbe({
   points,
   jours,
+  mots,
 }: {
   points: DonneesDuTableau["courbe"];
   jours: number;
+  mots: MotsDesIndicateurs;
 }) {
   const [survole, setSurvole] = useState<number | null>(null);
 
@@ -184,7 +196,7 @@ function Courbe({
   return (
     <figure className="tb-courbe">
       <figcaption>
-        <span>Entreprises approchées, jour par jour</span>
+        <span>{mots.courbe}</span>
         <span className="tb-fenetre">{jours} derniers jours</span>
       </figcaption>
 

@@ -27,6 +27,7 @@
 // porte une présence sans prétendre à un visage.
 // ════════════════════════════════════════════════════════════════════
 
+import { motDeLEtat, type MotsDuTravail } from "@sentio/domain";
 import { useCallback, useEffect, useState } from "react";
 
 import { AgentHologramStage } from "@/components/landing/AgentHologramStage";
@@ -40,6 +41,26 @@ import { Tableau, type DonneesDuTableau } from "./Tableau";
 
 export interface DonneesDeLaScene {
   readonly tenantId: string;
+  /**
+   * Les mots de son travail, décidés par son RÔLE.
+   *
+   * ⚠️ L'écran ne doit jamais présumer d'un métier. Les faits sont les mêmes pour tout le monde,
+   * seul le vocabulaire change : c'est la frontière d'`adr/0029`, et c'est ce qui permet à ce
+   * même écran de servir une employée qui prospecte comme une qui tient une comptabilité.
+   */
+  readonly mots: MotsDuTravail;
+  /**
+   * Ce qu'elle a d'ouvert en ce moment, avec l'état de chaque chose.
+   *
+   * ⚠️ Ça manquait complètement. L'espace disait ce qu'elle sait faire, ce qu'elle a obtenu et ce
+   * qu'elle a appris, jamais ce qu'elle est en train de faire. C'est pourtant la première
+   * question de celui qui ouvre son espace.
+   */
+  readonly missions: readonly {
+    readonly id: string;
+    readonly etat: string;
+    readonly depuis: string;
+  }[];
   /**
    * Le nom de l'entreprise affichée, et SEULEMENT quand ce compte en a plusieurs.
    *
@@ -149,6 +170,7 @@ export interface Consommation {
 }
 
 type Panneau =
+  | "missions"
   | "capacites"
   | "parler"
   | "objectif"
@@ -349,6 +371,15 @@ export function Scene(d: DonneesDeLaScene) {
              point rouge — et pas une pastille de plus. C'est le seul élément de cette barre qui
              a le droit d'appeler le regard, et il ne le fait que s'il a quelque chose à dire. ── */}
       <nav className="sc-orbes" aria-label="Son travail">
+        {/* ⚠️ EN PREMIER, ET C'EST DÉLIBÉRÉ. Ce qu'elle fait passe avant ce qu'elle a obtenu :
+            un dirigeant veut d'abord savoir qu'elle travaille. */}
+        <Orbe
+          nom={d.mots.titreDesMissions}
+          icone="progres"
+          compte={d.missions.length}
+          actif={panneau === "missions"}
+          onClick={() => setPanneau(panneau === "missions" ? null : "missions")}
+        />
         <Orbe
           nom="À décider"
           icone="boite"
@@ -400,6 +431,31 @@ export function Scene(d: DonneesDeLaScene) {
             <button type="button" className="sc-fermer" onClick={fermer} aria-label="Fermer">
               ✕
             </button>
+
+            {panneau === "missions" ? (
+              /* ⚠️ CE TIROIR MANQUAIT, ET C'ÉTAIT LE PLUS IMPORTANT.
+                 L'espace disait ce qu'elle sait faire, ce qu'elle a obtenu et ce qu'elle a
+                 appris, jamais ce qu'elle est en train de faire. Un dirigeant qui ouvre son
+                 espace veut d'abord savoir qu'elle travaille. */
+              <Contenu titre={d.mots.titreDesMissions}>
+                {d.missions.length > 0 ? (
+                  <ul className="sc-missions">
+                    {d.missions.map((m) => (
+                      <li key={m.id}>
+                        <span className={`sc-etat sc-etat--${m.etat}`}>
+                          {motDeLEtat(m.etat, d.mots)}
+                        </span>
+                        <span className="sc-mission-depuis">ouverte le {m.depuis}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  /* ⚠️ Jamais « aucun résultat ». Un état vide doit dire ce qui se passe, sinon
+                     le dirigeant se demande si le produit est cassé. */
+                  <p className="sc-vide">{d.mots.missionsVides}</p>
+                )}
+              </Contenu>
+            ) : null}
 
             {panneau === "capacites" ? (
               <Contenu titre={`Ce que ${d.prenom} sait faire`}>
