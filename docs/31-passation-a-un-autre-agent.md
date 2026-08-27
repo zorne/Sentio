@@ -59,6 +59,8 @@
 | 2026-08-27 | **Le parcours réel** : le diagnostic ÉCRIT sa recommandation, puis recrute et envoie | Il ne gardait rien. ⚠️ Le navigateur ne renvoie que le PROFIL : la configuration est **recomposée côté serveur**, sinon un visiteur s'accorde des pouvoirs |
 | 2026-08-27 | **L'email ne présume plus du genre** | ⚠️ Le réservoir d'identités est MIXTE (Camille, Julien, Cédric, Julie). Il disait « elle » partout : faux une fois sur deux, dans un document qu'on ne peut pas rattraper |
 | 2026-08-27 | **Landing réécrite sur le parcours réel, et plus aucun prix** | Les six étapes promises n'existaient pas, et le fichier l'avouait en commentaire. Décision : gratuit pour l'instant, formules quand elles seront vraies |
+| 2026-08-27 | **Le parcours en deux temps** : conversation → `/formules` → email | La recommandation est ÉCRITE d'abord, seul son identifiant voyage. C'est la forme que prendra le parcours payant : le paiement s'intercalera là, rien d'autre ne bougera |
+| 2026-08-27 | **Les formules sortent de la BASE**, avec leurs vraies limites | Aucun prix : il vit chez le prestataire de paiement (`docs/31` §5). Un palier non commercialisable se montre fermé au lieu de se vendre |
 | 2026-08-27 | **La base est tranchée** ([`adr/0030`](adr/0030-une-seule-base-celle-du-coeur.md)) : c'est le projet du CŒUR | `docs/27` penchait pour l'autre, pour garder ses comptes. Argument tombé : **aucun compte réel**, et la base est en pause depuis le 6 août, donc elle n'a rien pu recevoir depuis |
 | 2026-08-27 | **L'ancienne génération retirée** : 5 pages, le cron, 11 composants, 8 modules, et **le second moteur métier de `vitrine-core`** | La vitrine n'importe plus que 2 sous-chemins au lieu de 4. ⚠️ Trouvé en retirant : le diagnostic public écrivait dans `diagnostic_rate_limit`, table qui **n'existait que dans l'ancien schéma** |
 | 2026-08-27 | **Le locataire de démonstration n'existe plus** (constat B10 refermé) | N'importe quel visiteur inscrit pouvait y lancer un vrai cycle et LIRE ce que les autres y avaient fait. Une exception d'accès qui survit à sa fonctionnalité est un trou |
@@ -383,7 +385,14 @@ Chacun a coûté du temps. Ils sont listés dans l'ordre où on les rencontre.
     la base** (`select now()`).
 11. **La file de travaux est globale.** En test, les suites se volent les missions. Purger la file
     des autres entreprises après l'approvisionnement.
-12. **Le noyau le plus récent gagne** (`max(version)+1`) : un noyau d'essai à version aléatoire se
+12. **Le noyau le plus récent gagne** (`max(version)+1`) : un noyau d'essai à version aléatoire
+    se fait dépasser. ⚠️ **Et on ne peut PAS le nettoyer** : `employee_definition` est immuable
+    (invariant 1), la base refuse le `delete`. Une base de test accumule donc des noyaux
+    définitivement, chacun avec SES capacités, et `recruter()` échoue sur « la bibliothèque et le
+    noyau ont divergé » — une erreur qui accuse le produit alors que la faute est dans le jeu
+    d'essai. Seize suites en insèrent un. La seule parade : **publier le sien**, avec les cinq
+    capacités, et laisser `max(version)` faire le reste. Ce piège s'est déclenché **trois fois le
+    2026-08-27**.
     fait dépasser.
 13. **Deux moteurs peuvent s'appeler « base ».** La clé d'un moteur est **(capacité, moteur)** —
     sinon « qualifier un prospect » exécute « mettre à jour une fiche », silencieusement, avec les

@@ -93,162 +93,223 @@ function valider(coordonnees: CoordonneesDuDirigeant): string | null {
 }
 
 /**
- * Écrit le diagnostic, recrute, et envoie la présentation.
+ * PREMIER TEMPS : le diagnostic s'enregistre, et rien de plus.
  *
- * ⚠️ FERMÉ PAR DÉFAUT. Sans le drapeau, cette action ne fait rien : elle ne crée pas
- * d'entreprise, n'écrit pas de diagnostic et n'envoie aucun message. Une page qui donne le
- * produit gratuitement est une porte ouverte sur internet, et le dépôt a déjà payé cette leçon
- * une fois (constat B4 de `docs/32`).
+ * ⚠️ CETTE ACTION NE DONNE RIEN, DONC ELLE N'EST PAS DERRIÈRE LE DRAPEAU.
+ *
+ * Écrire un diagnostic ne crée aucune entreprise, aucune employée, aucun accès. C'est ce qui
+ * permet au visiteur de quitter la conversation, d'aller regarder les formules, et de revenir
+ * sans avoir à tout recommencer.
+ *
+ * C'est aussi la forme que prendra le parcours PAYANT : la recommandation existe avant le
+ * paiement, et le paiement la consomme. Le jour où le prestataire de paiement est branché, c'est
+ * son identifiant qui voyagera à la place, et rien d'autre ne bouge.
+ *
+ * ⚠️ Le plafond du diagnostic protège déjà cette porte : un robot qui écrirait des
+ * recommandations en boucle est arrêté par le même compteur que la conversation elle-même.
  */
-export async function recruterDepuisLeDiagnostic(
+export async function enregistrerLeDiagnostic(
   dossier: DossierDuDiagnostic,
+): Promise<{ readonly recommandation: string } | { readonly erreur: string }> {
+  const lu = parseDiagnosticProfile(dossier.profil);
+  if (!lu.ok) return { erreur: "Votre diagnostic est incomplet. Reprenons la conversation." };
+
+  const decision = recommend(lu.profile);
+  if (decision.status !== "recommande") {
+    return {
+      erreur:
+        decision.status === "hors_perimetre"
+          ? decision.reason
+          : "Il manque encore un élément pour composer votre employé.",
+    };
+  }
+
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      const { rows: sessions } = await client.query<{ id: string }>(
+        `insert into diagnostic_session (visitor_fingerprint, extracted_profile, detected_friction)
+         values ($1, $2::jsonb, $3)
+         returning id`,
+        [`diagnostic-${randomUUID()}`, JSON.stringify(lu.profile), lu.profile.friction],
+      );
+      const { rows } = await client.query<{ id: string }>(
+        `insert into recommendation (diagnostic_session_id, status, justification, configuration_proposee)
+         values ($1, 'proposed', $2, $3::jsonb)
+         returning id`,
+        [sessions[0]!.id, decision.grounds.join(" · "), JSON.stringify(propositionDe(decision))],
+      );
+      await client.query("commit");
+      return { recommandation: rows[0]!.id };
+    } catch (erreur) {
+      await client.query("rollback");
+      throw erreur;
+    } finally {
+      client.release();
+    }
+  } catch (erreur) {
+    console.error(JSON.stringify({ route: "diagnostic-enregistre", error: String(erreur) }));
+    return { erreur: REFUS_GENERIQUE };
+  }
+}
+
+/**
+ * La traduction de ce que le moteur a composé vers ce que la base attend.
+ *
+ * ⚠️ TOUJOURS « confirm », quelle que soit la composition. Un employé ne naît jamais en « agit
+ * seul » : c'est le cliquet d'autonomie, et seul le dirigeant peut l'élargir ensuite.
+ */
+function propositionDe(decision: { readonly calibration: Calibration }): {
+  role: string;
+  capacites: string[];
+  priorites: string[];
+  autonomie: string;
+} {
+  return {
+    role: decision.calibration.role,
+    capacites: [...decision.calibration.capabilities],
+    priorites: [...decision.calibration.priorities],
+    autonomie: "confirm",
+  };
+}
+
+/**
+ * SECOND TEMPS : la formule est choisie, l'adresse est donnée, on recrute.
+ *
+ * ⚠️ Fermé par défaut. Sans le drapeau, rien ne se crée et rien ne part.
+ *
+ * ⚠️ LA FORMULE EST VÉRIFIÉE EN BASE, PAS CRUE SUR PAROLE. `recruter()` refuse un palier non
+ * commercialisable, et c'est essentiel : sans ça, un visiteur pourrait demander « scale » en
+ * modifiant l'adresse de la page, et repartir avec des plafonds dix fois plus hauts que ce que
+ * Sentio vend.
+ */
+export async function recruterSurLaRecommandation(
+  recommandation: string,
+  tier: string,
   coordonnees: CoordonneesDuDirigeant,
 ): Promise<ResultatDuRecrutement> {
   if (!peutRecruterSansPaiement()) {
-    return {
-      kind: "refus",
-      message:
-        "Le recrutement en ligne n'est pas encore ouvert. Votre diagnostic est terminé, il ne " +
-        "vous reste plus qu'à nous le dire.",
-    };
+    return { kind: "refus", message: "Le recrutement en ligne n'est pas encore ouvert." };
   }
 
   const invalide = valider(coordonnees);
   if (invalide !== null) return { kind: "refus", message: invalide };
-
-  // Le profil est revalidé, puis la configuration RECOMPOSÉE ici. Voir `DossierDuDiagnostic`.
-  const lu = parseDiagnosticProfile(dossier.profil);
-  if (!lu.ok) {
-    return { kind: "refus", message: "Votre diagnostic est incomplet. Reprenons la conversation." };
-  }
-  const decision = recommend(lu.profile);
-  if (decision.status !== "recommande") {
-    return {
-      kind: "refus",
-      message:
-        decision.status === "hors_perimetre"
-          ? decision.reason
-          : "Il manque encore un élément pour composer votre employée. Reprenons la conversation.",
-    };
+  if (!/^[0-9a-f-]{36}$/i.test(recommandation)) {
+    return { kind: "refus", message: "Votre diagnostic n'a pas été retrouvé. Reprenons." };
   }
 
   const entreprise = coordonnees.entreprise.trim();
   const email = coordonnees.email.trim().toLowerCase();
 
-  let prenom: string;
+  let recrute: Recrute;
   try {
-    prenom = await ecrireEtRecruter(lu.profile, decision, entreprise, email);
+    recrute = await recruterEtRelire(recommandation, tier, entreprise, email);
   } catch (erreur) {
-    // ⚠️ L'erreur réelle part au journal, jamais au visiteur : elle porte des noms de tables et
-    // des contraintes, qui ne lui apprennent rien et en disent trop.
+    // L'erreur réelle part au journal : elle porte des noms de tables et des contraintes, qui
+    // n'apprennent rien au visiteur et en disent trop.
     console.error(JSON.stringify({ route: "recrutement", error: String(erreur) }));
     return { kind: "refus", message: REFUS_GENERIQUE };
   }
 
-  // ⚠️ L'ENVOI VIENT APRÈS, ET SON ÉCHEC NE DÉFAIT RIEN. L'entreprise existe, l'employée aussi.
-  // Un email qui ne part pas se renvoie ; un recrutement à moitié fait laisserait un dirigeant
-  // avec une employée qu'il ne peut pas atteindre.
+  // ⚠️ L'ENVOI VIENT APRÈS, ET SON ÉCHEC NE DÉFAIT RIEN. L'entreprise existe, l'employé aussi. Un
+  // email qui ne part pas se renvoie ; un recrutement à moitié fait laisserait un dirigeant avec
+  // un employé qu'il ne peut pas atteindre.
   try {
-    await envoyerLaPresentation({ prenom, entreprise, email, profil: lu.profile, calibration: decision.calibration });
+    await envoyerLaPresentation({ ...recrute, entreprise, email });
   } catch (erreur) {
     console.error(JSON.stringify({ route: "recrutement", etape: "email", error: String(erreur) }));
     return {
       kind: "refus",
       message:
-        `${prenom} a bien rejoint ${entreprise}, mais l'email n'est pas parti. ` +
+        `${recrute.prenom} a bien rejoint ${entreprise}, mais l'email n'est pas parti. ` +
         `Passez par « mot de passe oublié » sur la page de connexion pour ouvrir votre accès.`,
     };
   }
 
-  return { kind: "recrute", prenom, adresse: email };
+  return { kind: "recrute", prenom: recrute.prenom, adresse: email };
 }
 
-/** Les trois écritures, dans une seule transaction : un diagnostic sans recrutement ne sert à rien. */
-async function ecrireEtRecruter(
-  profil: { readonly friction: string | null },
-  decision: { readonly calibration: Calibration; readonly grounds: readonly string[] },
+interface Recrute {
+  readonly prenom: string;
+  readonly role: string;
+  readonly priorites: readonly string[];
+  readonly objectif: string;
+}
+
+/**
+ * Recrute, puis RELIT ce que la base a réellement écrit.
+ *
+ * ⚠️ On relit plutôt que de réutiliser ce qu'on croyait envoyer. L'email présente au dirigeant le
+ * métier et les priorités de son employé : les prendre de ce qu'on avait en mémoire ferait
+ * décrire une configuration qui n'est peut-être pas celle qui a été posée. `appliquer_la_
+ * configuration` peut retrancher, et c'est la ligne active qui fait foi.
+ */
+async function recruterEtRelire(
+  recommandation: string,
+  tier: string,
   entreprise: string,
   email: string,
-): Promise<string> {
+): Promise<Recrute> {
   const client = await pool.connect();
   try {
-    await client.query("begin");
-
-    const { rows: sessions } = await client.query<{ id: string }>(
-      `insert into diagnostic_session (visitor_fingerprint, extracted_profile, detected_friction)
-       values ($1, $2::jsonb, $3)
-       returning id`,
-      [`diagnostic-${randomUUID()}`, JSON.stringify(profil), profil.friction],
-    );
-
-    // La traduction de ce que le moteur a composé vers ce que la base attend. Elle est mécanique,
-    // et c'est le point : aucune décision ne se prend ici.
-    const proposition = {
-      role: decision.calibration.role,
-      capacites: [...decision.calibration.capabilities],
-      priorites: [...decision.calibration.priorities],
-      // ⚠️ TOUJOURS « confirm », quelle que soit la composition. Un employé ne naît jamais en
-      // « agit seul » : c'est le cliquet d'autonomie, et seul le dirigeant peut l'élargir ensuite.
-      autonomie: "confirm",
-    };
-
-    const { rows: recos } = await client.query<{ id: string }>(
-      `insert into recommendation (diagnostic_session_id, status, justification, configuration_proposee)
-       values ($1, 'proposed', $2, $3::jsonb)
-       returning id`,
-      [
-        sessions[0]!.id,
-        // La justification est faite des CONSTATS qui ont conduit là, jamais d'une phrase
-        // rédigée : elle doit rester vérifiable par le dirigeant, ligne à ligne.
-        decision.grounds.join(" · "),
-        JSON.stringify(proposition),
-      ],
-    );
-
     const { rows } = await client.query<{ employee_id: string }>(
-      `select employee_id from recruter($1, $2, 'start', $3, $4)`,
-      [recos[0]!.id, entreprise, `invitation:${randomUUID()}`, email],
+      `select employee_id from recruter($1, $2, $3, $4, $5)`,
+      [recommandation, entreprise, tier, `invitation:${randomUUID()}`, email],
     );
 
-    const { rows: qui } = await client.query<{ prenom: string }>(
-      `select i.first_name as prenom
-         from employee e join identity i on i.id = e.identity_id
+    const { rows: lu } = await client.query<{
+      prenom: string;
+      role: string;
+      priorites: string[] | null;
+      metric: string | null;
+      cible: string | null;
+      horizon: string | null;
+    }>(
+      `select i.first_name as prenom,
+              c.role,
+              array(select jsonb_array_elements_text(c.priorites)) as priorites,
+              o.metric, o.target_value::text as cible, o.horizon
+         from employee e
+         join identity i on i.id = e.identity_id
+         join lady_configuration c on c.tenant_id = e.tenant_id and c.active
+         left join objective o on o.tenant_id = e.tenant_id
         where e.id = $1`,
       [rows[0]!.employee_id],
     );
 
-    await client.query("commit");
-    return qui[0]?.prenom ?? "Votre employée";
-  } catch (erreur) {
-    await client.query("rollback");
-    throw erreur;
+    const l = lu[0];
+    return {
+      prenom: l?.prenom ?? "Votre employé",
+      role: l?.role ?? "",
+      priorites: l?.priorites ?? [],
+      // ⚠️ Aucun objectif inventé : si la base n'en porte pas, on le dit vaguement plutôt que de
+      // fabriquer un chiffre que le dirigeant n'a pas énoncé.
+      objectif:
+        l?.metric && l?.cible
+          ? `${l.cible} ${l.metric.replace(/_/g, " ")} ${l.horizon ?? ""}`.trim()
+          : "ce que vous lui avez demandé",
+    };
   } finally {
     client.release();
   }
 }
 
-async function envoyerLaPresentation(params: {
-  prenom: string;
-  entreprise: string;
-  email: string;
-  profil: unknown;
-  calibration: Calibration;
-}): Promise<void> {
+async function envoyerLaPresentation(
+  params: Recrute & { readonly entreprise: string; readonly email: string },
+): Promise<void> {
   const cle = process.env["RESEND_API_KEY"];
   const expediteur = process.env["SENTIO_EMAIL_EXPEDITEUR"];
   if (!cle || !expediteur) throw new Error("Expédition non configurée.");
 
   const origine = (process.env["NEXT_PUBLIC_APP_URL"] ?? "http://localhost:3000").replace(/\/$/, "");
-  const lien = await lienDAcces(params.email, origine);
-
-  const objectif = lireLObjectif(params.profil);
   const email = redigerLaPresentation({
     prenom: params.prenom,
     entreprise: params.entreprise,
-    role: params.calibration.role,
-    priorites: params.calibration.priorities,
-    objectif,
-    lienDAcces: lien,
+    role: params.role,
+    priorites: params.priorites,
+    objectif: params.objectif,
+    lienDAcces: await lienDAcces(params.email, origine),
     adresseDeConnexion: `${origine}/login`,
   });
 
@@ -268,15 +329,6 @@ async function envoyerLaPresentation(params: {
   });
 }
 
-/** L'objectif, en une phrase lisible. Il vient du profil du visiteur, jamais d'un défaut. */
-function lireLObjectif(profil: unknown): string {
-  const p = profil as { objective?: { target?: unknown; metric?: unknown; horizon?: unknown } };
-  const o = p?.objective;
-  if (!o || o.target === undefined || o.metric === undefined) return "ce que vous lui avez demandé";
-  const metrique = String(o.metric).replace(/_/g, " ");
-  return `${String(o.target)} ${metrique} ${String(o.horizon ?? "")}`.trim();
-}
-
 /**
  * Le lien à usage unique, demandé à Supabase.
  *
@@ -290,7 +342,11 @@ async function lienDAcces(email: string, origine: string): Promise<string> {
 
   const reponse = await fetch(`${url}/auth/v1/admin/generate_link`, {
     method: "POST",
-    headers: { apikey: service, authorization: `Bearer ${service}`, "content-type": "application/json" },
+    headers: {
+      apikey: service,
+      authorization: `Bearer ${service}`,
+      "content-type": "application/json",
+    },
     body: JSON.stringify({
       type: "invite",
       email,

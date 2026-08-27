@@ -50,8 +50,36 @@ describeIfDatabase("LADY-W — plusieurs recrutements simultanés, chacun le sie
   const tenants: string[] = [];
   const utilisateurs: string[] = [];
 
-  beforeAll(() => {
+  beforeAll(async () => {
     sql = createPostgresClient(connectionString as string, { maxConnections: SIMULTANES + 2 });
+
+    // ⚠️ CETTE SUITE PUBLIE SON PROPRE NOYAU, ET C'EST LA SEULE FAÇON DE FAIRE.
+    //
+    // `recruter()` fige l'employé sur le noyau le plus récent (`max(version)`). Seize suites de
+    // ce dossier insèrent un `employee_definition` à version aléatoire et haute, chacune avec SES
+    // capacités. Le dernier arrivé gagne, et le recrutement échoue sur « la bibliothèque et le
+    // noyau ont divergé » — une erreur qui accuse le produit alors que la faute est dans le jeu
+    // d'essai. C'est le piège 12 de `docs/31`, déclenché trois fois dans la même journée.
+    //
+    // ⚠️ ET ON NE PEUT PAS LES EFFACER. Un premier jet essayait un `delete` : la base l'a refusé,
+    // « employee_definition est immuable (invariant 1) ». C'est le produit qui a raison — un ADN
+    // ne disparaît jamais, c'est ce sur quoi des employés sont figés. Une base de test accumule
+    // donc des noyaux qu'on ne peut plus retirer, définitivement.
+    //
+    // La seule parade est de gagner à ce jeu-là : publier le noyau le plus récent, avec les cinq
+    // capacités de la bibliothèque, et laisser `max(version)` faire le reste.
+    const [noyau] = await sql.query<{ version: number }>(
+      "select coalesce(max(version), 0) + 1 as version from employee_definition",
+      [],
+    );
+    await sql.query(
+      `insert into employee_definition (gisement, version, dna, capacites)
+       select 'commercial', $1,
+              (select dna from employee_definition order by version limit 1),
+              '["envoyer.prospect","mettre_a_jour.prospect","qualifier.prospect",
+                "rechercher.prospect","relancer.prospect"]'::jsonb`,
+      [noyau!.version],
+    );
   });
 
   afterAll(async () => {

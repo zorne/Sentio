@@ -25,7 +25,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { RecruitLink } from "@/components/landing/RecruitLink";
 import { diagnosticTurn, type DiagnosticMessage, type EmployeePresentation } from "@/lib/diagnostic-actions";
-import { recruterDepuisLeDiagnostic } from "@/lib/recrutement-actions";
+import { enregistrerLeDiagnostic } from "@/lib/recrutement-actions";
 
 const OUVERTURE = "Parlez-moi de votre entreprise.";
 
@@ -226,82 +226,44 @@ function Presentation({
 }
 
 /**
- * Le dernier pas : ce que le dirigeant donne de lui.
+ * Le pas suivant : on enregistre le diagnostic, puis on emmène vers les formules.
  *
- * ⚠️ DEUX CHAMPS, ET PAS UN DE PLUS. Tout le reste est déjà su : la conversation a extrait son
- * secteur, sa cible, son objectif et ce qui le bloque. Redemander ce qu'on sait déjà donne le
- * sentiment de n'avoir pas été écouté, juste après vingt minutes passées à être écouté.
+ * ⚠️ ON N'ENVOIE PAS LE PROFIL DANS L'ADRESSE. Il est écrit en base d'abord, et seul son
+ * identifiant voyage. Un profil qui traverserait deux pages par la barre d'adresse serait long,
+ * lisible par-dessus l'épaule, et surtout modifiable entre les deux.
  *
- * ⚠️ Et on ne demande RIEN avant d'avoir montré l'employée. Un formulaire posé plus tôt
- * transformerait le diagnostic en collecte d'adresses, ce qu'il n'est pas.
+ * ⚠️ Et c'est la forme que prendra le parcours PAYANT : la recommandation existe avant, le
+ * paiement la consomme. Le jour où le prestataire est branché, c'est lui qui s'intercale ici, et
+ * rien d'autre ne bouge.
  */
 function Recruter({ prenom, profil }: { prenom: string; profil: unknown }) {
-  const [entreprise, setEntreprise] = useState("");
-  const [email, setEmail] = useState("");
   const [erreur, setErreur] = useState<string | null>(null);
-  const [parti, setParti] = useState<{ prenom: string; adresse: string } | null>(null);
   const [pending, startTransition] = useTransition();
 
-  if (parti !== null) {
-    return (
-      <div className="diag-recrute">
-        <span className="diag-present-eyebrow">C&apos;est fait</span>
-        <p className="diag-recrute-mot">
-          {parti.prenom} a rejoint votre entreprise. Nous venons d&apos;écrire à{" "}
-          <strong>{parti.adresse}</strong> : ce message vous explique ce qu&apos;elle fera, ce
-          qu&apos;elle ne fera jamais, et comment entrer chez vous.
-        </p>
-        <p className="diag-recrute-note">
-          Ouvrez-le et choisissez votre mot de passe. Le lien qu&apos;il contient ne fonctionne
-          qu&apos;une fois.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <form
-      className="diag-recrute"
-      onSubmit={(evenement) => {
-        evenement.preventDefault();
-        setErreur(null);
-        startTransition(async () => {
-          const resultat = await recruterDepuisLeDiagnostic({ profil }, { entreprise, email });
-          if (resultat.kind === "refus") {
-            setErreur(resultat.message);
-            return;
-          }
-          setParti({ prenom: resultat.prenom, adresse: resultat.adresse });
-        });
-      }}
-    >
-      <span className="diag-present-eyebrow">Pour lui donner votre entreprise</span>
-      <input
-        type="text"
-        placeholder="Le nom de votre entreprise"
-        aria-label="Le nom de votre entreprise"
-        value={entreprise}
-        onChange={(evenement) => setEntreprise(evenement.target.value)}
-        required
+    <div className="diag-recrute">
+      <button
+        className="lp-btn lp-btn--primary diag-present-cta"
         disabled={pending}
-      />
-      <input
-        type="email"
-        placeholder="Votre adresse email"
-        aria-label="Votre adresse email"
-        value={email}
-        onChange={(evenement) => setEmail(evenement.target.value)}
-        required
-        disabled={pending}
-      />
-      <button className="lp-btn lp-btn--primary diag-present-cta" type="submit" disabled={pending}>
+        onClick={() => {
+          setErreur(null);
+          startTransition(async () => {
+            const resultat = await enregistrerLeDiagnostic({ profil });
+            if ("erreur" in resultat) {
+              setErreur(resultat.erreur);
+              return;
+            }
+            window.location.href = `/formules?reco=${resultat.recommandation}`;
+          });
+        }}
+      >
         {pending ? "Un instant…" : `Recruter ${prenom}`}
       </button>
       {erreur !== null && <p className="diag-recrute-erreur">{erreur}</p>}
       <p className="diag-recrute-note">
-        Vous recevrez sa présentation par email. Rien ne part vers vos clients tant que vous
-        n&apos;avez pas donné votre accord.
+        Vous choisirez ensuite jusqu&apos;où il travaille pour vous. Aucun moyen de paiement ne
+        vous sera demandé.
       </p>
-    </form>
+    </div>
   );
 }
