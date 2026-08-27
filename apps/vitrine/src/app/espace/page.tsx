@@ -42,10 +42,32 @@ export default async function EspacePage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // L'entreprise du compte connecté. RLS borne déjà la lecture à ses appartenances : il n'y a
-  // pas d'identifiant à passer, donc pas d'identifiant à falsifier.
-  const { data: appartenances } = await supabase.from("tenant_member").select("tenant_id");
+  // ⚠️ UNE SEULE ENTREPRISE À L'ÉCRAN, CHOISIE DE FAÇON DÉTERMINISTE.
+  //
+  // RLS borne la lecture aux appartenances de ce compte : il n'y a pas d'identifiant à passer,
+  // donc pas d'identifiant à falsifier. Un INCONNU ne peut donc rien voir d'ici, et ça n'a jamais
+  // été en cause.
+  //
+  // Ce qui l'était : RLS rend les lignes de TOUTES les entreprises de ce compte. Ce fichier
+  // prenait la première venue (`[0]`), sans ordre, puis lisait employé, objectif, notifications
+  // et mémoire SANS filtrer par entreprise. Un dirigeant rattaché à deux entreprises voyait donc
+  // le nom et les chiffres de l'une avec l'employée de l'autre, et l'attribution pouvait changer
+  // d'un rechargement à l'autre, puisque Postgres ne promet aucun ordre sans `order by`.
+  //
+  // Ce n'est pas une hypothèse d'école : deux invitations envoyées à la même adresse suffisent
+  // (`docs/33`), et un dirigeant qui possède deux sociétés est un cas ordinaire.
+  //
+  // La correction tient en deux temps, et les deux comptent :
+  //   1. l'entreprise est choisie par un ordre STABLE, la plus récemment rejointe ;
+  //   2. **chaque lecture porte ensuite son `tenant_id`**. RLS reste la garantie contre un
+  //      étranger ; le filtre explicite est la garantie contre un mélange entre SES entreprises.
+  //      Une garantie qui protège d'autrui ne protège pas de soi-même.
+  const { data: appartenances } = await supabase
+    .from("tenant_member")
+    .select("tenant_id, created_at")
+    .order("created_at", { ascending: false });
   const tenantId = appartenances?.[0]?.tenant_id as string | undefined;
+  const plusieursEntreprises = (appartenances?.length ?? 0) > 1;
 
   if (tenantId === undefined) {
     return (
@@ -58,11 +80,19 @@ export default async function EspacePage() {
 
   const [{ data: employes }, { data: objectifs }, { data: notifications }] =
     await Promise.all([
-      supabase.from("employee").select("id, autonomy, identity_id, en_pause_depuis"),
-      supabase.from("objective").select("metric, target_value, horizon").eq("state", "actif"),
+      supabase
+        .from("employee")
+        .select("id, autonomy, identity_id, en_pause_depuis")
+        .eq("tenant_id", tenantId),
+      supabase
+        .from("objective")
+        .select("metric, target_value, horizon")
+        .eq("tenant_id", tenantId)
+        .eq("state", "actif"),
       supabase
         .from("notification")
         .select("id, kind, message, created_at")
+        .eq("tenant_id", tenantId)
         .order("created_at", { ascending: false })
         .limit(10),
     ]);
@@ -85,6 +115,7 @@ export default async function EspacePage() {
     supabase
       .from("lady_configuration")
       .select("id, role, priorites, autonomie, raison, created_at")
+      .eq("tenant_id", tenantId)
       .eq("employee_id", employe.id)
       .eq("active", true),
     // La proposition en attente, s'il y en a une. Elle est INACTIVE : elle décrit ce que son
@@ -92,6 +123,7 @@ export default async function EspacePage() {
     supabase
       .from("lady_configuration")
       .select("id, role, priorites, raison, created_at")
+      .eq("tenant_id", tenantId)
       .eq("employee_id", employe.id)
       .eq("active", false)
       .is("refusee_le", null)
@@ -111,16 +143,18 @@ export default async function EspacePage() {
     supabase
       .from("learned_fact")
       .select("id, fact")
+      .eq("tenant_id", tenantId)
       .eq("status", "actif")
       .order("usage_count", { ascending: false })
       .limit(5),
-    supabase.from("tenant_variant_preference").select("kind, raison"),
+    supabase.from("tenant_variant_preference").select("kind, raison").eq("tenant_id", tenantId),
   ]);
 
   const { data: capacites } = configuration
     ? await supabase
         .from("lady_configuration_capability")
         .select("capability(name)")
+        .eq("tenant_id", tenantId)
         .eq("configuration_id", configuration.id)
     : { data: null };
 
@@ -255,9 +289,21 @@ export default async function EspacePage() {
     .map((ligne) => (ligne.capability as { name?: string } | null)?.name)
     .filter((nom): nom is string => typeof nom === "string" && nom.trim() !== "");
 
+  // Le nom de l'entreprise n'est lu que s'il doit être affiché : une requête de plus sur un
+  // écran qui n'en a pas besoin est une requête de trop.
+  let nomDeLEntreprise: string | null = null;
+  if (plusieursEntreprises) {
+    const { data: entreprises } = await supabase
+      .from("tenant")
+      .select("name")
+      .eq("id", tenantId);
+    nomDeLEntreprise = entreprises?.[0]?.name ?? null;
+  }
+
   return (
     <Scene
       tenantId={tenantId}
+      nomDeLEntreprise={nomDeLEntreprise}
       employeeId={employe.id}
       prenom={identite?.first_name ?? "Votre employé"}
       role={configuration?.role ?? null}

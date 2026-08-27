@@ -512,6 +512,75 @@ async function verifierAutonomieAuRecrutement() {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 7. Dans l'espace du client, chaque lecture nomme son entreprise.
+//
+// ⚠️ CE QUE CETTE RÈGLE A DÉJÀ ATTRAPÉ, ET POURQUOI RLS NE SUFFIT PAS.
+//
+// `/espace` lit par le client à SESSION, donc RLS s'applique : un inconnu ne voit rien. Ça n'a
+// jamais été en cause, et ça ne l'est toujours pas.
+//
+// Ce qui l'était : RLS rend les lignes de TOUTES les entreprises du compte connecté. Six lectures
+// n'en nommaient aucune. Un dirigeant rattaché à deux entreprises — deux sociétés, ou simplement
+// deux invitations à la même adresse — voyait le nom et les chiffres de l'une avec l'employée de
+// l'autre, et l'attribution changeait d'un rechargement au suivant, puisque Postgres ne promet
+// aucun ordre sans `order by`.
+//
+// **Une garantie qui protège d'autrui ne protège pas de soi-même.** RLS répond à « qui a le droit
+// de voir » ; elle ne répond pas à « laquelle des miennes je regarde ». La seconde question se
+// tranche par un filtre explicite, et celui-ci se vérifie.
+//
+// La règle vise les tables portant une entreprise. `identity` et `tenant` en sont exclues : la
+// première se lit par l'identifiant d'un employé déjà borné, la seconde par son propre `id`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TABLES_PAR_ENTREPRISE = [
+  "employee",
+  "objective",
+  "notification",
+  "learned_fact",
+  "lady_configuration",
+  "lady_configuration_capability",
+  "tenant_variant_preference",
+  "tenant_member",
+  "task",
+  "outcome",
+  "lead",
+];
+
+async function verifierLecturesDeLEspace() {
+  const racine = join(REPO_ROOT, "apps", "vitrine", "src", "app", "espace");
+  const fichiers = await fichiersDe(racine, [".ts", ".tsx"]);
+
+  for (const fichier of fichiers) {
+    const contenu = sansCommentaires(await readFile(fichier, "utf8"));
+
+    for (const trouve of contenu.matchAll(/\.from\(\s*["'`]([a-z_]+)["'`]\s*\)/g)) {
+      const table = trouve[1];
+      if (!TABLES_PAR_ENTREPRISE.includes(table)) continue;
+
+      // La suite de la chaîne d'appels, jusqu'à la fin de l'expression : c'est là que le filtre
+      // doit se trouver. On s'arrête à la première ligne qui ne prolonge pas la chaîne.
+      const apres = contenu.slice(trouve.index ?? 0);
+      const chaine = /^[\s\S]{0,600}?(?=\n\s*(?:const|let|return|\}|\/\/)|$)/.exec(apres)?.[0] ?? "";
+      if (/\.eq\(\s*["'`]tenant_id["'`]/.test(chaine)) continue;
+      // `tenant_member` est la lecture qui ÉTABLIT l'entreprise : elle ne peut pas la présupposer.
+      if (table === "tenant_member") continue;
+
+      const numero = contenu.slice(0, trouve.index).split("\n").length;
+      signaler(
+        fichier,
+        numero,
+        "chaque lecture de l'espace nomme son entreprise",
+        `lit « ${table} » sans « .eq("tenant_id", …) ». RLS borne cette lecture aux entreprises ` +
+          `du compte connecté, pas à CELLE qui est affichée : un dirigeant rattaché à deux ` +
+          `entreprises verrait les chiffres de l'une avec l'employée de l'autre. Le filtre ` +
+          `explicite est la seule garantie contre un mélange entre ses propres entreprises.`,
+      );
+    }
+  }
+}
+
 async function main() {
   await verifierFonctions();
   await verifierInterfaceSansFournisseur();
@@ -519,6 +588,7 @@ async function main() {
   await verifierDomainePur();
   await verifierAppelsModele();
   await verifierAutonomieAuRecrutement();
+  await verifierLecturesDeLEspace();
 
   if (manquements.length === 0) {
     process.stdout.write("Frontières d'architecture : rien à signaler.\n");

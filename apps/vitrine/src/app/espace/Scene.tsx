@@ -40,6 +40,15 @@ import { Tableau, type DonneesDuTableau } from "./Tableau";
 
 export interface DonneesDeLaScene {
   readonly tenantId: string;
+  /**
+   * Le nom de l'entreprise affichée, et SEULEMENT quand ce compte en a plusieurs.
+   *
+   * ⚠️ Le taire serait un message flou. Un dirigeant rattaché à deux sociétés voit une employée,
+   * des chiffres et un objectif : sans le nom, rien ne lui dit desquels il s'agit, et il peut
+   * régler l'autonomie de la mauvaise. Quand il n'y a qu'une entreprise, la ligne n'apporte rien
+   * et n'apparaît pas.
+   */
+  readonly nomDeLEntreprise: string | null;
   readonly employeeId: string;
   readonly prenom: string;
   readonly role: string | null;
@@ -303,6 +312,9 @@ export function Scene(d: DonneesDeLaScene) {
         </div>
 
         <div className="sc-identite">
+          {d.nomDeLEntreprise !== null && (
+            <p className="sc-entreprise">{d.nomDeLEntreprise}</p>
+          )}
           <h1>{d.prenom}</h1>
           <p className="sc-etat">
             {arrete ? (

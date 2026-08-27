@@ -1575,3 +1575,13 @@
   /* Sur une colonne, une flèche remplacerait le face-à-face : un filet suffit à dire l'ordre. */
   .ch-colonne.est-proposee { border-top: 1px solid var(--line); padding-top: 0.9rem; }
 }
+
+/* Le nom de l'entreprise affichée, quand le compte en a plusieurs. Un repère, jamais un titre :
+   il se lit si on le cherche, et ne dispute rien au prénom de l'employée. */
+.sc-entreprise {
+  margin: 0 0 6px;
+  font-size: 11.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sc-faible, rgba(255, 255, 255, 0.42));
+}

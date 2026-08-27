@@ -52,6 +52,8 @@
 | 2026-08-27 | **L'email de présentation** — le seul document que le client garde | Il porte ce qu'elle ne fera JAMAIS, jamais un mot de passe. Neuf tests tiennent son lexique et sa typographie |
 | 2026-08-27 | **Identifiant et mot de passe** sur l'espace, à la place du seul lien magique | Demande du fondateur. Le client pose son mot de passe sur `/acces`, jamais reçu par email. Même message d'erreur adresse inconnue / mauvais mot de passe, sinon le formulaire devient un annuaire |
 | 2026-08-27 | **On n'atterrit plus sur la démonstration après connexion** | `/dashboard` sans paramètre montrait le tenant de démo à celui qui venait de payer (B2). C'est `/espace` |
+| 2026-08-27 | **Chacun le sien, même à huit en même temps** — `LADY-W`, 3 tests d'intégration concurrents | ⚠️ **Vrai défaut trouvé** : l'espace lisait employé, objectif, notifications et mémoire SANS filtrer par entreprise. RLS protège d'autrui, **pas de soi-même** |
+| 2026-08-27 | **Le rattachement verrouille son attente** (`20260815120037`) | Deux arrivées simultanées de la MÊME adresse rattachaient deux fois la même entreprise, et laissaient la seconde orpheline. Échec reproduit 3 fois sur 3 avant le correctif |
 
 ---
 
@@ -301,6 +303,31 @@ l'espace mentirait à celui qui paie.
 les **jetons d'inférence** : les lignes `outbound_messages_per_period` et `tasks_per_period` de
 `plan_quota` existent, mais rien ne les y écrit. Afficher un compteur que personne n'alimente
 afficherait zéro pour toujours.
+
+### RLS répond à « qui a le droit de voir », pas à « laquelle des miennes »
+
+C'est la distinction qui a coûté un défaut réel, trouvé le 2026-08-27 en cherchant ce que le
+fondateur redoutait : *« si un client parle à Lady lors de l'achat, c'est bien et seulement son
+agent à lui »*.
+
+`/espace` lit par le client à session, donc RLS s'applique, donc **un inconnu ne voit rien**. Ça
+n'a jamais été en cause. Ce qui l'était : RLS rend les lignes de **toutes** les entreprises du
+compte connecté. Six lectures n'en nommaient aucune, et l'entreprise affichée était prise par un
+`[0]` sans `order by`.
+
+Un dirigeant rattaché à deux entreprises — deux sociétés, ou simplement **deux invitations à la
+même adresse** — voyait donc le nom et les chiffres de l'une avec l'employée de l'autre, et
+l'attribution changeait d'un rechargement au suivant.
+
+⚠️ **Une garantie qui protège d'autrui ne protège pas de soi-même.** Le filtre `tenant_id`
+explicite n'est pas une ceinture de plus par-dessus RLS : il répond à une **autre question**.
+Tenu mécaniquement par la règle 7 de `verifier-frontieres.mjs`, qui a d'ailleurs attrapé une
+huitième lecture que j'avais ratée à la main.
+
+Et ce qui n'était **pas** en cause, vérifié plutôt que supposé : `reserve_identity` verrouille en
+`for update skip locked`, aucun état modifiable ne vit au niveau module dans le code serveur de la
+vitrine, et le rapprochement se fait sur une adresse **prouvée**. Deux personnes distinctes n'ont
+donc jamais pu se croiser. `LADY-W` le prouve à huit recrutements simultanés.
 
 ### La mémoire classe par récence, pas par usage
 `learned_fact.usage_count` existe et est **volontairement non alimenté**. Un compteur nourri par
