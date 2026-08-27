@@ -159,23 +159,22 @@ le jour où l'un manque.
 
 ---
 
-## 4. La décision qui vient avant tout le reste
+## 4. Sur quel projet : tranché le 2026-08-27
 
-⚠️ **Sur QUEL projet Supabase ?** Ce n'est pas une formalité, c'est le constat **B3** de
-[`docs/32`](32-audit-avant-mise-en-vente.md) :
+**Le projet cœur**, `ritwmikarekkisxaiokf`. Décision du fondateur, écrite dans
+[`adr/0030`](adr/0030-une-seule-base-celle-du-coeur.md) avec son compromis.
 
-> `/espace` lit `employee`, `identity`, `lady_configuration`, `objective` et sept fonctions SQL.
-> **Aucune n'existe dans le projet auquel le site est branché** (`rybeumdjclajiypglmuj`, l'ancien
-> projet de la vitrine). Les deux générations ont chacune leur schéma, et l'application n'a qu'une
-> seule connexion.
+En deux lignes : il est vide donc rien à nettoyer plus tard, il est **déjà relié au poste** donc
+un `supabase db push` ne peut pas se tromper de cible, et sa région est celle que la politique de
+confidentialité déclare. Le seul argument qui plaidait pour l'autre projet, préserver ses comptes,
+est tombé : il n'y en avait aucun de réel, et la base est en pause depuis le 6 août, donc elle
+n'a rien pu recevoir depuis.
 
-[`docs/27`](27-convergence.md) §4.3 penche pour **appliquer le schéma du cœur sur le projet de la
-vitrine**, qui garde ses comptes existants. Ça échange un problème d'authentification insoluble
-contre un renommage de projet. Le projet n'est pas sacré ; c'est le *schéma* qui l'est.
-
-⚠️ Si tu choisis ce projet : ses 13 migrations d'origine y sont déjà appliquées à la main, et il
-porte encore les tables de l'ancienne génération. L'inventaire les rendra en « en trop », ce qui
-est normal et sans danger, mais il faudra décider quand les retirer.
+⚠️ **Conséquence à traiter avant la mise en ligne.** Les pages de l'ancienne génération
+(`/dashboard`, `/agent`, `/tasks/[id]`, `/decisions`, `/onboarding`) interrogent des tables qui
+n'existeront jamais dans le cœur. Elles sont **déjà** hors service, puisque leur base est en
+pause : la décision ne casse rien, elle rend visible ce qui l'était déjà. Mais une page qui échoue
+est pire qu'une page absente sur un site où l'on vend. À retirer ou à masquer.
 
 ---
 

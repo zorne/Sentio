@@ -376,9 +376,12 @@ fonctionne pas.
 
 Aucune donnée déplacée. On lève les inconnues pendant que les deux systèmes tournent.
 
-- **2.1 Auth** — trancher §4.3 (`auth.users` non transposable). L'option (c) — appliquer le
-  schéma du cœur sur le projet Supabase *de la vitrine* — supprime le problème et mérite d'être
-  évaluée en premier.
+- **2.1 Auth** — ✅ **tranché le 2026-08-27, [`adr/0030`](adr/0030-une-seule-base-celle-du-coeur.md).**
+  Ce document penchait pour l'option (c), garder le projet de la vitrine pour préserver ses
+  `auth.users`. Cet argument était le seul, et il est tombé : la base vitrine ne contient **aucun
+  compte réel**, et elle est en pause depuis le 2026-08-06, donc elle n'a rien pu recevoir depuis.
+  C'est le projet **du cœur** qui est retenu, parce qu'il est vide, déjà relié au poste, et dans
+  la région que la politique de confidentialité déclare.
 - **2.2 Schéma** — résoudre les correspondances non mécaniques de §3.2 : destination de
   `config.systemPrompt`, `task` sans `title`/`input`, `notification` sans `task_id`, collisions
   d'identités. Chaque décision écrite avant d'être codée.

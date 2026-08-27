@@ -159,27 +159,22 @@ connaît pour rattacher l'acheteur à son entreprise (`rattacher_par_email`).
 
 ---
 
-## 8. ⛔ Ce qui reste à toi, et qui bloque la mise en ligne
+## 8. ⛔ Ce qui reste à toi
 
 **Tout ce qui précède est écrit et éprouvé en local. Rien n'est en ligne**, et un agent ne peut
 pas l'y mettre : pousser un schéma et écrire dans une base distante sont tes gestes
 ([`docs/31`](31-passation-a-un-autre-agent.md) §2).
 
-Et il y a un obstacle réel, pas une formalité, le **constat B3** de `docs/32` :
+La question de la base est **tranchée** depuis le 2026-08-27 : c'est le projet du cœur,
+`ritwmikarekkisxaiokf` ([`adr/0030`](adr/0030-une-seule-base-celle-du-coeur.md)).
 
-> `/espace` lit `employee`, `identity`, `lady_configuration`, `objective` et sept fonctions SQL.
-> **Aucune n'existe dans le projet Supabase auquel le site est branché** (`rybeumdjclajiypglmuj`,
-> l'ancien projet de la vitrine). Les deux générations ont chacune leur schéma, et l'application
-> n'a qu'une seule connexion.
+Reste, dans l'ordre, et [`docs/34`](34-tout-ce-qui-doit-etre-sur-supabase.md) §5 les détaille :
 
-Donc, dans l'ordre :
-
-1. **Trancher quelle base sert le site.** `docs/27` §4.3 penche pour appliquer le schéma du cœur
-   **sur le projet de la vitrine**, qui garde ses comptes existants. Ça échange un problème
-   d'authentification insoluble contre un renommage de projet.
-2. **Pousser le schéma** sur la base choisie.
-3. **Poser les variables** du §3 ci-dessus.
-4. **Lancer la commande du §4** avec ta propre adresse.
+1. **pousser le schéma** sur ce projet, puis vérifier avec `pnpm run supabase:inventaire` ;
+2. **poser les neuf secrets** des fonctions, et les variables de l'interface ;
+3. **autoriser l'adresse de retour** `/auth/callback` dans les réglages d'authentification, sinon
+   le lien de cet email est refusé et personne n'entre ;
+4. **lancer la commande du §4** avec ta propre adresse.
 
 ---
 

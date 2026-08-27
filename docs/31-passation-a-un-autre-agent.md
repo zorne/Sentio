@@ -56,6 +56,7 @@
 | 2026-08-27 | **Le rattachement verrouille son attente** (`20260815120037`) | Deux arrivées simultanées de la MÊME adresse rattachaient deux fois la même entreprise, et laissaient la seconde orpheline. Échec reproduit 3 fois sur 3 avant le correctif |
 | 2026-08-27 | **L'inventaire du Supabase** ([`docs/34`](34-tout-ce-qui-doit-etre-sur-supabase.md)) — `pnpm run supabase:inventaire` | La référence est la base locale reconstruite par les migrations : **aucun fichier d'attendu à tenir à jour, donc aucun à oublier**. Compare une base réelle et énumère les absents |
 | 2026-08-27 | **Trois secrets manquaient au contrôle de déploiement** | ⚠️ `SENTIO_PAIEMENT_SECRET`, `SENTIO_OPTOUT_SECRET`, `SENTIO_ALLOWED_ORIGINS`. Chacun **échoue fermé** : le paiement ne recrute plus, la désinscription est invalide, le diagnostic est muet. En silence |
+| 2026-08-27 | **La base est tranchée** ([`adr/0030`](adr/0030-une-seule-base-celle-du-coeur.md)) : c'est le projet du CŒUR | `docs/27` penchait pour l'autre, pour garder ses comptes. Argument tombé : **aucun compte réel**, et la base est en pause depuis le 6 août, donc elle n'a rien pu recevoir depuis |
 
 ---
 
