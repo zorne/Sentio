@@ -275,6 +275,7 @@ export default async function EspacePage() {
   const { rows: accords } = await pool.query<{
     approval_id: string;
     demande_le: Date;
+    capacite_cle: string | null;
     capacite_nom: string | null;
     entreprise: string | null;
     contact: string | null;
@@ -287,6 +288,25 @@ export default async function EspacePage() {
   //    ⚠️ Le texte des réponses reçues n'est stocké nulle part : ce qui porte des mots venus de
   //    l'échange, ce sont les NOTES consignées par l'employée. Chaque élément est affiché avec sa
   //    provenance — un briefing dont on ignore d'où vient chaque ligne ne se défend pas en réunion.
+  // ── CE QU'ELLE A FAIT, ET SI ELLE VOUS L'A DEMANDÉ ──────────────────────────────────────
+  //
+  // ⚠️ C'EST LA CONTREPARTIE DE « TOUJOURS AUTORISER », ET ELLE N'EST PAS NÉGOCIABLE.
+  //
+  // Autoriser une capacité pour toujours n'a de sens que si l'on voit ce qui passe ensuite. Sans
+  // cette lecture, le dirigeant n'aurait aucun moyen de constater que ça lui déplaît, et l'accord
+  // permanent reviendrait à fermer les yeux.
+  //
+  // La fonction est `security definer` parce que `execution_event` est FERMÉ au client : sa
+  // charge utile porte des contenus bruts d'outils. Elle rend ce qui se lit, et rien d'autre.
+  const { rows: journal } = await pool.query<{
+    quand: Date;
+    capacite_cle: string | null;
+    capacite_nom: string | null;
+    entreprise: string | null;
+    sans_vous: boolean;
+    accord_en_cours: boolean;
+  }>("select * from ce_qu_elle_a_fait($1, $2)", [tenantId, 14]);
+
   const { rows: rendezVous } = await pool.query<{
     lead_id: string;
     entreprise: string;
@@ -344,12 +364,21 @@ export default async function EspacePage() {
             }
           : null
       }
+      ceQuElleAFait={journal.map((j) => ({
+        quand: dateCourte(j.quand.toISOString()),
+        quoi: j.capacite_nom ?? "Action non identifiée au journal",
+        capaciteCle: j.capacite_cle,
+        entreprise: j.entreprise,
+        sansVous: j.sans_vous,
+        accordEnCours: j.accord_en_cours,
+      }))}
       accords={accords.map((a) => ({
         id: a.approval_id,
         depuis: dateCourte(a.demande_le.toISOString()),
         // Sans nom de capacité, on reste factuel plutôt que vague : « une action » ne dit rien,
         // mais inventer un intitulé dirait faux.
         quoi: a.capacite_nom ?? "Action non identifiée au journal",
+        capaciteCle: a.capacite_cle,
         entreprise: a.entreprise,
         contact: a.contact,
         objet: a.objet,

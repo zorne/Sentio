@@ -79,6 +79,69 @@ export async function trancherUneAction(
 }
 
 /**
+ * Autoriser une capacité UNE FOIS POUR TOUTES.
+ *
+ * ⚠️ CE GESTE ÉLARGIT L'AUTONOMIE, DONC IL EST LE PLUS SURVEILLÉ DE CET ÉCRAN.
+ *
+ * C'est le cliquet : n'importe quoi peut rendre l'employé plus prudent, rien ne peut le rendre
+ * plus libre à la place du dirigeant. L'appartenance est donc vérifiée ici, explicitement, avant
+ * d'appeler une fonction `security definer` révoquée au public.
+ *
+ * ⚠️ ET C'EST PAR CAPACITÉ, JAMAIS GLOBALEMENT. Autoriser « mettre à jour une fiche » pour
+ * toujours n'autorise pas « écrire à un prospect ». C'est ce qui permet d'ouvrir ce qui est
+ * réversible en gardant la main sur ce qui sort de l'entreprise.
+ */
+export async function accorderDefinitivement(
+  tenantId: string,
+  employeeId: string,
+  capaciteCle: string,
+): Promise<{ ok: boolean; message?: string }> {
+  if (!(await isAuthorizedForTenant(tenantId))) {
+    return { ok: false, message: "Vous n'avez pas accès à cette entreprise." };
+  }
+
+  try {
+    await pool.query("select accorder_definitivement($1, $2, $3)", [
+      tenantId,
+      employeeId,
+      capaciteCle,
+    ]);
+    revalidatePath("/espace");
+    return { ok: true };
+  } catch {
+    return { ok: false, message: "Cet accord n'a pas pu être enregistré." };
+  }
+}
+
+/**
+ * Reprendre une autorisation permanente.
+ *
+ * ⚠️ CE GESTE DOIT ÊTRE AUSSI FACILE QUE L'AUTRE, JAMAIS PLUS DIFFICILE. Un produit où l'on donne
+ * sa confiance en un clic et où on la reprend en trois a choisi son camp. Ici, même chemin, même
+ * nombre de gestes.
+ *
+ * Il ne détruit rien : la base date la révocation. Qu'une confiance ait existé, et quand, fait
+ * partie de l'histoire de cet employé.
+ */
+export async function retirerLAccord(
+  tenantId: string,
+  employeeId: string,
+  capaciteCle: string,
+): Promise<{ ok: boolean; message?: string }> {
+  if (!(await isAuthorizedForTenant(tenantId))) {
+    return { ok: false, message: "Vous n'avez pas accès à cette entreprise." };
+  }
+
+  try {
+    await pool.query("select retirer_l_accord($1, $2, $3)", [tenantId, employeeId, capaciteCle]);
+    revalidatePath("/espace");
+    return { ok: true };
+  } catch {
+    return { ok: false, message: "Cet accord n'a pas pu être retiré." };
+  }
+}
+
+/**
  * Répondre à une proposition de son employé.
  *
  * ⚠️ C'est LE geste que §10 de la vision réserve au dirigeant. Une réévaluation a beau être

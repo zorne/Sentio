@@ -35,6 +35,7 @@ import { AgentHologramStage } from "@/components/landing/AgentHologramStage";
 import { ArretDUrgence } from "./ArretDUrgence";
 import { Conversation } from "./Conversation";
 import { BoutonsDeDecision } from "./BoutonsDeDecision";
+import { CeQuElleAFait, type ActionFaite } from "./CeQuElleAFait";
 import { DecisionSurLaProposition } from "./DecisionSurLaProposition";
 import { ReglageDAutonomie } from "./ReglageDAutonomie";
 import { Tableau, type DonneesDuTableau } from "./Tableau";
@@ -86,10 +87,26 @@ export interface DonneesDeLaScene {
    * irréversible : lui cacher laquelle rend la garde inutile (il clique sans savoir) ou bloquante
    * (il n'ose pas cliquer).
    */
+  /**
+   * Ce qu'elle a réellement fait, et pour chaque action, si elle vous l'a demandé.
+   *
+   * ⚠️ C'est la contrepartie de « toujours autoriser » : sans cette liste, un accord permanent
+   * ne pourrait plus être repris, faute de voir ce qu'il laisse passer.
+   */
+  readonly ceQuElleAFait: readonly ActionFaite[];
   readonly accords: readonly {
     readonly id: string;
     readonly depuis: string;
+    /** Le nom lisible de la capacité, tel que la base le porte. */
     readonly quoi: string;
+    /**
+     * Sa clé technique, uniquement pour pouvoir l'accorder une fois pour toutes.
+     *
+     * ⚠️ Nulle quand le journal ne l'a pas retrouvée. Dans ce cas on n'offre PAS « toujours
+     * autoriser » : accorder pour l'éternité une action qu'on ne sait pas nommer serait
+     * exactement le message flou que cet écran existe pour supprimer.
+     */
+    readonly capaciteCle: string | null;
     readonly entreprise: string | null;
     readonly contact: string | null;
     readonly objet: string | null;
@@ -171,6 +188,7 @@ export interface Consommation {
 
 type Panneau =
   | "missions"
+  | "journal"
   | "capacites"
   | "parler"
   | "objectif"
@@ -347,6 +365,16 @@ export function Scene(d: DonneesDeLaScene) {
               "en attente de configuration"
             )}
           </p>
+
+          {/* ⚠️ LE POURQUOI, SOUS SON NOM, ET PAS RANGÉ DANS UN TIROIR.
+              Un dirigeant qui voit son employée travailler sur un sujet se demande d'abord
+              pourquoi celui-là. La raison est écrite en base au moment de la composition
+              (`lady_configuration.raison`) : elle existait, personne ne la montrait sans cliquer.
+              C'est aussi ce qui empêche de lire son rôle comme une identité définitive : il
+              répond à un besoin constaté, il peut donc changer avec l'entreprise. */}
+          {!arrete && d.raisonDeLaConfiguration ? (
+            <p className="sc-pourquoi">{d.raisonDeLaConfiguration}</p>
+          ) : null}
         </div>
       </div>
 
@@ -381,6 +409,13 @@ export function Scene(d: DonneesDeLaScene) {
           onClick={() => setPanneau(panneau === "missions" ? null : "missions")}
         />
         <Orbe
+          nom="Ce qu'elle a fait"
+          icone="recolte"
+          compte={d.ceQuElleAFait.length}
+          actif={panneau === "journal"}
+          onClick={() => setPanneau(panneau === "journal" ? null : "journal")}
+        />
+        <Orbe
           nom="À décider"
           icone="boite"
           compte={enAttente}
@@ -402,7 +437,7 @@ export function Scene(d: DonneesDeLaScene) {
           onClick={() => setPanneau(panneau === "recolte" ? null : "recolte")}
         />
         <Orbe
-          nom="Avant vos rendez-vous"
+          nom="Avant vos prochains échanges"
           icone="rendezvous"
           compte={d.rendezVous.length}
           actif={panneau === "rendezvous"}
@@ -457,17 +492,47 @@ export function Scene(d: DonneesDeLaScene) {
               </Contenu>
             ) : null}
 
+            {panneau === "journal" ? (
+              <Contenu titre="Ce qu'elle a fait">
+                <CeQuElleAFait
+                  actions={d.ceQuElleAFait}
+                  tenantId={d.tenantId}
+                  employeeId={d.employeeId}
+                />
+              </Contenu>
+            ) : null}
+
             {panneau === "capacites" ? (
               <Contenu titre={`Ce que ${d.prenom} sait faire`}>
-                {d.priorites.length > 0 ? (
-                  <ol className="sc-priorites">
-                    {d.priorites.map((p) => (
-                      <li key={p}>{p}</li>
+                {/* ⚠️ CE TIROIR NE TENAIT PAS SON TITRE. Il annonçait ce qu'elle sait faire et
+                    montrait ses PRIORITÉS, c'est-à-dire autre chose. Les capacités n'étaient que
+                    des points lumineux autour d'elle, sans un mot.
+                    Les noms viennent de `capability.name` : ils sont déjà écrits pour un
+                    dirigeant, il n'y a rien à traduire. */}
+                {d.capacites.length > 0 ? (
+                  <ul className="sc-capacites">
+                    {d.capacites.map((capacite) => (
+                      <li key={capacite}>{capacite}</li>
                     ))}
-                  </ol>
+                  </ul>
                 ) : (
-                  <p className="sc-vide">Ses priorités seront établies avec sa configuration.</p>
+                  <p className="sc-vide">
+                    Aucune capacité n&apos;est encore ouverte. Elles le seront avec sa
+                    configuration, et vous les verrez apparaître ici.
+                  </p>
                 )}
+
+                {d.priorites.length > 0 ? (
+                  <>
+                    <p className="sc-sous-titre">Et dans cet ordre</p>
+                    <ol className="sc-priorites">
+                      {d.priorites.map((p) => (
+                        <li key={p}>{p}</li>
+                      ))}
+                    </ol>
+                  </>
+                ) : null}
+
                 {d.raisonDeLaConfiguration ? (
                   <p className="sc-note">{d.raisonDeLaConfiguration}</p>
                 ) : null}
@@ -609,7 +674,13 @@ export function Scene(d: DonneesDeLaScene) {
                     ) : null}
                     <p className="sc-note">En attente depuis le {accord.depuis}.</p>
 
-                    <BoutonsDeDecision approvalId={accord.id} />
+                    <BoutonsDeDecision
+                      approvalId={accord.id}
+                      tenantId={d.tenantId}
+                      employeeId={d.employeeId}
+                      capaciteCle={accord.capaciteCle}
+                      capaciteNom={accord.capaciteCle === null ? null : accord.quoi}
+                    />
                     {/* La conséquence de chaque bouton, écrite. « Autoriser » et « Refuser » sont
                         clairs sur le geste, pas sur ce qu'il déclenche. */}
                     <p className="sc-note">
@@ -626,7 +697,7 @@ export function Scene(d: DonneesDeLaScene) {
             ) : null}
 
             {panneau === "rendezvous" ? (
-              <Contenu titre="Avant vos rendez-vous">
+              <Contenu titre="Avant vos prochains échanges">
                 {d.rendezVous.length > 0 ? (
                   <div className="rv">
                     {d.rendezVous.map((r) => (
@@ -698,7 +769,7 @@ export function Scene(d: DonneesDeLaScene) {
                   </div>
                 ) : (
                   <p className="sc-vide">
-                    Aucun rendez-vous en attente. Vous verrez ici, avant chacun, ce qu&apos;il faut
+                    Aucun échange à préparer. Vous verrez ici, avant chacun, ce qu&apos;il faut
                     savoir : ce qu&apos;elle a retenu de l&apos;échange, ce qui a été écrit, et
                     pourquoi cette entreprise a été retenue.
                   </p>
