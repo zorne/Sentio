@@ -77,6 +77,7 @@
 | 2026-08-27 | **La base est tranchée** ([`adr/0030`](adr/0030-une-seule-base-celle-du-coeur.md)) : c'est le projet du CŒUR | `docs/27` penchait pour l'autre, pour garder ses comptes. Argument tombé : **aucun compte réel**, et la base est en pause depuis le 6 août, donc elle n'a rien pu recevoir depuis |
 | 2026-08-27 | **L'ancienne génération retirée** : 5 pages, le cron, 11 composants, 8 modules, et **le second moteur métier de `vitrine-core`** | La vitrine n'importe plus que 2 sous-chemins au lieu de 4. ⚠️ Trouvé en retirant : le diagnostic public écrivait dans `diagnostic_rate_limit`, table qui **n'existait que dans l'ancien schéma** |
 | 2026-08-27 | **Le locataire de démonstration n'existe plus** (constat B10 refermé) | N'importe quel visiteur inscrit pouvait y lancer un vrai cycle et LIRE ce que les autres y avaient fait. Une exception d'accès qui survit à sa fonctionnalité est un trou |
+| 2026-08-27 | **La forme qui se précise** — la conversation montre enfin ce qu'elle produit (`FormeQuiSePrecise.tsx`) | Elle **ne ment pas** : le moteur seul sait quand il en sait assez, donc on montre le NOMBRE D'ÉCHANGES, pas un pourcentage inventé. Et elle **ne bouge que quand le dirigeant a parlé**. Deux formes rejetées, raisons en piège 22 |
 
 ---
 
@@ -469,6 +470,30 @@ Chacun a coûté du temps. Ils sont listés dans l'ordre où on les rencontre.
     par le fondateur, pas trouvés par moi. Quand tu touches à une transition, **déclenche-la**.
 
 ---
+
+
+### Piège 22 — sur cet écran noir, un trait presque invisible n'est pas discret, il est sale
+
+Le fondateur a redemandé deux fois d'être **créatif** sur `/diagnostic`. Mes deux premières passes
+étaient des réparations (une lueur, une taille de titre), pas une idée. L'idée juste était déjà
+dans sa page d'accueil : *« votre employé se dessine sous vos yeux »* — et pendant la conversation,
+l'écran ne montrait rien.
+
+**Deux formes essayées et rejetées. Ne les réessaie pas :**
+
+1. **Un arc partiel qui se referme.** À un ou deux échanges, un bout d'arc isolé derrière le titre
+   se lit comme une **rayure sur l'écran**, jamais comme une figure qui naît. Les anneaux sont donc
+   entiers dès qu'ils paraissent : c'est leur TEXTURE (pointillé → continu) qui raconte ce qu'elle
+   sait, pas leur longueur.
+2. **Un petit cercle derrière la question.** Il tombait entre le titre et la ligne d'écriture, comme
+   une tache mal placée. Le premier anneau est maintenant **plus large que tout le bloc de texte** :
+   la conversation se déroule à l'intérieur de la figure.
+
+Et un anneau non atteint est à opacité **0**, jamais 0,05 : sur ce fond noir, le presque-invisible
+ne passe pas pour de la retenue, il passe pour de la saleté.
+
+⚠️ Ces trois choses ne se voient QU'À L'ÉCRAN. Les trois versions compilaient et passaient
+`verify`. Un design ne se vérifie pas au typecheck.
 
 ## 7. Comment travailler
 
