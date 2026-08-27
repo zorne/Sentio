@@ -3468,6 +3468,117 @@ begin
 end;
 $$;
 
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+-- LADY-AI — deux employées d'une même entreprise ne s'attribuent pas le travail l'une de l'autre.
+--
+-- ══ CE QUE CE BLOC DÉFEND ══
+--
+-- Demande du fondateur : *« chaque agent a son propre chat, connecté à l'état de l'agent »*, et
+-- *« vérifie que les états sont bien connectés à l'agent »*.
+--
+-- Avant `20260815120041`, les trois fonctions qui donnent ses chiffres à une employée comptaient
+-- TOUT ce qui portait l'entreprise. Deux employées, et chacune répondait « voilà ce que j'ai
+-- fait » en récitant le travail des deux. Ce n'est pas une fuite vers un tiers — RLS n'a jamais
+-- été en cause — c'est un **mensonge sur l'auteur du travail**, à la première personne, sur la
+-- seule surface où le dirigeant la croit sur parole.
+--
+-- ⚠️ CE BLOC ÉCHOUE SUR LE SCHÉMA D'AVANT. C'est sa raison d'être : sans employée nommée, les
+-- deux mesures seraient égales, et l'assertion 1 tomberait.
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  entreprise constant uuid := 'aaaaaaaa-0000-0000-0000-000000000001';
+  premiere   constant uuid := 'ffffffff-0000-0000-0000-000000000001';
+  seconde    uuid;
+  objectif   uuid;
+  mission    uuid;
+  avant_p    record;
+  avant_s    record;
+  apres_p    record;
+  apres_s    record;
+  ensemble   record;
+  n          integer;
+begin
+  -- Une SECONDE employée, dans la MÊME entreprise. C'est tout le sujet : l'isolation entre
+  -- entreprises est déjà prouvée ailleurs (TEST-01), celle-ci ne l'est nulle part.
+  insert into public.employee (tenant_id, employee_definition_id, identity_id)
+  select entreprise, 'dddddddd-0000-0000-0000-000000000001', id
+  from public.reserve_identity('commercial')
+  returning id into seconde;
+
+  select id into objectif from public.objective
+   where tenant_id = entreprise and state = 'actif' limit 1;
+
+  -- ⚠️ Des ÉCARTS, jamais des totaux : les blocs précédents travaillent la même entreprise dans
+  -- la même transaction. Un total absolu tiendrait aujourd'hui et accuserait ce bloc demain.
+  select * into avant_p from public.bilan_de_l_employe(entreprise, 30, premiere);
+  select * into avant_s from public.bilan_de_l_employe(entreprise, 30, seconde);
+
+  -- Du travail attribué à la SECONDE, et à elle seule.
+  insert into public.task (tenant_id, employee_id, objective_id, subject_kind, subject_id)
+  values (entreprise, seconde, objectif, 'lead', gen_random_uuid())
+  returning id into mission;
+  insert into public.execution_event (tenant_id, employee_id, task_id, kind)
+  values (entreprise, seconde, mission, 'action_executee');
+  insert into public.outcome (tenant_id, task_id, kind) values (entreprise, mission, 'meeting');
+
+  select * into apres_p from public.bilan_de_l_employe(entreprise, 30, premiere);
+  select * into apres_s from public.bilan_de_l_employe(entreprise, 30, seconde);
+
+  -- ── 1. ⭐ LE CŒUR : la première ne s'attribue RIEN du travail de la seconde.
+  if apres_p.rendez_vous <> avant_p.rendez_vous
+     or apres_p.missions_agies <> avant_p.missions_agies then
+    raise exception
+      'ÉCHEC : la première employée s''attribue le travail de la seconde (rendez-vous % -> %, missions agies % -> %).',
+      avant_p.rendez_vous, apres_p.rendez_vous, avant_p.missions_agies, apres_p.missions_agies;
+  end if;
+
+  -- ── 2. Et la seconde le compte bien, sans quoi le filtre ne filtrerait pas : il effacerait.
+  if apres_s.rendez_vous <> avant_s.rendez_vous + 1
+     or apres_s.missions_agies <> avant_s.missions_agies + 1 then
+    raise exception
+      'ÉCHEC : la seconde employée ne compte pas son propre travail (rendez-vous % -> %, missions agies % -> %).',
+      avant_s.rendez_vous, apres_s.rendez_vous, avant_s.missions_agies, apres_s.missions_agies;
+  end if;
+
+  -- ── 3. Sans employée nommée, l'entreprise entière est comptée — le sens d'origine est intact,
+  --       donc les appels qui ne connaissent pas d'employée n'ont pas changé de réponse.
+  select * into ensemble from public.bilan_de_l_employe(entreprise, 30);
+  if ensemble.rendez_vous < apres_p.rendez_vous + apres_s.rendez_vous then
+    raise exception
+      'ÉCHEC : sans employée nommée, le bilan doit couvrir toute l''entreprise (% < % + %).',
+      ensemble.rendez_vous, apres_p.rendez_vous, apres_s.rendez_vous;
+  end if;
+
+  -- ── 4. La conversation appartient à une employée, et la BASE le garantit. Un message adressé à
+  --       l'employée d'une autre entreprise doit être refusé, quoi que fasse le code appelant.
+  insert into public.conversation_message (tenant_id, employee_id, auteur, texte)
+  values (entreprise, seconde, 'dirigeant', 'Qu''as-tu fait aujourd''hui ?');
+
+  begin
+    insert into public.conversation_message (tenant_id, employee_id, auteur, texte)
+    values ('bbbbbbbb-0000-0000-0000-000000000002', seconde, 'dirigeant', 'Et chez la voisine ?');
+    raise exception
+      'ÉCHEC : la base a accepté un message rattaché à l''employée d''une AUTRE entreprise.';
+  exception
+    when foreign_key_violation then null;
+  end;
+
+  -- ── 5. Le fil de l'une n'est pas le fil de l'autre.
+  select count(*)::integer into n from public.conversation_message
+   where tenant_id = entreprise and employee_id = premiere;
+  if n <> 0 then
+    raise exception
+      'ÉCHEC : la première employée voit % message(s) qui ne lui ont pas été adressés.', n;
+  end if;
+
+  raise notice
+    'OK  LADY-AI — deux employées d''une même entreprise gardent leurs chiffres et leur conversation';
+end;
+$$;
+
+
 
 -- ════════════════════════════════════════════════════════════════════════════════════════════
 -- LADY-Y — les chiffres que le dirigeant voit en arrivant.

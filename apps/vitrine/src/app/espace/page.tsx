@@ -30,6 +30,7 @@ import {
   type JourDeTravail,
 } from "@sentio/domain";
 
+import { filDeLaConversation as filDeLaConversation_ } from "./actions";
 import { Scene } from "./Scene";
 import "./espace.css";
 
@@ -84,7 +85,13 @@ export default async function EspacePage() {
       supabase
         .from("employee")
         .select("id, autonomy, identity_id, en_pause_depuis")
-        .eq("tenant_id", tenantId),
+        .eq("tenant_id", tenantId)
+        // ⚠️ SANS « order by », POSTGRES NE PROMET AUCUN ORDRE. Une entreprise qui a recruté deux
+        // fois voyait son employée changer d'un rechargement au suivant — et le chat, qui en
+        // cherchait une de son côté, pouvait déjà parler au nom de l'autre. La plus ancienne est
+        // celle que le dirigeant connaît ; « id » départage deux recrutements du même instant.
+        .order("recruited_at", { ascending: true })
+        .order("id", { ascending: true }),
       supabase
         .from("objective")
         .select("metric, target_value, horizon")
@@ -110,6 +117,8 @@ export default async function EspacePage() {
       />
     );
   }
+
+  const filDeLaConversation = await filDeLaConversation_(tenantId, employe.id);
 
   const [{ data: identites }, { data: configurations }, { data: propositions }] = await Promise.all([
     supabase.from("identity").select("first_name, last_name").eq("id", employe.identity_id),
@@ -186,7 +195,7 @@ export default async function EspacePage() {
       reponses: number;
       rendez_vous: number;
       ventes: number;
-    }>("select * from serie_quotidienne($1, $2)", [tenantId, JOURS]),
+    }>("select * from serie_quotidienne($1, $2, $3)", [tenantId, JOURS, employe.id]),
     pool.query<{
       contactes: number;
       reponses: number;
@@ -195,7 +204,7 @@ export default async function EspacePage() {
       chiffre_affaires: string;
       entreprises_engagees: number;
       missions_agies: number;
-    }>("select * from bilan_de_l_employe($1, $2)", [tenantId, JOURS]),
+    }>("select * from bilan_de_l_employe($1, $2, $3)", [tenantId, JOURS, employe.id]),
   ]);
 
   const serie: JourDeTravail[] = serieBrute.map((ligne) => ({
@@ -342,6 +351,7 @@ export default async function EspacePage() {
       tenantId={tenantId}
       nomDeLEntreprise={nomDeLEntreprise}
       employeeId={employe.id}
+      filDeLaConversation={filDeLaConversation}
       prenom={identite?.first_name ?? "Votre employé"}
       role={configuration?.role ?? null}
       mots={motsDuTravail(configuration?.role ?? null)}

@@ -218,6 +218,7 @@ export async function arreterOuReprendre(
  */
 export async function demanderALEmployee(
   tenantId: string,
+  employeeId: string,
   question: string,
 ): Promise<{ ok: boolean; phrase?: string; suggestions?: readonly string[]; message?: string }> {
   if (!(await isAuthorizedForTenant(tenantId))) {
@@ -231,6 +232,30 @@ export async function demanderALEmployee(
   try {
     const { debut, fin } = fenetreDe(dit);
 
+    // ⚠️ L'EMPLOYÉE EST NOMMÉE, JAMAIS REDÉCOUVERTE. Cette action cherchait la sienne avec un
+    // « limit 1 » sans « order by », indépendamment de celle que la page affichait : le dirigeant
+    // pouvait lire la fiche de l'une et interroger l'état de l'autre, avec une attribution qui
+    // changeait d'un rechargement au suivant. C'est la règle 7 du dépôt, un cran plus bas — une
+    // garantie qui protège d'autrui ne protège pas de soi-même.
+    //
+    // Le filtre porte les DEUX identifiants : nommer l'employée sans nommer l'entreprise
+    // laisserait un identifiant deviné atteindre l'employée de quelqu'un d'autre.
+    const [employe] = await pool
+      .query<{ en_pause_depuis: string | null; role: string | null; prenom: string | null }>(
+        `select e.en_pause_depuis,
+                (select c.role from lady_configuration c
+                  where c.employee_id = e.id and c.active) as role,
+                (select i.first_name from identity i where i.id = e.identity_id) as prenom
+           from employee e
+          where e.tenant_id = $1 and e.id = $2`,
+        [tenantId, employeeId],
+      )
+      .then((r) => r.rows);
+
+    if (employe === undefined) {
+      return { ok: false, message: "Cette employée n'est pas la vôtre." };
+    }
+
     const [travail] = await pool.query<{
       missions_ouvertes: number;
       missions_agies: number;
@@ -239,7 +264,12 @@ export async function demanderALEmployee(
       rendez_vous: number;
       ventes: number;
       chiffre_affaires: string;
-    }>("select * from travail_sur_la_periode($1, $2, $3)", [tenantId, debut, fin]).then((r) => r.rows);
+    }>("select * from travail_sur_la_periode($1, $2, $3, $4)", [
+      tenantId,
+      debut,
+      fin,
+      employeeId,
+    ]).then((r) => r.rows);
 
     const [avancement] = await pool
       .query<{
@@ -256,23 +286,13 @@ export async function demanderALEmployee(
     // Les entreprises qui ont donné une suite : le même compte que celui du tableau de bord.
     const [bilan] = await pool
       .query<{ entreprises_engagees: number }>(
-        "select entreprises_engagees from bilan_de_l_employe($1, $2)",
-        [tenantId, 30],
-      )
-      .then((r) => r.rows);
-
-    const [employe] = await pool
-      .query<{ en_pause_depuis: string | null; role: string | null }>(
-        `select e.en_pause_depuis,
-                (select c.role from lady_configuration c
-                  where c.employee_id = e.id and c.active) as role
-           from employee e where e.tenant_id = $1 limit 1`,
-        [tenantId],
+        "select entreprises_engagees from bilan_de_l_employe($1, $2, $3)",
+        [tenantId, 30, employeeId],
       )
       .then((r) => r.rows);
 
     const reponse = demander(dit, {
-      prenom: "",
+      prenom: employe.prenom ?? "",
       travail: {
         missionsOuvertes: Number(travail?.missions_ouvertes ?? 0),
         missionsAgies: Number(travail?.missions_agies ?? 0),
@@ -299,11 +319,59 @@ export async function demanderALEmployee(
       arretee: employe?.en_pause_depuis !== null && employe?.en_pause_depuis !== undefined,
     });
 
+    // ⚠️ LES DEUX TOURS SONT CONSERVÉS ENSEMBLE, ET APRÈS LA RÉPONSE. Écrire la question avant de
+    // savoir répondre laisserait, à la première panne, une question sans réponse dans le fil : le
+    // dirigeant croirait avoir été ignoré. Une seule instruction, donc, ou aucune.
+    //
+    // Un échec d'écriture ne fait PAS échouer la réponse : elle est déjà juste, et la perdre pour
+    // une histoire de mémoire serait punir le dirigeant d'un défaut qui n'est pas le sien.
+    try {
+      await pool.query(
+        `insert into conversation_message (tenant_id, employee_id, auteur, texte)
+         values ($1, $2, 'dirigeant', $3), ($1, $2, 'employee', $4)`,
+        [tenantId, employeeId, dit, reponse.phrase],
+      );
+    } catch {
+      // Rien à dire au dirigeant : sa réponse arrive, seule la trace manque.
+    }
+
     return reponse.statut === "repond"
       ? { ok: true, phrase: reponse.phrase }
       : { ok: true, phrase: reponse.phrase, suggestions: reponse.suggestions };
   } catch {
     return { ok: false, message: "Je n'ai pas pu aller chercher la réponse." };
+  }
+}
+
+/**
+ * Le fil déjà échangé avec CETTE employée.
+ *
+ * ⚠️ Les deux identifiants filtrent, jamais un seul. Une entreprise peut avoir plusieurs
+ * employées ; ne nommer que l'entreprise mêlerait leurs conversations, et chacune paraîtrait se
+ * souvenir de ce qu'on a dit à l'autre.
+ *
+ * ⚠️ Bornée aux derniers échanges. Un fil sans borne finit par charger des années de conversation
+ * pour afficher les trois dernières lignes.
+ */
+export async function filDeLaConversation(
+  tenantId: string,
+  employeeId: string,
+): Promise<readonly { auteur: "dirigeant" | "employee"; texte: string }[]> {
+  try {
+    const { rows } = await pool.query<{ auteur: "dirigeant" | "employee"; texte: string }>(
+      `select auteur, texte
+         from (select auteur, texte, created_at
+                 from conversation_message
+                where tenant_id = $1 and employee_id = $2
+                order by created_at desc, id desc
+                limit 40) dernier
+        order by created_at asc`,
+      [tenantId, employeeId],
+    );
+    return rows;
+  } catch {
+    // Une mémoire indisponible ouvre une conversation vide ; elle ne casse pas la page.
+    return [];
   }
 }
 

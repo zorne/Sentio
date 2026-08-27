@@ -561,8 +561,19 @@ async function verifierLecturesDeLEspace() {
 
       // La suite de la chaîne d'appels, jusqu'à la fin de l'expression : c'est là que le filtre
       // doit se trouver. On s'arrête à la première ligne qui ne prolonge pas la chaîne.
-      const apres = contenu.slice(trouve.index ?? 0);
-      const chaine = /^[\s\S]{0,600}?(?=\n\s*(?:const|let|return|\}|\/\/)|$)/.exec(apres)?.[0] ?? "";
+      //
+      // ⚠️ UNE DÉCOUPE QUI ÉCHOUE REND LA FENÊTRE ENTIÈRE, JAMAIS RIEN. La version d'avant faisait
+      // les deux d'un coup, avec `{0,600}?` suivi d'une fin obligatoire : quand aucune fin
+      // n'apparaissait dans les 600 caractères, l'expression ne trouvait AUCUNE correspondance,
+      // la chaîne examinée devenait vide, et une lecture parfaitement filtrée était dénoncée.
+      //
+      // Ça s'est produit pour de vrai : quatre lignes de commentaire et deux `.order` ajoutés à
+      // une lecture correcte ont repoussé le `const` suivant au-delà de la fenêtre, et le
+      // contrôle a accusé du code juste. **Un contrôle qui ment coûte plus cher que pas de
+      // contrôle** : on apprend à ne plus le croire, et le jour où il a raison, on passe outre.
+      const fenetre = contenu.slice(trouve.index ?? 0, (trouve.index ?? 0) + 600);
+      const fin = /\n\s*(?:const|let|return|\}|\/\/)/.exec(fenetre);
+      const chaine = fin === null ? fenetre : fenetre.slice(0, fin.index);
       if (/\.eq\(\s*["'`]tenant_id["'`]/.test(chaine)) continue;
       // `tenant_member` est la lecture qui ÉTABLIT l'entreprise : elle ne peut pas la présupposer.
       if (table === "tenant_member") continue;
@@ -581,6 +592,71 @@ async function verifierLecturesDeLEspace() {
   }
 }
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 8. Dans l'espace du client, ce qui parle d'UNE employée la nomme.
+//
+// ⚠️ C'EST LA RÈGLE 7, UN CRAN PLUS BAS — ET ELLE A ATTRAPÉ UN VRAI DÉFAUT.
+//
+// La règle 7 empêche de mélanger deux entreprises d'un même dirigeant. Celle-ci empêche de
+// mélanger deux employées d'une même entreprise, et le raisonnement est identique : ni RLS ni le
+// filtre par entreprise ne répondent à « LAQUELLE de mes employées je regarde ».
+//
+// Ce qui a été trouvé : le chat de l'espace recevait l'entreprise, puis cherchait une employée
+// tout seul avec un `limit 1` SANS `order by`, indépendamment de celle que la page affichait.
+// Postgres ne promet aucun ordre sans `order by`. Le dirigeant pouvait donc lire la fiche de
+// l'une et interroger l'état de l'autre — dans la même page, avec une attribution qui changeait
+// d'un rechargement au suivant.
+//
+// Et les comptes eux-mêmes agrégeaient toute l'entreprise : deux employées, et chacune se serait
+// attribué le travail de l'autre en répondant « voilà ce que j'ai fait ». Ce n'est pas une fuite
+// vers un tiers, c'est un mensonge sur l'auteur du travail — et le produit ne tient que là-dessus.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Ce qui n'a de sens que rapporté à UNE employée, et le mot qui doit accompagner sa lecture. */
+const CE_QUI_APPARTIENT_A_UNE_EMPLOYEE = [
+  "travail_sur_la_periode",
+  "bilan_de_l_employe",
+  // La courbe est présentée comme le travail de l'employée : elle doit compter le sien.
+  "serie_quotidienne",
+  "conversation_message",
+];
+
+async function verifierCeQuiNommeSonEmployee() {
+  const racine = join(REPO_ROOT, "apps", "vitrine", "src", "app", "espace");
+  const fichiers = await fichiersDe(racine, [".ts", ".tsx"]);
+
+  for (const fichier of fichiers) {
+    const contenu = sansCommentaires(await readFile(fichier, "utf8"));
+
+    for (const quoi of CE_QUI_APPARTIENT_A_UNE_EMPLOYEE) {
+      for (const trouve of contenu.matchAll(new RegExp(quoi, "g"))) {
+        // L'appel complet : la requête, puis le tableau de ses paramètres. C'est là que
+        // l'identifiant de l'employée doit apparaître.
+        const apres = contenu.slice(trouve.index ?? 0, (trouve.index ?? 0) + 700);
+
+        // ⚠️ CE QUE CE CONTRÔLE PROUVE, ET CE QU'IL NE PROUVE PAS. Il constate que l'employée est
+        // NOMMÉE près de la lecture ; il ne vérifie pas qu'elle est passée au bon paramètre. C'est
+        // volontairement grossier — comme la règle 7 — parce que le défaut visé est l'OUBLI, pas
+        // l'erreur d'argument, que le typage attrape déjà. Le dire ici évite qu'on lui prête une
+        // garantie qu'il n'apporte pas.
+        if (/employee_?[iI]d|employe\.id/.test(apres)) continue;
+
+        const numero = contenu.slice(0, trouve.index).split("\n").length;
+        signaler(
+          fichier,
+          numero,
+          "ce qui parle d'une employée la nomme",
+          `lit « ${quoi} » sans nommer l'employée. Le filtre par entreprise ne dit pas LAQUELLE ` +
+            `de ses employées le dirigeant regarde : deux employées dans la même entreprise ` +
+            `s'attribueraient le travail l'une de l'autre, et le chat pourrait répondre au nom ` +
+            `d'une autre que celle affichée. Passez son identifiant.`,
+        );
+      }
+    }
+  }
+}
+
 async function main() {
   await verifierFonctions();
   await verifierInterfaceSansFournisseur();
@@ -589,6 +665,7 @@ async function main() {
   await verifierAppelsModele();
   await verifierAutonomieAuRecrutement();
   await verifierLecturesDeLEspace();
+  await verifierCeQuiNommeSonEmployee();
 
   if (manquements.length === 0) {
     process.stdout.write("Frontières d'architecture : rien à signaler.\n");

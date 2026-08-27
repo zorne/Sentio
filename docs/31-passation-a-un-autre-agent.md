@@ -78,6 +78,7 @@
 | 2026-08-27 | **L'ancienne génération retirée** : 5 pages, le cron, 11 composants, 8 modules, et **le second moteur métier de `vitrine-core`** | La vitrine n'importe plus que 2 sous-chemins au lieu de 4. ⚠️ Trouvé en retirant : le diagnostic public écrivait dans `diagnostic_rate_limit`, table qui **n'existait que dans l'ancien schéma** |
 | 2026-08-27 | **Le locataire de démonstration n'existe plus** (constat B10 refermé) | N'importe quel visiteur inscrit pouvait y lancer un vrai cycle et LIRE ce que les autres y avaient fait. Une exception d'accès qui survit à sa fonctionnalité est un trou |
 | 2026-08-27 | **La forme qui se précise** — la conversation montre enfin ce qu'elle produit (`FormeQuiSePrecise.tsx`) | Elle **ne ment pas** : le moteur seul sait quand il en sait assez, donc on montre le NOMBRE D'ÉCHANGES, pas un pourcentage inventé. Et elle **ne bouge que quand le dirigeant a parlé**. Deux formes rejetées, raisons en piège 22 |
+| 2026-08-28 | **Chaque employée a sa conversation, et ses chiffres sont les siens** (`20260815120041`, règle 8 des frontières, LADY-AI) | Le chat recevait l'entreprise puis cherchait une employée avec `limit 1` **sans `order by`**, indépendamment de celle qu'affichait la page. Et les trois fonctions de comptes agrégeaient toute l'entreprise : deux employées, et chacune s'attribuait le travail de l'autre **à la première personne**. ⚠️ Le contrôle de frontières a menti au passage (piège 23) |
 
 ---
 
@@ -494,6 +495,48 @@ ne passe pas pour de la retenue, il passe pour de la saleté.
 
 ⚠️ Ces trois choses ne se voient QU'À L'ÉCRAN. Les trois versions compilaient et passaient
 `verify`. Un design ne se vérifie pas au typecheck.
+
+
+### Piège 23 — le contrôle de frontières a dénoncé du code juste, et c'était sa découpe
+
+En ajoutant deux `.order` et quatre lignes de commentaire à une lecture **correctement filtrée**,
+la règle 7 s'est mise à la dénoncer. La cause n'était pas la lecture : c'était sa découpe.
+
+```js
+/^[\s\S]{0,600}?(?=\n\s*(?:const|let|return|\}|\/\/)|$)/.exec(apres)?.[0] ?? ""
+```
+
+Cette expression fait deux choses à la fois : borner à 600 caractères **et** exiger une fin de
+chaîne dans cette fenêtre. Quand aucune fin n'y apparaît — ce que mes six lignes ont provoqué —
+elle ne trouve **aucune correspondance du tout**, `?? ""` rend une chaîne vide, et le filtre
+`tenant_id` qui s'y trouvait pourtant devient invisible.
+
+C'est maintenant en deux temps : on borne, puis on coupe s'il y a où couper, sinon on garde toute
+la fenêtre.
+
+⚠️ **C'est la troisième fois qu'un de mes contrôles ment** (voir aussi le lexique, deux fois en
+juillet). La leçon ne change pas : *un contrôle qui ment coûte plus cher que pas de contrôle* — on
+apprend à ne plus le croire, et le jour où il a raison, on passe outre. Quand un contrôle dénonce
+du code que tu crois juste, **soupçonne le contrôle avant de te soupçonner**, et vérifie-le sur
+l'extrait exact.
+
+### Piège 24 — RLS et le filtre par entreprise ne disent pas LAQUELLE de vos employées
+
+La règle 7 protège d'un mélange entre deux entreprises d'un même dirigeant. Il manquait le même
+raisonnement un cran plus bas : entre **deux employées d'une même entreprise**.
+
+Trois fonctions — `travail_sur_la_periode`, `bilan_de_l_employe` (dont le nom annonce pourtant un
+employé) et `serie_quotidienne` — comptaient tout ce qui portait l'entreprise. Deux employées, et
+chacune récitait le travail des deux en disant « voilà ce que j'ai fait ».
+
+⚠️ **Ce n'est pas une fuite vers un tiers.** RLS n'a jamais été en cause, et c'est ce qui rendait le
+défaut invisible à tous les contrôles existants. C'est un **mensonge sur l'auteur du travail**, à la
+première personne, sur la seule surface où le dirigeant croit son employée sur parole.
+
+Ce qui le tient désormais : `p_employee` (facultatif, `null` = toute l'entreprise, donc les appels
+d'avant gardent leur sens), la **règle 8** des frontières, et **LADY-AI** — qui a été vu échouer sur
+l'ancien comportement (`rendez-vous 0 -> 1, missions agies 3 -> 4`), pas seulement passer sur le
+nouveau.
 
 ## 7. Comment travailler
 

@@ -73,6 +73,9 @@ export interface DonneesDeLaScene {
    */
   readonly nomDeLEntreprise: string | null;
   readonly employeeId: string;
+  /** Ce qui a déjà été dit À CETTE employée. Voir `filDeLaConversation` : une entreprise peut en
+      avoir plusieurs, et chacune garde sa propre conversation. */
+  readonly filDeLaConversation: readonly { auteur: "dirigeant" | "employee"; texte: string }[];
   readonly prenom: string;
   readonly role: string | null;
   readonly arreteDepuis: string | null;
@@ -556,7 +559,12 @@ export function Scene(d: DonneesDeLaScene) {
 
             {panneau === "parler" ? (
               <Contenu titre={`Demandez à ${d.prenom}`}>
-                <Conversation tenantId={d.tenantId} prenom={d.prenom} />
+                <Conversation
+                  tenantId={d.tenantId}
+                  employeeId={d.employeeId}
+                  prenom={d.prenom}
+                  fil={d.filDeLaConversation}
+                />
               </Contenu>
             ) : null}
 

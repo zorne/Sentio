@@ -13,6 +13,14 @@
 // Les questions suggérées ne sont donc pas de la décoration : ce sont
 // les rails. Un champ libre sans elles laisserait croire à un assistant
 // général, et chaque question hors piste serait vécue comme une panne.
+//
+// ══ LE FIL APPARTIENT À UNE EMPLOYÉE, ET IL SURVIT AU RECHARGEMENT ══
+//
+// Il vivait dans un `useState` et disparaissait à chaque F5 : le dirigeant
+// redemandait ce qu'il avait déjà demandé, et l'employée paraissait sans
+// mémoire — l'inverse exact de ce qu'on lui promet. Il est maintenant tenu en
+// base, sous SON identifiant : deux employées dans la même entreprise gardent
+// deux conversations distinctes, et aucune ne se souvient de l'autre.
 // ════════════════════════════════════════════════════════════════════
 
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -33,8 +41,23 @@ interface Tour {
   readonly suggestions?: readonly string[];
 }
 
-export function Conversation({ tenantId, prenom }: { tenantId: string; prenom: string }) {
-  const [tours, setTours] = useState<readonly Tour[]>([]);
+export function Conversation({
+  tenantId,
+  employeeId,
+  prenom,
+  fil,
+}: {
+  tenantId: string;
+  /** ⚠️ CETTE employée, pas « une » de l'entreprise. Voir l'en-tête : le fil lui appartient. */
+  employeeId: string;
+  prenom: string;
+  fil: readonly { auteur: "dirigeant" | "employee"; texte: string }[];
+}) {
+  // Le fil rouvert tel qu'il a été laissé. Les identifiants sont l'index : ces tours-là sont
+  // figés, et seuls ceux ajoutés ensuite ont besoin d'un identifiant qui ne se répète pas.
+  const [tours, setTours] = useState<readonly Tour[]>(() =>
+    fil.map((m, i) => ({ id: i, de: m.auteur === "dirigeant" ? "moi" : "elle", texte: m.texte })),
+  );
   const [saisie, setSaisie] = useState("");
   const [enCours, demarrer] = useTransition();
   const finRef = useRef<HTMLDivElement>(null);
@@ -53,7 +76,7 @@ export function Conversation({ tenantId, prenom }: { tenantId: string; prenom: s
     setTours((t) => [...t, { id: Date.now(), de: "moi", texte: dit }]);
 
     demarrer(async () => {
-      const r = await demanderALEmployee(tenantId, dit);
+      const r = await demanderALEmployee(tenantId, employeeId, dit);
       setTours((t) => [
         ...t,
         {
