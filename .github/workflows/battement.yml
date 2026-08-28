@@ -1,0 +1,109 @@
+# Ce qui réveille Lady.
+#
+# ══ LE CONSTAT P0-2 DE `docs/35` ══
+#
+# La fonction `battement` existe, elle est testée et signée. **Rien ne l'appelait.** Pas de
+# `pg_cron`, pas d'hébergement pour le worker, pas même un script `start`. Une employée qui
+# « travaille tout le temps » ne se réveillait jamais — et rien ne le signalait.
+#
+# ══ POURQUOI ICI, ET PAS AILLEURS ══
+#
+# Trois options existaient. Celle-ci est retenue parce qu'elle est **visible et réversible** : le
+# planificateur vit dans le dépôt, il se lit, il s'annule en supprimant un fichier. `pg_cron` aurait
+# caché la cadence dans la base, invisible depuis le code ; un worker hébergé en continu aurait été
+# une dépense mensuelle et une infrastructure de plus à surveiller, pour un produit sans client.
+#
+# ⚠️ CE QUE CE PLANIFICATEUR NE PROMET PAS, ET IL FAUT LE SAVOIR :
+#
+#   1. **GitHub ne garantit pas l'heure.** Un `schedule` peut être retardé de plusieurs minutes,
+#      voire sauté quand la plateforme est chargée. C'est acceptable pour un battement dont le
+#      travail se compte en jours ; ça ne le serait pas pour une horloge.
+#   2. **GitHub désactive un `schedule` après 60 jours sans activité sur le dépôt.** Un dépôt qui
+#      dort arrête donc Lady, silencieusement. À retenir le jour où il y aura un vrai client :
+#      c'est la raison qui fera passer à un hébergement continu.
+#
+# ══ CE QUI PROTÈGE CETTE ADRESSE ══
+#
+# La signature, et elle seule. `x-sentio-heartbeat: <millisecondes>.<HMAC-SHA256 base64url>`, avec
+# une fenêtre courte côté fonction. Sans elle, cette adresse serait un levier public pour brûler le
+# quota d'inférence de la plateforme — c'est écrit noir sur blanc dans
+# `composition.integration.test.ts`, qui l'attaque sans en-tête, avec un autre secret, et rejouée.
+#
+# ⚠️ Le secret ne vit QUE dans les secrets GitHub. Jamais dans ce fichier, jamais dans un journal.
+
+name: Battement
+
+on:
+  schedule:
+    # Toutes les dix minutes. Assez souvent pour qu'une mission ne dorme pas une journée, assez
+    # rare pour rester très en dessous du quota d'inférence — et pour qu'un défaut de configuration
+    # ne se répète pas 1 440 fois par jour dans les journaux.
+    - cron: "*/10 * * * *"
+  # Pour l'essayer à la main sans attendre le prochain quart d'heure.
+  workflow_dispatch:
+
+# ⚠️ Deux battements simultanés ne sont pas dangereux — la clé `(entreprise, employé, jour)`
+# tranche la course en base, et le perdant n'ouvre rien. Mais ils gaspillent deux invocations pour
+# un seul travail. On annule donc le précédent s'il traîne encore.
+concurrency:
+  group: battement
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  reveiller:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Réveiller l'employée
+        env:
+          URL: ${{ secrets.SENTIO_BATTEMENT_URL }}
+          SECRET: ${{ secrets.SENTIO_HEARTBEAT_SECRET }}
+        run: |
+          set -euo pipefail
+
+          # ⚠️ ON SORT SANS ERREUR SI LES SECRETS MANQUENT, ET C'EST VOULU.
+          #
+          # Tant que la fonction n'est pas déployée, ce planificateur n'a rien à appeler. Échouer
+          # toutes les dix minutes remplirait la boîte du fondateur d'alertes pour une situation
+          # normale — et le jour d'une VRAIE panne, il ne les lirait plus.
+          if [ -z "${URL}" ] || [ -z "${SECRET}" ]; then
+            echo "::notice::Battement non configuré (SENTIO_BATTEMENT_URL ou SENTIO_HEARTBEAT_SECRET absent). Rien à réveiller."
+            exit 0
+          fi
+
+          # La signature ne couvre que l'horodatage : le corps du battement est vide, il n'y a rien
+          # d'autre à protéger. Voir `packages/domain/src/heartbeat-signature.ts`.
+          horodatage="$(date +%s%3N)"
+
+          # base64url : le « + » et le « / » du base64 standard n'ont pas leur place dans un
+          # en-tête, et le remplissage « = » non plus.
+          signature="$(printf '%s' "${horodatage}" \
+            | openssl dgst -sha256 -hmac "${SECRET}" -binary \
+            | base64 \
+            | tr '+/' '-_' \
+            | tr -d '=')"
+
+          # ⚠️ On veut le CODE, pas le corps. La réponse peut contenir le détail du travail fait ;
+          # l'écrire dans un journal public de CI exposerait des noms d'entreprises.
+          code="$(curl --silent --show-error --fail-with-body \
+            --output /dev/null --write-out '%{http_code}' \
+            --max-time 120 \
+            --request POST "${URL}" \
+            --header "x-sentio-heartbeat: ${horodatage}.${signature}" \
+            --header 'content-type: application/json' \
+            --data '{}' || true)"
+
+          echo "Réponse du battement : ${code}"
+
+          # ⚠️ UN ÉCHEC DOIT ÊTRE BRUYANT. Un battement qui ne réveille personne pendant trois
+          # semaines sans que rien ne le dise est exactement le défaut que ce fichier corrige.
+          case "${code}" in
+            2*) echo "::notice::Battement accepté (${code})." ;;
+            401|403) echo "::error::Battement REFUSÉ (${code}) : la signature n'est pas acceptée. Le secret de GitHub et celui de la fonction diffèrent."; exit 1 ;;
+            404) echo "::error::Battement introuvable (404) : la fonction n'est pas déployée, ou « enabled = false » dans supabase/config.toml."; exit 1 ;;
+            000) echo "::error::Aucune réponse : adresse injoignable ou délai dépassé."; exit 1 ;;
+            *)   echo "::error::Battement en échec (${code})."; exit 1 ;;
+          esac

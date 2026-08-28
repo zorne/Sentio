@@ -179,7 +179,7 @@ export default async function EspacePage() {
   const { data: capacites } = configuration
     ? await supabase
         .from("lady_configuration_capability")
-        .select("capability(name)")
+        .select("capability(name, disponible)")
         .eq("tenant_id", tenantId)
         .eq("configuration_id", configuration.id)
     : { data: null };
@@ -331,9 +331,17 @@ export default async function EspacePage() {
     notes: { note: string; quand: string }[];
   }>("select * from avant_le_rendez_vous($1, $2)", [tenantId, 60]);
 
+  // ⚠️ LA DISPONIBILITÉ VOYAGE AVEC LE NOM, ET N'EST PAS DÉDUITE ICI.
+  //
+  // Une configuration peut activer une capacité dont le moteur n'est pas monté : le runtime la
+  // refusera (`CapabilityUnavailable`), et l'espace l'affichait pourtant comme acquise. C'est le
+  // constat P0-3 de `docs/35`. La base tranche (`capability.disponible`), un test d'intégration
+  // interdit qu'elle diverge du code, et l'écran se contente de la relayer.
   const capacitesLisibles = (capacites ?? [])
-    .map((ligne) => (ligne.capability as { name?: string } | null)?.name)
-    .filter((nom): nom is string => typeof nom === "string" && nom.trim() !== "");
+    .map((ligne) => ligne.capability as { name?: string; disponible?: boolean } | null)
+    .filter((c): c is { name: string; disponible?: boolean } =>
+      typeof c?.name === "string" && c.name.trim() !== "")
+    .map((c) => ({ nom: c.name, disponible: c.disponible === true }));
 
   // Le nom de l'entreprise n'est lu que s'il doit être affiché : une requête de plus sur un
   // écran qui n'en a pas besoin est une requête de trop.

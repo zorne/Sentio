@@ -110,12 +110,17 @@ export interface OptionsDeComposition {
  * qui rend tous les manquements d'un coup avant qu'une seule connexion ne s'ouvre.
  */
 /**
- * Les moteurs dont les effets ne sortent pas de l'entreprise.
+ * Les moteurs dont les effets ne sortent pas de l'entreprise — ceux qui sont montés par défaut.
+ *
+ * ⚠️ PUBLIQUE PARCE QU'UN TEST LA COMPARE À LA BASE. `capability.disponible` annonce au client ce
+ * qui s'exécute vraiment ; cette liste est ce qui s'exécute vraiment. Un test d'intégration exige
+ * qu'elles disent la même chose, sinon l'interface promettrait ce que le runtime refuse — c'est
+ * le constat P0-3 de `docs/35`.
  *
  * Le critère n'est pas « simple à brancher », c'est **réversible**. Une qualification erronée se
  * corrige d'un clic ; un message parti ne se rattrape pas.
  */
-function moteursInternes(sql: TransactionalSqlClient): readonly CapabilityEngine[] {
+export function moteursMontesParDefaut(sql: TransactionalSqlClient): readonly CapabilityEngine[] {
   return [
     new QualifierProspectCapability(new PostgresFichesAQualifier(sql)),
     new UpdateFicheCapability(new PostgresLeadStatusStore(sql), new JournalDesFiches(sql)),
@@ -130,7 +135,7 @@ export function composerLExecutant(
   const journal = new PostgresJournalWriter(sql);
   // Les moteurs internes sont montés par défaut. Un hôte peut en fournir d'autres — c'est ainsi
   // que les moteurs d'envoi entreront, explicitement, le jour où l'expédition sera réelle.
-  const moteursMetier = options.moteursMetier ?? moteursInternes(sql);
+  const moteursMetier = options.moteursMetier ?? moteursMontesParDefaut(sql);
   const maintenant = options.maintenant ?? (() => new Date());
 
   // ⚠️ L'ordre de cette liste EST la chaîne de repli, et il vient de la configuration

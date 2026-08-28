@@ -47,6 +47,24 @@ export interface PresentEmployeeDeps {
  *  `capability.name` en base (migration `20260729120039_adn_commercial_v1.sql`), recopiés ici
  *  plutôt que lus en base : ce module n'a pas de connexion, et ces intitulés ne changent pas
  *  sans une migration qui les changerait aussi. */
+/**
+ * ⚠️ CE QUI S'EXÉCUTE VRAIMENT AUJOURD'HUI, ET RIEN D'AUTRE.
+ *
+ * Constat P0-3 de `docs/35` : le diagnostic annonçait les cinq capacités à un visiteur qui n'a
+ * pas encore recruté, alors que trois d'entre elles n'ont aucun moteur monté — le runtime les
+ * refuse (`CapabilityUnavailable`). Promettre avant l'achat ce qu'on refusera après est la faute
+ * la plus chère du produit.
+ *
+ * ⚠️ RECOPIÉ ICI, ET C'EST UN COMPROMIS ASSUMÉ. La vérité vit en base (`capability.disponible`)
+ * et un test d'intégration l'y tient synchrone avec le code ; mais ce module n'a pas de connexion,
+ * comme le dit déjà `CAPABILITY_WORDING` juste en dessous. Le contrôle qui interdit la divergence
+ * est donc ici aussi : `presentation.test.ts` compare cette liste aux moteurs montés.
+ */
+export const CAPACITES_REELLEMENT_EXECUTABLES: readonly string[] = [
+  CAPACITES.qualifierProspect,
+  CAPACITES.mettreAJourProspect,
+];
+
 const CAPABILITY_WORDING: Record<string, string> = {
   [CAPACITES.rechercherProspect]: "repérer les entreprises à approcher",
   [CAPACITES.qualifierProspect]: "vérifier qu'un contact correspond vraiment à ce que vous vendez",
@@ -120,9 +138,21 @@ function parsePresentation(raw: unknown): EmployeePresentation | null {
 
 /** Le repli — jamais un écran d'erreur, une présentation un peu plus sobre mais tout aussi
  *  honnête, entièrement dérivée des faits que `recommend()` a déjà établis. */
+/**
+ * Ce qu'elle fera, dérivé de ce qu'elle SAIT faire aujourd'hui.
+ *
+ * Une capacité prévue par la composition mais dépourvue de moteur n'est pas annoncée : elle le
+ * sera le jour où elle marchera.
+ */
+function ceQuElleSaitFaire(calibration: Calibration): readonly string[] {
+  return calibration.capabilities
+    .filter((key) => CAPACITES_REELLEMENT_EXECUTABLES.includes(key))
+    .map((key) => CAPABILITY_WORDING[key] ?? key);
+}
+
 function fallbackPresentation(decision: RecommendedDecision): EmployeePresentation {
   const { calibration, grounds } = decision;
-  const whatTheyDo = calibration.capabilities.map((key) => CAPABILITY_WORDING[key] ?? key);
+  const whatTheyDo = ceQuElleSaitFaire(calibration);
   return {
     firstName: pickPreviewName(grounds.join("|")),
     title: TITRE_PAR_ROLE[calibration.role] ?? TITRE_GENERIQUE,
@@ -140,7 +170,15 @@ export async function presentEmployee(
   try {
     const raw = await deps.present({ calibration: decision.calibration, grounds: decision.grounds });
     const parsed = parsePresentation(raw);
-    if (parsed) return parsed;
+    // ⚠️ CE QU'ELLE SAIT FAIRE NE VIENT JAMAIS DU MODÈLE, MÊME QUAND IL RÉPOND BIEN.
+    //
+    // Le modèle rédige : le prénom, le titre, la mission, la raison, le premier pas. Il ne
+    // DÉCLARE pas ce dont le produit est capable — c'est un fait vérifiable, pas une écriture, et
+    // rien ne l'empêchait de promettre l'envoi d'emails à un visiteur qui n'a pas encore recruté.
+    //
+    // Même famille que l'invariant 4 du dépôt (aucun chiffre calculé par un modèle) : ce qui
+    // engage Sentio se lit dans le système, jamais dans une phrase engendrée.
+    if (parsed) return { ...parsed, whatTheyDo: ceQuElleSaitFaire(decision.calibration) };
   } catch {
     // Panne réseau, réponse vide : le repli prend le relais silencieusement.
   }

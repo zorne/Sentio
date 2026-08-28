@@ -1728,3 +1728,20 @@
 @media (prefers-reduced-motion: reduce) {
   .sc-orbe-point { animation: none; }
 }
+
+/* ── Une capacité configurée dont le moteur n'est pas monté ────────────────────────────────────
+   Constat P0-3 de `docs/35` : elle était affichée exactement comme les autres, alors que le
+   runtime la refuse. Elle recule, et surtout elle le DIT — l'estompage seul se lirait comme
+   « secondaire », jamais comme « ne fonctionne pas encore ». */
+.sc-capacite--dormante { opacity: 0.5; }
+.sc-capacite-etat {
+  display: block;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-style: normal;
+  color: var(--ink-3);
+  margin-top: 3px;
+}
+.sc-jalon--dormant { opacity: 0.28; }

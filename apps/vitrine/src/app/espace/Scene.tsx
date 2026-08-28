@@ -80,7 +80,15 @@ export interface DonneesDeLaScene {
   readonly role: string | null;
   readonly arreteDepuis: string | null;
   readonly autonomie: "confirm" | "confirm_once" | "auto";
-  readonly capacites: readonly string[];
+  /**
+   * Ce qu'elle sait faire, et si elle peut RÉELLEMENT le faire.
+   *
+   * ⚠️ `disponible` n'est pas cosmétique. Une capacité peut être activée dans la configuration
+   * sans que son moteur soit monté : le runtime la refuse alors franchement, et l'écran la
+   * présentait pourtant comme acquise. La base tranche (`capability.disponible`) et un test
+   * d'intégration interdit qu'elle diverge du code — constat P0-3 de `docs/35`.
+   */
+  readonly capacites: readonly { readonly nom: string; readonly disponible: boolean }[];
   readonly priorites: readonly string[];
   readonly raisonDeLaConfiguration: string | null;
   readonly objectif: { readonly cible: string; readonly metrique: string; readonly horizon: string } | null;
@@ -313,7 +321,8 @@ export function Scene(d: DonneesDeLaScene) {
               const angle = (i / Math.max(d.capacites.length, 1)) * Math.PI * 2 - Math.PI / 2;
               return (
                 <i
-                  key={capacite}
+                  key={capacite.nom}
+                  className={capacite.disponible ? undefined : "sc-jalon--dormant"}
                   style={
                     {
                       "--i": i,
@@ -347,7 +356,8 @@ export function Scene(d: DonneesDeLaScene) {
               const angle = (i / Math.max(d.capacites.length, 1)) * Math.PI * 2 - Math.PI / 2;
               return (
                 <li
-                  key={capacite}
+                  key={capacite.nom}
+                  className={capacite.disponible ? undefined : "sc-capacite--dormante"}
                   style={
                     {
                       "--i": i,
@@ -356,7 +366,13 @@ export function Scene(d: DonneesDeLaScene) {
                     } as React.CSSProperties
                   }
                 >
-                  {capacite}
+                  {capacite.nom}
+                  {/* ⚠️ DIT EN TOUTES LETTRES, pas seulement en gris. Une capacité estompée se
+                      lit comme « moins importante », jamais comme « ne marche pas encore » — et
+                      le dirigeant continuerait de l'attendre. */}
+                  {capacite.disponible ? null : (
+                    <em className="sc-capacite-etat">pas encore active</em>
+                  )}
                 </li>
               );
             })}
@@ -530,7 +546,15 @@ export function Scene(d: DonneesDeLaScene) {
                 {d.capacites.length > 0 ? (
                   <ul className="sc-capacites">
                     {d.capacites.map((capacite) => (
-                      <li key={capacite}>{capacite}</li>
+                      <li
+                        key={capacite.nom}
+                        className={capacite.disponible ? undefined : "sc-capacite--dormante"}
+                      >
+                        {capacite.nom}
+                        {capacite.disponible ? null : (
+                          <em className="sc-capacite-etat">pas encore active</em>
+                        )}
+                      </li>
                     ))}
                   </ul>
                 ) : (

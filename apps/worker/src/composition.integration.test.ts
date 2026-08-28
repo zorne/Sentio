@@ -5,7 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { composerLeWorker } from "./composition.js";
 import { demarrer } from "./main.js";
-import { LONGUEUR_MINIMALE_DU_SECRET, VARIABLES, lireLaConfiguration } from "@sentio/runtime";
+import { LONGUEUR_MINIMALE_DU_SECRET, VARIABLES, lireLaConfiguration, moteursMontesParDefaut } from "@sentio/runtime";
 import { HEARTBEAT_HEADER, signHeartbeat } from "@sentio/runtime";
 import { ROUTE_DU_BATTEMENT, demarrerLeServeur } from "./serveur.js";
 
@@ -371,4 +371,33 @@ describeIfDatabase("EXEC-18 — le worker démarre et sert un battement signé",
       Object.assign(process.env, ancien);
     }
   });
+
+  /**
+   * ⚠️ CE TEST EXISTE POUR QU'UNE COLONNE NE DEVIENNE PAS UN COMMENTAIRE QUI MENT.
+   *
+   * `capability.disponible` dit au client et au diagnostic quelles capacités s'exécutent
+   * vraiment. Cette vérité est écrite à DEUX endroits : la colonne, et la liste des moteurs
+   * montés dans `composition.ts`. Deux endroits divergent — et ici la divergence serait
+   * **silencieuse** : on ne la découvrirait qu'en écoutant un client s'étonner.
+   *
+   * Ce test rend la divergence bruyante. Monter un moteur sans le déclarer en base, ou déclarer
+   * une capacité sans monter son moteur, fait échouer `pnpm run verify`.
+   *
+   * C'est le constat P0-3 de `docs/35-audit-avant-production.md`.
+   */
+  it("ce que la base annonce comme disponible est exactement ce que le code sait exécuter", async () => {
+    const annoncees = (
+      await sql.query<{ key: string }>(
+        "select key from capability where disponible order by key",
+        [],
+      )
+    ).map((ligne) => ligne.key);
+
+    // Les moteurs réellement montés par défaut, demandés au code plutôt que recopiés : une liste
+    // recopiée ici serait un troisième endroit à tenir à jour, donc un troisième mensonge possible.
+    const montees = [...moteursMontesParDefaut(sql)].map((m) => m.capabilityKey).sort();
+
+    expect(annoncees).toEqual(montees);
+  });
+
 });
