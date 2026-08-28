@@ -52,6 +52,7 @@ describe("presentEmployee — ce qui se passe une fois la décision prise", () =
     // Ce qu'elle sait faire ne lui appartient pas : c'est un fait du système.
     expect(result.whatTheyDo).toEqual([
       "vérifier qu'un contact correspond vraiment à ce que vous vendez",
+      "repérer les entreprises à approcher",
     ]);
   });
 
@@ -87,6 +88,7 @@ describe("presentEmployee — ce qui se passe une fois la décision prise", () =
     // par le test d'intégration du worker qui la confronte à la base.
     expect(result.whatTheyDo).toEqual([
       "vérifier qu'un contact correspond vraiment à ce que vous vendez",
+      "repérer les entreprises à approcher",
     ]);
   });
 
@@ -135,12 +137,12 @@ describe("presentEmployee — ce qui se passe une fois la décision prise", () =
     expect([...CAPACITES_REELLEMENT_EXECUTABLES].sort()).toEqual([
       CAPACITES.mettreAJourProspect,
       CAPACITES.qualifierProspect,
+      CAPACITES.rechercherProspect,
     ].sort());
 
     // Et surtout : ce qui écrit à une vraie entreprise n'y est pas.
     expect(CAPACITES_REELLEMENT_EXECUTABLES).not.toContain(CAPACITES.envoyerProspect);
     expect(CAPACITES_REELLEMENT_EXECUTABLES).not.toContain(CAPACITES.relancerProspect);
-    expect(CAPACITES_REELLEMENT_EXECUTABLES).not.toContain(CAPACITES.rechercherProspect);
   });
 
 });

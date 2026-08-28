@@ -246,6 +246,31 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     expect(eligibles[0]?.id).toBe(bonne?.id);
   });
 
+  it("⭐ ouvre du travail pour un prospect SANS adresse qui n'est pas encore qualifié", async () => {
+    // ⚠️ CE TEST EST LE CONSTAT P0-1 RENDU MÉCANIQUE.
+    //
+    // L'annuaire public de l'État ne donne aucune adresse email — c'est structurel. Le filtre
+    // d'éligibilité en exigeait une : la recherche de prospects, une fois branchée, n'aurait donc
+    // ouvert aucune mission, et **rien ne l'aurait dit**. Le runtime aurait continué de tourner à
+    // vide en paraissant fonctionner.
+    //
+    // La règle juste n'est pas « a une adresse » mais « il reste quelque chose à faire ». Le cas
+    // symétrique — qualifié ET sans adresse, donc plus rien à faire — reste écarté par le test
+    // juste au-dessus, qui n'a pas été modifié.
+    const { tenantId, employeeId } = await entreprise({ prospects: 0 });
+
+    await sql.query(
+      `insert into lead (tenant_id, company_name, email, external_ref, source, qualification)
+       values ($1, 'Trouvee dans l''annuaire', null, '48250999900023', 'annuaire_public', 'nouveau')`,
+      [tenantId],
+    );
+
+    const gisement = new GisementDeProspects(sql);
+    const eligibles = await gisement.sujetsEligibles({ tenantId, employeeId, limite: 50 });
+
+    expect(eligibles).toHaveLength(1);
+  });
+
   it("n'ouvre rien pour un métier sans gisement, et ne retombe pas sur celui d'un autre", async () => {
     // Un employé du support servi avec des prospects travaillerait sur des sujets qui ne le
     // concernent pas — et le ferait sans que rien ne le signale.

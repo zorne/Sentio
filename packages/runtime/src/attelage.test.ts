@@ -153,10 +153,17 @@ describe("Une capacité sans attelage n'agit pas", () => {
   it("⭐ échoue franchement plutôt que de deviner une entrée", async () => {
     // Filet de sécurité, pas garde-fou : une capacité sans MOTEUR échoue déjà avant d'arriver
     // ici. Ce cas couvre l'inverse — un moteur enregistré dont personne n'a écrit la traduction.
-    expect(ATTELAGES.has(CAPACITES.rechercherProspect)).toBe(false);
+    //
+    // ⚠️ L'EXEMPLE A CHANGÉ LE 2026-08-28, PAS LA RÈGLE. Ce test prenait `rechercher.prospect`
+    // comme illustration d'une capacité sans attelage — elle en a un depuis que le constat P0-1
+    // a été corrigé. L'invariant vérifié est le même, mot pour mot ; il lui fallait un exemple
+    // encore vrai. Une clé inventée le restera : aucune raison ne poussera jamais à lui écrire un
+    // attelage, alors que les cinq capacités réelles finiront toutes par en avoir un.
+    const capaciteSansAttelage = "inventer.licorne";
+    expect(ATTELAGES.has(capaciteSansAttelage)).toBe(false);
 
     const moteur = moteurMuet();
-    const attele = atteler(moteur, CAPACITES.rechercherProspect, MISSION);
+    const attele = atteler(moteur, capaciteSansAttelage, MISSION);
 
     await expect(attele.execute({ limite: 10 })).rejects.toThrow(/Aucun attelage/);
     expect(moteur.execute).not.toHaveBeenCalled();

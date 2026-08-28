@@ -13,5 +13,7 @@ export * from "./email/follow-up.js";
 export * from "./email/reputation.js";
 export * from "./email/domain-auth.js";
 export * from "./prospects/import.js";
+export * from "./prospects/annuaire.js";
+export * from "./prospects/rechercher.js";
 export * from "./prospects/qualify.js";
 export * from "./prospects/update-fiche.js";

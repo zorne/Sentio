@@ -53,7 +53,21 @@ export class GisementDeProspects implements GisementDeMissions {
         where l.tenant_id = $1
           and l.status <> 'exclu'
           and l.qualification <> 'ecarte'
-          and l.email is not null
+          -- ⚠️ « SANS ADRESSE » N'EST PLUS « SANS TRAVAIL », ET C'EST LE CONSTAT P0-1.
+          --
+          -- Cette ligne exigeait une adresse email, parce que la seule source imaginée était un
+          -- fichier client et la seule action un envoi. Or l'annuaire public de l'État — la source
+          -- qui remplit enfin cette table — **ne donne aucune adresse** : c'est structurel, l'État
+          -- ne publie pas les emails des entreprises. Gardée telle quelle, cette ligne rendait la
+          -- recherche de prospects entièrement inutile, sans que rien ne le dise.
+          --
+          -- La règle juste n'est pas « a une adresse », c'est « il reste quelque chose à faire » :
+          --   · pas encore qualifié → il y a du travail, l'adresse n'y change rien ;
+          --   · qualifié et sans adresse → plus rien à faire, on ne l'ouvre pas.
+          --
+          -- Le second cas est exactement ce que garde le test « ne prend jamais un prospect exclu,
+          -- désinscrit, écarté ou sans adresse » : il reste vrai, mot pour mot.
+          and (l.email is not null or l.qualification = 'nouveau')
           -- Déjà confié à une mission de CET employé : il n'y a rien de neuf à ouvrir.
           and not exists (
             select 1 from task t

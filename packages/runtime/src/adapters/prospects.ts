@@ -1,3 +1,4 @@
+import type { EntrepriseTrouvee, RegistreDeProspects } from "@sentio/capabilities";
 /**
  * Les deux moteurs qui agissent aujourd'hui, branchés sur Postgres.
  *
@@ -145,5 +146,62 @@ export class JournalDesFiches implements FicheEventJournal {
         JSON.stringify({ leadId: input.leadId, statut: input.status, note: input.note }),
       ],
     );
+  }
+}
+
+/**
+ * L'inscription des entreprises trouvées dans l'annuaire public.
+ *
+ * ⚠️ UNE SEULE INSTRUCTION POUR TOUT LE LOT, ET C'EST CE QUI REND LE COMPTE VRAI.
+ *
+ * `on conflict do nothing` sur `(tenant_id, external_ref)` écarte ce qui est déjà connu, et
+ * `returning` ne rend que les lignes RÉELLEMENT insérées. Boucler entreprise par entreprise aurait
+ * coûté un aller-retour par ligne, et surtout aurait laissé la porte ouverte à un compte faux : ce
+ * qu'on annonce au dirigeant est ce que la base a accepté, jamais ce qu'on lui a proposé.
+ *
+ * ⚠️ `collected_at` est posé ici, et il n'est pas décoratif : c'est la date de collecte au sens du
+ * RGPD, celle qui permettra de dire au prospect quand et d'où sa fiche est venue (`docs/10`,
+ * article 14). `informed_at` reste nul : personne n'a encore été informé, parce que personne n'a
+ * encore été contacté.
+ *
+ * ⚠️ Aucune donnée personnelle n'entre ici. L'annuaire rend les dirigeants ; `annuaire.ts` ne les
+ * lit même pas, et cette requête n'a pas de colonne où les mettre.
+ */
+export class RegistreDeProspectsPostgres implements RegistreDeProspects {
+  constructor(private readonly sql: SqlClient) {}
+
+  async inscrire(input: {
+    tenantId: string;
+    entreprises: readonly EntrepriseTrouvee[];
+    motifDeSelection: string;
+  }): Promise<number> {
+    if (input.entreprises.length === 0) return 0;
+
+    const lignes = await this.sql.query<{ id: string }>(
+      `insert into lead
+         (tenant_id, company_name, sector, external_ref, source, source_detail,
+          collected_at, selection_reason)
+       select $1, e.nom, nullif(e.secteur, ''), e.reference, 'annuaire_public',
+              jsonb_build_object(
+                'annuaire', 'recherche-entreprises.api.gouv.fr',
+                'siret', e.reference,
+                'commune', nullif(e.commune, ''),
+                'code_postal', nullif(e.code_postal, '')),
+              now(), $6
+         from unnest($2::text[], $3::text[], $4::text[], $5::text[], $7::text[])
+              as e(nom, secteur, reference, commune, code_postal)
+       on conflict (tenant_id, external_ref) where external_ref is not null do nothing
+       returning id`,
+      [
+        input.tenantId,
+        input.entreprises.map((e) => e.nom),
+        input.entreprises.map((e) => e.secteur ?? ""),
+        input.entreprises.map((e) => e.reference),
+        input.entreprises.map((e) => e.commune ?? ""),
+        input.motifDeSelection,
+        input.entreprises.map((e) => e.codePostal ?? ""),
+      ],
+    );
+    return lignes.length;
   }
 }

@@ -1,5 +1,9 @@
 # 35 — Audit avant production
 
+> ✅ **Mis à jour le 2026-08-28, après corrections.** Les trois constats P0 sont traités. Ce qui
+> suit décrit l'état **au moment de l'audit** ; la section R, à la fin, dit ce qui a changé depuis
+> et ce qui reste.
+
 > **Date** : 2026-08-28 · **Périmètre** : dépôt entier, base en ligne (lecture seule), vitrine
 > publique, espace client, runtime, worker, migrations, git, sécurité.
 >
@@ -345,3 +349,88 @@ Dans cet ordre, parce que chaque étape rend la suivante vérifiable :
    éprouvée sur un envoi réel**.
 3. `SENTIO_OPTOUT_SECRET` absent rend tout lien de désinscription invalide : c'est une obligation
    légale, et elle devient bloquante au premier email.
+
+---
+
+## R. Ce qui a été corrigé, et comment c'est prouvé
+
+### P0-1 — Les prospects existent maintenant ✅
+
+Source retenue : **l'annuaire des entreprises de l'État** (`recherche-entreprises.api.gouv.fr`,
+base SIRENE). Publique, gratuite, sans clé — donc aucun secret de plus, aucune dépense, et une base
+légale limpide pour de la prospection professionnelle.
+
+⚠️ **Elle ne donne aucune adresse email**, vérifié sur l'API réelle. C'est structurel : l'État ne
+publie pas les emails. Lady **repère et qualifie** ; elle ne contacte pas. Ça tombe juste, les
+moteurs d'envoi ne sont pas montés non plus.
+
+**Deux pièges trouvés en essayant l'API pour de vrai, qu'aucune lecture de documentation n'aurait
+donnés :**
+
+1. Le filtre géographique porte sur **n'importe quel établissement**, pas sur le siège. Une
+   recherche sur Lille rend des sociétés dont le siège est à Sarcelles.
+2. Et cet établissement lillois peut être **fermé** (`etat_administratif: "F"`). Constaté sur un
+   cas réel. On exige donc l'activité aux deux niveaux, et c'est l'établissement apparié qui fait
+   l'adresse.
+
+**Trois règles d'écartement, qui sont du RGPD et non du confort** : entreprises non diffusibles
+(opposition déjà exprimée), entrepreneurs individuels (leur raison sociale est le nom d'une
+personne), dirigeants (jamais lus, aucune colonne où les mettre).
+
+**Un défaut de conception que la correction a révélé** : l'éligibilité d'un prospect exigeait une
+adresse email. Gardée telle quelle, elle rendait toute la recherche inutile **en silence**. La
+règle juste n'est pas « a une adresse » mais « il reste quelque chose à faire ».
+
+**Preuve, contre l'annuaire réel et la base locale :**
+
+```text
+RECHERCHE RÉELLE : {"status":"trouve","examinees":5,"ajoutees":5}
+  · AGENCEM RENOVATION MENUISERIE BOIS   40249151800021  43.32A   LILLE
+  · MENUISERIE TYTGAT                    41371555800016  16.29Z   LILLE
+  · MORCOS MENUISERIE                    10188676000012  00.00Z   LILLE
+  · SSP MENUISERIES                      98389738000017  43.32A   LILLE
+  · THEO MENUISERIE                      94287252400015  43.32A   LILLE
+SUJETS ÉLIGIBLES À UNE MISSION : 5
+MÊME RECHERCHE RELANCÉE : {"status":"rien_de_nouveau","examinees":5}
+```
+
+### P0-2 — Le battement est déclenché ✅ (une action reste au fondateur)
+
+Un workflow planifié (`.github/workflows/battement.yml`) appelle la fonction toutes les dix
+minutes, signée. Le calcul de signature en shell a été **prouvé identique** à `signHeartbeat` du
+dépôt avant livraison. Il sort sans erreur tant que les secrets GitHub sont absents : échouer
+toutes les dix minutes pour une situation normale apprendrait à ignorer ses alertes.
+
+⚠️ **Reste au fondateur** : `supabase/config.toml` porte `[functions.battement] enabled = false`,
+et les secrets ne sont pas posés. Les deux touchent au déploiement.
+
+### P0-3 — Plus aucune capacité fictive n'est présentée ✅
+
+`capability.disponible` dit ce qui s'exécute vraiment. **Deux gardes interdisent la divergence** :
+un test d'intégration compare la colonne aux moteurs montés (vu échouer en la faussant exprès), et
+un test unitaire garde la liste recopiée côté vitrine.
+
+⚠️ **Et le modèle n'a plus le droit de déclarer ce dont le produit est capable.** Il rédigeait
+`whatTheyDo` en texte libre : rien ne l'empêchait de promettre l'envoi d'emails à un visiteur qui
+n'a pas encore recruté. Il rédige, il ne déclare plus.
+
+### État des capacités après correction
+
+| Capacité | Moteur | État |
+|---|---|---|
+| `rechercher.prospect` | ✅ annuaire public | **RÉEL**, prouvé de bout en bout |
+| `qualifier.prospect` | ✅ interne | **RÉEL** |
+| `mettre_a_jour.prospect` | ✅ interne | **RÉEL** |
+| `envoyer.prospect` | ❌ non monté | **NON DISPONIBLE**, et dit comme tel |
+| `relancer.prospect` | ❌ non monté | **NON DISPONIBLE**, et dit comme tel |
+
+### Ce qui reste ouvert
+
+| # | Ce qui reste | Qui |
+|---|---|---|
+| 1 | Activer `[functions.battement]` et poser les 9 secrets | **Fondateur** (déploiement) |
+| 2 | `SENTIO_OPTOUT_SECRET` — bloquant au premier email réel, obligation légale | **Fondateur** |
+| 3 | Fusionner les deux passerelles de modèle (P1-1) | Moi |
+| 4 | Rendre `enabled` de `provider_credential` effectif ou le retirer (P1-4) | Moi |
+| 5 | L'espace client n'a toujours jamais été vu avec des données réelles | Les deux |
+| 6 | Webhook de paiement, purge et sauvegarde planifiées | Plus tard |

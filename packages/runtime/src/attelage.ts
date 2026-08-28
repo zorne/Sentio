@@ -61,6 +61,15 @@ export type Attelage = (
   contexte: ContexteDeMission,
 ) => unknown;
 
+/**
+ * Combien d'entreprises une seule recherche inscrit au plus.
+ *
+ * Assez pour donner du travail, assez peu pour qu'une recherche mal ciblée ne remplisse pas la
+ * liste du dirigeant de prospects qu'il devra écarter un par un. L'annuaire plafonne de toute
+ * façon à 25 par page.
+ */
+const PROSPECTS_PAR_RECHERCHE = 15;
+
 const STATUTS = new Set(["nouveau", "contacte", "repondu", "exclu"]);
 
 /**
@@ -113,6 +122,40 @@ function exigerUnProspect(contexte: ContexteDeMission, capacite: string): void {
  * qui se perd au premier ajout distrait.
  */
 export const ATTELAGES: ReadonlyMap<string, Attelage> = new Map<string, Attelage>([
+  [
+    CAPACITES.rechercherProspect,
+    (champs, contexte) => {
+      // ⚠️ CETTE CAPACITÉ N'A PAS DE PROSPECT POUR CIBLE — elle en crée. `exigerUnProspect` n'a
+      // donc pas lieu d'être ici, et l'appeler ferait échouer toute recherche : la mission qui la
+      // porte n'a pas encore de sujet.
+      n_accepterQue(champs, ["quoi", "code_postal"], CAPACITES.rechercherProspect);
+
+      // Le modèle a le droit de dire CE QU'ON CHERCHE : c'est le geste, pas la cible. Il ne peut
+      // pas dire pour quelle entreprise, ni combien.
+      const quoi = texteObligatoire(champs["quoi"], "quoi");
+
+      const codePostal = champs["code_postal"];
+      if (codePostal !== undefined) {
+        // ⚠️ Cinq chiffres, et rien d'autre. Ce champ part dans une adresse d'API : accepter du
+        // texte libre laisserait un modèle influencé par un nom d'entreprise y glisser autre
+        // chose. La borne est plus étroite que nécessaire, exprès.
+        if (typeof codePostal !== "string" || !/^[0-9]{5}$/.test(codePostal)) {
+          throw new EntreeRefusee(
+            `« ${CAPACITES.rechercherProspect} » : « code_postal » doit être cinq chiffres.`,
+          );
+        }
+      }
+
+      return {
+        tenantId: contexte.tenantId,
+        quoi,
+        ...(typeof codePostal === "string" && { codePostal }),
+        // ⚠️ LE VOLUME NE VIENT JAMAIS DU MODÈLE. Un modèle qui écrirait « limite: 5000 » ouvrirait
+        // autant de missions au battement suivant et brûlerait le quota du client en une nuit.
+        limite: PROSPECTS_PAR_RECHERCHE,
+      };
+    },
+  ],
   [
     // Le modèle décide QUOI consigner ; il ne décide pas SUR QUI.
     CAPACITES.mettreAJourProspect,

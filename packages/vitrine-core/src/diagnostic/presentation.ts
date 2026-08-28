@@ -61,6 +61,7 @@ export interface PresentEmployeeDeps {
  * est donc ici aussi : `presentation.test.ts` compare cette liste aux moteurs montés.
  */
 export const CAPACITES_REELLEMENT_EXECUTABLES: readonly string[] = [
+  CAPACITES.rechercherProspect,
   CAPACITES.qualifierProspect,
   CAPACITES.mettreAJourProspect,
 ];

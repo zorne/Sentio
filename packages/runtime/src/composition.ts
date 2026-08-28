@@ -26,7 +26,8 @@
  *
  * Montés par défaut, parce que leurs effets sont **internes et réversibles** :
  *
- *   · `qualifier.prospect`    — décide si un prospect correspond à ce que le client vend ;
+ *   · `rechercher.prospect`    — inscrit des entreprises tirées de l'annuaire PUBLIC de l'État ;
+ *   · `qualifier.prospect`     — décide si un prospect correspond à ce que le client vend ;
  *   · `mettre_a_jour.prospect` — consigne l'état de la relation.
  *
  * ⚠️ **Pas montés, et ce n'est pas un oubli** : `envoyer.prospect` et `relancer.prospect`. Leur
@@ -44,7 +45,12 @@
  * Réalise : EXEC-18
  */
 
-import { QualifierProspectCapability, UpdateFicheCapability } from "@sentio/capabilities";
+import {
+  AnnuaireDeLEtat,
+  QualifierProspectCapability,
+  RechercherProspectsCapability,
+  UpdateFicheCapability,
+} from "@sentio/capabilities";
 import { ModelGateway, OpenAICompatibleProvider, PolicyEngine, type CapabilityEngine } from "@sentio/core";
 
 import { PostgresApprovisionnementStore, RegistreDeGisementsEnMemoire } from "./adapters/approvisionnement.js";
@@ -52,6 +58,7 @@ import {
   JournalDesFiches,
   PostgresFichesAQualifier,
   PostgresLeadStatusStore,
+  RegistreDeProspectsPostgres,
 } from "./adapters/prospects.js";
 import { PostgresApprovalStore } from "./adapters/approvals.js";
 import { chargerLeRegistre } from "./adapters/capacites.js";
@@ -122,6 +129,10 @@ export interface OptionsDeComposition {
  */
 export function moteursMontesParDefaut(sql: TransactionalSqlClient): readonly CapabilityEngine[] {
   return [
+    // ⚠️ Le premier maillon de toute la chaîne : sans lui, `lead` reste vide et aucune mission ne
+    // peut s'ouvrir. Il lit une base PUBLIQUE de l'État et écrit chez le client — rien ne sort de
+    // chez lui, et une entreprise inscrite à tort s'écarte d'un clic. Constat P0-1 de `docs/35`.
+    new RechercherProspectsCapability(new AnnuaireDeLEtat(), new RegistreDeProspectsPostgres(sql)),
     new QualifierProspectCapability(new PostgresFichesAQualifier(sql)),
     new UpdateFicheCapability(new PostgresLeadStatusStore(sql), new JournalDesFiches(sql)),
   ];
