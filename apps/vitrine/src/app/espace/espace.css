@@ -22,7 +22,7 @@
    jour et qui se rejoue douze fois devient une page qu'on n'ouvre plus.
    ════════════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..600;1,6..72,200..600&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 /* ⚠️ Les jetons sont posés sur la scène ET sur le tiroir. Le tiroir est
    bien un enfant de la scène dans l'application — mais une variable CSS
@@ -42,7 +42,7 @@
   --mint-line: rgba(46, 230, 245, 0.32);
   --amber: #f5c451;
   --amber-line: rgba(245, 196, 81, 0.32);
-  --serif: 'Instrument Serif', Georgia, serif;
+  --serif: 'Newsreader', Georgia, 'Times New Roman', serif;
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -915,7 +915,7 @@
   letter-spacing: -0.03em;
 }
 .sc-chiffre span {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--sans);
   font-size: 0.85rem;
   color: var(--ink-3);
   margin-left: 0.4rem;

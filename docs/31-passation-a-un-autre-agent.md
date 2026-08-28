@@ -80,6 +80,7 @@
 | 2026-08-27 | **La forme qui se précise** — la conversation montre enfin ce qu'elle produit (`FormeQuiSePrecise.tsx`) | Elle **ne ment pas** : le moteur seul sait quand il en sait assez, donc on montre le NOMBRE D'ÉCHANGES, pas un pourcentage inventé. Et elle **ne bouge que quand le dirigeant a parlé**. Deux formes rejetées, raisons en piège 22 |
 | 2026-08-28 | **Chaque employée a sa conversation, et ses chiffres sont les siens** (`20260815120041`, règle 8 des frontières, LADY-AI) | Le chat recevait l'entreprise puis cherchait une employée avec `limit 1` **sans `order by`**, indépendamment de celle qu'affichait la page. Et les trois fonctions de comptes agrégeaient toute l'entreprise : deux employées, et chacune s'attribuait le travail de l'autre **à la première personne**. ⚠️ Le contrôle de frontières a menti au passage (piège 23) |
 | 2026-08-28 | **Le diagnostic devient une vraie discussion**, et une question sur deux était COUPÉE | `finish_reason` n'était jamais lu : un modèle arrêté par le plafond rendait son début de phrase, affiché tel quel. Cause : le passage à un modèle à **raisonnement**, qui dépense des jetons à réfléchir sur le même budget. ⚠️ Aucun journal ne le disait — piège 25 |
+| 2026-08-28 | **La typographie change** : `Newsreader` remplace `Instrument Serif`, `Instrument Sans` remplace `Inter` | ⚠️ Ce n'est pas un goût : `Instrument Serif` est une police d'**affichage**, et elle composait les messages de Lady à 19 px. `Newsreader` a un axe optique, donc un seul dessin tient le titre ET la lecture. `--sans` est désormais déclaré à UN seul endroit (`globals.css`) |
 
 ---
 
@@ -583,6 +584,32 @@ un dégradé de masquage. Sans lui, le premier message se superpose au logo — 
 
 Et la figure des anneaux (`FormeQuiSePrecise`) ne vit plus que sur l'écran d'ouverture : derrière
 des messages, elle devenait une texture sale.
+
+
+### La typographie, et pourquoi elle a changé le 2026-08-28
+
+Trois familles, chacune avec un rôle qui ne se prête pas :
+
+| Jeton | Famille | Ce qu'elle porte |
+|---|---|---|
+| `--serif` | **Newsreader** | La voix humaine : titres, et tout ce que Lady dit |
+| `--sans` | **Instrument Sans** | L'interface : boutons, champs, notes |
+| `--mono` | IBM Plex Mono | Les étiquettes seules, jamais une phrase |
+
+⚠️ **Le remplacement ne vient pas d'un goût.** `Instrument Serif` est une police d'AFFICHAGE :
+dessinée pour les grandes tailles, déliés fins, chasse serrée. Magnifique dans le titre d'accueil
+— et elle composait aussi les messages de Lady à 19 px, où ses pleins et déliés se cassent.
+
+`Newsreader` porte les deux parce qu'elle a un **axe optique** (`opsz`) : le même dessin s'épaissit
+et s'ouvre en petit corps, se resserre en grand. Une seule voix, sans sacrifier ni le titre ni la
+lecture.
+
+`Inter` cède la place à `Instrument Sans` pour une raison plus simple : Inter est la police par
+défaut de tout ce qui se construit aujourd'hui. Correcte, et parfaitement anonyme.
+
+⚠️ **`--sans` est déclaré dans `globals.css`, et NULLE PART AILLEURS.** Il l'était à deux endroits
+— dans les jetons de la landing et en dur sur le corps du document. Deux vérités pour une même
+chose divergent au premier changement, sans que rien ne le signale.
 
 ## 7. Comment travailler
 
