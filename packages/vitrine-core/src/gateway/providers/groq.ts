@@ -244,6 +244,13 @@ export class GroqProvider implements ModelProvider {
 
     const body: Record<string, unknown> = {
       model,
+      // ⚠️ Les modèles « gpt-oss » RAISONNENT avant d'écrire, et ce raisonnement se paie sur le
+      // même budget de jetons que la réponse. Mesuré le 2026-08-28 : 111 jetons de raisonnement
+      // par défaut contre 8 en effort bas, sur la même question. Sur un premier contact, ce
+      // raisonnement n'améliore pas une question de deux lignes — il la mange, et il la ralentit.
+      //
+      // ⚠️ Envoyé UNIQUEMENT aux modèles qui le comprennent : ailleurs, ce champ fait un 400.
+      ...(model.includes("gpt-oss") ? { reasoning_effort: "low" } : {}),
       messages,
       max_tokens: req.maxTokens ?? 4096,
     };
@@ -274,6 +281,7 @@ export class GroqProvider implements ModelProvider {
 
     const data = (await res.json()) as {
       choices?: Array<{
+        finish_reason?: string;
         message?: {
           content?: string | null;
           tool_calls?: Array<{ function: { name: string; arguments: string } }>;
@@ -285,8 +293,21 @@ export class GroqProvider implements ModelProvider {
     const msg = data.choices?.[0]?.message;
     const rawToolCalls = msg?.tool_calls ?? [];
 
+    // ⚠️ UNE PHRASE COUPÉE NE DOIT JAMAIS ÊTRE RENDUE COMME UNE PHRASE ENTIÈRE.
+    //
+    // `finish_reason` n'était pas lu. Un modèle arrêté par le plafond de jetons rendait donc son
+    // début de phrase, et l'écran l'affichait tel quel : un visiteur a vu Lady lui demander
+    // « … et vous ne relancez aujourd'hui que la moitié, faute de ». Ce n'est pas une panne
+    // visible — c'est pire, le produit a l'air de délirer, et rien dans les journaux ne le dit.
+    //
+    // Vu pour de vrai le 2026-08-28, après le passage à un modèle à RAISONNEMENT : celui-ci
+    // dépense des jetons à réfléchir avant d'écrire, et le budget avait été taillé pour un modèle
+    // qui n'en dépense aucun.
+    const texte = msg?.content ?? "";
+    const coupe = data.choices?.[0]?.finish_reason === "length";
+
     return {
-      text: msg?.content ?? "",
+      text: coupe ? jusqu_a_la_derniere_phrase_entiere(texte) : texte,
       toolCalls: rawToolCalls.map((tc) => {
         let input: unknown = {};
         try {
@@ -306,4 +327,18 @@ export class GroqProvider implements ModelProvider {
       },
     };
   }
+}
+
+/**
+ * Ce qui reste d'un texte tronqué quand on retire la phrase inachevée.
+ *
+ * ⚠️ Rendre une chaîne VIDE plutôt qu'un fragment est délibéré. L'appelant sait traiter une
+ * absence de réponse — il a un repli et un message honnête. Il ne sait pas traiter une phrase qui
+ * s'arrête au milieu : il l'affiche, et c'est le dirigeant qui découvre le défaut.
+ */
+function jusqu_a_la_derniere_phrase_entiere(texte: string): string {
+  // Le point d'interrogation compte autant que le point : le diagnostic POSE des questions, et
+  // couper après « ? » est précisément le cas courant ici.
+  const fin = Math.max(texte.lastIndexOf("."), texte.lastIndexOf("?"), texte.lastIndexOf("!"));
+  return fin === -1 ? "" : texte.slice(0, fin + 1).trim();
 }

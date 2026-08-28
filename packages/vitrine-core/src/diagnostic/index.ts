@@ -180,7 +180,11 @@ export function createModelConverse(gateway: ModelGateway): DiagnosticStepDeps["
       system: buildDiagnosticSystemPrompt(hint),
       messages,
       tools: [EXTRACTION_TOOL],
-      maxTokens: 500,
+      // ⚠️ TAILLÉ POUR UN MODÈLE QUI RAISONNE. 500 suffisaient à l'ancien modèle, qui écrivait
+      // directement ; celui d'aujourd'hui réfléchit d'abord, sur le même budget, et sa question
+      // se faisait couper en plein milieu. L'effort de raisonnement est déjà bas côté fournisseur
+      // — cette marge est la seconde sécurité, pour que le plafond ne décide jamais du texte.
+      maxTokens: 1200,
     });
 
     const call = result.toolCalls.find((c) => c.name === EXTRACTION_TOOL.name);
@@ -207,7 +211,7 @@ export function createModelPresent(gateway: ModelGateway): PresentEmployeeDeps["
         },
       ],
       tools: [PRESENTATION_TOOL],
-      maxTokens: 600,
+      maxTokens: 1400,
     });
 
     const call = result.toolCalls.find((c) => c.name === PRESENTATION_TOOL.name);

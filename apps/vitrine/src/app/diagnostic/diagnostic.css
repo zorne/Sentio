@@ -12,10 +12,14 @@
 .diag-page {
   min-height: 100svh; background: var(--void); color: var(--ink);
   display: flex; flex-direction: column; align-items: center;
-  /* ⚠️ `safe center` et non `center` : sur un écran court, un centrage strict coupe le HAUT,
-     et c'est la question qui disparaît. Piège 14 de `docs/31`, déjà payé une fois. */
-  justify-content: safe center;
-  padding: 110px 24px 70px;
+  /* ⚠️ PLUS DE CENTRAGE VERTICAL, ET PLUS DE MARGE INTÉRIEURE ICI. La page portait une seule
+     ligne centrée ; elle porte maintenant une discussion, qui gère elle-même ses trois zones
+     (`.dx`). Un centrage sur un contenu qui grandit finit par le pousser hors de l'écran par le
+     haut — c'est ce qui faisait passer les messages par-dessus le logo.
+
+     Le piège 14 (`safe center`) devient sans objet : plus rien n'est centré verticalement. */
+  justify-content: flex-start;
+  padding: 0;
   position: relative;
   overflow: hidden;
 }
@@ -263,4 +267,196 @@
 
 @media (prefers-reduced-motion: reduce) {
   .diag-forme circle { transition: none; }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════════════════
+   LA DISCUSSION — 2026-08-28
+
+   Demande du fondateur : *« je veux une vraie discussion, une interface qui ressemble à la
+   nôtre. »* Ce qui précède centrait UNE ligne à l'écran et faisait reculer le passé ; ça tenait
+   tant que la conversation faisait deux tours, et ça débordait par-dessus le logo au troisième.
+
+   ══ TROIS RÈGLES DE MISE EN PAGE ══
+
+   1. **Trois zones, et la hauteur est fixe.** L'en-tête ne bouge pas, le fil défile, la saisie
+      reste en bas. Un centrage vertical ne tient pas une conversation : dès que le contenu
+      dépasse l'écran, il sort par le haut.
+   2. **Ce qu'il dit porte une surface, ce qu'elle dit n'en porte pas.** Deux bulles se
+      ressembleraient ; là, on sait qui parle sans lire. C'est aussi ce qui distingue une
+      conversation d'une messagerie : elle n'est pas un contact, elle est la page.
+   3. **La largeur de lecture est bornée.** Au-delà d'environ 70 caractères, l'œil perd la ligne
+      suivante — sur un écran large, un fil pleine largeur devient illisible.
+   ════════════════════════════════════════════════════════════════════════════════════════════ */
+
+.dx {
+  /* La hauteur du volet, moins l'en-tête fixe. `svh` et non `vh` : sur mobile, la barre du
+     navigateur mangeait la ligne de saisie, qui est justement ce qu'on doit atteindre. */
+  height: 100svh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* ⚠️ LE FIL DÉFILE SOUS LE LOGO, ET IL FAUT LE MASQUER. Sans ce fondu, le premier message passe
+   derrière « Sentio » et les deux textes se superposent — vu à l'écran, illisible. Le bas a le
+   même traitement, pour la même raison. */
+.dx::before {
+  content: "";
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 96px;
+  background: linear-gradient(to bottom, var(--void) 42%, transparent);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.dx-fil {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 104px 24px 26px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.dx-tour {
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+  animation: lp-rise 0.5s var(--ease);
+}
+.dx-tour--moi { align-items: flex-end; }
+.dx-tour--elle { align-items: flex-start; }
+
+/* Son nom, une fois par prise de parole. En petites capitales : il situe sans jamais se lire
+   avant ce qu'elle dit. */
+.dx-qui {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 7px;
+}
+
+.dx-texte {
+  font-size: 16px;
+  line-height: 1.62;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
+}
+
+/* Ce qu'elle dit : nu, sérif, la voix de la page. */
+.dx-tour--elle .dx-texte {
+  font-family: var(--serif);
+  font-size: 19px;
+  line-height: 1.5;
+  color: var(--ink);
+  max-width: 62ch;
+}
+
+/* Ce qu'il dit : posé sur une surface, à droite, plus discret. C'est une relecture, pas le
+   propos principal. */
+.dx-tour--moi .dx-texte {
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--line);
+  border-radius: 16px 16px 5px 16px;
+  padding: 11px 16px;
+  color: var(--ink-2);
+  max-width: 52ch;
+}
+
+/* Elle cherche. Trois points, à sa place dans le fil. */
+.dx-cherche { display: inline-flex; gap: 6px; align-items: center; height: 26px; }
+.dx-cherche i {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--ink-3);
+  animation: lp-pulse 1.25s var(--ease) infinite;
+}
+.dx-cherche i:nth-child(2) { animation-delay: 0.16s; }
+.dx-cherche i:nth-child(3) { animation-delay: 0.32s; }
+
+/* ── Le bas : la saisie, et la phrase sur les données ─────────────────────────────────────── */
+
+.dx-bas {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 24px 22px;
+  /* Le fil passe DERRIÈRE la saisie en défilant ; ce dégradé évite qu'un message s'y coupe net. */
+  background: linear-gradient(to bottom, transparent, var(--void) 22px);
+  position: relative;
+  z-index: 2;
+}
+
+.dx-saisie {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 10px 10px 10px 18px;
+  transition: border-color 0.3s var(--ease), background 0.3s var(--ease);
+}
+.dx-saisie:focus-within {
+  border-color: rgba(190, 240, 220, 0.28);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.dx-champ {
+  flex: 1;
+  background: none; border: none; outline: none; resize: none;
+  color: var(--ink);
+  font-family: inherit; font-size: 16px; line-height: 1.55;
+  /* Le champ grandit avec le texte (voir le composant), mais il s'arrête : au-delà, c'est le fil
+     qu'on ne voit plus, et on écrit sans savoir à quoi on répond. */
+  max-height: 168px;
+  overflow-y: auto;
+  padding: 6px 0;
+}
+.dx-champ::placeholder { color: var(--ink-3); }
+.dx-champ:disabled { opacity: 0.5; }
+
+.dx-envoyer {
+  flex: 0 0 auto;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--ink);
+  color: var(--void);
+  display: grid; place-items: center;
+  cursor: pointer;
+  transition: opacity 0.25s var(--ease), transform 0.25s var(--ease);
+}
+.dx-envoyer:hover:not(:disabled) { transform: translateY(-1px); }
+/* ⚠️ Il reste VISIBLE quand il est inactif, seulement affaibli. Un bouton d'envoi qui disparaît
+   tant qu'on n'a pas écrit laisse croire qu'il n'y a pas d'envoi. */
+.dx-envoyer:disabled { opacity: 0.28; cursor: default; }
+
+.dx-donnees {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  text-align: center;
+  margin: 12px auto 0;
+  max-width: 56ch;
+}
+
+@media (max-width: 640px) {
+  .dx-fil { padding: 92px 16px 20px; gap: 22px; }
+  .dx-bas { padding: 0 16px 16px; }
+  .dx-tour--elle .dx-texte { font-size: 17px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dx-tour { animation: none; }
+  .dx-cherche i { animation: none; opacity: 0.6; }
 }

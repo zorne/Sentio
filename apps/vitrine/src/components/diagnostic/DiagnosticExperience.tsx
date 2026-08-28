@@ -6,16 +6,27 @@
 // l'impression de configurer un logiciel. Il doit avoir l'impression
 // que Sentio réfléchit à son entreprise.
 //
-// Ce que ce composant REFUSE, volontairement :
-//   · un formulaire déguisé en chat (aucun champ nommé, aucune étape
-//     numérotée, aucun choix de catégorie/secteur imposé en premier) ;
-//   · un historique façon SaaS (bulles gauche/droite, avatars,
-//     horodatages) — les échanges passés s'estompent en une traînée
-//     discrète, pas un journal ;
-//   · tout mot technique visible (« IA », « prompt », « modèle »).
+// ⚠️ 2026-08-28 — C'EST UNE VRAIE DISCUSSION, ET C'EST UN RENVERSEMENT ASSUMÉ.
 //
-// Une seule ligne de Sentio est à l'écran à la fois, grande, sérif —
-// le même vocabulaire visuel que le Seuil de la landing (lp-th-title).
+// Ce fichier a longtemps REFUSÉ le fil de discussion : une seule ligne
+// de Sentio à l'écran, grande, sérif, et le passé qui s'estompait en
+// traînée. L'intention était bonne — ne pas ressembler à un formulaire.
+// Elle a échoué à l'usage, pour deux raisons vues à l'écran :
+//
+//   1. le dirigeant ne pouvait pas RELIRE ce qu'il venait de dire, alors
+//      qu'on lui demande de raconter son entreprise en plusieurs fois ;
+//   2. la traînée grandissait au-delà de l'écran et passait par-dessus
+//      le logo — un centrage vertical ne tient pas une conversation.
+//
+// Demande du fondateur : *« je veux que ce soit une vraie discussion,
+// que l'interface ressemble à la nôtre, à une discussion avec Claude. »*
+//
+// Donc : un fil qui s'empile, ce qu'il a dit à droite, ce qu'elle
+// répond à gauche, la saisie en bas, le fil qui défile. Ce qui est
+// GARDÉ de l'ancienne intention : aucun avatar, aucun horodatage,
+// aucune étape numérotée, aucun mot technique — la forme est celle
+// d'une conversation, pas d'un tableau de bord.
+//
 // La présentation finale rompt délibérément avec tout ce qui précède :
 // c'est le moment que toute la conversation prépare.
 //
@@ -35,7 +46,8 @@ const OUVERTURE = "Parlez-moi de votre entreprise.";
 const EXEMPLE_PLACEHOLDER =
   "Ex. : une menuiserie de 8 personnes, on perd des devis faute de relance…";
 
-type Exchange = { readonly question: string; readonly answer: string };
+/** Un tour de la discussion. « elle » est Lady, « moi » le dirigeant. */
+type Message = { readonly de: "elle" | "moi"; readonly texte: string };
 
 type Phase =
   | { readonly kind: "conversation" }
@@ -49,12 +61,23 @@ type Phase =
   | { readonly kind: "limite"; readonly message: string };
 
 export function DiagnosticExperience() {
-  const [trail, setTrail] = useState<Exchange[]>([]);
-  const [prompt, setPrompt] = useState(OUVERTURE);
+  const [messages, setMessages] = useState<readonly Message[]>([
+    { de: "elle", texte: OUVERTURE },
+  ]);
   const [value, setValue] = useState("");
   const [phase, setPhase] = useState<Phase>({ kind: "conversation" });
   const historyRef = useRef<DiagnosticMessage[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const finRef = useRef<HTMLDivElement>(null);
+
+  /** Combien de fois le dirigeant a répondu. Sert au décor d'ouverture, pas au comptage. */
+  const repliques = messages.filter((m) => m.de === "moi").length;
+
+  // Le fil suit toujours sa dernière ligne. Sans ça, la réponse arrive hors de l'écran et
+  // l'échange donne l'impression de n'avoir rien produit.
+  useEffect(() => {
+    finRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, phase]);
 
   useEffect(() => {
     textareaRef.current?.focus();
@@ -80,28 +103,28 @@ export function DiagnosticExperience() {
     const answer = value.trim();
     if (answer === "" || phase.kind === "thinking") return;
 
-    const askedPrompt = prompt;
     const previousHistory = historyRef.current;
     historyRef.current = [...previousHistory, { role: "user", content: answer }];
     setValue("");
+    // ⚠️ Affiché AVANT l'appel. Dans une discussion, ce qu'on vient d'envoyer doit apparaître
+    // immédiatement : attendre la réponse pour montrer sa propre phrase donne l'impression que
+    // l'envoi n'a pas marché, et fait recommencer.
+    setMessages((m) => [...m, { de: "moi", texte: answer }]);
     setPhase({ kind: "thinking" });
 
     const result = await diagnosticTurn(historyRef.current);
 
     if (result.kind === "message") {
       historyRef.current = [...historyRef.current, { role: "assistant", content: result.reply }];
-      setTrail((t) => [...t, { question: askedPrompt, answer }]);
-      setPrompt(result.reply);
+      setMessages((m) => [...m, { de: "elle", texte: result.reply }]);
       setPhase({ kind: "conversation" });
       return;
     }
     if (result.kind === "presentation") {
-      setTrail((t) => [...t, { question: askedPrompt, answer }]);
       setPhase({ kind: "presentation", presentation: result.presentation, profil: result.profil });
       return;
     }
     if (result.kind === "hors_perimetre") {
-      setTrail((t) => [...t, { question: askedPrompt, answer }]);
       setPhase({ kind: "hors_perimetre", reason: result.reason });
       return;
     }
@@ -115,7 +138,9 @@ export function DiagnosticExperience() {
     // retire le message qui n'a pas abouti de l'historique et on la remet dans le champ.
     historyRef.current = previousHistory;
     setValue(answer);
-    setPrompt(result.message);
+    // ⚠️ Le message est RETIRÉ du fil, pas doublé : sa phrase revient dans le champ, donc la
+    // laisser aussi à l'écran la lui ferait envoyer deux fois.
+    setMessages((m) => [...m.slice(0, -1), { de: "elle", texte: result.message }]);
     setPhase({ kind: "conversation" });
   }
 
@@ -153,74 +178,84 @@ export function DiagnosticExperience() {
   }
 
   return (
-    <div className="diag-stage">
-      {/* ⚠️ Elle est DERRIÈRE, et elle ne bouge qu'à chaque réponse. Voir le composant : ce qui
-          se passe à l'écran pendant qu'on parle doit venir de ce qui vient d'être dit, jamais
-          d'une animation qui vit toute seule. */}
-      <FormeQuiSePrecise etapes={trail.length} />
+    <div className="dx">
+      {/* ⚠️ La figure ne vit QUE sur l'ouverture. Derrière un fil de discussion, elle passerait
+          sous les messages et deviendrait une texture sale ; sur l'écran d'accueil, encore vide,
+          elle donne un centre à une page qui n'a qu'une phrase. Elle s'efface dès qu'on parle. */}
+      {repliques === 0 ? <FormeQuiSePrecise etapes={0} /> : null}
 
-      {trail.length > 0 && (
-        <div className="diag-trail" aria-hidden="true">
-          {trail.slice(-3).map((ex, i, arr) => (
-            <div className="diag-trail-item" key={i} style={{ opacity: 0.28 + (i / arr.length) * 0.3 }}>
-              <p className="diag-trail-q">{ex.question}</p>
-              <p className="diag-trail-a">{ex.answer}</p>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="dx-fil">
+        {messages.map((m, i) => (
+          <div key={i} className={`dx-tour dx-tour--${m.de}`}>
+            {/* Elle est nommée UNE fois par prise de parole, jamais par bulle : c'est ce qui
+                distingue une conversation d'un journal de messagerie. */}
+            {m.de === "elle" ? <span className="dx-qui">Lady</span> : null}
+            <p className="dx-texte">{m.texte}</p>
+          </div>
+        ))}
 
-      {phase.kind === "thinking" ? (
-        <div className="diag-thinking" key="thinking">
-          <span />
-          <span />
-          <span />
-        </div>
-      ) : (
-        <p className="diag-line" key={prompt}>
-          {prompt}
-        </p>
-      )}
+        {/* Elle cherche : trois points, à sa place dans le fil. Une attente muette se lit comme
+            une panne, et une attente affichée ailleurs qu'à sa place dans le fil se lit comme un
+            chargement de page. */}
+        {phase.kind === "thinking" ? (
+          <div className="dx-tour dx-tour--elle">
+            <span className="dx-qui">Lady</span>
+            <span className="dx-cherche" aria-label="Lady réfléchit">
+              <i /><i /><i />
+            </span>
+          </div>
+        ) : null}
 
-      <div className="diag-input-row">
-        <textarea
-          ref={textareaRef}
-          className="diag-input"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={onKeyDown}
-          placeholder={trail.length === 0 ? EXEMPLE_PLACEHOLDER : "Écrivez votre réponse…"}
-          rows={1}
-          disabled={phase.kind === "thinking"}
-        />
-        <button
-          className="diag-send"
-          onClick={submit}
-          disabled={phase.kind === "thinking" || value.trim() === ""}
-          aria-label="Envoyer"
-        >
-          →
-        </button>
+        <div ref={finRef} />
       </div>
-      {/* ⚠️ UNE SEULE PHRASE, ET ELLE RESTE VISIBLE TOUT DU LONG.
-          Il y en avait deux : une réassurance générale, et un indice qui disait presque la même
-          chose sous une autre forme. Deux textes qui se répètent sous une ligne de saisie ne
-          rassurent pas deux fois, ils font douter du premier.
 
-          Celle qui reste est la plus PRÉCISE pour ce moment-là : rien n'est conservé tant qu'il
-          n'a pas recruté, et ce qu'il dit sert tout de suite. La promesse générale sur les
-          données vit ailleurs, là où elle est vraie autrement : sur l'accueil, au choix de la
-          formule, dans l'email.
+      <div className="dx-bas">
+        <div className="dx-saisie">
+          <textarea
+            ref={textareaRef}
+            className="dx-champ"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder={repliques === 0 ? EXEMPLE_PLACEHOLDER : "Écrivez votre réponse…"}
+            rows={1}
+            disabled={phase.kind === "thinking"}
+          />
+          <button
+            className="dx-envoyer"
+            onClick={submit}
+            disabled={phase.kind === "thinking" || value.trim() === ""}
+            aria-label="Envoyer"
+          >
+            <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
+              <path
+                d="M12 19V5m0 0l-6 6m6-6l6 6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
 
-          Et elle ne disparaît plus après la première réponse. Elle disparaissait exactement au
-          moment où il commençait à en dire le plus. */}
-      <p className="diag-donnees">
-        Rien n&apos;est conservé tant que vous n&apos;avez pas recruté. Ce que vous dites sert
-        tout de suite, et uniquement, à composer l&apos;employé qu&apos;on va vous présenter.
-      </p>
+        {/* ⚠️ UNE SEULE PHRASE, ET ELLE RESTE VISIBLE TOUT DU LONG.
+            Il y en avait deux : une réassurance générale, et un indice qui disait presque la même
+            chose sous une autre forme. Deux textes qui se répètent sous une ligne de saisie ne
+            rassurent pas deux fois, ils font douter du premier.
+
+            Celle qui reste est la plus PRÉCISE pour ce moment-là. Et elle ne disparaît pas après
+            la première réponse : elle disparaissait exactement au moment où il en disait le plus. */}
+        <p className="dx-donnees">
+          Rien n&apos;est conservé tant que vous n&apos;avez pas recruté. Ce que vous dites sert
+          tout de suite, et uniquement, à composer l&apos;employé qu&apos;on va vous présenter.
+        </p>
+      </div>
     </div>
   );
 }
+
 
 function Presentation({
   presentation,

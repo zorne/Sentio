@@ -79,6 +79,7 @@
 | 2026-08-27 | **Le locataire de démonstration n'existe plus** (constat B10 refermé) | N'importe quel visiteur inscrit pouvait y lancer un vrai cycle et LIRE ce que les autres y avaient fait. Une exception d'accès qui survit à sa fonctionnalité est un trou |
 | 2026-08-27 | **La forme qui se précise** — la conversation montre enfin ce qu'elle produit (`FormeQuiSePrecise.tsx`) | Elle **ne ment pas** : le moteur seul sait quand il en sait assez, donc on montre le NOMBRE D'ÉCHANGES, pas un pourcentage inventé. Et elle **ne bouge que quand le dirigeant a parlé**. Deux formes rejetées, raisons en piège 22 |
 | 2026-08-28 | **Chaque employée a sa conversation, et ses chiffres sont les siens** (`20260815120041`, règle 8 des frontières, LADY-AI) | Le chat recevait l'entreprise puis cherchait une employée avec `limit 1` **sans `order by`**, indépendamment de celle qu'affichait la page. Et les trois fonctions de comptes agrégeaient toute l'entreprise : deux employées, et chacune s'attribuait le travail de l'autre **à la première personne**. ⚠️ Le contrôle de frontières a menti au passage (piège 23) |
+| 2026-08-28 | **Le diagnostic devient une vraie discussion**, et une question sur deux était COUPÉE | `finish_reason` n'était jamais lu : un modèle arrêté par le plafond rendait son début de phrase, affiché tel quel. Cause : le passage à un modèle à **raisonnement**, qui dépense des jetons à réfléchir sur le même budget. ⚠️ Aucun journal ne le disait — piège 25 |
 
 ---
 
@@ -537,6 +538,51 @@ Ce qui le tient désormais : `p_employee` (facultatif, `null` = toute l'entrepri
 d'avant gardent leur sens), la **règle 8** des frontières, et **LADY-AI** — qui a été vu échouer sur
 l'ancien comportement (`rendez-vous 0 -> 1, missions agies 3 -> 4`), pas seulement passer sur le
 nouveau.
+
+
+### Piège 25 — un modèle à raisonnement mange le budget de sa propre réponse
+
+Vu à l'écran le 2026-08-28, sur le diagnostic public. Lady demandait au visiteur :
+
+> « … et vous ne relancez aujourd'hui que la moitié, faute de »
+
+La phrase s'arrêtait là. Le produit n'avait pas l'air en panne — il avait l'air de **délirer**, ce
+qui est pire, et **rien dans les journaux ne le signalait**.
+
+**Deux causes, et la seconde est la vraie.**
+
+1. Le 2026-08-27, la chaîne est passée à `openai/gpt-oss-120b`. Ce modèle RAISONNE avant d'écrire,
+   et ce raisonnement se paie sur le **même** `max_tokens` que la réponse. Mesuré : 111 jetons de
+   raisonnement par défaut contre **8** en `reasoning_effort: "low"`, sur la même question. Le
+   budget du diagnostic (500) avait été taillé pour un modèle qui n'en dépensait aucun.
+2. ⚠️ **`finish_reason` n'était jamais lu.** Le fournisseur rendait donc `message.content` tel
+   quel, tronqué ou non, et l'écran affichait un fragment comme une phrase entière. C'est ça, le
+   vrai défaut : le budget est un réglage, l'absence de contrôle est une faille.
+
+Ce qui tient maintenant : `reasoning_effort: "low"` (uniquement pour les modèles `gpt-oss`, ce
+champ fait un 400 ailleurs), un budget élargi, et surtout — si l'arrêt vient du plafond, on ne
+garde **que jusqu'à la dernière phrase entière**, quitte à ne rien rendre. L'appelant sait traiter
+une absence de réponse ; il ne sait pas traiter une phrase coupée, il l'affiche.
+
+**La leçon générale : changer de modèle n'est jamais qu'un changement de nom.** Vérifie ce qu'il
+fait du budget avant de le mettre en tête de chaîne.
+
+### Piège 26 — un centrage vertical ne tient pas une conversation
+
+`/diagnostic` centrait UNE ligne à l'écran, le passé s'estompant en traînée. Beau sur deux tours.
+Au troisième, le bloc dépassait la hauteur de l'écran et sortait **par le haut**, par-dessus le
+logo — `justify-content: safe center` protège du rognage, pas du dépassement.
+
+Le fondateur a tranché la forme : *« je veux une vraie discussion, une interface qui ressemble à la
+nôtre. »* La page est maintenant en **trois zones à hauteur fixe** : en-tête, fil qui défile,
+saisie en bas. Ce qui est gardé de l'ancienne intention : aucun avatar, aucun horodatage, aucune
+étape numérotée.
+
+⚠️ Un fil qui défile passe **derrière** l'en-tête fixe et la saisie : les deux extrémités portent
+un dégradé de masquage. Sans lui, le premier message se superpose au logo — vu à l'écran, illisible.
+
+Et la figure des anneaux (`FormeQuiSePrecise`) ne vit plus que sur l'écran d'ouverture : derrière
+des messages, elle devenait une texture sale.
 
 ## 7. Comment travailler
 
