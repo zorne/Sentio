@@ -65,6 +65,13 @@ describe("P0-1 — d'où viennent les entreprises à approcher", () => {
       [tenantId, definition?.id, identite?.id],
     );
     employeeId = employe?.id as EmployeeId;
+    // Le gisement écarte tout travail qu'aucune capacité activée ne sert : sans cette ligne,
+    // aucun prospect ne remonterait, et ce fichier prouverait le contraire de ce qu'il vise.
+    await sql.query(
+      `insert into employee_capability (tenant_id, employee_id, capability_id, enabled)
+       select $1, $2, c.id, true from capability c where c.key = 'qualifier.prospect'`,
+      [tenantId, employeeId],
+    );
   });
 
   afterAll(async () => {
@@ -96,7 +103,7 @@ describe("P0-1 — d'où viennent les entreprises à approcher", () => {
     // mission ne sert à rien, et c'est exactement ce qui serait arrivé tant que l'éligibilité
     // exigeait une adresse email — que l'annuaire public ne donne jamais.
     const gisement = new GisementDeProspects(sql);
-    const eligibles = await gisement.sujetsEligibles({
+    const { sujets: eligibles } = await gisement.sujetsEligibles({
       tenantId,
       employeeId,
       limite: 50,

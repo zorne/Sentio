@@ -115,10 +115,18 @@ describeIfDatabase("EXEC-18 — le worker démarre et sert un battement signé",
     const [identity] = await sql.query<{ id: string }>("select * from reserve_identity($1)", [
       "commercial",
     ]);
-    await sql.query(
+    const [employee] = await sql.query<{ id: string }>(
       `insert into employee (tenant_id, employee_definition_id, identity_id, autonomy)
-       values ($1, $2, $3, 'confirm_once')`,
+       values ($1, $2, $3, 'confirm_once') returning id`,
       [tenantId, definition?.id, identity?.id],
+    );
+    // L'approvisionnement n'ouvre plus un travail qu'aucune capacité activée ne sert : sans ces
+    // lignes, l'employé serait recruté sans rien pouvoir faire — et ce n'est pas ce qu'on éprouve
+    // ici. En production, c'est `appliquer_la_configuration` qui les écrit.
+    await sql.query(
+      `insert into employee_capability (tenant_id, employee_id, capability_id, enabled)
+       select $1, $2, c.id, true from capability c where c.key = 'qualifier.prospect'`,
+      [tenantId, employee?.id],
     );
     for (let i = 0; i < prospects; i++) {
       await sql.query(

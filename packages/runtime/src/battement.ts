@@ -122,9 +122,9 @@ async function approvisionnerUnEmploye(
   // Le rythme que la cible exige. `null` quand elle n'est pas calculable — le client n'a pas
   // déclaré ce qu'il faut, et on ne le suppose pas à sa place.
   const rythmeVoulu = verdict === "ok" ? await deps.store.rythmeVoulu(employe.tenantId) : null;
-  const sujetsEligibles =
+  const recolte =
     gisement === null
-      ? []
+      ? { sujets: [], justification: null }
       : await gisement.sujetsEligibles({
           tenantId: employe.tenantId,
           employeeId: employe.employeeId,
@@ -140,7 +140,7 @@ async function approvisionnerUnEmploye(
 
   const plan = planifierLApprovisionnement({
     verdict,
-    sujetsEligibles,
+    sujetsEligibles: recolte.sujets,
     restantDePeriode,
     rythmeVoulu,
     reglages,
@@ -160,6 +160,10 @@ async function approvisionnerUnEmploye(
       jour,
       raison: plan.raison,
       detail: plan.detail,
+      // ⚠️ Journalisée AUSSI quand rien n'est ouvert — c'est même là qu'elle sert le plus : un
+      // employé qui n'ouvre rien parce que tous ses travaux sont écartés faute de capacité doit
+      // laisser une trace de ce manque, pas seulement un « aucun sujet éligible » indistinct.
+      ...(recolte.justification !== null && { priorisation: recolte.justification }),
     });
     return 0;
   }
@@ -184,6 +188,9 @@ async function approvisionnerUnEmploye(
     ouvertes,
     demandees: plan.sujets.length,
     borne: plan.borne,
+    // Pourquoi CE travail plutôt qu'un autre. Structure, jamais phrase : c'est ce qui permet de
+    // comparer deux jours et de retrouver quel facteur a fait basculer un choix.
+    ...(recolte.justification !== null && { priorisation: recolte.justification }),
   });
   return ouvertes;
 }

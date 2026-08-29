@@ -119,7 +119,31 @@ export function fermerSurLesExigences(capacites: readonly string[]): readonly st
   return [...retenues].sort();
 }
 
-/** Ce que Lady fera en premier, par domaine. Lu par le dirigeant, jamais par le modèle. */
+/**
+ * Ce que Lady fera en premier, par domaine. Lu par le dirigeant, jamais par le modèle.
+ *
+ * ⚠️⚠️ **CES PHRASES PORTENT DÉSORMAIS UN COMPORTEMENT, PAS SEULEMENT UN AFFICHAGE.**
+ *
+ * Elles sont écrites telles quelles dans `lady_configuration.priorites`, et le moteur de
+ * priorisation (`prioriserLesTravaux`, `@sentio/core`) les relit **à l'envers** pour retrouver
+ * le domaine et son rang — c'est ce rang qui décide quel travail Lady ouvre en premier
+ * (`domainePourPriorite`, juste en dessous).
+ *
+ * Conséquence à ne pas découvrir en production : **reformuler une de ces phrases, même pour la
+ * rendre plus jolie, change l'ordre de travail de Lady** chez tous les clients dont la
+ * configuration active porte l'ancienne formulation — silencieusement, puisque la phrase reste
+ * lisible et que l'écran continue de l'afficher correctement.
+ *
+ * Deux garde-fous mécaniques, plutôt qu'une consigne qu'on oublie :
+ *   · `composition.test.ts` vérifie que ces huit phrases sont **distinctes et toutes réversibles**
+ *     — une phrase partagée par deux domaines rendrait le rang indécidable ;
+ *   · un travail dont le domaine ne se retrouve pas ne devient jamais invisible : il reçoit le
+ *     poids plancher (`poidsSansPrioritePourcent`), et le vieillissement finit par le reprendre.
+ *
+ * Si une reformulation est vraiment voulue, elle se fait donc **en connaissance de cause** : les
+ * configurations déjà publiées gardent l'ancienne phrase (elles sont immuables), et leurs travaux
+ * retomberont sur le poids plancher jusqu'à ce qu'une nouvelle version soit acceptée.
+ */
 export const PRIORITE_PAR_DOMAINE: Record<Domaine, string> = {
   recherche_selection: "élargir le nombre d'entreprises approchées",
   evaluation: "n'engager la conversation qu'avec les entreprises qui correspondent",
@@ -130,6 +154,34 @@ export const PRIORITE_PAR_DOMAINE: Record<Domaine, string> = {
   temps_echeances: "surveiller les échéances et rappeler à temps",
   analyse_restitution: "rendre compte de ce qui avance, et de ce qui bloque",
 };
+
+/**
+ * Retrouve le domaine derrière une priorité écrite, ou `null` si la phrase est inconnue.
+ *
+ * ══ POURQUOI ON RELIT LA PHRASE PLUTÔT QUE DE PERSISTER UN SCORE ══
+ *
+ * `diagnostiquer()` calcule déjà un score par couple, et `composer()` en garde **l'ordre** dans
+ * `priorites` — la première phrase est le besoin le plus fort. L'information de priorité est donc
+ * déjà là, complète, dans un champ que seul un accord du dirigeant peut changer
+ * (`accepter_la_configuration`). Y ajouter un score persisté n'aurait rien appris de plus, aurait
+ * exigé une migration, et aurait ouvert un second chemin d'écriture à gouverner.
+ *
+ * ⚠️ Ce qu'on perd, assumé : **le rang, pas l'amplitude.** Deux besoins à 9,8 et 9,7 se lisent
+ * ici comme « premier » et « second », au même écart que 9,8 et 0,2. Avec deux travaux réellement
+ * ouvrables aujourd'hui (`lead`, `recherche`), la différence est nulle — et le rang est même plus
+ * stable d'un cycle à l'autre. **À réexaminer quand un troisième travail existera**, pas avant :
+ * c'est à ce moment que les écarts d'amplitude commenceront à vouloir dire quelque chose.
+ *
+ * `null` n'est pas une erreur : une configuration ancienne peut porter une phrase reformulée
+ * depuis. Le travail concerné passe alors au poids plancher, jamais à zéro.
+ */
+export function domainePourPriorite(priorite: string): Domaine | null {
+  const cherchee = priorite.trim();
+  for (const domaine of DOMAINES) {
+    if (PRIORITE_PAR_DOMAINE[domaine] === cherchee) return domaine;
+  }
+  return null;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Étape 2 — le diagnostic : des constats aux besoins

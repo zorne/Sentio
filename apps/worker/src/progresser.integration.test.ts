@@ -134,6 +134,13 @@ describeIfDatabase("LADY-V — il retient, il essaie, il garde ce qui marche", (
        values ($1, $2, $3, 'auto') returning id`,
       [tenantId, definition?.id, identity?.id],
     );
+    // L'approvisionnement n'ouvre plus un travail qu'aucune capacité activée ne sert. En
+    // production ces lignes viennent de `appliquer_la_configuration`.
+    await sql.query(
+      `insert into employee_capability (tenant_id, employee_id, capability_id, enabled)
+       select $1, $2, c.id, true from capability c where c.key = 'qualifier.prospect'`,
+      [tenantId, employee?.id],
+    );
 
     for (let i = 0; i < prospects; i++) {
       await sql.query(

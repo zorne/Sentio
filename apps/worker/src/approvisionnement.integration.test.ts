@@ -125,6 +125,17 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
        values ($1, $2, $3, 'confirm_once') returning id`,
       [tenantId, definition?.id, identity?.id],
     );
+    // ⚠️ Depuis la priorisation, l'approvisionnement écarte tout travail qu'aucune capacité
+    // activée ne sert — ouvrir une mission que le run ne pourrait qu'échouer consommerait un
+    // créneau pour rien. Ces lignes sont ce que `appliquer_la_configuration` écrit en production ;
+    // sans elles, cette suite éprouverait un employé qui ne peut rien faire, pas les quotas.
+    await sql.query(
+      `insert into employee_capability (tenant_id, employee_id, capability_id, enabled)
+       select $1, $2, c.id, true
+         from capability c
+        where c.key in ('qualifier.prospect', 'rechercher.prospect')`,
+      [tenantId, employee?.id],
+    );
 
     for (let i = 0; i < (options.prospects ?? 0); i++) {
       await sql.query(
@@ -184,6 +195,23 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     return Number(row?.n ?? 0);
   }
 
+  /**
+   * Les missions portant sur un PROSPECT, à l'exclusion des missions de recherche.
+   *
+   * ⚠️ Pourquoi ce compte séparé existe depuis la priorisation. Un employé qui a des prospects à
+   * traiter reçoit aussi, désormais, une part de recherche — la règle « s'il reste un prospect,
+   * ne cherche jamais » a été remplacée par une répartition. Les cas ci-dessous éprouvent des
+   * quotas et des filtres qui portent sur les PROSPECTS ; compter la recherche avec eux ferait
+   * échouer un test de quota pour une raison qui n'a rien à voir avec le quota.
+   */
+  async function missionsSurProspect(tenantId: TenantId): Promise<number> {
+    const [row] = await sql.query<{ n: string }>(
+      "select count(*) as n from task where tenant_id = $1 and subject_kind = 'lead'",
+      [tenantId],
+    );
+    return Number(row?.n ?? 0);
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // Le cas nominal
   // ═══════════════════════════════════════════════════════════════════════════
@@ -206,10 +234,12 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     expect(Number(enFile?.n)).toBe(10);
   });
 
-  it("n'ouvre que ce qui existe : trois prospects, trois missions", async () => {
+  it("n'ouvre que ce qui existe : trois prospects, trois missions de traitement", async () => {
     const { tenantId } = await entreprise({ prospects: 3 });
     await approvisionnerLeJour(deps(), new Date());
-    expect(await missions(tenantId)).toBe(3);
+    expect(await missionsSurProspect(tenantId)).toBe(3);
+    // Et une recherche en plus : le vivier se reconstitue au lieu d'attendre l'épuisement.
+    expect(await missions(tenantId)).toBe(4);
   });
 
   it("ne prend jamais un prospect exclu, désinscrit, écarté ou sans adresse", async () => {
@@ -234,7 +264,7 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     );
 
     const gisement = new GisementDeProspects(sql);
-    const eligibles = await gisement.sujetsEligibles({
+    const { sujets: eligibles } = await gisement.sujetsEligibles({
       tenantId,
       employeeId,
       limite: 50,
@@ -243,12 +273,16 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
 
     // Un seul prospect contactable — et le filtre est en SQL, pas après coup : entre une lecture
     // et une écriture, un prospect désinscrit redeviendrait candidat.
-    expect(eligibles).toHaveLength(1);
+    //
+    // On ne retient ici que les sujets `lead` : le gisement propose aussi une recherche depuis la
+    // priorisation, et c'est le filtre sur les PROSPECTS qui est éprouvé ici.
+    const prospects = eligibles.filter((sujet) => sujet.kind === "lead");
+    expect(prospects).toHaveLength(1);
     const [bonne] = await sql.query<{ id: string }>(
       "select id from lead where tenant_id = $1 and email = 'ok@exemple.fr'",
       [tenantId],
     );
-    expect(eligibles[0]?.id).toBe(bonne?.id);
+    expect(prospects[0]?.id).toBe(bonne?.id);
   });
 
   it("⭐ ouvre du travail pour un prospect SANS adresse qui n'est pas encore qualifié", async () => {
@@ -271,14 +305,14 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     );
 
     const gisement = new GisementDeProspects(sql);
-    const eligibles = await gisement.sujetsEligibles({
+    const { sujets: eligibles } = await gisement.sujetsEligibles({
       tenantId,
       employeeId,
       limite: 50,
       jour: jourUtc(new Date()),
     });
 
-    expect(eligibles).toHaveLength(1);
+    expect(eligibles.filter((sujet) => sujet.kind === "lead")).toHaveLength(1);
   });
 
   it("n'ouvre rien pour un métier sans gisement, et ne retombe pas sur celui d'un autre", async () => {
@@ -315,7 +349,9 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     const { tenantId, employeeId } = await entreprise({ prospects: 5 });
     await approvisionnerLeJour(deps(), new Date());
     const engagees = await missions(tenantId);
-    expect(engagees).toBe(5);
+    // Cinq prospects, plus la part de recherche que la priorisation accorde au même employé.
+    expect(await missionsSurProspect(tenantId)).toBe(5);
+    expect(engagees).toBe(6);
 
     await sql.query(
       "update objective set state = 'atteint', achieved_at = now() where tenant_id = $1",
@@ -357,7 +393,9 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     await approvisionnerLeJour(deps(), new Date());
 
     const [mission] = await sql.query<{ subject_id: string }>(
-      "select subject_id from task where tenant_id = $1",
+      // La mission de PROSPECT : l'employé en a aussi une de recherche depuis la priorisation, et
+      // c'est le doublon sur un prospect qu'on éprouve ici.
+      "select subject_id from task where tenant_id = $1 and subject_kind = 'lead'",
       [tenantId],
     );
 
@@ -371,7 +409,7 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
       ),
     ).rejects.toThrow();
 
-    expect(await missions(tenantId)).toBe(1);
+    expect(await missionsSurProspect(tenantId)).toBe(1);
   });
 
   it("MUTATION — un battement rejoué n'ouvre rien, et un second lot du jour est refusé", async () => {
@@ -498,8 +536,11 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
 
     await approvisionnerLeJour(deps(), new Date());
 
+    // `a` sature son plafond du jour (dix créneaux, répartis entre traitement et recherche) ;
+    // `b` n'a que quatre prospects, plus sa part de recherche.
     expect(await missions(a.tenantId)).toBe(10);
-    expect(await missions(b.tenantId)).toBe(4);
+    expect(await missionsSurProspect(b.tenantId)).toBe(4);
+    expect(await missions(b.tenantId)).toBe(5);
 
     const [croisees] = await sql.query<{ n: string }>(
       `select count(*) as n from task t join lead l on l.id = t.subject_id
@@ -521,10 +562,15 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     const [identity] = await sql.query<{ id: string }>("select * from reserve_identity($1)", [
       "commercial",
     ]);
-    await sql.query(
+    const [second] = await sql.query<{ id: string }>(
       `insert into employee (tenant_id, employee_definition_id, identity_id, autonomy)
-       values ($1, $2, $3, 'confirm_once')`,
+       values ($1, $2, $3, 'confirm_once') returning id`,
       [tenantId, definition?.id, identity?.id],
+    );
+    await sql.query(
+      `insert into employee_capability (tenant_id, employee_id, capability_id, enabled)
+       select $1, $2, c.id, true from capability c where c.key = 'qualifier.prospect'`,
+      [tenantId, second?.id],
     );
 
     await approvisionnerLeJour(deps(), new Date());

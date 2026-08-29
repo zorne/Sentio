@@ -20,12 +20,27 @@ import { createHash } from "node:crypto";
 import {
   choisirLesVariantes,
   empreinteStable,
+  prioriserLesTravaux,
   type ApprovisionnementStore,
+  type CoupleDeTravail,
   type GisementDeMissions,
+  type JustificationDePriorisation,
   type RegistreDeGisements,
+  type TravailCandidat,
+  type TravailEcarte,
 } from "@sentio/core";
+import {
+  BORNES_DE_PRIORISATION_PAR_DEFAUT,
+  type BornesDePriorisation,
+} from "@sentio/config";
 import type { SqlClient, TransactionalSqlClient } from "@sentio/db";
-import { effortRequis, PART_D_EXPLORATION } from "@sentio/domain";
+import {
+  CAPACITES,
+  domainePourPriorite,
+  effortRequis,
+  releverDesResultats,
+  PART_D_EXPLORATION,
+} from "@sentio/domain";
 import type { EmployeeId, TenantId } from "@sentio/domain";
 
 /**
@@ -59,6 +74,97 @@ function identifiantDeRecherche(tenantId: TenantId, employeeId: EmployeeId, jour
 }
 
 /**
+ * ══ LE MAILLON QUI RELIE UNE NATURE DE MISSION AU VOCABULAIRE DU DIAGNOSTIC ══
+ *
+ * Le dirigeant approuve des priorités exprimées en **domaines** (`recherche_selection`,
+ * `evaluation`, …) ; Lady ouvre des missions portant une **nature** (`lead`, `recherche`). Sans
+ * cette table, les deux ne se parlent pas : une configuration pourrait dire « votre problème est
+ * le volume d'entreprises approchées » sans que rien, jamais, n'en tienne compte — c'est
+ * exactement ce qui se passait avant.
+ *
+ * ⚠️ `lead` porte TROIS domaines, et ce n'est pas une approximation. Une mission `lead` qualifie,
+ * consigne, puis écrit, selon le pas où elle en est — le modèle choisit lequel à l'intérieur du
+ * run (`next-action.ts`). Une nature de mission n'est donc pas un domaine : c'est un contenant
+ * qui en sert plusieurs, et le rang retenu est le meilleur des trois (`rangDuTravail`).
+ *
+ * ⚠️ Chaque nature déclare aussi les capacités qui la rendent EXÉCUTABLE. Un travail qu'aucune
+ * capacité activée ne sert n'est pas priorisé bas : il est **écarté**, et l'écart est journalisé.
+ * Le prioriser reviendrait à ouvrir une mission que le run ne pourrait qu'échouer, en consommant
+ * un créneau que l'autre travail aurait utilisé.
+ */
+interface NatureDeTravail {
+  readonly kind: string;
+  readonly couples: readonly CoupleDeTravail[];
+  /** Il en suffit d'UNE seule activée : une mission `lead` a du sens dès qu'on peut qualifier. */
+  readonly capacitesQuiLaServent: readonly string[];
+}
+
+const NATURES_DU_COMMERCIAL: readonly NatureDeTravail[] = [
+  {
+    kind: "lead",
+    couples: [
+      { domaine: "evaluation", objet: "prospect" },
+      { domaine: "communication_sortante", objet: "prospect" },
+      { domaine: "donnees_fiches", objet: "prospect" },
+    ],
+    capacitesQuiLaServent: [
+      CAPACITES.qualifierProspect,
+      CAPACITES.envoyerProspect,
+      CAPACITES.relancerProspect,
+      CAPACITES.mettreAJourProspect,
+    ],
+  },
+  {
+    kind: "recherche",
+    couples: [{ domaine: "recherche_selection", objet: "prospect" }],
+    capacitesQuiLaServent: [CAPACITES.rechercherProspect],
+  },
+];
+
+/**
+ * Les domaines que la mesure du travail désigne comme bloquants.
+ *
+ * ⚠️ **Rien n'est réinventé ici** : on réutilise `releverDesResultats`, le relevé qui décide déjà
+ * s'il faut proposer une reconfiguration au dirigeant (LADY-U). Écrire un second jeu de règles
+ * « quel diagnostic amplifie quel domaine » aurait produit deux vérités pour une même mesure — et
+ * un jour deux réponses différentes, dont on ne saurait pas laquelle croire. Ici, Lady ne peut pas
+ * amplifier un domaine dont la réévaluation dirait par ailleurs qu'il va bien.
+ *
+ * `goulot` et `faiblesse` amplifient ; `force` ne fait rien. Une force dit « ça marche, n'y touche
+ * pas » — la traduire en priorité renforcerait ce qui n'en a pas besoin.
+ *
+ * « Trop tôt » ne renvoie rien, et c'est le comportement voulu : avant un quart de l'horizon ou
+ * dix missions travaillées, un retard est du bruit (`SIGNAL_MINIMAL`). Amplifier sur du bruit
+ * ferait osciller l'ordre de travail d'un jour à l'autre pour rien.
+ */
+function domainesEnRetard(mesures: MesuresBrutes | null): readonly string[] {
+  if (mesures === null) return [];
+  const releve = releverDesResultats({
+    missionsOuvertes: Number(mesures.missions_ouvertes ?? 0),
+    missionsAgies: Number(mesures.missions_agies ?? 0),
+    reponses: Number(mesures.reponses ?? 0),
+    rendezVous: Number(mesures.rendez_vous ?? 0),
+    ventes: Number(mesures.ventes ?? 0),
+    partEcoulee: Number(mesures.part_ecoulee ?? 0),
+    ecartDeRythme: Number(mesures.ecart_de_rythme ?? 0),
+  });
+  if (releve.statut !== "constats") return [];
+  return releve.constats
+    .filter((constat) => constat.genre === "goulot" || constat.genre === "faiblesse")
+    .map((constat) => constat.domaine);
+}
+
+interface MesuresBrutes {
+  readonly missions_ouvertes: number | null;
+  readonly missions_agies: number | null;
+  readonly reponses: number | null;
+  readonly rendez_vous: number | null;
+  readonly ventes: number | null;
+  readonly part_ecoulee: number | null;
+  readonly ecart_de_rythme: number | null;
+}
+
+/**
  * Le gisement du métier Commercial : les prospects que cet employé n'a pas encore pris en charge
  * — et, quand il n'y en a aucun, la recherche qui doit les faire apparaître.
  *
@@ -70,23 +176,139 @@ function identifiantDeRecherche(tenantId: TenantId, employeeId: EmployeeId, jour
  * prospects importés dans la même transaction partagent `created_at` (le même piège qu'EXEC-02
  * sur le journal), et deux battements ouvriraient des missions différentes.
  *
- * ══ LA PRIORITÉ, ET POURQUOI ELLE NE SE DISCUTE PAS ══
+ * ══ LA PRIORITÉ N'EST PLUS UNE CONSTANTE : C'EST UNE DÉCISION ══
  *
- * Du travail de traitement gagne TOUJOURS contre une recherche : un employé qui a des prospects
- * à qualifier n'a aucun besoin d'en chercher d'autres, et lui en faire chercher quand même
- * gaspillerait un cycle sur un besoin qui n'existe pas. La recherche n'est donc proposée que
- * lorsque la requête ci-dessous ne rend RIEN — jamais en plus.
+ * Ce gisement tranchait entre traitement et recherche par une règle écrite en dur : « s'il reste
+ * un prospect, ne cherche jamais ». Honnête, testée — mais insensible à tout. Deux dirigeants aux
+ * diagnostics opposés recevaient le même ordre de travail, et leur configuration ne changeait rien.
+ *
+ * Le gisement rend donc désormais **tous** les travaux possibles, et délègue l'arbitrage à
+ * `prioriserLesTravaux` (`@sentio/core`), fonction pure et déterministe. Il reste ce qu'il était —
+ * le seul endroit qui sait ce qu'est un prospect — mais il ne décide plus seul de ce qui compte.
+ *
+ * ⚠️ Ce qui n'a PAS changé, et ne doit pas : à l'intérieur d'une même nature de travail, l'ordre
+ * reste le plus ancien d'abord (`created_at, id`). Départager deux prospects entre eux est une
+ * autre question, avec d'autres données — la mêler à celle-ci mélangerait deux décisions.
  */
 export class GisementDeProspects implements GisementDeMissions {
   readonly nature = "lead";
 
-  constructor(private readonly sql: SqlClient) {}
+  constructor(
+    private readonly sql: SqlClient,
+    private readonly bornes: BornesDePriorisation = BORNES_DE_PRIORISATION_PAR_DEFAUT,
+  ) {}
 
   async sujetsEligibles(input: {
     tenantId: TenantId;
     employeeId: EmployeeId;
     limite: number;
     jour: string;
+  }): Promise<{
+    sujets: readonly { kind: string; id: string }[];
+    justification: JustificationDePriorisation | null;
+  }> {
+    const capacites = new Set(
+      (
+        await this.sql.query<{ key: string }>(
+          `select c.key
+             from employee_capability ec
+             join capability c on c.id = ec.capability_id
+            where ec.tenant_id = $1 and ec.employee_id = $2 and ec.enabled`,
+          [input.tenantId, input.employeeId],
+        )
+      ).map((row) => row.key),
+    );
+
+    const candidats: TravailCandidat[] = [];
+    const ecartes: TravailEcarte[] = [];
+
+    for (const nature of NATURES_DU_COMMERCIAL) {
+      if (!nature.capacitesQuiLaServent.some((cle) => capacites.has(cle))) {
+        // ⚠️ Écarté, pas déprioritisé. Ouvrir une mission qu'aucun moteur activé ne peut traiter
+        // consommerait un créneau pour produire un échec — et masquerait le vrai manque.
+        ecartes.push({ kind: nature.kind, couples: nature.couples, raison: "aucune_capacite_active" });
+        continue;
+      }
+      const sujets =
+        nature.kind === "lead"
+          ? await this.prospectsATraiter(input)
+          : await this.rechercheAOuvrir(input);
+      candidats.push({
+        kind: nature.kind,
+        couples: nature.couples,
+        sujets,
+        joursSansTravail: await this.joursSansTravail(input, nature.kind),
+        // Zéro tant qu'`outcome` n'est alimenté par aucun chemin de production (`docs/35`).
+        // Le facteur est borné et testé dès maintenant, pour que la garantie précède la donnée.
+        ajustementHistorique: 0,
+      });
+    }
+
+    const priorites = await this.prioritesApprouvees(input);
+
+    return prioriserLesTravaux({
+      candidats,
+      ecartes,
+      priorites,
+      domainePourPriorite,
+      domainesEnRetard: domainesEnRetard(await this.mesures(input.tenantId)),
+      budget: input.limite,
+      bornes: this.bornes,
+    });
+  }
+
+  /**
+   * Les priorités que le dirigeant a approuvées — jamais recalculées depuis les constats bruts.
+   *
+   * ⚠️ C'est ici que tient la gouvernance. Ces phrases ne changent que par
+   * `accepter_la_configuration` ; les relire au lieu de recomposer un score garantit que le
+   * comportement de Lady ne peut pas bouger sur des données que personne n'a validées.
+   */
+  private async prioritesApprouvees(input: {
+    tenantId: TenantId;
+    employeeId: EmployeeId;
+  }): Promise<readonly string[]> {
+    const [ligne] = await this.sql.query<{ priorites: unknown }>(
+      `select priorites from lady_configuration
+        where tenant_id = $1 and employee_id = $2 and active
+        limit 1`,
+      [input.tenantId, input.employeeId],
+    );
+    const brut = ligne?.priorites;
+    return Array.isArray(brut) ? brut.filter((p): p is string => typeof p === "string") : [];
+  }
+
+  private async mesures(tenantId: TenantId): Promise<MesuresBrutes | null> {
+    const [ligne] = await this.sql.query<MesuresBrutes>("select * from mesures_du_travail($1)", [
+      tenantId,
+    ]);
+    return ligne ?? null;
+  }
+
+  /**
+   * Depuis combien de jours cette nature de travail n'a rien reçu.
+   *
+   * `0` quand elle n'a jamais rien reçu **et** qu'aucune mission n'existe : un employé neuf ne
+   * doit pas voir son premier travail amplifié par une attente qui n'a jamais eu lieu.
+   */
+  private async joursSansTravail(
+    input: { tenantId: TenantId; employeeId: EmployeeId },
+    kind: string,
+  ): Promise<number> {
+    const [ligne] = await this.sql.query<{ jours: number | null }>(
+      `select extract(epoch from (now() - max(t.created_at))) / 86400 as jours
+         from task t
+        where t.tenant_id = $1 and t.employee_id = $2 and t.subject_kind = $3`,
+      [input.tenantId, input.employeeId, kind],
+    );
+    const jours = ligne?.jours;
+    return jours === undefined || jours === null ? 0 : Math.max(Math.floor(Number(jours)), 0);
+  }
+
+  private async prospectsATraiter(input: {
+    tenantId: TenantId;
+    employeeId: EmployeeId;
+    limite: number;
   }): Promise<readonly { kind: string; id: string }[]> {
     const rows = await this.sql.query<{ id: string }>(
       `select l.id
@@ -129,16 +351,27 @@ export class GisementDeProspects implements GisementDeMissions {
         limit $3`,
       [input.tenantId, input.employeeId, input.limite],
     );
-    if (rows.length > 0) return rows.map((row) => ({ kind: this.nature, id: row.id }));
+    return rows.map((row) => ({ kind: this.nature, id: row.id }));
+  }
 
-    // ── Aucun prospect à traiter : c'est le besoin de recherche, jamais l'inverse. Un employé
-    //    qui a du travail de traitement ne doit jamais se voir proposer une recherche à la place.
-    //
-    // Une recherche encore active — quel que soit le jour où elle a été ouverte — compte comme du
-    // travail déjà en cours : en ouvrir une seconde empilerait deux recherches concurrentes pour
-    // un besoin qu'une seule suffit à couvrir. « Active » est ici tout état qui n'est pas terminal
-    // (`…120001` : done/failed sont les deux seuls états qui closent une mission).
-    const [recherche] = await this.sql.query<{ id: string }>(
+  /**
+   * La recherche à ouvrir, s'il y a lieu — au plus une.
+   *
+   * Une recherche encore active — quel que soit le jour où elle a été ouverte — compte comme du
+   * travail déjà en cours : en ouvrir une seconde empilerait deux recherches concurrentes pour
+   * un besoin qu'une seule suffit à couvrir. « Active » est ici tout état qui n'est pas terminal
+   * (`…120001` : done/failed sont les deux seuls états qui closent une mission).
+   *
+   * ⚠️ Ce n'est PAS une règle de priorité, c'est une règle d'éligibilité — d'où sa place ici et
+   * non dans le moteur de priorisation. « Une seule recherche à la fois » reste vrai quel que
+   * soit le rang que le dirigeant donne à ce travail.
+   */
+  private async rechercheAOuvrir(input: {
+    tenantId: TenantId;
+    employeeId: EmployeeId;
+    jour: string;
+  }): Promise<readonly { kind: string; id: string }[]> {
+    const [active] = await this.sql.query<{ id: string }>(
       `select 1 as id
          from task t
         where t.tenant_id = $1
@@ -148,7 +381,7 @@ export class GisementDeProspects implements GisementDeMissions {
         limit 1`,
       [input.tenantId, input.employeeId],
     );
-    if (recherche !== undefined) return [];
+    if (active !== undefined) return [];
 
     return [
       { kind: "recherche", id: identifiantDeRecherche(input.tenantId, input.employeeId, input.jour) },

@@ -19,12 +19,15 @@ import {
   type Objet,
   type SourceDeConstat,
   CONFIANCE_PAR_SOURCE,
+  DOMAINES,
 } from "./audit.js";
 import {
   ACTES_PAR_DOMAINE,
   composer,
   diagnostiquer,
+  domainePourPriorite,
   EXIGENCES_PAR_ACTE,
+  PRIORITE_PAR_DOMAINE,
   ROLE_PAR_DOMAINE,
 } from "./composition.js";
 
@@ -232,5 +235,55 @@ describe("L'axe « objet » est réel — un acte connu ne suffit pas", () => {
     // Et la différence se relit : chaque configuration porte les constats qui l'expliquent.
     expect(aSec.configuration.motifs.join(" ")).toContain("trop peu d'entreprises approchées");
     expect(malCible.configuration.motifs.join(" ")).toContain("mal ciblé");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Les priorités écrites portent un COMPORTEMENT, pas seulement un affichage
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("les phrases de priorité restent réversibles", () => {
+  /**
+   * ⚠️ POURQUOI CE TEST EXISTE, ET CE QU'IL EMPÊCHE EXACTEMENT.
+   *
+   * `composer()` écrit ces phrases dans `lady_configuration.priorites`, et le moteur de
+   * priorisation (`@sentio/core`) les relit **à l'envers** pour retrouver le domaine et son rang
+   * — c'est ce rang qui décide quel travail Lady ouvre en premier.
+   *
+   * Sans ces trois cas, une reformulation purement cosmétique — corriger une tournure, ajouter
+   * un mot — changerait silencieusement l'ordre de travail de Lady chez tous les clients, sans
+   * qu'aucun test n'échoue et sans que rien ne soit visible à l'écran : la phrase resterait
+   * lisible, et l'affichage correct. C'est exactement le genre de couplage qui se paie six mois
+   * plus tard, quand plus personne ne se souvient qu'il existait.
+   */
+
+  it("⭐ chaque domaine a une priorité, et elle se relit — les HUIT, pas seulement ceux servis", () => {
+    // ⚠️ Les huit, y compris les quatre que la bibliothèque ne sert pas encore
+    // (`ACTES_PAR_DOMAINE`). Ne garder que les couverts laisserait un piège tendu pour le jour
+    // où l'un d'eux sera ouvert : sa phrase pourrait être non réversible depuis longtemps.
+    expect(DOMAINES).toHaveLength(8);
+
+    for (const domaine of DOMAINES) {
+      const phrase = PRIORITE_PAR_DOMAINE[domaine];
+      expect(phrase.trim()).not.toBe("");
+      expect(domainePourPriorite(phrase)).toBe(domaine);
+    }
+  });
+
+  it("⭐ aucune phrase n'est partagée par deux domaines", () => {
+    // Deux domaines derrière la même phrase rendraient le rang indécidable : la relecture
+    // rendrait le premier trouvé, c'est-à-dire l'ordre de déclaration — un comportement décidé
+    // par l'ordre des lignes d'un objet littéral.
+    const phrases = DOMAINES.map((domaine) => PRIORITE_PAR_DOMAINE[domaine]);
+    expect(new Set(phrases).size).toBe(phrases.length);
+  });
+
+  it("une phrase inconnue rend null, jamais un domaine approximatif", () => {
+    // Une configuration ancienne peut porter une formulation reformulée depuis. Le travail
+    // concerné retombe au poids plancher — il ne disparaît pas, et rien ne devine à sa place.
+    expect(domainePourPriorite("une phrase que personne n'a jamais écrite")).toBeNull();
+    expect(domainePourPriorite("")).toBeNull();
+    // Un préfixe n'est pas une correspondance : on compare la phrase entière.
+    expect(domainePourPriorite("élargir le nombre")).toBeNull();
   });
 });

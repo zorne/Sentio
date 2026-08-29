@@ -9,6 +9,8 @@
 import type { TenantId, TaskId, EmployeeId } from "@sentio/domain";
 import type { InferenceEnvelope, UsageMetric } from "@sentio/config";
 
+import type { JustificationDePriorisation } from "./runtime/priorisation.js";
+
 /** L'horloge, injectée : un test qui dépend de l'heure réelle est un test qui échouera un jour. */
 export interface Clock {
   now(): Date;
@@ -148,6 +150,11 @@ export interface FileDeTravaux {
  * la même liste : sans ça, deux battements ouvriraient des missions différentes et « le même
  * travail » cesserait d'être décidable.
  *
+ * ⚠️ **L'ORDRE N'EST PLUS UN DÉTAIL D'IMPLÉMENTATION : C'EST LA DÉCISION.** Quand un gisement sert
+ * plusieurs natures de travail, ce qu'il place en tête est ce que Lady fera — et ce choix doit
+ * pouvoir s'expliquer. D'où `justification` : le gisement ne rend plus seulement ce qu'il a choisi,
+ * mais **pourquoi**, dans une forme comparable d'un jour à l'autre (`prioriserLesTravaux`).
+ *
  * Réalise : EXEC-17
  */
 export interface GisementDeMissions {
@@ -165,7 +172,14 @@ export interface GisementDeMissions {
      * ce soit lui-même, ça reste le rôle de `approvisionnement (tenant_id, employee_id, jour)`.
      */
     jour: string;
-  }): Promise<readonly { readonly kind: string; readonly id: string }[]>;
+  }): Promise<{
+    readonly sujets: readonly { readonly kind: string; readonly id: string }[];
+    /**
+     * Pourquoi ces sujets-là, dans cet ordre-là. `null` quand le gisement ne sert qu'une seule
+     * nature de travail : il n'y a alors aucun arbitrage à expliquer.
+     */
+    readonly justification: JustificationDePriorisation | null;
+  }>;
 }
 
 /**

@@ -107,6 +107,15 @@ describeIfDatabase("La mission « recherche » — d'où vient le tout premier t
        values ($1, $2, $3) returning id`,
       [tenantId, definition?.id, identity?.id],
     );
+    // Les deux natures de travail sont servies : c'est l'arbitrage entre elles qu'on éprouve ici,
+    // pas le filtrage par capacité (qui a son propre cas, plus bas).
+    await sql.query(
+      `insert into employee_capability (tenant_id, employee_id, capability_id, enabled)
+       select $1, $2, c.id, true
+         from capability c
+        where c.key in ('rechercher.prospect', 'qualifier.prospect')`,
+      [tenantId, employee?.id],
+    );
 
     for (let i = 0; i < prospects; i++) {
       await sql.query(
@@ -153,7 +162,13 @@ describeIfDatabase("La mission « recherche » — d'où vient le tout premier t
   }
 
   async function sujets(tenantId: TenantId, employeeId: EmployeeId, jour: string) {
-    return new GisementDeProspects(sql).sujetsEligibles({ tenantId, employeeId, limite: 50, jour });
+    const { sujets: eligibles } = await new GisementDeProspects(sql).sujetsEligibles({
+      tenantId,
+      employeeId,
+      limite: 50,
+      jour,
+    });
+    return eligibles;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -237,13 +252,25 @@ describeIfDatabase("La mission « recherche » — d'où vient le tout premier t
   // 4. La priorité ne se discute pas : du traitement disponible gagne toujours
   // ═══════════════════════════════════════════════════════════════════════════
 
-  it("des leads éligibles existent : traitement, jamais de recherche", async () => {
+  it("des leads éligibles existent : le traitement passe DEVANT, sans interdire la recherche", async () => {
+    // ⚠️ CE CAS A CHANGÉ DE SENS, ET C'EST LE CŒUR DU CHANTIER DE PRIORISATION.
+    //
+    // Il gardait auparavant une règle en dur : « s'il reste un prospect, ne cherche jamais ».
+    // Elle protégeait d'un vrai défaut — chercher au lieu de traiter — mais au prix d'un autre :
+    // une employée qui ne reconstitue jamais son vivier tant qu'il lui reste un seul prospect,
+    // quelle que soit la configuration approuvée par le dirigeant.
+    //
+    // La règle est désormais un ORDRE, pas une interdiction : le traitement passe devant, et la
+    // recherche garde une part. C'est ce que `prioriserLesTravaux` répartit.
     const { tenantId, employeeId } = await entreprise(2);
 
     const eligibles = await sujets(tenantId, employeeId, jourUtc(new Date()));
 
-    expect(eligibles).toHaveLength(2);
-    for (const sujet of eligibles) expect(sujet.kind).toBe("lead");
+    // Le traitement d'abord — c'est l'ordre qui porte la décision.
+    expect(eligibles[0]?.kind).toBe("lead");
+    expect(eligibles.filter((s) => s.kind === "lead")).toHaveLength(2);
+    // Et la recherche n'est plus interdite : elle attend son tour, elle n'est plus condamnée.
+    expect(eligibles.filter((s) => s.kind === "recherche")).toHaveLength(1);
   });
 
   // ═══════════════════════════════════════════════════════════════════════════

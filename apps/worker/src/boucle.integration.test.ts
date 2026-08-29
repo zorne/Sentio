@@ -610,8 +610,21 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
 
   it("refuse une capacité que le client n'a pas activée, sans appeler aucun moteur", async () => {
     effets = [];
-    const { tenantId } = await entreprise({ prospects: 1, capaciteActive: false });
+    // ⚠️ La capacité est activée pour OUVRIR la mission, puis retirée avant de la travailler.
+    //
+    // L'approvisionnement refuse désormais d'ouvrir un travail qu'aucune capacité activée ne sert
+    // (`prioriserLesTravaux` : écarté, et journalisé). Recruter sans capacité n'ouvrirait donc
+    // plus rien du tout, et ce cas ne prouverait plus ce qu'il existe pour prouver — la garde du
+    // moteur d'autorisation, pas celle de l'approvisionnement.
+    //
+    // Le retirer APRÈS l'ouverture est d'ailleurs le cas réel : un dirigeant qui retire une
+    // capacité pendant qu'une mission est en vol. Le pas suivant doit la refuser.
+    const { tenantId, employeeId } = await entreprise({ prospects: 1, capaciteActive: true });
     await approvisionner(tenantId);
+    await sql.query(
+      "update employee_capability set enabled = false where tenant_id = $1 and employee_id = $2",
+      [tenantId, employeeId],
+    );
     proposerUneAction(1);
 
     // ⚠️ Ce cas n'exécute QU'UN travail et vérifie que c'est le sien. Or la file est globale :
@@ -647,6 +660,58 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     expect(chaine).not.toContain("action_engagee");
     expect(effets).toHaveLength(0);
   });
+
+  it("MUTATION — une mission créée HORS approvisionnement est refusée si la capacité n'est pas activée", async () => {
+    // ⚠️ DÉFENSE EN PROFONDEUR, ET LE TEST QUI LA GARDE.
+    //
+    // L'approvisionnement écarte désormais en amont tout travail qu'aucune capacité activée ne
+    // sert. C'est une ÉCONOMIE — ne pas ouvrir une mission vouée à l'échec —, jamais une
+    // frontière de sécurité. La frontière reste ici, au moment d'agir : `next-step` relit les
+    // capacités à chaque pas et `decideNextAction` refuse ce qui n'y figure pas.
+    //
+    // Le cas est donc construit en contournant totalement l'approvisionnement — exactement ce que
+    // ferait un script de reprise, un futur gisement, ou un chemin qu'on n'a pas encore écrit. La
+    // capacité n'a JAMAIS été activée pour cet employé : ce n'est pas une révocation en vol (cas
+    // du test précédent), c'est une mission qui n'aurait jamais dû exister.
+    effets = [];
+    const { tenantId, employeeId } = await entreprise({ prospects: 1, capaciteActive: false });
+
+    const [prospect] = await sql.query<{ id: string }>(
+      "select id from lead where tenant_id = $1 limit 1",
+      [tenantId],
+    );
+    const [mission] = await sql.query<{ id: string }>(
+      `insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id, state)
+       select $1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'),
+              'lead', $3, 'pending'
+       returning id`,
+      [tenantId, employeeId, prospect?.id],
+    );
+    await sql.query("insert into job (tenant_id, task_id, priority) values ($1, $2, 0)", [
+      tenantId,
+      mission?.id,
+    ]);
+
+    // Même précaution que le cas précédent : la file est globale, on écarte le travail des autres.
+    await sql.query("update job set next_run_at = now() + interval '1 hour' where tenant_id <> $1", [
+      tenantId,
+    ]);
+    proposerUneAction(1);
+
+    await executerLesTravauxDus(deps(), {
+      prisPar: "exécutant-de-test",
+      dataClass: "synthetic",
+      maxTravaux: 1,
+    });
+
+    const chaine = await natures(tenantId, mission?.id as string);
+    expect(chaine, "journal vide : l'exécutant a pris le travail d'une autre entreprise").toContain(
+      "politique_refuse",
+    );
+    expect(chaine).not.toContain("action_engagee");
+    expect(effets).toHaveLength(0);
+  });
+
   // ═══════════════════════════════════════════════════════════════════════════
   // L'ÉCHÉANCE — quelle horloge tranche, et pourquoi ce n'est pas celle du processus.
   //
