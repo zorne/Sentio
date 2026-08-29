@@ -15,6 +15,8 @@
  * Réalise : EXEC-17
  */
 
+import { createHash } from "node:crypto";
+
 import {
   choisirLesVariantes,
   empreinteStable,
@@ -27,7 +29,38 @@ import { effortRequis, PART_D_EXPLORATION } from "@sentio/domain";
 import type { EmployeeId, TenantId } from "@sentio/domain";
 
 /**
- * Le gisement du métier Commercial : les prospects que cet employé n'a pas encore pris en charge.
+ * L'identité technique d'une mission « recherche » — celle qui n'a pas de prospect pour sujet
+ * puisqu'elle sert justement à en trouver (`ATTELAGES` sur `rechercher.prospect`, dans
+ * `attelage.ts` : « cette mission n'a pas encore de sujet »).
+ *
+ * ⚠️ LE JOUR N'EST PAS UNE RÈGLE DE CADENCE — C'EST UN CONTOURNEMENT TECHNIQUE, ET C'EST
+ * DÉLIBÉRÉ. `task.subject_id` est `not null` (`…120002`) : une mission sans prospect a quand
+ * même besoin d'un identifiant. Un identifiant FIXE romprait `task_sujet_unique` pour de bon —
+ * cet index porte sur TOUS les états, y compris `done` (« ne pas réécrire … est une promesse
+ * produit », même migration) : une première recherche terminée bloquerait alors toute réouverture
+ * future, quel que soit le besoin. Faire varier l'identifiant avec le jour civil UTC est donc ce
+ * qui permet à une recherche `done` un jour de ne pas condamner celle du lendemain.
+ *
+ * La VRAIE borne — une seule recherche active à la fois, quel que soit le jour où elle a été
+ * ouverte — n'est PAS portée par cet identifiant : elle est appliquée juste après, en lisant
+ * l'état des missions `recherche` déjà ouvertes. Lire ce hash comme « une recherche par jour »
+ * serait donc un contresens : rien n'empêcherait, par exemple, plusieurs jours de rester sans
+ * recherche pendant qu'une seule reste active, ni une recherche de rester ouverte plusieurs jours.
+ *
+ * Ce n'est ni un SIRET ni l'identifiant d'aucune ligne réelle — contrairement à `lead.id`, cette
+ * valeur ne référence rien : `subject_kind = 'recherche'` le dit déjà, `subject_id` n'a ici qu'un
+ * rôle mécanique.
+ */
+function identifiantDeRecherche(tenantId: TenantId, employeeId: EmployeeId, jour: string): string {
+  return createHash("sha256")
+    .update(`recherche:${tenantId}:${employeeId}:${jour}`)
+    .digest("hex")
+    .slice(0, 32);
+}
+
+/**
+ * Le gisement du métier Commercial : les prospects que cet employé n'a pas encore pris en charge
+ * — et, quand il n'y en a aucun, la recherche qui doit les faire apparaître.
  *
  * ⚠️ Ce qui est filtré **en SQL**, et pourquoi pas en TypeScript : un prospect exclu, désinscrit,
  * ou déjà confié à une mission ne doit pas remonter du tout. Le filtrer après coup laisserait,
@@ -36,6 +69,13 @@ import type { EmployeeId, TenantId } from "@sentio/domain";
  * L'ordre est `created_at, id` — total et stable. Sans le départage par identifiant, deux
  * prospects importés dans la même transaction partagent `created_at` (le même piège qu'EXEC-02
  * sur le journal), et deux battements ouvriraient des missions différentes.
+ *
+ * ══ LA PRIORITÉ, ET POURQUOI ELLE NE SE DISCUTE PAS ══
+ *
+ * Du travail de traitement gagne TOUJOURS contre une recherche : un employé qui a des prospects
+ * à qualifier n'a aucun besoin d'en chercher d'autres, et lui en faire chercher quand même
+ * gaspillerait un cycle sur un besoin qui n'existe pas. La recherche n'est donc proposée que
+ * lorsque la requête ci-dessous ne rend RIEN — jamais en plus.
  */
 export class GisementDeProspects implements GisementDeMissions {
   readonly nature = "lead";
@@ -46,6 +86,7 @@ export class GisementDeProspects implements GisementDeMissions {
     tenantId: TenantId;
     employeeId: EmployeeId;
     limite: number;
+    jour: string;
   }): Promise<readonly { kind: string; id: string }[]> {
     const rows = await this.sql.query<{ id: string }>(
       `select l.id
@@ -88,7 +129,30 @@ export class GisementDeProspects implements GisementDeMissions {
         limit $3`,
       [input.tenantId, input.employeeId, input.limite],
     );
-    return rows.map((row) => ({ kind: this.nature, id: row.id }));
+    if (rows.length > 0) return rows.map((row) => ({ kind: this.nature, id: row.id }));
+
+    // ── Aucun prospect à traiter : c'est le besoin de recherche, jamais l'inverse. Un employé
+    //    qui a du travail de traitement ne doit jamais se voir proposer une recherche à la place.
+    //
+    // Une recherche encore active — quel que soit le jour où elle a été ouverte — compte comme du
+    // travail déjà en cours : en ouvrir une seconde empilerait deux recherches concurrentes pour
+    // un besoin qu'une seule suffit à couvrir. « Active » est ici tout état qui n'est pas terminal
+    // (`…120001` : done/failed sont les deux seuls états qui closent une mission).
+    const [recherche] = await this.sql.query<{ id: string }>(
+      `select 1 as id
+         from task t
+        where t.tenant_id = $1
+          and t.employee_id = $2
+          and t.subject_kind = 'recherche'
+          and t.state not in ('done', 'failed')
+        limit 1`,
+      [input.tenantId, input.employeeId],
+    );
+    if (recherche !== undefined) return [];
+
+    return [
+      { kind: "recherche", id: identifiantDeRecherche(input.tenantId, input.employeeId, input.jour) },
+    ];
   }
 }
 

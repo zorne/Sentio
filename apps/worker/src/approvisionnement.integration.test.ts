@@ -234,7 +234,12 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     );
 
     const gisement = new GisementDeProspects(sql);
-    const eligibles = await gisement.sujetsEligibles({ tenantId, employeeId, limite: 50 });
+    const eligibles = await gisement.sujetsEligibles({
+      tenantId,
+      employeeId,
+      limite: 50,
+      jour: jourUtc(new Date()),
+    });
 
     // Un seul prospect contactable — et le filtre est en SQL, pas après coup : entre une lecture
     // et une écriture, un prospect désinscrit redeviendrait candidat.
@@ -266,7 +271,12 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     );
 
     const gisement = new GisementDeProspects(sql);
-    const eligibles = await gisement.sujetsEligibles({ tenantId, employeeId, limite: 50 });
+    const eligibles = await gisement.sujetsEligibles({
+      tenantId,
+      employeeId,
+      limite: 50,
+      jour: jourUtc(new Date()),
+    });
 
     expect(eligibles).toHaveLength(1);
   });
@@ -543,6 +553,16 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
 
   it("inscrit le lot du jour même quand rien n'est ouvert, avec son motif", async () => {
     const { tenantId, employeeId } = await entreprise({ prospects: 0 });
+    // ⚠️ 0 prospect ne suffit plus à rendre « aucun sujet éligible » depuis la mission
+    // `recherche` (`mission-de-recherche.integration.test.ts`) : sans lead, le gisement propose
+    // justement une recherche. Pour éprouver ici le cas où RIEN n'est vraiment éligible, on bloque
+    // aussi ce repli avec une recherche déjà active.
+    await sql.query(
+      `insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id, state)
+       select $1, $2, (select id from objective where tenant_id = $1 and state = 'actif'),
+              'recherche', $3, 'pending'`,
+      [tenantId, employeeId, randomUUID()],
+    );
     await approvisionnerLeJour(deps(), new Date());
 
     const [lot] = await sql.query<{ ouvertes: number; motif: string }>(

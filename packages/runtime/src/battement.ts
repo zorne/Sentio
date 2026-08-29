@@ -128,6 +128,7 @@ async function approvisionnerUnEmploye(
       : await gisement.sujetsEligibles({
           tenantId: employe.tenantId,
           employeeId: employe.employeeId,
+          jour,
           // On ne demande jamais plus que ce qu'on pourrait ouvrir : lire cent prospects pour en
           // retenir dix serait de la collecte sans usage.
           limite: Math.min(

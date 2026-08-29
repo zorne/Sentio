@@ -5,7 +5,7 @@ import {
   type AnnuaireDEntreprises,
   type EntrepriseTrouvee,
 } from "@sentio/capabilities";
-import { GisementDeProspects, RegistreDeProspectsPostgres } from "@sentio/runtime";
+import { GisementDeProspects, RegistreDeProspectsPostgres, jourUtc } from "@sentio/runtime";
 import type { EmployeeId, TenantId } from "@sentio/domain";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -96,7 +96,12 @@ describe("P0-1 — d'où viennent les entreprises à approcher", () => {
     // mission ne sert à rien, et c'est exactement ce qui serait arrivé tant que l'éligibilité
     // exigeait une adresse email — que l'annuaire public ne donne jamais.
     const gisement = new GisementDeProspects(sql);
-    const eligibles = await gisement.sujetsEligibles({ tenantId, employeeId, limite: 50 });
+    const eligibles = await gisement.sujetsEligibles({
+      tenantId,
+      employeeId,
+      limite: 50,
+      jour: jourUtc(new Date()),
+    });
     expect(eligibles).toHaveLength(2);
   });
 

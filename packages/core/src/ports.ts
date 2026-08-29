@@ -158,6 +158,13 @@ export interface GisementDeMissions {
     employeeId: EmployeeId;
     /** Borne haute demandée. Le gisement peut en rendre moins, jamais plus. */
     limite: number;
+    /**
+     * Le jour civil UTC du battement (`AAAA-MM-JJ`), tel que calculé par `jourUtc`. Un gisement
+     * qui doit fabriquer un sujet sans entité réelle derrière (une recherche, pas un prospect) en
+     * a besoin pour donner à ce sujet une identité déterministe — jamais pour cadencer quoi que
+     * ce soit lui-même, ça reste le rôle de `approvisionnement (tenant_id, employee_id, jour)`.
+     */
+    jour: string;
   }): Promise<readonly { readonly kind: string; readonly id: string }[]>;
 }
 
