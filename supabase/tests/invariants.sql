@@ -598,7 +598,7 @@ begin
   -- lequel des deux elle sert, et le rattachement redeviendrait une convention de tri.
   begin
     insert into public.objective (tenant_id, metric, target_value, horizon)
-    values ('c0000000-0000-0000-0000-00000000000c', 'marges', 20, 'mensuel');
+    values ('c0000000-0000-0000-0000-00000000000c', 'chiffre_affaires', 20, 'mensuel');
     raise exception 'ÉCHEC individuel : une entreprise a pu porter deux objectifs actifs.';
   exception when unique_violation then null;
   end;
@@ -1707,7 +1707,7 @@ begin
   --    redeviendrait indécidable, et le rattachement une convention de tri (EXEC-16).
   begin
     insert into public.objective (tenant_id, metric, target_value, horizon)
-    values ('aaaaaaaa-0000-0000-0000-000000000001', 'marges', 20, 'mois');
+    values ('aaaaaaaa-0000-0000-0000-000000000001', 'chiffre_affaires', 20, 'mois');
     raise exception 'ÉCHEC mission : deux objectifs actifs coexistent dans une entreprise.';
   exception when unique_violation then null;
   end;
@@ -1720,7 +1720,7 @@ begin
   update public.objective set state = 'retire' where id = objectif_ancien;
 
   insert into public.objective (tenant_id, metric, target_value, horizon)
-  values ('aaaaaaaa-0000-0000-0000-000000000001', 'marges', 20, 'mois');
+  values ('aaaaaaaa-0000-0000-0000-000000000001', 'chiffre_affaires', 20, 'mois');
 
   if (select objective_id from public.task
        where id = '99999999-0000-0000-0000-000000000001') <> objectif_ancien then
@@ -2867,7 +2867,7 @@ begin
   update public.objective set state = 'retire' where tenant_id = entreprise and state = 'actif';
 
   insert into public.objective (tenant_id, metric, target_value, horizon, horizon_jours, created_at)
-  values (entreprise, 'mrr', 10000, 'par mois', 30, now() - interval '10 days')
+  values (entreprise, 'chiffre_affaires', 10000, 'par mois', 30, now() - interval '10 days')
   returning id into objectif;
 
   insert into public.task (tenant_id, employee_id, objective_id, subject_kind, subject_id)
@@ -3890,7 +3890,7 @@ begin
     from public.reserve_identity('commercial');
 
   insert into public.objective (tenant_id, metric, target_value, horizon) values
-    (a, 'mrr', 1000, 'mois'), (b, 'mrr', 9999, 'mois');
+    (a, 'chiffre_affaires', 1000, 'mois'), (b, 'chiffre_affaires', 9999, 'mois');
 
   -- Ce que B a de plus précieux : ce que son employée a appris, et ce qu'il vend.
   insert into public.learned_fact (tenant_id, employee_id, fact, author) values
@@ -4131,6 +4131,112 @@ begin
 
   raise notice
     'OK  LADY-AH — la formule affichée est celle qui s''applique, et les plafonds viennent des données';
+end;
+$$;
+
+
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+-- LADY-AJ — un objectif est mesuré par SA métrique, jamais par celle d'un autre.
+--
+-- ⚠️ CE BLOC EXISTE PARCE QUE LE DÉFAUT A ÉTÉ MESURÉ, PAS IMAGINÉ.
+--
+-- `avancement_vers_l_objectif()` sommait `outcome.kind = 'sale'` quelle que soit la métrique de
+-- l'objectif. Constaté sur base jetable, dans les deux sens :
+--
+--     objectif « rendez_vous_qualifies », cible 10 · 3 rendez-vous réels · AFFICHÉ : 0
+--     objectif « ventes », cible 5 · 1 vente de 90 000 € · AFFICHÉ : 90000
+--
+-- Le premier fait passer une employée qui travaille pour une employée qui ne fait rien ; le second
+-- affiche 1 800 000 % d'un objectif. Et `parcours-client.sql` inscrivait le défaut comme résultat
+-- ATTENDU (`n = 4500` pour une cible de 10 rendez-vous) : le test gardait le bug au lieu de le
+-- trouver. C'est ce qui rend ce bloc-ci nécessaire.
+-- ════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  entreprise constant uuid := 'aaaaaaaa-0000-0000-0000-000000000001';
+  employe    constant uuid := 'ffffffff-0000-0000-0000-000000000001';
+  objectif   uuid;
+  mission    uuid;
+  n          numeric;
+begin
+  update public.objective set state = 'retire' where tenant_id = entreprise and state = 'actif';
+
+  -- ── 1. Un objectif en NOMBRE DE RENDEZ-VOUS, avec une vente au milieu pour piéger le calcul.
+  insert into public.objective (tenant_id, metric, target_value, horizon, horizon_jours)
+  values (entreprise, 'rendez_vous_qualifies', 10, 'ce mois', 30)
+  returning id into objectif;
+
+  insert into public.task (tenant_id, employee_id, objective_id, subject_kind, subject_id)
+  values (entreprise, employe, objectif, 'lead', gen_random_uuid())
+  returning id into mission;
+
+  insert into public.outcome (tenant_id, task_id, kind, declared_by) values
+    (entreprise, mission, 'meeting', 'client'),
+    (entreprise, mission, 'meeting', 'client'),
+    (entreprise, mission, 'meeting', 'client');
+  insert into public.outcome (tenant_id, task_id, kind, value, declared_by)
+  values (entreprise, mission, 'sale', 4500, 'client');
+
+  select realise into n from public.avancement_vers_l_objectif(entreprise);
+  if n <> 3 then
+    raise exception
+      'ÉCHEC métrique : objectif « 10 rendez_vous_qualifies », 3 rendez-vous déclarés, réalisé = %. '
+      'Une vente de 4 500 € ne mesure pas des rendez-vous.', n;
+  end if;
+
+  -- ── 2. ⭐ Le montant n'existe QUE sous une métrique monétaire.
+  -- ⚠️ BORNÉ À CET OBJECTIF. D'autres blocs de ce fichier ont déjà déclaré des ventes pour cette
+  --    entreprise : compter à l'échelle du locataire mesurerait leur histoire, pas ce test.
+  if public.realise_de_la_metrique(entreprise, 'chiffre_affaires', objectif) <> 4500 then
+    raise exception 'ÉCHEC métrique : le chiffre d''affaires de cet objectif devrait valoir 4 500 €.';
+  end if;
+  if public.realise_de_la_metrique(entreprise, 'ventes', objectif) <> 1 then
+    raise exception 'ÉCHEC métrique : « ventes » compte les ventes, pas leur montant.';
+  end if;
+
+  -- ── 3. Le même jeu de résultats, lu par une métrique de VENTES : 1, jamais 4 500.
+  update public.objective set state = 'retire' where id = objectif;
+  insert into public.objective (tenant_id, metric, target_value, horizon, horizon_jours)
+  values (entreprise, 'ventes', 5, 'ce trimestre', 90)
+  returning id into objectif;
+  update public.task set objective_id = objectif where id = mission;
+
+  select realise into n from public.avancement_vers_l_objectif(entreprise);
+  if n <> 1 then
+    raise exception 'ÉCHEC métrique : objectif « 5 ventes », 1 vente déclarée, réalisé = %.', n;
+  end if;
+
+  -- ── 4. ⭐⭐ UNE MÉTRIQUE SANS DÉFINITION N'ENTRE PAS EN BASE.
+  --    C'est ce qui empêche le défaut de revenir : le modèle du diagnostic rédige un texte libre,
+  --    et rien d'autre que cette clé étrangère ne l'arrête.
+  begin
+    update public.objective set metric = 'pertes_evitees' where id = objectif;
+    raise exception 'ÉCHEC métrique : « pertes_evitees » acceptée alors que rien ne sait la mesurer.';
+  exception when foreign_key_violation then
+    null;
+  end;
+
+  -- ── 5. Une définition à moitié écrite est refusée : elle rendrait zéro en silence.
+  begin
+    insert into public.metric_definition (cle, libelle, unite, agregation)
+    values ('sans_source', 'sans source', 'nombre', 'compte');
+    raise exception 'ÉCHEC métrique : une définition sans source a été acceptée.';
+  exception when check_violation then
+    null;
+  end;
+
+  -- ── 6. Un ratio s'exprime en pourcentage, et une somme jamais en nombre nu.
+  begin
+    insert into public.metric_definition (cle, libelle, unite, agregation, numerateur, denominateur)
+    values ('ratio_en_nombre', 'ratio mal unité', 'nombre', 'ratio', 'ventes', 'prospects_trouves');
+    raise exception 'ÉCHEC métrique : un ratio a pu s''exprimer en nombre.';
+  exception when check_violation then
+    null;
+  end;
+
+  raise notice
+    'OK  LADY-AJ — chaque objectif est mesuré par sa propre métrique, et une métrique sans source est refusée';
 end;
 $$;
 

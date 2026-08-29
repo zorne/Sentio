@@ -191,12 +191,19 @@ export function composerLExecutant(
     const { registre, ecartees } = await chargerLeRegistre(sql, moteursMetier);
     const moteurs = new PostgresMoteurs(sql, registre);
 
-    // ⚠️ L'instant est relu ICI, et pas réutilisé depuis l'approvisionnement. La raison est
-    // concrète : une mission ouverte à l'étape 1 porte une échéance posée par la base au moment
-    // de son insertion, donc APRÈS `instant`. Réutiliser l'ancien instant la rendrait « pas
-    // encore due » — et le battement qui vient de l'ouvrir ne la prendrait pas. Le travail neuf
-    // aurait attendu un jour entier, ce qui est exactement ce que l'ordre des deux étapes existe
-    // pour éviter. Trouvé par le test de bout en bout, pas à la relecture.
+    // ⚠️ AUCUN INSTANT N'EST PASSÉ : LA BASE EST L'HORLOGE.
+    //
+    // Il y avait ici un `maintenant: maintenant()`, relu exprès plutôt que réutilisé depuis
+    // l'approvisionnement. Le commentaire disait pourquoi : « une mission ouverte à l'étape 1
+    // porte une échéance posée par la base, donc APRÈS `instant` ; réutiliser l'ancien instant la
+    // rendrait pas encore due ». Le raisonnement était juste, et le remède ne l'était qu'à moitié.
+    //
+    // Relire l'horloge du PROCESSUS ne rattrape pas le fond : `next_run_at` vient de Postgres, en
+    // microsecondes, et un `Date` JS n'a que la milliseconde. Le même travail restait manquable
+    // quand les deux tombaient dans la même milliseconde — une fois sur quatre, mesuré.
+    //
+    // La comparaison se fait désormais en SQL (`PostgresFileDeTravaux.prendre`). Ne pas passer
+    // d'instant n'est donc pas un oubli : c'est le correctif.
     const travaux = await executerLesTravauxDus(
       {
         sql,
@@ -211,7 +218,6 @@ export function composerLExecutant(
       },
       {
         prisPar: config.nomDeLExecutant,
-        maintenant: maintenant(),
         ...(options.travauxMaxParBattement !== undefined && {
           maxTravaux: options.travauxMaxParBattement,
         }),

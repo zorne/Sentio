@@ -346,6 +346,22 @@ export async function demanderALEmployee(
 /**
  * Le fil déjà échangé avec CETTE employée.
  *
+ * ⚠️ L'APPARTENANCE EST VÉRIFIÉE ICI, ET CE N'EST PAS UNE PRÉCAUTION DÉCORATIVE.
+ *
+ * Cette fonction est exportée d'un fichier `"use server"` : c'est donc un point d'entrée
+ * atteignable depuis le navigateur, pas une fonction interne de la page. Ses deux identifiants
+ * viennent de l'appelant, et la lecture passe par le pool de service, dont le rôle porte
+ * `rolbypassrls` — **RLS ne la borne pas**. Sans le contrôle ci-dessous, deux identifiants
+ * suffisaient à lire le fil privé entre un dirigeant et son employée, dans n'importe quelle
+ * entreprise. C'est l'invariant 2 (`adr/0014`), celui qui ne se négocie pas.
+ *
+ * Elle passait à travers les règles 7 et 8 des frontières parce que celles-ci vérifient qu'une
+ * lecture NOMME son entreprise et son employée — pas qu'elle a le DROIT de les lire. La règle 9
+ * comble ce trou pour tout le fichier.
+ *
+ * ⚠️ Un refus rend le même vide qu'une conversation inexistante. Distinguer les deux dirait à
+ * qui essaie si l'entreprise visée existe — une réponse qui ne lui appartient pas.
+ *
  * ⚠️ Les deux identifiants filtrent, jamais un seul. Une entreprise peut avoir plusieurs
  * employées ; ne nommer que l'entreprise mêlerait leurs conversations, et chacune paraîtrait se
  * souvenir de ce qu'on a dit à l'autre.
@@ -357,6 +373,8 @@ export async function filDeLaConversation(
   tenantId: string,
   employeeId: string,
 ): Promise<readonly { auteur: "dirigeant" | "employee"; texte: string }[]> {
+  if (!(await isAuthorizedForTenant(tenantId))) return [];
+
   try {
     const { rows } = await pool.query<{ auteur: "dirigeant" | "employee"; texte: string }>(
       `select auteur, texte

@@ -205,6 +205,49 @@ Deno comme sous Node — vérifié en la neutralisant : deux tests passent au ro
 
 ---
 
+## D17 — Une défense en base sous les fonctions que seul le service peut appeler
+
+Constat d'audit du 2026-08-28, **non corrigé volontairement** : la décision revient au fondateur.
+
+L'espace du dirigeant lit et écrit par deux chemins. Les lectures « cœur » passent par le client à
+session, donc RLS les borne. Mais les quinze fonctions `security definer` de l'espace sont
+**révoquées à `authenticated`** et ne s'atteignent que par le pool de service, dont le rôle porte
+`rolbypassrls`. La chaîne est donc :
+
+```text
+pool de service (postgres, RLS contournée)
+        ↓
+fonction security definer
+        ↓
+tenantId reçu en paramètre — la fonction lui fait confiance
+        ↓
+garde applicative : isAuthorizedForTenant()
+```
+
+**La garde applicative est le seul obstacle**, et c'est vérifié plutôt que supposé : gardes
+retirées, un appel direct à `regler_l_autonomie()` sur l'entreprise voisine **réussit** et rend un
+identifiant de configuration. Or c'est le geste qui peut porter l'autonomie à `auto`.
+
+Toutes les fonctions ne sont pas logées à la même enseigne : `accorder_definitivement()` vérifie,
+elle, que l'employé appartient bien à l'entreprise passée. L'asymétrie n'est pas raisonnée — elle
+est historique.
+
+| Option | Conséquence |
+|---|---|
+| **Laisser la garde applicative seule, défendue par la règle 9 des frontières** *(en vigueur)* | un seul filet, mais mécaniquement vérifié à chaque `pnpm run verify` ; aucun coût |
+| Ajouter dans chaque fonction un contrôle d'appartenance de l'employé à l'entreprise | défense en profondeur, sur le modèle d'`accorder_definitivement` ; ne protège pas contre un `tenantId` dont l'appelant n'est pas membre — la base ignore qui est connecté quand le service l'appelle |
+| Faire porter la session jusqu'à la base (`set local request.jwt.claim.sub`) et vérifier `is_tenant_member` dans les fonctions | vraie défense en profondeur, seule option qui ferme le cas complet ; touche les quinze fonctions et le pool, donc un chantier |
+
+⚠️ **Ce que la deuxième option ne fait pas** doit être dit, sinon elle rassurerait à tort : vérifier
+que l'employé appartient à l'entreprise n'empêche pas de lire une entreprise entière dont on n'est
+pas membre — il faut nommer un employé de CETTE entreprise, ce qu'un identifiant deviné donne
+aussi. Seule la troisième referme le cas.
+
+**Ne bloque aucun lot.** La règle 9 empêche la récidive du défaut réellement observé
+(`filDeLaConversation`) ; cette entrée porte sur la profondeur, pas sur l'existence, de la défense.
+
+---
+
 ## Comment trancher
 
 Pour chaque décision : écrire **ce qu'on gagne, ce qu'on perd, et à quelle condition on

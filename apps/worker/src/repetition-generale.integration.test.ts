@@ -154,10 +154,6 @@ describeIfDatabase("LADY-P — la répétition générale, de la conversation au
   }
 
   /** L'heure SELON LA BASE — `job.next_run_at` vient de son horloge, pas de celle du processus. */
-  async function maintenantSelonLaBase(): Promise<Date> {
-    const [ligne] = await sql.query<{ maintenant: Date }>("select now() as maintenant", []);
-    return ligne?.maintenant as Date;
-  }
 
   it("va de la conversation au résultat, sans qu'aucune donnée ne soit écrite à la main", async () => {
     // ══ 1. LE DIAGNOSTIC ═══════════════════════════════════════════════════════════════════
@@ -308,7 +304,6 @@ describeIfDatabase("LADY-P — la répétition générale, de la conversation au
     await seulDansLaFile();
     await executerLesTravauxDus(deps(), {
       prisPar: "répétition-générale",
-      maintenant: await maintenantSelonLaBase(),
       dataClass: "synthetic",
       maxTravaux: 1,
     });
@@ -343,7 +338,6 @@ describeIfDatabase("LADY-P — la répétition générale, de la conversation au
     await seulDansLaFile();
     await executerLesTravauxDus(deps(), {
       prisPar: "répétition-générale",
-      maintenant: await maintenantSelonLaBase(),
       dataClass: "synthetic",
       maxTravaux: 1,
     });

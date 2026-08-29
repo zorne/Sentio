@@ -106,7 +106,7 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     if (objectif !== "aucun") {
       await sql.query(
         `insert into objective (tenant_id, metric, target_value, horizon, state, achieved_at)
-         values ($1, '€ de chiffre d''affaires', 5000, 'mois', $2, $3)`,
+         values ($1, 'chiffre_affaires', 5000, 'mois', $2, $3)`,
         [tenantId, objectif, objectif === "atteint" ? new Date() : null],
       );
     }

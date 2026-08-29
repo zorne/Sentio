@@ -47,8 +47,8 @@ select 'eeeeeeee-0000-0000-0000-00000000000b', 'bbbbbbbb-0000-0000-0000-00000000
 from public.reserve_identity('commercial');
 
 insert into public.objective (id, tenant_id, metric, target_value, horizon) values
-  ('0b1ec71f-0000-0000-0000-00000000000a', 'aaaaaaaa-0000-0000-0000-00000000000a', 'mrr', 1000, 'mois'),
-  ('0b1ec71f-0000-0000-0000-00000000000b', 'bbbbbbbb-0000-0000-0000-00000000000b', 'mrr', 9999, 'mois');
+  ('0b1ec71f-0000-0000-0000-00000000000a', 'aaaaaaaa-0000-0000-0000-00000000000a', 'chiffre_affaires', 1000, 'mois'),
+  ('0b1ec71f-0000-0000-0000-00000000000b', 'bbbbbbbb-0000-0000-0000-00000000000b', 'chiffre_affaires', 9999, 'mois');
 
 insert into public.lead (id, tenant_id, company_name, email, source) values
   ('11ead000-0000-0000-0000-00000000000a', 'aaaaaaaa-0000-0000-0000-00000000000a', 'Client de A', 'a@exemple.fr', 'import_client'),

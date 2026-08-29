@@ -84,3 +84,66 @@ export async function applyVitrineSchema(
     await db.query(await readFile(join(MIGRATIONS, fichier), "utf8"));
   }
 }
+
+/** Le schéma du CŒUR — `supabase/migrations`, la source de vérité (`adr/0025`, `adr/0030`). */
+const MIGRATIONS_DU_COEUR = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "..",
+  "..",
+  "..",
+  "supabase",
+  "migrations",
+);
+
+/**
+ * Monte le schéma RÉEL, celui qui tourne en production.
+ *
+ * ══ POURQUOI DEUX MONTAGES, ET LEQUEL DIT LA VÉRITÉ ══
+ *
+ * `applyVitrineSchema` ci-dessus rejoue `apps/vitrine/migrations` — le schéma de la vitrine
+ * d'AVANT la fusion, qui n'a jamais été appliqué au projet Supabase. Il contient des tables qui
+ * n'existent nulle part en ligne (`agent_instance`, `agent_definition`, `rgpd_request`), et il
+ * lui manque tout le cœur (`employee`, `lady_configuration`, `conversation_message`).
+ *
+ * ⚠️ **Une suite montée sur ce schéma-là ne prouve rien sur la production.** C'est ce qui a
+ * laissé passer l'appel à `agent_instance` dans `claimTenantsForCurrentUser` : la table existait
+ * dans le schéma des tests, et seulement là. Les tests étaient verts contre une fiction.
+ *
+ * Toute suite qui touche au cœur — l'espace du dirigeant, ses employées, ses conversations —
+ * utilise CE montage-ci. Le premier reste en place tant que les suites qui en dépendent n'ont
+ * pas été portées ; le faire basculer d'un coup dépasse la correction en cours.
+ */
+export async function applySchemaDuCoeur(
+  db: Queryable,
+  connectionString: string | undefined,
+): Promise<void> {
+  if (connectionString === undefined) {
+    throw new Error(
+      "applySchemaDuCoeur sans chaîne de connexion : le garde ne peut pas vérifier ce qu'on " +
+        "s'apprête à effacer, donc on n'efface pas.",
+    );
+  }
+  assertBaseJetable(connectionString);
+  await db.query(`drop schema if exists public cascade; create schema public;`);
+  await db.query(SHIM_SUPABASE);
+  // ⚠️ `auth` N'EST PAS DANS `public`, DONC IL NE TOMBE PAS AVEC LUI. Le shim le crée avec des
+  // `if not exists` : ses comptes survivent d'une exécution à la suivante, et la deuxième échoue
+  // sur une clé dupliquée. Une suite qui ne passe qu'une fois sur une base neuve n'est pas une
+  // suite — c'est un coup de chance qu'on rejouera en croyant qu'il prouve quelque chose.
+  await db.query(`truncate table auth.users cascade;`);
+  // Le défaut permissif de la plateforme, reproduit : sans lui, les migrations qui RÉVOQUENT des
+  // droits corrigeraient un danger inexistant, et leur test ne prouverait rien.
+  await db.query(`
+    grant usage on schema public to anon, authenticated;
+    alter default privileges in schema public grant all on tables to anon, authenticated;
+    alter default privileges in schema public grant all on sequences to anon, authenticated;
+    alter default privileges in schema public grant all on functions to anon, authenticated;
+  `);
+
+  const fichiers = (await readdir(MIGRATIONS_DU_COEUR)).filter((f) => f.endsWith(".sql")).sort();
+  for (const fichier of fichiers) {
+    await db.query(await readFile(join(MIGRATIONS_DU_COEUR, fichier), "utf8"));
+  }
+}

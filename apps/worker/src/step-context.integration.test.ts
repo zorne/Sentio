@@ -135,7 +135,10 @@ describeIfDatabase("Le contexte du pas courant, sur un vrai Postgres", () => {
     // B : des données qui ne doivent JAMAIS apparaître dans le contexte de A.
     await sql.query(
       "update objective set metric = $2, target_value = $3, horizon = $4 where tenant_id = $1 and state = 'actif'",
-      [tenantB, "SECRET_DE_B", 999, "jamais"],
+      // ⚠️ Le canari vit désormais sur l'HORIZON, pas sur la métrique : depuis
+      // `20260829120001`, une métrique doit exister dans `metric_definition`. L'intention du
+      // test est inchangée — une chaîne propre à B qui ne doit jamais atteindre le contexte de A.
+      [tenantB, "ventes", 999, "SECRET_DE_B"],
     );
     await poserProfil(tenantB, "cible", "CLIENTS_CONFIDENTIELS_DE_B");
     await poserFait(tenantB, employeB, "FAIT_APPRIS_DE_B");

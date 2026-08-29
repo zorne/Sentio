@@ -166,7 +166,7 @@ describeIfDatabase("Repositories sur un vrai Postgres", () => {
       "objective",
       TenantScope.of(tenantA),
     );
-    const created = await repo.insert({ metric: "ca", targetValue: 1, horizon: "mensuel", state: "retire" });
+    const created = await repo.insert({ metric: "chiffre_affaires", targetValue: 1, horizon: "mensuel", state: "retire" });
 
     const updated = await repo.update(created.id, { horizon: "trimestriel" });
     expect(updated?.horizon).toBe("trimestriel");
@@ -182,12 +182,15 @@ describeIfDatabase("Repositories sur un vrai Postgres", () => {
       "objective",
       TenantScope.of(tenantA),
     );
-    await repo.insert({ metric: "z", targetValue: 1, horizon: "mensuel", state: "retire" });
-    await repo.insert({ metric: "a", targetValue: 1, horizon: "mensuel", state: "retire" });
+    // ⚠️ Deux métriques RÉELLES, choisies pour leur ordre alphabétique : depuis
+    // `20260829120001`, « z » et « a » ne sont plus des métriques possibles. Ce que la suite
+    // éprouve — le tri et la borne du dépôt générique — est inchangé.
+    await repo.insert({ metric: "ventes", targetValue: 1, horizon: "mensuel", state: "retire" });
+    await repo.insert({ metric: "chiffre_affaires", targetValue: 1, horizon: "mensuel", state: "retire" });
 
     const sorted = await repo.list({}, { orderBy: "metric", direction: "asc", limit: 1 });
     expect(sorted).toHaveLength(1);
-    expect(sorted[0]?.metric).toBe("a");
+    expect(sorted[0]?.metric).toBe("chiffre_affaires");
   });
 
   it("lit une table globale sans portée", async () => {
@@ -281,7 +284,7 @@ describeIfDatabase("Repositories sur un vrai Postgres", () => {
       "objective",
       TenantScope.of(tenantA),
     );
-    const created = await repo.insert({ metric: "ca", targetValue: 1, horizon: "mensuel", state: "retire" });
+    const created = await repo.insert({ metric: "chiffre_affaires", targetValue: 1, horizon: "mensuel", state: "retire" });
 
     // Le repository refuse déjà d'en entendre parler…
     await expect(repo.update(created.id, { tenantId: tenantB })).rejects.toThrow(

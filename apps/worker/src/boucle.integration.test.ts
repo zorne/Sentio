@@ -232,10 +232,6 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
    * En production le même décalage est sans conséquence : le battement suivant reprend le travail
    * quelques minutes plus tard. En test, il n'y a pas de battement suivant.
    */
-  async function maintenantSelonLaBase(): Promise<Date> {
-    const [ligne] = await sql.query<{ maintenant: Date }>("select now() as maintenant", []);
-    return ligne?.maintenant as Date;
-  }
 
   async function approvisionner(...tenantIds: TenantId[]): Promise<void> {
     await approvisionnerLeJour(
@@ -302,7 +298,6 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
 
     const rapport = await executerLesTravauxDus(deps(), {
       prisPar: "exécutant-de-test",
-      maintenant: await maintenantSelonLaBase(),
       dataClass: "synthetic",
       maxTravaux: 1,
     });
@@ -339,8 +334,7 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     for (let i = 0; i < 3; i++) {
       await executerLesTravauxDus(deps(), {
         prisPar: "exécutant-de-test",
-        maintenant: await maintenantSelonLaBase(),
-        dataClass: "synthetic",
+          dataClass: "synthetic",
         maxTravaux: 1,
       });
     }
@@ -359,8 +353,7 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     for (let i = 0; i < REGLAGES_RUNTIME_PAR_DEFAUT.pasMaximumParRun; i++) {
       await executerLesTravauxDus(deps(), {
         prisPar: "exécutant-de-test",
-        maintenant: await maintenantSelonLaBase(),
-        dataClass: "synthetic",
+          dataClass: "synthetic",
         maxTravaux: 1,
       });
     }
@@ -383,7 +376,6 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
 
     await executerLesTravauxDus(deps(), {
       prisPar: "exécutant-de-test",
-      maintenant: await maintenantSelonLaBase(),
       dataClass: "synthetic",
       maxTravaux: 1,
     });
@@ -425,13 +417,11 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     try {
       const file = new PostgresFileDeTravaux(sql);
       const autre = new PostgresFileDeTravaux(second);
-      const maintenant = new Date();
-
       const pris = await Promise.all([
-        file.prendre({ pris_par: "A", maintenant }),
-        autre.prendre({ pris_par: "B", maintenant }),
-        file.prendre({ pris_par: "A", maintenant }),
-        autre.prendre({ pris_par: "B", maintenant }),
+        file.prendre({ pris_par: "A" }),
+        autre.prendre({ pris_par: "B" }),
+        file.prendre({ pris_par: "A" }),
+        autre.prendre({ pris_par: "B" }),
       ]);
 
       const identifiants = pris.filter((t) => t !== null).map((t) => t!.taskId);
@@ -447,9 +437,8 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     const { tenantId } = await entreprise({ prospects: 1 });
     await approvisionner(tenantId);
     const file = new PostgresFileDeTravaux(sql);
-    const maintenant = new Date();
 
-    expect(await file.prendre({ pris_par: "A", maintenant })).not.toBeNull();
+    expect(await file.prendre({ pris_par: "A" })).not.toBeNull();
     // Le second passage ne le revoit pas : le bail n'a pas expiré.
     const [deuxieme] = await sql.query<{ n: string }>(
       `select count(*) as n from job j join task t on t.id = j.task_id
@@ -466,7 +455,7 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     // Un exécutant prend le travail… puis meurt. Le verrou n'est jamais rendu.
     const bail = new PostgresFileDeTravaux(sql, 10);
     expect(
-      await bail.prendre({ pris_par: "mort", maintenant: await maintenantSelonLaBase() }),
+      await bail.prendre({ pris_par: "mort" }),
     ).not.toBeNull();
 
     // Onze minutes plus tard, un autre le reprend — et compte la reprise.
@@ -492,7 +481,6 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     const avant = appelsAuModele;
     await executerLesTravauxDus(deps(), {
       prisPar: "exécutant-de-test",
-      maintenant: await maintenantSelonLaBase(),
       dataClass: "synthetic",
       maxTravaux: 1,
     });
@@ -530,8 +518,7 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     for (let i = 0; i < 2; i++) {
       await executerLesTravauxDus(deps(), {
         prisPar: "exécutant-de-test",
-        maintenant: await maintenantSelonLaBase(),
-        dataClass: "synthetic",
+          dataClass: "synthetic",
         maxTravaux: 1,
       });
     }
@@ -570,7 +557,6 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     const avant = appelsAuModele;
     await executerLesTravauxDus(deps(), {
       prisPar: "exécutant-de-test",
-      maintenant: await maintenantSelonLaBase(),
       dataClass: "synthetic",
       maxTravaux: 1,
     });
@@ -598,7 +584,6 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
 
     await executerLesTravauxDus(deps(), {
       prisPar: "exécutant-de-test",
-      maintenant: await maintenantSelonLaBase(),
       dataClass: "synthetic",
       maxTravaux: 8,
     });
@@ -643,7 +628,6 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
 
     await executerLesTravauxDus(deps(), {
       prisPar: "exécutant-de-test",
-      maintenant: await maintenantSelonLaBase(),
       dataClass: "synthetic",
       maxTravaux: 1,
     });
@@ -662,5 +646,60 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     );
     expect(chaine).not.toContain("action_engagee");
     expect(effets).toHaveLength(0);
+  });
+  // ═══════════════════════════════════════════════════════════════════════════
+  // L'ÉCHÉANCE — quelle horloge tranche, et pourquoi ce n'est pas celle du processus.
+  //
+  // ⚠️ CE CAS EST DÉTERMINISTE, ET IL REPRODUIT UN DÉFAUT QUI NE L'ÉTAIT PAS.
+  //
+  // `repetition-generale` échouait une fois sur quatre : l'accord du dirigeant était écrit, et
+  // l'action n'arrivait jamais. Cause mesurée : `next_run_at` est posé par Postgres en
+  // MICROsecondes, et un `Date` JS n'en garde que la milliseconde. L'aller-retour rabotait
+  // jusqu'à 999 µs, donc un travail tout juste inséré redevenait « pas encore dû ».
+  //
+  // Ici, on force la microseconde au lieu de l'attendre : `next_run_at` porte 500 µs au-delà de
+  // sa milliseconde. Le défaut cesse d'être une course et devient un fait vérifiable.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  it("⭐⭐ prend un travail dû à 500 µs près — la base tranche, pas l'horloge du processus", async () => {
+    const { tenantId } = await entreprise({ prospects: 1 });
+    await approvisionner(tenantId);
+    const file = new PostgresFileDeTravaux(sql);
+
+    // Une échéance à 500 µs au-delà de sa milliseconde, dans le passé : elle est DUE.
+    const [pose] = await sql.query<{ echeance: Date }>(
+      `update job
+          set next_run_at = date_trunc('milliseconds', now()) + interval '500 microseconds'
+                            - interval '1 second'
+        where tenant_id = $1
+       returning next_run_at as echeance`,
+      [tenantId],
+    );
+    expect(pose?.echeance).toBeDefined();
+
+    // Ce que l'application aurait comparé : la même échéance, rabotée à la milliseconde. Elle
+    // devient ANTÉRIEURE de 500 µs — donc « pas encore due ».
+    const rabotee = new Date(pose!.echeance.getTime());
+
+    // ⚠️ L'ANCIEN COMPORTEMENT, reproduit exprès : avec cet instant, le travail est manqué.
+    expect(await file.prendre({ pris_par: "horloge-du-processus", maintenant: rabotee })).toBeNull();
+
+    // ⭐ Sans instant, la base compare ses propres microsecondes : le travail est pris.
+    const pris = await file.prendre({ pris_par: "horloge-de-la-base" });
+    expect(pris).not.toBeNull();
+    expect(pris!.tenantId).toBe(tenantId);
+  });
+
+  it("un instant CHOISI reste honoré — l'horloge injectable n'a pas disparu", async () => {
+    const { tenantId } = await entreprise({ prospects: 1 });
+    await approvisionner(tenantId);
+    const file = new PostgresFileDeTravaux(sql);
+
+    // Une heure avant l'échéance : rien n'est dû, et c'est le test qui le décide.
+    const uneHeureAvant = new Date(Date.now() - 3_600_000);
+    expect(await file.prendre({ pris_par: "voyageur", maintenant: uneHeureAvant })).toBeNull();
+
+    // Le même travail, sans instant imposé : dû.
+    expect(await file.prendre({ pris_par: "maintenant" })).not.toBeNull();
   });
 });

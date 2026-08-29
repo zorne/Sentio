@@ -115,7 +115,11 @@ export async function* answer(
 
   yield* gateway.stream({
     tenantId: PLATFORM_TENANT,
-    dataClass: "test",
+    // ⚠️ « real » : un visiteur du conseiller public décrit son entreprise pour obtenir une
+    // réponse utile. Marquer ce trafic « test » désarmait la règle d'or (`gateway/index.ts:197`),
+    // qui ne filtre que sur `real`. Même correction que le diagnostic, même conséquence assumée :
+    // sans fournisseur conforme branché, ce chemin échoue au lieu d'envoyer.
+    dataClass: "real",
     system,
     messages,
     maxTokens: 700,

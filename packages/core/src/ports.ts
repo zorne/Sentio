@@ -104,7 +104,18 @@ export interface FileDeTravaux {
    *
    * Rend `null` quand il n'y a rien à faire — le cas le plus fréquent, et pas une erreur.
    */
-  prendre(input: { pris_par: string; maintenant: Date }): Promise<TravailPris | null>;
+  /**
+   * ⚠️ `maintenant` est FACULTATIF, et son absence est le cas de production.
+   *
+   * L'échéance d'un travail (`next_run_at`) est posée par la BASE. La comparer à un instant venu
+   * de l'application mélange deux horloges : celle de Postgres, en microsecondes, et celle du
+   * processus, en millisecondes. Un aller-retour par un `Date` JS rabote jusqu'à 999 µs, donc un
+   * travail tout juste inséré peut se retrouver « pas encore dû » — mesuré, pas supposé.
+   *
+   * Omis, la base tranche seule. Fourni, c'est un instant CHOISI : les suites qui déplacent le
+   * temps (bail expiré, « rien n'est dû ») en ont besoin, et elles seules.
+   */
+  prendre(input: { pris_par: string; maintenant?: Date }): Promise<TravailPris | null>;
 
   /** Le travail redevient dû à cette date, et son verrou est rendu. */
   reporter(input: { tenantId: TenantId; taskId: TaskId; quand: Date }): Promise<void>;

@@ -219,10 +219,8 @@ describeIfDatabase("EXEC-19 — les vrais moteurs, sur la vraie base", () => {
   }
 
   async function unBattement(): Promise<void> {
-    const [ligne] = await sql.query<{ maintenant: Date }>("select now() as maintenant", []);
     await executerLesTravauxDus(await deps(), {
       prisPar: "exec-19",
-      maintenant: ligne?.maintenant as Date,
       maxTravaux: 1,
     });
   }

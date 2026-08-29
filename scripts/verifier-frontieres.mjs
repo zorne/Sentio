@@ -657,6 +657,136 @@ async function verifierCeQuiNommeSonEmployee() {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 9. Une action serveur qui reçoit une entreprise vérifie qu'elle est la sienne.
+//
+// ⚠️ CE QUE LES RÈGLES 7 ET 8 NE COUVRENT PAS, ET QUI A LAISSÉ PASSER UNE FUITE.
+//
+// Les règles 7 et 8 vérifient qu'une lecture NOMME son entreprise et son employée. Elles ne
+// vérifient pas qu'on a le DROIT de les lire — et ce sont deux questions différentes. Une lecture
+// parfaitement nommée sur l'entreprise de quelqu'un d'autre passe les deux règles.
+//
+// Le défaut trouvé : `filDeLaConversation` était exportée d'un fichier `"use server"`, donc
+// atteignable depuis le navigateur, recevait `tenantId` et `employeeId` de l'appelant, et lisait
+// `conversation_message` par le pool de service — dont le rôle porte `rolbypassrls`. Deux
+// identifiants suffisaient à lire le fil privé d'une autre entreprise. Sept actions du même
+// fichier appelaient `isAuthorizedForTenant` en première ligne ; la huitième l'avait oublié.
+//
+// C'est exactement le genre de règle que l'adr/0024 veut voir passer de la mémoire à la machine :
+// « toutes les autres le font » n'est pas une garantie, c'est une statistique.
+//
+// ⚠️ CE QUE CE CONTRÔLE PROUVE, ET CE QU'IL NE PROUVE PAS. Il constate que la vérification est
+// APPELÉE dans la fonction qui reçoit l'entreprise ; il ne prouve pas qu'elle est appelée avant
+// la lecture, ni qu'on a passé le bon identifiant. Comme les règles 7 et 8, il vise l'OUBLI —
+// le défaut réellement observé — et pas l'erreur d'argument, que le typage attrape déjà.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Ce qui atteste qu'une action a vérifié l'appartenance avant d'agir. */
+const GARDES_D_APPARTENANCE = ["isAuthorizedForTenant", "requireTenantAccess"];
+
+async function verifierActionsQuiRecoiventUneEntreprise() {
+  const racine = join(REPO_ROOT, "apps", "vitrine", "src");
+  const fichiers = await fichiersDe(racine, [".ts"], ["test-support"]);
+
+  for (const fichier of fichiers) {
+    if (fichier.includes(".test.")) continue;
+    const brut = await readFile(fichier, "utf8");
+    // Seuls les fichiers d'actions serveur sont concernés : ailleurs, une fonction exportée n'est
+    // pas un point d'entrée réseau, et exiger la garde y serait du bruit.
+    if (!/["']use server["']/.test(brut)) continue;
+
+    const contenu = sansCommentaires(brut);
+    const DEBUT = /export\s+async\s+function\s+([A-Za-z0-9_]+)\s*\(/g;
+
+    for (const trouve of contenu.matchAll(DEBUT)) {
+      const nom = trouve[1];
+      const depuis = trouve.index ?? 0;
+
+      // Le corps s'arrête au prochain export de premier niveau, ou à la fin du fichier. C'est
+      // grossier et suffisant : une garde posée après la fin de sa propre fonction serait de
+      // toute façon un défaut.
+      const suite = contenu.slice(depuis + 1);
+      const prochain = /\nexport\s/.exec(suite);
+      const corps = prochain === null ? suite : suite.slice(0, prochain.index);
+
+      // La signature seule : de la parenthèse ouvrante à la première accolade du corps.
+      const ouvre = corps.indexOf("(");
+      const accolade = corps.indexOf("{", ouvre);
+      const signature = accolade === -1 ? corps.slice(ouvre) : corps.slice(ouvre, accolade);
+      if (!/\btenantId\b/.test(signature)) continue;
+
+      if (GARDES_D_APPARTENANCE.some((garde) => corps.includes(garde))) continue;
+
+      const numero = contenu.slice(0, depuis).split("\n").length;
+      signaler(
+        fichier,
+        numero,
+        "une action serveur qui reçoit une entreprise vérifie l'appartenance",
+        `« ${nom} » reçoit « tenantId » de l'appelant sans appeler ${GARDES_D_APPARTENANCE.join(
+          " ni ",
+        )}. Une fonction exportée d'un fichier « use server » est un point d'entrée atteignable ` +
+          `depuis le navigateur, et le pool de service contourne RLS : l'identifiant reçu ` +
+          `désignerait l'entreprise de quelqu'un d'autre aussi bien que la sienne (adr/0014).`,
+      );
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 10. Un chemin public déclare des données RÉELLES.
+//
+// ⚠️ CE QUE CETTE RÈGLE A ATTRAPÉ, ET POURQUOI RIEN D'AUTRE NE POUVAIT LE VOIR.
+//
+// Le diagnostic public et le conseiller envoyaient au modèle ce que le dirigeant venait de
+// taper — nom de l'entreprise, secteur, effectif, difficultés, objectif — sous l'étiquette
+// `dataClass: "test"`. Or la règle d'or du Gateway ne filtre que sur `"real"` : sous cette
+// étiquette, elle ne se déclenchait **jamais**, et un fournisseur `free` — qui s'autorise à
+// entraîner sur ce qu'il reçoit — recevait des données réelles.
+//
+// `adr/0009` le dit pourtant mot pour mot : « le diagnostic manipulant de la donnée réelle dès
+// la première question ». L'étiquette contredisait la décision, en silence, et `pnpm run verify`
+// restait vert — parce qu'aucun test ne pouvait constater qu'une CONSTANTE du code source était
+// fausse. Un test peut vérifier que la règle d'or fonctionne quand on lui passe « real » ; il ne
+// peut pas vérifier que l'appelant le lui passe. C'est exactement le trou que ce fichier comble.
+//
+// ⚠️ Ce contrôle vise l'ÉTIQUETTE, pas le fournisseur. Il ne dit rien de la conformité d'un
+// provider — c'est le rôle d'`adr/0009` et de la règle d'or. Il dit seulement qu'un chemin public
+// ne peut pas se déclarer « test ».
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Les modules dont tout appel de modèle porte de la donnée de visiteur. */
+const CHEMINS_PUBLICS = [
+  join("packages", "vitrine-core", "src", "diagnostic"),
+  join("packages", "vitrine-core", "src", "advisor"),
+];
+
+async function verifierClasseDeDonneesPublique() {
+  for (const relatif of CHEMINS_PUBLICS) {
+    const fichiers = await fichiersDe(join(REPO_ROOT, relatif), [".ts"]);
+
+    for (const fichier of fichiers) {
+      if (fichier.includes(".test.")) continue;
+      const contenu = sansCommentaires(await readFile(fichier, "utf8"));
+
+      for (const trouve of contenu.matchAll(/dataClass\s*:\s*["'`](\w+)["'`]/g)) {
+        if (trouve[1] === "real") continue;
+
+        const numero = contenu.slice(0, trouve.index).split("\n").length;
+        signaler(
+          fichier,
+          numero,
+          "un chemin public déclare des données réelles",
+          `déclare « dataClass: "${trouve[1]}" ». Le diagnostic et le conseiller reçoivent ce que ` +
+            `le dirigeant tape sur son entreprise — donnée réelle dès la première question ` +
+            `(adr/0009). Toute autre étiquette désarme la règle d'or, qui ne filtre que sur ` +
+            `« real » : un fournisseur « free » recevrait alors ces données sans qu'aucune ligne ` +
+            `ne s'y oppose.`,
+        );
+      }
+    }
+  }
+}
+
 async function main() {
   await verifierFonctions();
   await verifierInterfaceSansFournisseur();
@@ -666,6 +796,8 @@ async function main() {
   await verifierAutonomieAuRecrutement();
   await verifierLecturesDeLEspace();
   await verifierCeQuiNommeSonEmployee();
+  await verifierActionsQuiRecoiventUneEntreprise();
+  await verifierClasseDeDonneesPublique();
 
   if (manquements.length === 0) {
     process.stdout.write("Frontières d'architecture : rien à signaler.\n");

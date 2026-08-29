@@ -109,10 +109,31 @@ export async function confirmMagicLink(code: string): Promise<{ error: string | 
   return { error: error?.message ?? null };
 }
 
-/** Rattache l'utilisateur qui vient de se connecter à tout tenant créé à
- *  son adresse email pendant l'onboarding (agent_instance.config.contactEmail)
- *  et pas encore réclamé. Un seul lien magique suffit donc à accéder à SON
- *  tableau de bord — pas de compte séparé à créer côté onboarding. */
+/** Rattache l'utilisateur qui vient de se connecter à l'entreprise créée à son adresse pendant
+ *  le recrutement, et pas encore réclamée. Un seul lien magique suffit donc à accéder à SON
+ *  espace — pas de compte séparé à créer.
+ *
+ *  ══ CE QUI A ÉTÉ RETIRÉ ICI, ET POURQUOI ÇA CASSAIT LA CONNEXION ══
+ *
+ *  Cette fonction interrogeait d'abord `agent_instance`, en cherchant les entreprises par
+ *  `config->>'contactEmail'`. **Cette table n'existe pas dans la base.** Elle appartient au
+ *  schéma de la vitrine d'avant la fusion (`apps/vitrine/migrations/0001`), qui n'a jamais été
+ *  appliqué à ce projet Supabase — le schéma vivant est `supabase/migrations`, et lui seul
+ *  (`adr/0025`, `adr/0030`).
+ *
+ *  La requête levait donc `relation "agent_instance" does not exist`, sans `try/catch`, sur les
+ *  trois chemins d'entrée : mot de passe, définition du mot de passe, et lien magique. Comme elle
+ *  sort plus haut quand personne n'est connecté, elle ne cassait QUE lorsque l'authentification
+ *  venait de réussir — c'est-à-dire à chaque connexion aboutie, et jamais dans un test.
+ *
+ *  Le commentaire retiré affirmait que « les deux générations coexistent » et que la boucle
+ *  servait l'ancienne. C'était vrai de l'intention, faux de la réalité : l'ancienne génération
+ *  n'a aucune table dans cette base, donc la boucle ne pouvait rien rattacher — elle ne pouvait
+ *  que lever. Un chemin de compatibilité vers un schéma absent n'est pas de la compatibilité.
+ *
+ *  Il ne reste donc qu'une source d'attente, celle du cœur, et c'est `recruter()` qui l'alimente
+ *  (elle insère dans `rattachement_attendu`). Rien n'est perdu.
+ */
 export async function claimTenantsForCurrentUser(): Promise<void> {
   const supabase = await createSupabaseServerClient();
   const {
@@ -120,26 +141,6 @@ export async function claimTenantsForCurrentUser(): Promise<void> {
   } = await supabase.auth.getUser();
   if (!user?.email) return;
 
-  const { rows } = await pool.query<{ tenant_id: string }>(
-    `select distinct tenant_id from agent_instance where config->>'contactEmail' = $1`,
-    [user.email]
-  );
-
-  for (const row of rows) {
-    await pool.query(
-      `insert into tenant_member (tenant_id, user_id, role) values ($1, $2, 'owner')
-       on conflict (tenant_id, user_id) do nothing`,
-      [row.tenant_id, user.id]
-    );
-  }
-
-  // ── Le cœur, à côté de l'héritage ────────────────────────────────────
-  //
-  // Les deux générations coexistent (ADR-0025) : la boucle ci-dessus sert
-  // l'ancienne, cet appel sert la nouvelle. Ce sont deux sources d'attente
-  // distinctes, et les confondre reviendrait à faire dépendre un
-  // rattachement du cœur d'une table condamnée.
-  //
   // ⚠️ Le rapprochement se fait sur une adresse PROUVÉE : le lien magique
   // atteste que celui qui vient de cliquer lit cette boîte. C'est ce qui
   // rend l'opération sûre — et c'est pour ça qu'elle a lieu ICI, après

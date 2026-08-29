@@ -73,7 +73,21 @@ export interface BoucleDeps {
 export interface OptionsDeBoucle {
   /** Qui prend le travail. Sert au diagnostic : « quel exécutant tenait ce verrou ? ». */
   readonly prisPar: string;
-  readonly maintenant: Date;
+  /**
+   * ⚠️ FACULTATIF, ET SON ABSENCE EST LE CAS DE PRODUCTION.
+   *
+   * Deux usages vivaient sous ce nom, et les confondre a coûté un défaut :
+   *
+   *   · **prendre un travail** — comparer une échéance posée par la BASE. C'est là que mélanger
+   *     l'horloge du processus et celle de Postgres faisait sauter des travaux dus (voir
+   *     `PostgresFileDeTravaux.prendre`). Omis, la base tranche seule ;
+   *   · **décider la suite** — arithmétique de cadence, sans aucune comparaison à la base. Elle
+   *     n'a jamais été en cause, et son comportement ne change pas.
+   *
+   * Fourni, c'est un instant CHOISI : les suites qui déplacent le temps — bail expiré, « rien
+   * n'est dû » — en ont besoin, et elles seules.
+   */
+  readonly maintenant?: Date;
   /** Borne d'un battement. Sans elle, un battement pourrait tourner sans fin. */
   readonly maxTravaux?: number;
   /** Classe de données. `real` en production ; les tests utilisent `synthetic`. */
@@ -98,9 +112,11 @@ export async function executerLesTravauxDus(
   let echoues = 0;
 
   for (let i = 0; i < maxTravaux; i++) {
+    // ⚠️ `maintenant` est passé TEL QUEL, `undefined` compris : c'est ainsi que la base devient
+    // l'horloge en production. Y substituer `new Date()` ici rétablirait exactement le défaut.
     const travail = await deps.file.prendre({
       pris_par: options.prisPar,
-      maintenant: options.maintenant,
+      ...(options.maintenant !== undefined && { maintenant: options.maintenant }),
     });
     // Plus rien de dû : le cas le plus fréquent, et pas une erreur.
     if (travail === null) break;
@@ -212,11 +228,15 @@ async function executerUnPas(
     return;
   }
 
+  // ⚠️ ICI, L'HORLOGE DU PROCESSUS RESTE LA BONNE. `deciderLaSuite` calcule une échéance future
+  // — de l'arithmétique de cadence, jamais une comparaison à une valeur venue de la base. C'est
+  // l'autre usage de `maintenant`, celui qui n'a jamais été en cause : son comportement ne change
+  // pas, et ce lot ne touche à aucun comportement métier.
   const suite = deciderLaSuite({
     issue,
     etat: apres.etat,
     reglages,
-    maintenant: options.maintenant,
+    maintenant: options.maintenant ?? new Date(),
   });
 
   await appliquerLaSuite(

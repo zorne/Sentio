@@ -7,10 +7,30 @@
 // API compatible OpenAI (chat/completions + tool_calls). Aucun SDK, un
 // simple fetch — même principe que le provider Gemini.
 //
-// ATTENTION (ADR-004) : le tier gratuit Groq peut utiliser les données
-// pour améliorer ses services. Marqué `data_policy: 'free'` dans la
-// credential côté BYOK ; le gateway le refusera automatiquement pour
-// des dataClass='real'. Ici en Phase 1 démo : dataClass='test' → OK.
+// ⚠️ CE FOURNISSEUR EST ÉCARTÉ PAR `adr/0009`, ET IL EST LE SEUL CONSTRUIT.
+//
+// `adr/0009` (acceptée, 2026-07-28) retient **Mistral** comme principal et écarte Groq :
+// américain, donc transfert hors UE, clauses contractuelles types et analyse d'impact —
+// « un arbitrage juridique, pas technique ». Aucune révision depuis. `providers/` ne contient
+// pourtant que ce fichier, et `buildDiagnosticGateway` l'enregistre en dur.
+//
+// Le tier gratuit Groq peut utiliser les données pour améliorer ses services : il est donc
+// `dataPolicy: 'free'`, et la règle d'or le saute pour toute donnée `real`.
+//
+// ⚠️ LA LIGNE QUI ÉTAIT ICI DISAIT : « Ici en Phase 1 démo : dataClass='test' → OK. »
+// C'est cette hypothèse qui a rendu la protection inopérante. Le diagnostic public et le
+// conseiller marquaient leur trafic `test` alors qu'ils envoient des données réelles dès la
+// première question (`adr/0009`, compromis 4) : la règle d'or, qui ne filtre que sur `real`,
+// ne se déclenchait jamais. Corrigé le 2026-08-29 — les trois appels publics sont `real`.
+//
+// Conséquence directe : tant que ce fichier est le seul fournisseur branché, le diagnostic
+// et le conseiller ÉCHOUENT au lieu d'envoyer. C'est voulu. Ce qui les rouvrira est un
+// fournisseur conforme — `mistral.ts` —, pas un retour en arrière sur l'étiquette.
+//
+// ⚠️ Le reste de cet en-tête parle de « Gemini », d'« ADR-016 » et d'« ADR-004 » : ce sont des
+// références de la vitrine d'AVANT la fusion, sans rapport avec la numérotation actuelle des
+// ADR, et il n'existe aucun `gemini.ts`. Conservées telles quelles pour ne pas réécrire une
+// histoire qu'on n'a pas vécue, mais elles ne désignent rien dans ce dépôt.
 // ════════════════════════════════════════════════════════════════════
 
 import type {

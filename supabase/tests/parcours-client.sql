@@ -122,8 +122,10 @@ begin
   -- ══ 6. ELLE TRAVAILLE, ET LE CLIENT DÉCLARE UN RÉSULTAT ══
   insert into public.execution_event (tenant_id, employee_id, task_id, kind) values (v_tenant, v_employe, mission, 'action_executee');
   insert into public.outcome (tenant_id, task_id, kind, declared_by) values (v_tenant, mission, 'response', 'client');
+  insert into public.outcome (tenant_id, task_id, kind, declared_by) values (v_tenant, mission, 'meeting', 'client');
   insert into public.outcome (tenant_id, task_id, kind, value, declared_by) values (v_tenant, mission, 'sale', 4500, 'client');
-  perform note('12. Résultats déclarés', 'OK', 'une réponse et une vente de 4 500 €, déclarées par le client');
+  perform note('12. Résultats déclarés', 'OK',
+               'une réponse, un rendez-vous et une vente de 4 500 €, déclarés par le client');
 
   begin
     insert into public.outcome (tenant_id, task_id, kind, value, declared_by) values (v_tenant, mission, 'sale', 99999, 'sentio');
@@ -133,8 +135,21 @@ begin
   end;
 
   -- ══ 7. CE QUE LE DIRIGEANT VOIT ══
+  -- ⚠️ CETTE ÉTAPE ATTENDAIT « 4500 » — LE MONTANT D'UNE VENTE — POUR UN OBJECTIF DE
+  --    10 RENDEZ-VOUS. Le parcours inscrivait donc le défaut comme résultat correct :
+  --    `avancement_vers_l_objectif` sommait les ventes quelle que soit la métrique, et le
+  --    dirigeant lisait « 4500 sur 10 rendez-vous ». Corrigé par `20260829120001` : une métrique
+  --    déclare sa source, et le réalisé ne compte que ce que l'objectif demande.
+  --
+  --    Un rendez-vous déclaré ⇒ 1. Le montant de la vente n'apparaît QUE sous une métrique
+  --    monétaire, et il est vérifié juste en dessous.
   select realise into n from public.avancement_vers_l_objectif(v_tenant);
-  perform note('14. Avancement', case when n = 4500 then 'OK' else 'ÉCHEC' end, n || ' réalisé sur la cible');
+  perform note('14. Avancement', case when n = 1 then 'OK' else 'ÉCHEC' end,
+               n || ' rendez-vous sur une cible de 10 — le montant de la vente n''entre pas ici');
+
+  select public.realise_de_la_metrique(v_tenant, 'chiffre_affaires') into n;
+  perform note('14 bis. La métrique monétaire, elle, voit le montant',
+               case when n = 4500 then 'OK' else 'ÉCHEC' end, n || ' € de chiffre d''affaires');
 
   select contactes, ventes, chiffre_affaires into r from public.bilan_de_l_employe(v_tenant, 14);
   perform note('15. Tableau de bord', 'OK',

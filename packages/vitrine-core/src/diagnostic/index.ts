@@ -144,8 +144,13 @@ export async function stepDiagnostic(
 }
 
 /** Construit le gateway du diagnostic — même schéma que `buildAdvisorGateway` (advisor/index.ts) :
- *  clé lue à l'appel, jamais capturée au chargement du module, données de classe `test` puisque
- *  aucun tenant n'existe encore à ce stade de la conversation.
+ *  clé lue à l'appel, jamais capturée au chargement du module.
+ *
+ *  ⚠️ Cette phrase disait « données de classe `test` puisque aucun tenant n'existe encore à ce
+ *  stade ». Le raisonnement confondait deux choses : qu'aucun TENANT ne soit encore créé ne rend
+ *  pas la donnée moins RÉELLE. Le visiteur décrit son entreprise dès la première question
+ *  (`adr/0009`), et l'étiquette « test » désarmait la règle d'or, qui ne filtre que sur « real ».
+ *  Corrigé le 2026-08-29 ; la règle 10 des frontières l'empêche de revenir.
  *
  *  `ledger` est **obligatoire** (ACQUIS-18). Le diagnostic public consomme le quota partagé de la
  *  plateforme sans qu'aucun client n'ait rien signé : il ne peut pas exister de chemin qui le
@@ -174,9 +179,27 @@ export function createModelConverse(gateway: ModelGateway): DiagnosticStepDeps["
       content: m.content,
     }));
 
+    // ⚠️ « real », ET C'EST LA VÉRITÉ — L'ÉTIQUETTE PRÉCÉDENTE DÉSARMAIT TOUTE LA PROTECTION.
+    //
+    // Ce chemin envoie ce que le dirigeant vient de taper : le nom de son entreprise, son
+    // secteur, son effectif, ses difficultés, son objectif. `adr/0009` le dit mot pour mot —
+    // « le diagnostic manipulant de la donnée réelle dès la première question ».
+    //
+    // Il était marqué `"test"`. Or la règle d'or ne filtre que sur `dataClass === "real"`
+    // (`gateway/index.ts:142`) : sous cette étiquette, elle ne se déclenchait JAMAIS. Un
+    // fournisseur `free` — qui s'autorise à entraîner — recevait des données réelles sans qu'une
+    // seule ligne ne s'y oppose. Ce n'était pas un risque à venir : c'était une fuite écrite.
+    //
+    // ⚠️ CONSÉQUENCE ASSUMÉE, DÉCIDÉE PAR LE FONDATEUR LE 2026-08-29 : tant que le seul
+    // fournisseur branché est Groq en `free`, ce diagnostic ÉCHOUE — franchement, avec
+    // « groq: sauté (free/train incompatible avec données réelles) ». `adr/0009` écarte Groq
+    // (américain, transfert hors UE) et retient Mistral ; le code disait l'inverse en silence.
+    //
+    // Un diagnostic éteint est un défaut visible. Un diagnostic ouvert qui ment sur sa classe de
+    // données est un risque juridique invisible. Entre les deux, on prend le défaut visible.
     const result = await gateway.generate({
       tenantId: PLATFORM_TENANT,
-      dataClass: "test",
+      dataClass: "real",
       system: buildDiagnosticSystemPrompt(hint),
       messages,
       tools: [EXTRACTION_TOOL],
@@ -201,7 +224,9 @@ export function createModelPresent(gateway: ModelGateway): PresentEmployeeDeps["
   return async ({ calibration, grounds }) => {
     const result = await gateway.generate({
       tenantId: PLATFORM_TENANT,
-      dataClass: "test",
+      // « real » : cette présentation reçoit le calibrage et les constats tirés de l'entreprise du
+      // visiteur. Même raison qu'au-dessus, même conséquence.
+      dataClass: "real",
       system: buildPresentationPrompt(),
       messages: [
         {
