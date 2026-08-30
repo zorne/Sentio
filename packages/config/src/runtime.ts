@@ -87,6 +87,19 @@ export interface ReglagesRuntime {
    * inventer pour remplir le quota.
    */
   readonly faitsMaxParRun: number;
+  /**
+   * Combien de missions débloquées sont remises en file par cycle.
+   *
+   * ⚠️ CETTE BORNE EXISTE CONTRE UNE FACTURE SURPRISE. Un dirigeant qui active une capacité peut
+   * débloquer des centaines de missions d'un coup ; un moteur monté en débloque potentiellement
+   * chez toutes les entreprises à la fois. Les remettre en file ensemble ferait de la réparation
+   * un incident — « une reprise qui produit une facture surprise n'est pas une reprise ».
+   *
+   * Le coût par cycle est déjà borné par `travauxMaxParBattement`, puisque les missions reprises
+   * entrent dans la MÊME file. Cette borne-ci protège autre chose : une file inondée ferait
+   * attendre des jours le travail neuf, derrière un rattrapage qui n'était pas urgent.
+   */
+  readonly reprisesMaxParCycle: number;
 }
 
 /**
@@ -102,6 +115,7 @@ export const REGLAGES_RUNTIME_PAR_DEFAUT: ReglagesRuntime = {
   repriseMaxApresInterruption: 3,
   travauxMaxParBattement: 25,
   faitsMaxParRun: 3,
+  reprisesMaxParCycle: 5,
 };
 
 /** Les variables d'environnement qui peuvent surcharger un réglage, sans redéploiement. */
@@ -114,6 +128,7 @@ export const VARIABLES_RUNTIME = {
   repriseMaxApresInterruption: "SENTIO_REPRISE_MAX",
   travauxMaxParBattement: "SENTIO_TRAVAUX_MAX_PAR_BATTEMENT",
   faitsMaxParRun: "SENTIO_FAITS_MAX_PAR_RUN",
+  reprisesMaxParCycle: "SENTIO_REPRISES_MAX_PAR_CYCLE",
 } as const satisfies Record<keyof ReglagesRuntime, string>;
 
 /**
@@ -161,5 +176,6 @@ export function lireReglagesRuntime(
     repriseMaxApresInterruption: lire("repriseMaxApresInterruption"),
     travauxMaxParBattement: lire("travauxMaxParBattement"),
     faitsMaxParRun: lire("faitsMaxParRun"),
+    reprisesMaxParCycle: lire("reprisesMaxParCycle"),
   };
 }

@@ -71,6 +71,7 @@ import { approvisionnerLeJour } from "./battement.js";
 import { faireProgresserLesEmployes } from "./progression.js";
 import { reevaluerLesEmployes } from "./reevaluation.js";
 import { executerLesTravauxDus } from "./boucle.js";
+import { reprendreLesMissionsDebloquees } from "./reprise.js";
 import { createHeartbeatHandler, type HeartbeatReport } from "./heartbeat/index.js";
 import type { TransactionalSqlClient } from "@sentio/db";
 
@@ -175,6 +176,28 @@ export function composerLExecutant(
   async function executerLesTravauxDusMonte(): Promise<HeartbeatReport> {
     const instant = maintenant();
 
+    // Le registre du battement : contrats relus en base, moteurs venus du code. Construit en
+    // PREMIER parce que la reprise a besoin de savoir quels moteurs cet hôte sert réellement — la
+    // colonne `capability.disponible` ne dit que ce que la composition PAR DÉFAUT monte.
+    const { registre, ecartees } = await chargerLeRegistre(sql, moteursMetier);
+
+    // 0. Reprendre ce qui attendait un outil désormais disponible.
+    //
+    //    ⚠️ AVANT L'APPROVISIONNEMENT, ET C'EST UNE DÉCISION DE PRODUIT : rattraper le travail
+    //    déjà commencé prime sur en ouvrir du neuf — c'est ce que ferait une employée. L'ordre de
+    //    la file (`priority desc, next_run_at, id`) fait le reste : insérées les premières, elles
+    //    sont prises les premières.
+    //
+    //    Elles CONSOMMENT le budget d'exécution du battement, elles ne s'y ajoutent pas : la file
+    //    est unique, et `travauxMaxParBattement` la borne quoi qu'il arrive. Une reprise ne peut
+    //    donc pas produire de facture surprise.
+    const reprise = await reprendreLesMissionsDebloquees({
+      sql,
+      journal,
+      registry: registre,
+      reglages: config.reglages,
+    });
+
     // 1. Ouvrir le travail neuf du jour. AVANT de vider la file : une mission ouverte ici est due
     //    immédiatement, donc traitée dans le même battement (`battement.ts`).
     const approvisionnement = await approvisionnerLeJour(
@@ -187,8 +210,6 @@ export function composerLExecutant(
       instant,
     );
 
-    // 2. Le registre du battement : contrats relus en base, moteurs venus du code.
-    const { registre, ecartees } = await chargerLeRegistre(sql, moteursMetier);
     const moteurs = new PostgresMoteurs(sql, registre);
 
     // ⚠️ AUCUN INSTANT N'EST PASSÉ : LA BASE EST L'HORLOGE.
@@ -247,6 +268,7 @@ export function composerLExecutant(
       // qu'on oublie posé. Ici, il ne peut pas tourner six mois en silence — il est dans chaque
       // ligne de journal, à côté de ce qu'il a fait.
       classeDeDonnees: config.classeDeDonnees,
+      reprise,
       approvisionnement,
       reevaluation,
       progression,
