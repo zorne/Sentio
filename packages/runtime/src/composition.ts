@@ -57,6 +57,7 @@ import {
   PolicyEngine,
   jugerLeBattement,
   type CapabilityEngine,
+  type Clock,
 } from "@sentio/core";
 
 import { PostgresApprovisionnementStore, RegistreDeGisementsEnMemoire } from "./adapters/approvisionnement.js";
@@ -113,6 +114,20 @@ export interface OptionsDeComposition {
   readonly log?: (record: Record<string, unknown>) => void;
   /** Horloge, injectée pour les tests. */
   readonly maintenant?: () => Date;
+  /**
+   * L'horloge du Gateway, **et elle sert à une seule chose** : rendre la répétition générale
+   * praticable.
+   *
+   * Le Gateway lisse le débit en attendant entre deux appels — quelques secondes en production,
+   * ce qui est le comportement voulu. Mais un cas qui provoque dix appels d'affilée
+   * (`repetition-du-silence.integration.test.ts`) dure alors plusieurs minutes, et une suite qui
+   * dure ne se lance plus.
+   *
+   * ⚠️ **Ce qu'on perd en l'injectant est écrit ici** : l'attente n'est plus éprouvée. Elle l'est
+   * ailleurs, par les tests du Gateway. Ne jamais s'en servir en production — le défaut est le bon,
+   * et c'est pour ça qu'il est le défaut.
+   */
+  readonly horlogeDuGateway?: Clock;
   /** Ce que l'hôte doit refermer à l'arrêt — son pool, que lui seul connaît. */
   readonly fermerLaBase?: () => Promise<void>;
 }
@@ -174,6 +189,7 @@ export function composerLExecutant(
     ledger: new PostgresUsageLedger(sql),
     journal,
     flags: config.flags,
+    ...(options.horlogeDuGateway !== undefined && { clock: options.horlogeDuGateway }),
   });
 
   const policy = new PolicyEngine(new PostgresApprovalStore(sql), journal);
