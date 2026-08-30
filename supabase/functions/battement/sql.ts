@@ -14,9 +14,29 @@
  *   · **`queryObject`, jamais `query`.** Le pilote Deno rend des tableaux par défaut ; le domaine
  *     lit des colonnes par leur nom. Ce détail ne se voit pas à la compilation — il se voit quand
  *     `rowToDomain` rend un objet vide.
- *   · **Le délai maximal est posé côté serveur** (`statement_timeout`), pas côté client : une
- *     requête emballée doit être coupée par Postgres, sinon elle occupe une connexion d'un pool
- *     très étroit et bloque les autres entreprises.
+ *   · ⚠️ **LE DÉLAI MAXIMAL N'EST PAS APPLIQUÉ — CETTE LIGNE DISAIT LE CONTRAIRE.**
+ *
+ *     Elle affirmait : « Le délai maximal est posé côté serveur (`statement_timeout`), pas côté
+ *     client : une requête emballée doit être coupée par Postgres. » C'est faux, et vérifié
+ *     empiriquement sur Postgres le 2026-08-30 : `avecConnexion` émet
+ *     `set local statement_timeout` **hors de tout bloc de transaction** — avant `begin()` dans
+ *     le chemin transactionnel, et sans transaction du tout dans le chemin simple. Postgres
+ *     répond alors `WARNING: SET LOCAL can only be used in transaction blocks` et **n'applique
+ *     rien**. Les deux chemins sont concernés.
+ *
+ *     Son jumeau Node, lui, le tient réellement : `statement_timeout` y est une **option de
+ *     connexion** du pool (`postgres-node.ts`), appliquée par le serveur pour toute la session.
+ *     Le test de parité ne l'attrape pas — il compare des comportements, pas des délais.
+ *
+ *     Exposition mesurée : **faible**. `avecConnexion` n'est atteignable que depuis
+ *     `executerLesTravauxDus`, donc après vérification de la signature ; le pool est paresseux et
+ *     une invocation refusée n'ouvre aucune connexion. Ce n'est donc pas une voie d'épuisement
+ *     ouverte à un tiers, mais un défaut de robustesse : une requête emballée déclenchée par
+ *     notre propre code occuperait une connexion plus longtemps que promis.
+ *
+ *     Le correctif n'est pas fait ici volontairement — il vient avec le lot d'observabilité. Mais
+ *     le commentaire, lui, ne pouvait pas attendre : un commentaire qui décrit une protection
+ *     absente est pire que pas de commentaire, parce qu'il fait renoncer à vérifier.
  *
  * ══ AUCUNE FUITE DE SECRET ══
  *
