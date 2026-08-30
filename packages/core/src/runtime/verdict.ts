@@ -32,7 +32,9 @@
  *   1. un refus d'approvisionnement est une **anomalie** et non un silence légitime ;
  *   2. une capacité a été **écartée du registre** — un contrat illisible en base ;
  *   3. un travail a **échoué** ;
- *   4. du travail était **dû** et **rien n'a abouti**.
+ *   4. du travail était **dû** et **rien n'a abouti** ;
+ *   5. le cycle d'un employé a été **bloqué par quelque chose qui est de notre ressort** — même
+ *      si d'autres entreprises, elles, ont travaillé.
  *
  * Tout le reste est normal, y compris — et surtout — l'absence totale d'activité. Une entreprise
  * sans abonnement, un objectif atteint, un quota consommé, un travail du jour déjà ouvert : ce
@@ -41,8 +43,15 @@
  * l'accoutumance ».
  */
 
-/** Ce qu'un pas a produit et qui compte comme un travail ayant réellement AVANCÉ. */
-const MOTIFS_QUI_ABOUTISSENT: ReadonlySet<string> = new Set([
+/**
+ * Ce qu'un pas a produit et qui compte comme un travail ayant réellement AVANCÉ.
+ *
+ * ⚠️ **EXPORTÉE PARCE QUE LE COMPTEUR POSE LA MÊME QUESTION** (`travail-muet.ts`). Deux listes,
+ * l'une pour le verdict et l'autre pour le compteur, divergeraient au premier motif ajouté — et
+ * l'on se retrouverait avec un battement jugé normal pendant que le compteur alerte, ou
+ * l'inverse. Une seule liste, deux lecteurs.
+ */
+export const MOTIFS_QUI_ABOUTISSENT: ReadonlySet<string> = new Set([
   /** Le pas suivant est dû tout de suite : le travail progresse. */
   "pas_suivant",
   /** Le modèle a jugé le travail fini. */
@@ -51,6 +60,15 @@ const MOTIFS_QUI_ABOUTISSENT: ReadonlySet<string> = new Set([
   "budget_epuise",
   /** Le client a une question à trancher : la mission a avancé jusqu'à lui. */
   "accord_attendu",
+  /**
+   * Un effet irréversible a été engagé et une personne doit en vérifier l'issue.
+   *
+   * ⚠️ AJOUTÉ AVEC LE COMPTEUR, ET C'EST UNE CORRECTION. Ce motif a exactement la forme
+   * d'`accord_attendu` : quelque chose a été fait, et la mission a avancé **jusqu'à une
+   * personne**. L'omettre le faisait compter comme « rien n'a abouti », donc comme une panne à
+   * notre charge — alors que le produit venait de faire précisément ce qu'on lui demande.
+   */
+  "verification_humaine",
 ]);
 
 /**
@@ -82,6 +100,19 @@ export interface EntreeDuVerdict {
   };
   /** Capacités dont le contrat était illisible en base. Voir `chargerLeRegistre`. */
   readonly capacitesEcartees: readonly unknown[];
+  readonly compteur: {
+    /**
+     * Les employés dont le cycle n'a rien fait aboutir pour une raison qui est de NOTRE ressort
+     * — un moteur non monté, un contexte incomplet, un report de quota.
+     *
+     * ⚠️ **CE N'EST PAS UN DOUBLON DE `rien_n_a_abouti`.** Celui-là ne parle que du battement
+     * entier : dix entreprises qui travaillent et une onzième complètement bloquée par un défaut
+     * de chez nous rendent un battement où « quelque chose a abouti », donc muet. Ce compte-là
+     * regarde entreprise par entreprise, et c'est la seule façon de voir le client qui ne
+     * travaille pas au milieu de ceux qui travaillent.
+     */
+    readonly aNotreCharge: number;
+  };
 }
 
 export interface VerdictDuBattement {
@@ -91,7 +122,7 @@ export interface VerdictDuBattement {
   /**
    * Du travail était-il réellement dû ?
    *
-   * C'est la règle que le compteur de silence suivra : il n'avance **que** sur un cycle où du
+   * C'est la règle que suit le compteur (`travail-muet.ts`) : il n'avance **que** sur un cycle où du
    * travail était dû et n'a pas abouti. Sans cette condition, une période creuse légitime — pas
    * d'abonnement, objectif atteint, quota consommé — déclencherait une fausse alerte, et le
    * dirigeant apprendrait à ignorer le canal.
@@ -117,6 +148,10 @@ export function jugerLeBattement(entree: EntreeDuVerdict): VerdictDuBattement {
 
   if (entree.travaux.echoues > 0) {
     anomalies.push("travaux_echoues");
+  }
+
+  if (entree.compteur.aNotreCharge > 0) {
+    anomalies.push("travail_bloque_chez_nous");
   }
 
   // Du travail était dû si quelque chose a été ouvert, repris, ou pris dans la file. Un battement

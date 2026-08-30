@@ -35,6 +35,7 @@ import {
   CONTEXTE_ASSEMBLE,
   decideNextAction,
   type CapabilityRegistry,
+  type CauseDuManque,
   type DecisionPas,
   type ModelGateway,
   type PolicyEngine,
@@ -73,6 +74,16 @@ export type ResultatPas =
       readonly sujetKind: string;
       /** Ce que l'employé a d'activé — pour que le motif dise ce qui manque, pas juste qu'il manque. */
       readonly capacitesActives: readonly string[];
+      /**
+       * **Laquelle des deux conditions du filtre a vidé la liste.**
+       *
+       * ⚠️ SANS CETTE DISTINCTION, LE CANAL D'ALERTE NE PEUT RIEN DIRE D'UTILE. Le filtre a deux
+       * conditions et elles n'ont pas le même responsable : rien d'activé ne s'applique au sujet
+       * (le dirigeant peut activer), ou quelque chose s'applique mais aucun moteur ne le sert
+       * (nous devons le monter). Les deux produisaient le même « aucune capacité applicable », et
+       * l'information se perdait à l'endroit exact où elle décide à qui parler.
+       */
+      readonly cause: CauseDuManque;
     };
 
 export interface NextStepDeps {
@@ -172,8 +183,15 @@ export async function decideNextStep(
   // l'affichage ; un hôte qui fournit ses propres moteurs (`moteursMetier`) servirait des
   // capacités que la colonne dit indisponibles. Se fier à elle écarterait du travail réellement
   // exécutable.
-  const capacitesAutorisees = capacitesActives.filter(
-    (cle) => capaciteApplicableAuSujet(cle, contexte.sujetKind) && deps.registry.sertLaCapacite(cle),
+  //
+  // ⚠️ LES DEUX CONDITIONS SONT APPLIQUÉES SÉPARÉMENT, ET CE N'EST PAS UN DÉTAIL DE STYLE. Une
+  // seule expression rendait « la liste est vide » sans jamais dire LAQUELLE des deux conditions
+  // l'avait vidée — or l'une se répare par le dirigeant et l'autre par nous.
+  const capacitesApplicables = capacitesActives.filter((cle) =>
+    capaciteApplicableAuSujet(cle, contexte.sujetKind),
+  );
+  const capacitesAutorisees = capacitesApplicables.filter((cle) =>
+    deps.registry.sertLaCapacite(cle),
   );
 
   // ⚠️ Le filtre CRÉE ce cas : il n'existait pas avant lui. Le laisser ouvert introduirait un
@@ -185,6 +203,11 @@ export async function decideNextStep(
       raison: "aucune_capacite_applicable",
       sujetKind: contexte.sujetKind,
       capacitesActives,
+      // Rien d'activé ne s'applique au sujet ⇒ le dirigeant a un outil à activer. Sinon, c'est
+      // qu'une capacité applicable EST activée et qu'aucun moteur ne la sert : le manque est chez
+      // nous, et lui demander d'activer quoi que ce soit l'enverrait chercher un bouton absent.
+      cause:
+        capacitesApplicables.length === 0 ? "capacite_non_activee" : "moteur_non_monte",
     };
   }
 

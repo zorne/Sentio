@@ -74,6 +74,7 @@ import { PostgresJournalWriter } from "./adapters/journal.js";
 import { PostgresUsageLedger } from "./adapters/ledger.js";
 import { PostgresMoteurs } from "./adapters/moteurs.js";
 import { approvisionnerLeJour } from "./battement.js";
+import { compterLeTravailQuiNAboutitPas } from "./compteur.js";
 import { faireProgresserLesEmployes } from "./progression.js";
 import { reevaluerLesEmployes } from "./reevaluation.js";
 import { executerLesTravauxDus } from "./boucle.js";
@@ -266,6 +267,23 @@ export function composerLExecutant(
     //    est annoncé, adossé à sa preuve.
     const progression = await faireProgresserLesEmployes({ sql, journal }, instant);
 
+    // 5. Constater, employé par employé, si du travail s'est réellement fait — et prévenir le
+    //    dirigeant quand la cause est de son ressort.
+    //
+    //    ⚠️ APRÈS LA BOUCLE, ET AVANT LE VERDICT. Après, parce qu'il lit ce que la boucle a
+    //    produit ; avant, parce que le verdict a besoin de savoir combien d'employés sont bloqués
+    //    par quelque chose qui nous incombe. C'est la seule anomalie que les compteurs du
+    //    battement ne peuvent pas voir : dix entreprises qui travaillent masquent la onzième.
+    //
+    //    ⚠️ **DEUX SURVEILLANCES, JAMAIS FUSIONNÉES.** Le guetteur répond « le battement
+    //    tourne-t-il ? » et c'est le planificateur qui le dit. Le compteur répond « du travail se
+    //    fait-il ? », et c'est ici. Les confondre reviendrait à croire qu'un battement reçu prouve
+    //    un travail fait — l'erreur exacte que ce lot a trouvée en production.
+    const compteur = await compterLeTravailQuiNAboutitPas(
+      { sql },
+      { pas: travaux.pas, maintenant: instant },
+    );
+
     // ⚠️ LE VERDICT EST CALCULÉ ICI, PAS PAR CELUI QUI LIRA. Le planificateur doit le LIRE, jamais
     // le reconstituer à partir des chiffres : la règle qui distingue un silence légitime d'une
     // panne est écrite une fois, en TypeScript, avec ses tests. La recopier dans un script la
@@ -275,6 +293,7 @@ export function composerLExecutant(
       reprise,
       travaux,
       capacitesEcartees: ecartees,
+      compteur: { aNotreCharge: compteur.aNotreCharge },
     });
 
     options.log?.({
@@ -291,13 +310,23 @@ export function composerLExecutant(
       approvisionnement,
       reevaluation,
       progression,
+      // ⚠️ LES COMPTES DU COMPTEUR, JAMAIS SON DÉTAIL. `travaux.pas` porte des identifiants
+      // d'entreprise et d'employé : ils servent à décider, ici, dans le processus. Un journal
+      // d'exploitation n'a pas à dire qui sont nos clients ni lequel est en panne.
+      compteur,
       // Une capacité écartée du registre est un contrat illisible en base : ça se voit, ça ne se
       // devine pas.
       capacitesEcartees: ecartees,
     });
 
+    // ⚠️ LE DÉTAIL PAR EMPLOYÉ NE SORT PAS D'ICI. `travaux` porte désormais `pas`, et un
+    // `...travaux` ferait partir des identifiants d'entreprise dans la réponse HTTP rendue au
+    // planificateur — un tiers, hors de l'UE pour certains. Les trois champs sont donc nommés un
+    // par un : ce qui sort est ce qu'on a décidé de faire sortir.
     return {
-      ...travaux,
+      traites: travaux.traites,
+      echoues: travaux.echoues,
+      motifs: travaux.motifs,
       verdict: jugement.verdict,
       anomalies: jugement.anomalies,
     };

@@ -25,6 +25,7 @@ export * from "./suite-du-run.js";
 export * from "./attelage.js";
 export * from "./battement.js";
 export * from "./reprise.js";
+export * from "./compteur.js";
 export * from "./progression.js";
 export * from "./reevaluation.js";
 export * from "./reflexion.js";

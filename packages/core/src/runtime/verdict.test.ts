@@ -24,6 +24,7 @@ function battement(modifications: Partial<EntreeDuVerdict> = {}): EntreeDuVerdic
     reprise: { reprises: 0 },
     travaux: { traites: 0, echoues: 0, motifs: {} },
     capacitesEcartees: [],
+    compteur: { aNotreCharge: 0 },
     ...modifications,
   };
 }
@@ -161,6 +162,37 @@ describe("ce qui ne peut pas passer pour un succès", () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 // La règle du compteur — « du travail était-il dû ? »
 // ═══════════════════════════════════════════════════════════════════════════════
+
+describe("une entreprise bloquée au milieu de dix qui travaillent", () => {
+  it("⭐ un blocage de NOTRE ressort rend le battement anormal, même si d'autres ont abouti", () => {
+    // ⚠️ LE CAS QUE LES COMPTEURS DU BATTEMENT NE PEUVENT PAS VOIR. Dix entreprises travaillent,
+    // la onzième est arrêtée parce qu'un moteur n'est pas monté chez nous : « quelque chose a
+    // abouti » est vrai, donc `rien_n_a_abouti` se tait. Sans ce contrôle, ce client attendrait
+    // sans que rien ne le signale.
+    const jugement = jugerLeBattement(
+      battement({
+        travaux: { traites: 11, echoues: 0, motifs: { travail_acheve: 10, capacite_absente: 1 } },
+        compteur: { aNotreCharge: 1 },
+      }),
+    );
+
+    expect(jugement.verdict).toBe("anormal");
+    expect(jugement.anomalies).toContain("travail_bloque_chez_nous");
+  });
+
+  it("un blocage que le DIRIGEANT peut lever ne nous alerte pas : il a été prévenu", () => {
+    // La notification est partie chez lui. La compter aussi comme notre anomalie ferait sonner
+    // notre propre canal pour un outil que nous n'avons pas à activer à sa place.
+    const jugement = jugerLeBattement(
+      battement({
+        travaux: { traites: 11, echoues: 0, motifs: { travail_acheve: 10, capacite_absente: 1 } },
+        compteur: { aNotreCharge: 0 },
+      }),
+    );
+
+    expect(jugement.verdict).toBe("normal");
+  });
+});
 
 describe("du travail était-il réellement dû", () => {
   it("⭐ non quand rien n'a été ouvert, repris, ni pris", () => {

@@ -330,7 +330,19 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     // ⚠️ `motifs` compte ce que le pas a PRODUIT, pas seulement qu'il est passé. Sans lui,
     // « traité » ne disait que « aucune exception levée » — un run reporté faute de fournisseur
     // conforme comptait donc comme un succès.
-    expect(rapport).toEqual({ traites: 1, echoues: 0, motifs: { pas_suivant: 1 } });
+    expect(rapport).toMatchObject({ traites: 1, echoues: 0, motifs: { pas_suivant: 1 } });
+
+    // ⚠️ Et le même détail RATTACHÉ À SON EMPLOYÉ : c'est ce que le compteur relit pour répondre
+    // « du travail se fait-il ? » entreprise par entreprise. Les compteurs globaux ne le peuvent
+    // pas : dix entreprises qui travaillent masquent la onzième qui ne travaille pas.
+    expect(rapport.pas).toEqual([
+      {
+        tenantId,
+        employeeId: expect.any(String),
+        motif: "pas_suivant",
+        manque: null,
+      },
+    ]);
 
     // La chaîne complète est au journal, dans l'ordre, et `run_demarre` ouvre la marche.
     const chaine = await natures(tenantId, await laMission(tenantId));
@@ -738,6 +750,58 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
       [tenantId, mission],
     );
     expect(String(evenement?.payload["detail"])).toContain("lead");
+
+    // ⚠️ LA CAUSE, ET PAS SEULEMENT LE MOTIF. Le motif est unifié pour la reprise ; c'est la cause
+    // qui décide À QUI l'on parle. Ici le dirigeant peut activer l'outil : elle doit le dire.
+    expect(evenement?.payload["cause"]).toBe("capacite_non_activee");
+  });
+
+  it("⭐ même arrêt, mais la cause dit que le manque est CHEZ NOUS", async () => {
+    // ⚠️ LE CAS 9 — DEUX MANQUES SOUS UN SEUL MOTIF, ET DEUX DESTINATAIRES.
+    //
+    // Ici la capacité applicable EST activée : le dirigeant a fait son travail. C'est le moteur
+    // qui manque, et le monter est un déploiement — le nôtre. Le motif reste `capacite_absente`,
+    // parce que la reprise traite les deux de la même façon : ce sont deux attentes qu'une même
+    // relance résout. Mais la cause diffère, et c'est elle qui empêche d'envoyer le dirigeant
+    // chercher un bouton qui n'existe pas.
+    effets = [];
+    const { tenantId, employeeId } = await entreprise({ prospects: 1, capaciteActive: true });
+    await approvisionner(tenantId);
+
+    // La seule capacité activée devient une capacité applicable au sujet que ce registre ne sert
+    // PAS. La liste applicable n'est donc pas vide ; la liste autorisée, si.
+    await sql.query(
+      "update employee_capability set enabled = false where tenant_id = $1 and employee_id = $2",
+      [tenantId, employeeId],
+    );
+    await sql.query(
+      `insert into employee_capability (tenant_id, employee_id, capability_id, enabled)
+       select $1, $2, c.id, true from capability c where c.key = 'envoyer.prospect'
+       on conflict (employee_id, capability_id) do update set enabled = true`,
+      [tenantId, employeeId],
+    );
+
+    const appelsAvant = appelsAuModele;
+    await executerLesTravauxDus(deps(), {
+      prisPar: "exécutant-de-test",
+      dataClass: "synthetic",
+      maxTravaux: 1,
+    });
+
+    const mission = await laMission(tenantId);
+    const [evenement] = await sql.query<{ payload: Record<string, unknown> }>(
+      `select payload from execution_event
+        where tenant_id = $1 and task_id = $2 and kind = 'attention_requise'
+        order by seq desc limit 1`,
+      [tenantId, mission],
+    );
+
+    expect(evenement?.payload["motif"], "la reprise doit continuer à trouver ce motif").toBe(
+      "capacite_absente",
+    );
+    expect(evenement?.payload["cause"]).toBe("moteur_non_monte");
+    // Toujours aucun appel payant : on s'arrête avant le modèle dans les deux cas.
+    expect(appelsAuModele).toBe(appelsAvant);
   });
 
   it("⭐ une capacité SANS MOTEUR n'est jamais proposée — aucun appel payant n'est brûlé", async () => {

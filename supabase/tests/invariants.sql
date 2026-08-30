@@ -3712,7 +3712,8 @@ declare
     'rattachement_attendu',-- une attente de rattachement n'appartient encore à personne
     'approvisionnement',   -- le lot de missions du jour : comptabilité interne du battement
     'strategy_variant',    -- notre méthode, pas la donnée du client
-    'task_variant'         -- quelle variante a servi : mécanique de mesure
+    'task_variant',        -- quelle variante a servi : mécanique de mesure
+    'travail_muet'         -- depuis combien de jours rien n'aboutit : ce qu'on en dit est une notification
   ];
   sans_rls        text;
   sans_politique  text;

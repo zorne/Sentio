@@ -110,10 +110,11 @@ export async function reprendreLesMissionsDebloquees(
   // rejouer. Prudence contre exhaustivité, la prudence gagne.
   //
   // Ce qui rend ce repli acceptable, et RIEN D'AUTRE : l'alerte part bien avant la purge. Le
-  // compteur de silence avance une fois par JOUR (le verrou `(tenant, employé, jour)` rend les
-  // autres cycles muets), donc un seuil bas alerte en quelques jours — six à dix fois moins que la
-  // fenêtre de purge. Si ce seuil était un jour relevé au-delà de la semaine, cette limite
-  // deviendrait un dommage silencieux, et il faudrait alors persister le motif.
+  // compteur avance une fois par JOUR (`travail_muet.dernier_jour` rend muets les autres cycles de
+  // la même journée), et son seuil est borné à DIX en base — `garde_du_travail.cycles_toleres`,
+  // contrainte de vérification. C'est ce plafond, et non une intention, qui garantit que l'alerte
+  // précède la purge d'une vingtaine de jours. Le desserrer au-delà rendrait cette limite-ci
+  // silencieusement destructrice, et il faudrait alors persister le motif.
   const bloquees = await deps.sql.query<MissionBloquee>(
     `select t.tenant_id, t.id as task_id, t.employee_id, t.subject_kind
        from task t

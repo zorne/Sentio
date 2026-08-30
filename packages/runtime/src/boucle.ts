@@ -43,7 +43,9 @@ import {
   type FileDeTravaux,
   type IssueDuPas,
   type JournalWriter,
+  type ManqueDOutil,
   type ModelGateway,
+  type PasDuBattement,
   type PolicyEngine,
   type ResultatExecution,
   type TravailPris,
@@ -63,6 +65,18 @@ export interface RapportDeBoucle {
   readonly echoues: number;
   /** Ce que chaque pas a produit, par motif. Sans lui, un report ressemble à un succès. */
   readonly motifs: Readonly<Record<string, number>>;
+  /**
+   * Ce que chaque pas a produit, **rattaché à son employé**.
+   *
+   * ⚠️ POURQUOI PAS SEULEMENT LES COMPTES. « Du travail se fait-il ? » ne se répond pas au niveau
+   * du battement : dix entreprises qui travaillent et une onzième totalement bloquée rendent des
+   * compteurs rassurants. Le compteur suit donc UN EMPLOYÉ, et c'est ce détail qui le permet.
+   *
+   * ⚠️ **CES LIGNES NE SORTENT PAS DU PROCESSUS.** Elles portent des identifiants d'entreprise :
+   * la composition les consomme et ne les fait suivre ni au compte rendu HTTP, ni au journal
+   * d'exploitation. Un rapport rendu à un planificateur n'a pas à savoir qui sont nos clients.
+   */
+  readonly pas: readonly PasDuBattement[];
 }
 import { atteler, EntreeRefusee } from "./attelage.js";
 import { decideNextStep } from "./next-step.js";
@@ -135,6 +149,8 @@ export async function executerLesTravauxDus(
   let echoues = 0;
   /** Ce que chaque pas a produit, par motif. Sans ce compte, un report ressemble à un succès. */
   const motifs: Record<string, number> = {};
+  /** Le même détail, rattaché à son employé : c'est ce que le compteur relit. */
+  const pas: PasDuBattement[] = [];
 
   for (let i = 0; i < maxTravaux; i++) {
     // ⚠️ `maintenant` est passé TEL QUEL, `undefined` compris : c'est ainsi que la base devient
@@ -152,11 +168,26 @@ export async function executerLesTravauxDus(
       // comme un succès, et le compte rendu annonçait `{traites:N, echoues:0}` pendant que rien
       // n'aboutissait. Un rapport rassurant et faux, toutes les dix minutes. C'est le motif qui
       // dit si quelque chose a AVANCÉ.
-      const motif = await executerUnPas(deps, options, travail);
-      motifs[motif] = (motifs[motif] ?? 0) + 1;
+      const issue = await executerUnPas(deps, options, travail);
+      motifs[issue.motif] = (motifs[issue.motif] ?? 0) + 1;
+      pas.push({
+        tenantId: travail.tenantId,
+        employeeId: travail.employeeId,
+        motif: issue.motif,
+        manque: issue.manque,
+      });
       traites += 1;
     } catch (erreur) {
       echoues += 1;
+      // ⚠️ COMPTÉ COMME UN PAS, ET SANS ABOUTISSEMENT. Une interruption laissée hors du relevé
+      // rendrait un employé dont TOUS les pas plantent indistinct d'un employé qui n'avait rien à
+      // faire — c'est-à-dire silencieux au moment où il faut crier.
+      pas.push({
+        tenantId: travail.tenantId,
+        employeeId: travail.employeeId,
+        motif: "pas_interrompu",
+        manque: null,
+      });
       // ⚠️ Le travail n'est PAS remis en file ici. Son bail expirera, et un exécutant le
       // reprendra — en comptant la reprise. Le remettre tout de suite ferait tourner en boucle
       // serrée une mission qui échoue à chaque fois, sans que le compteur de reprises ne bouge.
@@ -170,7 +201,7 @@ export async function executerLesTravauxDus(
     }
   }
 
-  return { traites, echoues, motifs };
+  return { traites, echoues, motifs, pas };
 }
 
 /** L'état du run, relu depuis le journal. Jamais gardé, jamais recalculé de tête. */
@@ -199,7 +230,7 @@ async function executerUnPas(
   deps: BoucleDeps,
   options: OptionsDeBoucle,
   travail: TravailPris,
-): Promise<string> {
+): Promise<{ readonly motif: string; readonly manque: ManqueDOutil | null }> {
   const reglages = deps.reglages ?? REGLAGES_RUNTIME_PAR_DEFAUT;
   const { tenantId, taskId, employeeId } = travail;
 
@@ -211,21 +242,21 @@ async function executerUnPas(
       "reprises_epuisees",
       `Cette mission a été reprise ${travail.reprises} fois sans aboutir : elle n'est plus rejouée.`,
     );
-    return "reprises_epuisees";
+    return { motif: "reprises_epuisees", manque: null };
   }
 
   // ── 2. Un journal incohérent ne rend pas un état, et on ne devine pas à sa place (EXEC-02).
   const avant = await relire(deps.sql, tenantId, taskId);
   if (!avant.ok) {
     await arreterPourHumain(deps, travail, "journal_incoherent", avant.detail);
-    return "journal_incoherent";
+    return { motif: "journal_incoherent", manque: null };
   }
 
   // ── 3. Le journal fait foi : s'il dit que ce run ne peut pas reprendre, la file avait tort.
   //    On la remet d'accord avec lui plutôt que de travailler sur un état que personne n'assume.
   if (!peutReprendre(avant.etat)) {
     await remettreLaFileDaccord(deps, travail, avant.etat);
-    return "file_remise_d_accord";
+    return { motif: "file_remise_d_accord", manque: null };
   }
 
   // ── Le premier événement de toute mission, sans exception. Sans lui, la reconstruction du pas
@@ -256,7 +287,7 @@ async function executerUnPas(
   const apres = await relire(deps.sql, tenantId, taskId);
   if (!apres.ok) {
     await arreterPourHumain(deps, travail, "journal_incoherent", apres.detail);
-    return "journal_incoherent";
+    return { motif: "journal_incoherent", manque: null };
   }
 
   // ⚠️ ICI, L'HORLOGE DU PROCESSUS RESTE LA BONNE. `deciderLaSuite` calcule une échéance future
@@ -296,7 +327,9 @@ async function executerUnPas(
     );
   }
 
-  return suite.motif;
+  // ⚠️ LE MANQUE VOYAGE AVEC LE MOTIF, ET IL S'ARRÊTERAIT ICI SANS CETTE LIGNE. C'est le dernier
+  // maillon du fil qui distingue « le dirigeant peut l'activer » de « nous devons le monter ».
+  return { motif: suite.motif, manque: suite.kind === "attendre_humain" ? suite.manque : null };
 }
 
 /**
@@ -439,6 +472,9 @@ async function unPasDeDecision(
         return {
           kind: "capacite_absente",
           sujetKind: resultat.sujetKind,
+          // La cause vient du filtre, qui SAIT laquelle de ses deux conditions a vidé la liste.
+          // La recalculer ici la ferait diverger de lui au premier changement.
+          cause: resultat.cause,
           detail:
             `Cette mission porte sur « ${resultat.sujetKind} », et aucune capacité activée ne s'y ` +
             `applique. Activées : ${resultat.capacitesActives.join(", ") || "aucune"}.`,

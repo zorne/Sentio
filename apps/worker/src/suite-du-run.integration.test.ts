@@ -254,6 +254,7 @@ describeIfDatabase("EXEC-08 — replanifier, terminer, ou appeler un humain", ()
           motif: "verification_humaine",
           nature: ATTENTION_REQUISE,
           detail: "issue inconnue sur un envoi",
+          manque: null,
         },
       },
     );

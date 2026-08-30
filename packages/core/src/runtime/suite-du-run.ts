@@ -52,6 +52,40 @@ import type { ResultatExecution } from "./execute-action.js";
 import type { DecisionPas } from "./next-action.js";
 
 /**
+ * Pourquoi aucun outil ne servait cette mission — **la seule information que la notification ne
+ * peut pas reconstituer**.
+ *
+ * ══ UNIFIÉ POUR LA REPRISE, SÉPARÉ POUR L'ALERTE ══
+ *
+ * Les deux causes donnent le même motif (`capacite_absente`), et c'est juste : ce sont deux
+ * attentes qu'une même relance résout (`reprise.ts`). Mais elles n'ont pas le même
+ * **destinataire** :
+ *
+ *   · `capacite_non_activee` → le dirigeant, qui peut l'activer ;
+ *   · `moteur_non_monte`     → nous. C'est un défaut produit, et le dirigeant n'y peut rien.
+ *
+ * Notifier les deux au dirigeant lui demanderait de réparer ce qui n'est pas de son ressort. Il
+ * apprendrait à ignorer le canal — exactement ce que tout ce lot cherche à éviter.
+ *
+ * ⚠️ Cette information doit donc **survivre jusqu'à la notification**, et pas seulement jusqu'à
+ * la file : elle traverse `SuiteDuRun`, elle est écrite au journal par `appliquerLaSuite`, et
+ * elle est rendue au battement par la boucle.
+ */
+export type CauseDuManque = "capacite_non_activee" | "moteur_non_monte";
+
+export interface ManqueDOutil {
+  readonly cause: CauseDuManque;
+  /**
+   * La nature du sujet de la mission, quand le pas la connaissait. Elle sert à nommer l'outil
+   * qui manque — « cette mission porte sur un prospect, et rien ne sait l'approcher ».
+   *
+   * `null` quand le manque a été découvert à l'exécution : là, le moteur était absent, et la
+   * cause est de notre côté. Nommer le sujet n'y changerait rien.
+   */
+  readonly sujetKind: string | null;
+}
+
+/**
  * Ce qu'un pas a produit. Deux formes seulement, parce qu'il n'existe que deux façons de sortir
  * d'un pas : le contexte n'était pas fiable et rien n'a été tenté (EXEC-03), ou une décision a
  * été rendue et, si elle autorisait d'agir, exécutée (EXEC-05/06).
@@ -64,9 +98,16 @@ export type IssueDuPas =
    * ⚠️ **DISTINCT DE `contexte_incomplet`, ET C'EST TOUT L'INTÉRÊT.** Un contexte incomplet dit
    * « rien ne comblera ce manque ». Celui-ci dit l'inverse : **le dirigeant peut le combler**, en
    * activant la capacité qui manque. Les confondre ferait perdre la seule information qui rend ce
-   * blocage actionnable — et c'est précisément ce qu'un futur canal d'alerte devra acheminer.
+   * blocage actionnable — et c'est précisément ce que le canal d'alerte achemine
+   * (`runtime/compteur.ts`).
    */
-  | { readonly kind: "capacite_absente"; readonly detail: string; readonly sujetKind: string }
+  | {
+      readonly kind: "capacite_absente";
+      readonly detail: string;
+      readonly sujetKind: string;
+      /** Ce qui distingue les deux causes, et donc les deux destinataires. */
+      readonly cause: CauseDuManque;
+    }
   /**
    * Le pas n'a pas eu lieu : un plafond était atteint et le Model Gateway a **reporté** la tâche
    * (`TaskDeferred`, NOYAU-07).
@@ -157,6 +198,13 @@ export type SuiteDuRun =
         | "capacite_absente";
       readonly nature: typeof ATTENTION_REQUISE | null;
       readonly detail: string;
+      /**
+       * Renseigné pour le seul motif `capacite_absente`, `null` partout ailleurs.
+       *
+       * ⚠️ C'est le fil qui porte la distinction jusqu'au canal d'alerte. Le retirer d'ici
+       * rendrait `capacite_absente` indistinct au moment précis où il faut choisir à qui parler.
+       */
+      readonly manque: ManqueDOutil | null;
     };
 
 export interface EntreeSuiteDuRun {
@@ -192,13 +240,15 @@ function intentionDuPas(issue: IssueDuPas): Intention {
       motif: "contexte_incomplet",
       nature: ATTENTION_REQUISE,
       detail: issue.detail,
+      // Rien ne comblera ce manque : il n'y a pas d'outil à activer, donc pas de manque à décrire.
+      manque: null,
     };
   }
 
   // ⚠️ Même destination que `contexte_incomplet` — la mission s'arrête et attend une personne —
   // mais un MOTIF distinct, parce que ce qu'il faut faire n'est pas le même. Là, rien ne comblera
-  // le manque ; ici, le dirigeant peut activer la capacité. Un futur canal d'alerte aura besoin
-  // de cette différence pour dire quoi que ce soit d'utile.
+  // le manque ; ici, le dirigeant peut activer la capacité. Le canal d'alerte a besoin de cette
+  // différence pour dire quoi que ce soit d'utile — c'est `manque` qui la lui porte.
   //
   // ⚠️ Et surtout : ce n'est PAS `echec_definitif`. Une mission qui meurt sans que personne ne
   // sache qu'il lui manquait un outil, c'est exactement le silence que ce produit ne peut pas se
@@ -209,6 +259,10 @@ function intentionDuPas(issue: IssueDuPas): Intention {
       motif: "capacite_absente",
       nature: ATTENTION_REQUISE,
       detail: issue.detail,
+      // ⚠️ LA CAUSE PASSE, ET C'EST TOUT L'OBJET DE CE CHAMP. Le motif est unifié pour la reprise ;
+      // la cause reste séparée pour l'alerte, parce que les deux ne s'adressent pas à la même
+      // personne.
+      manque: { cause: issue.cause, sujetKind: issue.sujetKind },
     };
   }
 
@@ -245,6 +299,7 @@ function intentionDuPas(issue: IssueDuPas): Intention {
         // Rien à écrire : `politique_suspend` est déjà au journal, et doit y rester le dernier.
         nature: null,
         detail: `« ${decision.proposition.capabilityKey} » attend l'accord du client.`,
+        manque: null,
       };
 
     // Un refus de politique ou une réponse illisible n'arrêtent pas le run : le pas suivant peut
@@ -284,6 +339,7 @@ function intentionDuPas(issue: IssueDuPas): Intention {
         motif: "verification_humaine",
         nature: ATTENTION_REQUISE,
         detail: execution.detail,
+        manque: null,
       };
 
     // ⚠️ Un moteur absent n'est pas un échec : c'est un MANQUE, et quelqu'un peut le combler.
@@ -296,6 +352,11 @@ function intentionDuPas(issue: IssueDuPas): Intention {
         motif: "capacite_absente",
         nature: ATTENTION_REQUISE,
         detail: execution.detail,
+        // ⚠️ Même motif que ci-dessus, cause DIFFÉRENTE : ici la capacité était bien activée, et
+        // c'est le moteur qui manquait. Le dirigeant n'a rien à activer — le monter est un
+        // déploiement, donc notre travail. Confondre les deux lui ferait chercher un bouton qui
+        // n'existe pas.
+        manque: { cause: "moteur_non_monte", sujetKind: null },
       };
 
     case "echec_definitif":
