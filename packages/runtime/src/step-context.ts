@@ -74,6 +74,8 @@ export type ChargementContexte =
       /** L'objectif visé, en clair. Rendu pour la trace (EXEC-07) : « pourquoi ? » commence par
        *  « pour quoi ? ». */
       readonly objectif: string;
+      /** La NATURE du sujet de la mission (`lead`, `recherche`, …), telle qu'elle est en base. */
+      readonly sujetKind: string;
     }
   | { readonly ok: false; readonly manques: readonly Manque[] };
 
@@ -320,5 +322,8 @@ export async function loadStepContext(
     etat,
     couchesAbsentes: contexte.missingLayers,
     objectif: `${objectif.metric} — cible ${objectif.targetValue} (${objectif.horizon})`,
+    // La tâche était déjà chargée ; seule son exposition manquait. C'est elle qui permet de ne
+    // proposer au modèle que les capacités applicables à CE sujet (`next-step.ts`).
+    sujetKind: tache.subjectKind,
   };
 }

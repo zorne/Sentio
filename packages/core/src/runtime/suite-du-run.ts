@@ -59,6 +59,15 @@ import type { DecisionPas } from "./next-action.js";
 export type IssueDuPas =
   | { readonly kind: "contexte_incomplet"; readonly detail: string }
   /**
+   * Aucune capacité activée ne s'applique au sujet de cette mission.
+   *
+   * ⚠️ **DISTINCT DE `contexte_incomplet`, ET C'EST TOUT L'INTÉRÊT.** Un contexte incomplet dit
+   * « rien ne comblera ce manque ». Celui-ci dit l'inverse : **le dirigeant peut le combler**, en
+   * activant la capacité qui manque. Les confondre ferait perdre la seule information qui rend ce
+   * blocage actionnable — et c'est précisément ce qu'un futur canal d'alerte devra acheminer.
+   */
+  | { readonly kind: "capacite_absente"; readonly detail: string; readonly sujetKind: string }
+  /**
    * Le pas n'a pas eu lieu : un plafond était atteint et le Model Gateway a **reporté** la tâche
    * (`TaskDeferred`, NOYAU-07).
    *
@@ -96,7 +105,9 @@ export type MotifSuite =
   /** Un effet irréversible a été engagé et son issue est inconnue : personne ne doit deviner. */
   | "verification_humaine"
   /** Une couche indispensable manque : l'employé ne peut pas travailler, et rien ne la comblera. */
-  | "contexte_incomplet";
+  | "contexte_incomplet"
+  /** Aucune capacité activée ne s'applique à ce sujet. Le dirigeant, lui, peut y remédier. */
+  | "capacite_absente";
 
 export type SuiteDuRun =
   /** Le pas suivant est dû immédiatement. Aucun événement de journal : le pas a déjà écrit le sien. */
@@ -139,7 +150,11 @@ export type SuiteDuRun =
    */
   | {
       readonly kind: "attendre_humain";
-      readonly motif: "accord_attendu" | "verification_humaine" | "contexte_incomplet";
+      readonly motif:
+        | "accord_attendu"
+        | "verification_humaine"
+        | "contexte_incomplet"
+        | "capacite_absente";
       readonly nature: typeof ATTENTION_REQUISE | null;
       readonly detail: string;
     };
@@ -175,6 +190,23 @@ function intentionDuPas(issue: IssueDuPas): Intention {
     return {
       kind: "attendre_humain",
       motif: "contexte_incomplet",
+      nature: ATTENTION_REQUISE,
+      detail: issue.detail,
+    };
+  }
+
+  // ⚠️ Même destination que `contexte_incomplet` — la mission s'arrête et attend une personne —
+  // mais un MOTIF distinct, parce que ce qu'il faut faire n'est pas le même. Là, rien ne comblera
+  // le manque ; ici, le dirigeant peut activer la capacité. Un futur canal d'alerte aura besoin
+  // de cette différence pour dire quoi que ce soit d'utile.
+  //
+  // ⚠️ Et surtout : ce n'est PAS `echec_definitif`. Une mission qui meurt sans que personne ne
+  // sache qu'il lui manquait un outil, c'est exactement le silence que ce produit ne peut pas se
+  // permettre.
+  if (issue.kind === "capacite_absente") {
+    return {
+      kind: "attendre_humain",
+      motif: "capacite_absente",
       nature: ATTENTION_REQUISE,
       detail: issue.detail,
     };

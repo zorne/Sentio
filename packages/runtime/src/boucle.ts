@@ -410,6 +410,18 @@ async function unPasDeDecision(
     );
 
     if (!resultat.ok) {
+      if (resultat.raison === "aucune_capacite_applicable") {
+        // ⚠️ Un motif à part, jamais `echec_definitif`. Le dirigeant PEUT y remédier — c'est la
+        // seule information qui rend ce blocage actionnable, et la perdre reviendrait à laisser
+        // une mission mourir sans que personne ne sache qu'il lui manquait un outil.
+        return {
+          kind: "capacite_absente",
+          sujetKind: resultat.sujetKind,
+          detail:
+            `Cette mission porte sur « ${resultat.sujetKind} », et aucune capacité activée ne s'y ` +
+            `applique. Activées : ${resultat.capacitesActives.join(", ") || "aucune"}.`,
+        };
+      }
       return {
         kind: "contexte_incomplet",
         detail: resultat.manques.map((manque) => `${manque.quoi} : ${manque.detail}`).join(" | "),

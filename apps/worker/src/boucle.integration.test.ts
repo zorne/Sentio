@@ -62,6 +62,12 @@ const describeIfDatabase = connectionString === undefined ? describe.skip : desc
 
 /** La capacité que l'employé propose dans ces tests : écriture interne, donc pas de suspension. */
 const CAPACITE = "qualifier.prospect";
+/**
+ * Une capacité connue du registre, applicable au même sujet (`lead`), mais JAMAIS activée pour
+ * l'employé. C'est la seule forme qui atteigne le verrou « hors de la liste de cet employé » sans
+ * être interceptée avant par le garde du contrat manquant.
+ */
+const CAPACITE_NON_ACTIVEE = "mettre_a_jour.prospect";
 
 describeIfDatabase("EXEC-12 — la boucle complète", () => {
   let sql: PostgresClient;
@@ -119,6 +125,18 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
       key: CAPACITE,
       effectClass: "internal_write",
       description: "Vérifier qu'un prospect correspond à ce que le client vend.",
+    });
+    // ⚠️ UN SECOND CONTRAT, ET IL A UNE RAISON PRÉCISE.
+    //
+    // Pour éprouver le verrou « capacité hors de la liste de cet employé », il faut une capacité
+    // qui EXISTE au registre mais qui n'est PAS activée. Sans elle, proposer une capacité inconnue
+    // ferait refuser par l'AUTRE garde — celui du contrat manquant, quelques lignes plus bas dans
+    // `decideNextAction` — et le test passerait au vert sans jamais toucher le verrou qu'il vise.
+    // Mesuré par mutation : c'est exactement ce qui se produisait.
+    registry.registerContract({
+      key: CAPACITE_NON_ACTIVEE,
+      effectClass: "internal_write",
+      description: "Consigner l'état d'une fiche.",
     });
     registry.registerEngine({
       // Même clé de moteur que la liaison semée par la migration de l'ADN Commercial : c'est
@@ -271,6 +289,13 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
       [tenantId],
     );
     return tache?.id as string;
+  }
+
+  /** Proposer une capacité PRÉCISE — sert à éprouver le garde aval sur une capacité hors liste. */
+  function proposerLaCapacite(cle: string, combien: number): void {
+    reponses = Array.from({ length: combien }, () =>
+      JSON.stringify({ action: "agir", capacite: cle, entree: {}, pourquoi: "essai du garde aval" }),
+    );
   }
 
   function proposerUneAction(combien: number): void {
@@ -610,22 +635,23 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
 
   it("refuse une capacité que le client n'a pas activée, sans appeler aucun moteur", async () => {
     effets = [];
-    // ⚠️ La capacité est activée pour OUVRIR la mission, puis retirée avant de la travailler.
+    // ⚠️ CE CAS A DÛ ÊTRE RÉÉCRIT DEUX FOIS, ET LA SECONDE EST LA PLUS INSTRUCTIVE.
     //
-    // L'approvisionnement refuse désormais d'ouvrir un travail qu'aucune capacité activée ne sert
-    // (`prioriserLesTravaux` : écarté, et journalisé). Recruter sans capacité n'ouvrirait donc
-    // plus rien du tout, et ce cas ne prouverait plus ce qu'il existe pour prouver — la garde du
-    // moteur d'autorisation, pas celle de l'approvisionnement.
+    // Il recrutait d'abord SANS capacité. Le filtrage par capacité de l'approvisionnement l'a
+    // rendu muet : plus aucune mission ne s'ouvrait. On a donc activé puis révoqué en vol.
     //
-    // Le retirer APRÈS l'ouverture est d'ailleurs le cas réel : un dirigeant qui retire une
-    // capacité pendant qu'une mission est en vol. Le pas suivant doit la refuser.
-    const { tenantId, employeeId } = await entreprise({ prospects: 1, capaciteActive: true });
+    // Puis le FILTRAGE PAR SUJET de `next-step` l'a rendu muet à son tour : une liste vide
+    // s'arrête AVANT le modèle, en `capacite_absente`, et le garde aval n'était plus atteint. Le
+    // test passait au vert pour la mauvaise raison — exactement le risque que ce filtre fait
+    // courir : prendre silencieusement la place de la frontière qu'il devait seulement soulager.
+    //
+    // La forme juste est donc celle-ci : l'employé GARDE une capacité applicable (la liste n'est
+    // pas vide, le filtre laisse passer), et le modèle en propose une AUTRE, non activée. C'est
+    // le seul chemin qui atteint encore `decideNextAction` — et c'est le vrai scénario de
+    // production, puisqu'un modèle peut toujours nommer ce qu'on ne lui a pas proposé.
+    const { tenantId } = await entreprise({ prospects: 1, capaciteActive: true });
     await approvisionner(tenantId);
-    await sql.query(
-      "update employee_capability set enabled = false where tenant_id = $1 and employee_id = $2",
-      [tenantId, employeeId],
-    );
-    proposerUneAction(1);
+    proposerLaCapacite(CAPACITE_NON_ACTIVEE, 1);
 
     // ⚠️ Ce cas n'exécute QU'UN travail et vérifie que c'est le sien. Or la file est globale :
     // rien ne garantit que le travail pris soit celui de cette entreprise, et un reliquat d'un
@@ -661,6 +687,56 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     expect(effets).toHaveLength(0);
   });
 
+  it("⭐ aucune capacité applicable : la mission s'ARRÊTE avant le modèle, et dit ce qui manque", async () => {
+    // ⚠️ LE CAS QUE LE FILTRAGE PAR SUJET A CRÉÉ, ET QU'IL DOIT DONC FERMER LUI-MÊME.
+    //
+    // Filtrer la liste rend possible qu'elle devienne vide. Livrer le filtre en laissant ce cas
+    // ouvert aurait introduit un mode de défaillance silencieux dans le lot même qui prétend en
+    // fermer un.
+    //
+    // Trois choses se vérifient ici, et la troisième est la plus importante :
+    //   · AUCUN appel au modèle — on ne paie pas pour une liste vide ;
+    //   · l'état est `needs_attention`, jamais `failed` — le dirigeant PEUT y remédier ;
+    //   · le motif nomme le sujet et ce qui est activé, pour que le futur canal d'alerte ait
+    //     quelque chose d'utile à acheminer plutôt qu'un « ça a échoué ».
+    effets = [];
+    const { tenantId, employeeId } = await entreprise({ prospects: 1, capaciteActive: true });
+    await approvisionner(tenantId);
+    // On retire la seule capacité applicable : la liste filtrée devient vide.
+    await sql.query(
+      "update employee_capability set enabled = false where tenant_id = $1 and employee_id = $2",
+      [tenantId, employeeId],
+    );
+
+    const appelsAvant = appelsAuModele;
+    await executerLesTravauxDus(deps(), {
+      prisPar: "exécutant-de-test",
+      dataClass: "synthetic",
+      maxTravaux: 1,
+    });
+
+    const mission = await laMission(tenantId);
+    const chaine = await natures(tenantId, mission);
+    expect(chaine, "journal vide : l'exécutant a pris le travail d'une autre entreprise").toContain(
+      "attention_requise",
+    );
+    expect(chaine).not.toContain("proposition_recue");
+    expect(chaine).not.toContain("action_engagee");
+    expect(appelsAuModele).toBe(appelsAvant);
+    expect(effets).toHaveLength(0);
+
+    const [etat] = await sql.query<{ state: string }>("select state from task where id = $1", [mission]);
+    expect(etat?.state).toBe("needs_attention");
+
+    const [evenement] = await sql.query<{ payload: Record<string, unknown> }>(
+      `select payload from execution_event
+        where tenant_id = $1 and task_id = $2 and kind = 'attention_requise'
+        order by seq desc limit 1`,
+      [tenantId, mission],
+    );
+    expect(String(evenement?.payload["detail"])).toContain("lead");
+  });
+
   it("MUTATION — une mission créée HORS approvisionnement est refusée si la capacité n'est pas activée", async () => {
     // ⚠️ DÉFENSE EN PROFONDEUR, ET LE TEST QUI LA GARDE.
     //
@@ -674,7 +750,10 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     // capacité n'a JAMAIS été activée pour cet employé : ce n'est pas une révocation en vol (cas
     // du test précédent), c'est une mission qui n'aurait jamais dû exister.
     effets = [];
-    const { tenantId, employeeId } = await entreprise({ prospects: 1, capaciteActive: false });
+    // La capacité activée reste `qualifier.prospect` : la liste filtrée n'est donc pas vide et le
+    // filtre amont laisse passer. Le modèle propose `envoyer.prospect`, jamais activée — seul le
+    // garde aval peut la refuser.
+    const { tenantId, employeeId } = await entreprise({ prospects: 1, capaciteActive: true });
 
     const [prospect] = await sql.query<{ id: string }>(
       "select id from lead where tenant_id = $1 limit 1",
@@ -696,7 +775,7 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     await sql.query("update job set next_run_at = now() + interval '1 hour' where tenant_id <> $1", [
       tenantId,
     ]);
-    proposerUneAction(1);
+    proposerLaCapacite(CAPACITE_NON_ACTIVEE, 1);
 
     await executerLesTravauxDus(deps(), {
       prisPar: "exécutant-de-test",

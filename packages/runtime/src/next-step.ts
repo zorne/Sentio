@@ -40,6 +40,7 @@ import {
   type PolicyEngine,
 } from "@sentio/core";
 import type { SqlClient } from "@sentio/db";
+import { capaciteApplicableAuSujet } from "@sentio/domain";
 import type { EmployeeId, TenantId } from "@sentio/domain";
 
 import { PostgresAutonomyResolver } from "./adapters/autonomy.js";
@@ -55,7 +56,24 @@ export type ResultatPas =
     }
   /** Le contexte n'est pas fiable : on ne demande rien au modèle. Un contexte incomplet ne se
    *  complète pas d'hypothèses (EXEC-03). */
-  | { readonly ok: false; readonly manques: readonly Manque[] };
+  | { readonly ok: false; readonly raison: "contexte_incomplet"; readonly manques: readonly Manque[] }
+  /**
+   * Aucune capacité activée ne s'applique au sujet de cette mission.
+   *
+   * ⚠️ CE CAS EST NÉ AVEC LE FILTRAGE, ET IL EST TRAITÉ ICI PLUTÔT QUE PLUS TARD. Filtrer la liste
+   * rend possible qu'elle devienne vide — livrer le filtre en laissant ce cas ouvert
+   * introduirait un mode de défaillance silencieux dans le lot même qui prétend en fermer un.
+   *
+   * On s'arrête donc AVANT le modèle : lui demander de choisir dans une liste vide coûterait un
+   * appel payant pour une réponse qui serait refusée de toute façon.
+   */
+  | {
+      readonly ok: false;
+      readonly raison: "aucune_capacite_applicable";
+      readonly sujetKind: string;
+      /** Ce que l'employé a d'activé — pour que le motif dise ce qui manque, pas juste qu'il manque. */
+      readonly capacitesActives: readonly string[];
+    };
 
 export interface NextStepDeps {
   readonly gateway: ModelGateway;
@@ -113,7 +131,7 @@ export async function decideNextStep(
     tenantId: input.tenantId,
     taskId: input.taskId,
   });
-  if (!contexte.ok) return { ok: false, manques: contexte.manques };
+  if (!contexte.ok) return { ok: false, raison: "contexte_incomplet", manques: contexte.manques };
 
   // Un pas commence. Tous les événements qui suivent porteront cet identifiant : c'est ce qui
   // rend la chaîne relisible au lieu d'être devinée à partir des horodatages.
@@ -123,7 +141,38 @@ export async function decideNextStep(
   // peut être influencé par ce que le modèle vient de répondre, puisque ni l'un ni l'autre ne
   // traverse le modèle.
   const autonomy = await new PostgresAutonomyResolver(sql).resolve(input.tenantId, input.employeeId);
-  const capacitesAutorisees = await capacitesActivees(sql, input.tenantId, input.employeeId);
+  const capacitesActives = await capacitesActivees(sql, input.tenantId, input.employeeId);
+
+  // ── LE FILTRE PAR SUJET, ET POURQUOI IL EST ICI ────────────────────────────────────────────
+  //
+  // Le modèle recevait TOUTES les capacités de l'employé, y compris celles qui ne peuvent
+  // structurellement pas s'appliquer à cette mission — `qualifier.prospect` sur une mission de
+  // recherche, par exemple. Il n'a aucun moyen de le savoir : le contexte ne lui dit pas sur quoi
+  // porte sa mission. Il devinait, et `attelage.ts` refusait après coup, tuant le run
+  // DÉFINITIVEMENT. Observé le 2026-08-30 sur une erreur que personne n'avait scénarisée.
+  //
+  // ⚠️ On ne l'INFORME pas, on RESTREINT. L'informer reviendrait à espérer qu'il en tienne compte ;
+  // restreindre rend la proposition incohérente impossible à formuler. C'est la doctrine
+  // d'`attelage.ts` — on ne fait pas confiance au modèle pour viser — appliquée un cran plus tôt.
+  //
+  // ⚠️ ET CE FILTRE NE REMPLACE PAS `exigerUnProspect`. C'est une économie, pas une frontière :
+  // une mission créée par un autre chemin n'est jamais passée par ici. Le garde aval reste, et un
+  // test par mutation le prouve.
+  const capacitesAutorisees = capacitesActives.filter((cle) =>
+    capaciteApplicableAuSujet(cle, contexte.sujetKind),
+  );
+
+  // ⚠️ Le filtre CRÉE ce cas : il n'existait pas avant lui. Le laisser ouvert introduirait un
+  // silence de plus. On s'arrête donc ici — avant le modèle, qui coûte — avec un motif qui dit ce
+  // qui manque plutôt que « ça a échoué ».
+  if (capacitesAutorisees.length === 0) {
+    return {
+      ok: false,
+      raison: "aucune_capacite_applicable",
+      sujetKind: contexte.sujetKind,
+      capacitesActives,
+    };
+  }
 
   // ── Premier maillon : AVEC QUOI il a décidé. Sans lui, la trace commence à la proposition et
   //    ne répond pas à « pourquoi ? » — seulement à « quoi ? ».
