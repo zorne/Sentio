@@ -93,6 +93,30 @@ export class CapabilityRegistry {
     this.engines.set(cle, engine);
   }
 
+  /**
+   * Un moteur — n'importe lequel — sert-il cette capacité sur CET hôte ?
+   *
+   * ⚠️ **LE REGISTRE EST LE FAIT ; `capability.disponible` EST UNE DÉCLARATION.** La colonne dit
+   * ce que la composition par défaut monte, et son propre commentaire précise à quoi elle sert :
+   * « ni l'espace client ni le diagnostic ne doivent la présenter comme acquise ». C'est une
+   * information d'AFFICHAGE.
+   *
+   * Le runtime, lui, doit savoir ce qui est monté **ici** : un hôte peut fournir ses propres
+   * moteurs (`moteursMetier`, le point d'accroche prévu pour l'expédition réelle), et se fier à
+   * la colonne écarterait des capacités que cet hôte sert réellement.
+   *
+   * Sert à ne pas proposer au modèle ce qu'aucun moteur ne pourrait exécuter — une économie
+   * d'appel payant, jamais une frontière : `resolve` refuse toujours, pour ce qui n'est pas passé
+   * par là.
+   */
+  sertLaCapacite(capabilityKey: string): boolean {
+    const prefixe = `${capabilityKey}::`;
+    for (const cle of this.engines.keys()) {
+      if (cle.startsWith(prefixe)) return true;
+    }
+    return false;
+  }
+
   private static cleDuMoteur(capabilityKey: string, engineKey: string): string {
     return `${capabilityKey}::${engineKey}`;
   }

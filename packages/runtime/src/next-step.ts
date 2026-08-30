@@ -89,8 +89,11 @@ export interface NextStepDeps {
  * autre entreprise ne peut pas entrer dans cette liste. La lecture de `capability` est globale —
  * c'est un catalogue de contrats, sans donnée client.
  *
- * Une liste vide n'est pas une erreur ici : elle produira un refus au premier geste proposé, ce
- * qui est le comportement juste pour un employé sans aucune capacité activée.
+ * Le fait qu'un MOTEUR la serve est vérifié ailleurs, contre le registre de cet hôte et non
+ * contre la base — voir `CapabilityRegistry.sertLaCapacite`.
+ *
+ * Une liste vide n'est pas une erreur ici : l'appelant s'en saisit et arrête la mission avec un
+ * motif qui dit ce qui manque.
  */
 async function capacitesActivees(
   sql: SqlClient,
@@ -158,8 +161,19 @@ export async function decideNextStep(
   // ⚠️ ET CE FILTRE NE REMPLACE PAS `exigerUnProspect`. C'est une économie, pas une frontière :
   // une mission créée par un autre chemin n'est jamais passée par ici. Le garde aval reste, et un
   // test par mutation le prouve.
-  const capacitesAutorisees = capacitesActives.filter((cle) =>
-    capaciteApplicableAuSujet(cle, contexte.sujetKind),
+  //
+  // ⚠️ DEUX CONDITIONS, ET LA SECONDE ÉCONOMISE UN APPEL PAYANT. Une capacité peut être activée
+  // pour l'employé sans qu'aucun moteur ne la serve — `envoyer.prospect` et `relancer.prospect`
+  // sont exactement dans ce cas (`composition.ts` ne les monte pas, délibérément). Sans ce
+  // second filtre, le modèle la proposait — **un appel facturé** — puis `engineFor` échouait.
+  //
+  // ⚠️ La question « un moteur la sert-il ? » se pose au REGISTRE DE CET HÔTE, jamais à
+  // `capability.disponible`. La colonne dit ce que la composition par DÉFAUT monte, et sert à
+  // l'affichage ; un hôte qui fournit ses propres moteurs (`moteursMetier`) servirait des
+  // capacités que la colonne dit indisponibles. Se fier à elle écarterait du travail réellement
+  // exécutable.
+  const capacitesAutorisees = capacitesActives.filter(
+    (cle) => capaciteApplicableAuSujet(cle, contexte.sujetKind) && deps.registry.sertLaCapacite(cle),
   );
 
   // ⚠️ Le filtre CRÉE ce cas : il n'existait pas avant lui. Le laisser ouvert introduirait un

@@ -737,6 +737,48 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     expect(String(evenement?.payload["detail"])).toContain("lead");
   });
 
+  it("⭐ une capacité SANS MOTEUR n'est jamais proposée — aucun appel payant n'est brûlé", async () => {
+    // ⚠️ CE CAS ÉCONOMISE UN APPEL FACTURÉ, ET IL A ÉTÉ CONÇU EN LE MESURANT.
+    //
+    // `envoyer.prospect` peut être activée pour l'employé sans qu'aucun moteur ne la serve — c'est
+    // exactement l'état de la production aujourd'hui (`composition.ts` ne la monte pas). Avant ce
+    // filtre : elle passait, le modèle la proposait — appel facturé —, puis `engineFor` échouait
+    // et la mission mourait en `failed`, terminale, son prospect exclu du vivier pour toujours.
+    //
+    // ⚠️ Et la question se pose au REGISTRE DE CET HÔTE, jamais à `capability.disponible`. Ce test
+    // le prouve : `qualifier.prospect` reste proposée parce que CE registre la sert, quoi que dise
+    // la colonne — un hôte qui monte ses propres moteurs ne doit pas voir son travail écarté.
+    effets = [];
+    const { tenantId, employeeId } = await entreprise({ prospects: 1, capaciteActive: true });
+    await approvisionner(tenantId);
+
+    // On active AUSSI une capacité qu'aucun moteur de ce registre ne sert.
+    await sql.query(
+      `insert into employee_capability (tenant_id, employee_id, capability_id, enabled)
+       select $1, $2, c.id, true from capability c where c.key = 'envoyer.prospect'
+       on conflict (employee_id, capability_id) do update set enabled = true`,
+      [tenantId, employeeId],
+    );
+
+    // Le modèle propose la capacité sans moteur. Elle ne devrait même pas lui être offerte.
+    proposerLaCapacite("envoyer.prospect", 1);
+
+    await executerLesTravauxDus(deps(), {
+      prisPar: "exécutant-de-test",
+      dataClass: "synthetic",
+      maxTravaux: 1,
+    });
+
+    const mission = await laMission(tenantId);
+    const chaine = await natures(tenantId, mission);
+
+    // La proposition a bien eu lieu — la mission n'est pas bloquée, `qualifier.prospect` reste
+    // proposable — mais `envoyer.prospect` a été REFUSÉE sans qu'aucun moteur ne soit approché.
+    expect(chaine).toContain("politique_refuse");
+    expect(chaine).not.toContain("action_engagee");
+    expect(effets).toHaveLength(0);
+  });
+
   it("MUTATION — une mission créée HORS approvisionnement est refusée si la capacité n'est pas activée", async () => {
     // ⚠️ DÉFENSE EN PROFONDEUR, ET LE TEST QUI LA GARDE.
     //

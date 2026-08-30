@@ -286,6 +286,18 @@ function intentionDuPas(issue: IssueDuPas): Intention {
         detail: execution.detail,
       };
 
+    // ⚠️ Un moteur absent n'est pas un échec : c'est un MANQUE, et quelqu'un peut le combler.
+    // Terminer en `echoue` rendait la mission terminale — jamais reprise, et son sujet exclu du
+    // vivier pour toujours, alors même que le moteur allait être monté. Même destination que
+    // `capacite_absente`, pour la même raison et avec la même reprise.
+    case "moteur_absent":
+      return {
+        kind: "attendre_humain",
+        motif: "capacite_absente",
+        nature: ATTENTION_REQUISE,
+        detail: execution.detail,
+      };
+
     case "echec_definitif":
     case "non_autorise":
       return {

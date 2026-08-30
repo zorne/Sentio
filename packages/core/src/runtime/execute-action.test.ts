@@ -33,7 +33,9 @@ const EMPLOYE = "33333333-3333-3333-3333-333333333333" as EmployeeId;
 class RegistreFactice implements EffectLedger {
   readonly engages = new Map<string, { tentatives: number }>();
   readonly resultats = new Map<string, unknown>();
-  readonly ecritures: { kind: string; cle: string }[] = [];
+  /** La CHARGE est conservée : c'est elle que relira quiconque cherche pourquoi un pas s'est
+   *  arrêté, et « définitif » y change la conduite à tenir. */
+  readonly ecritures: { kind: string; cle: string; payload: Record<string, unknown> }[] = [];
   /** Simule un autre worker qui gagne la course juste avant nous. */
   perdreLaCourse = false;
 
@@ -67,7 +69,7 @@ class RegistreFactice implements EffectLedger {
     payload: Record<string, unknown>;
   }): Promise<void> {
     const id = RegistreFactice.cle(input.tenantId, input.idempotencyKey);
-    this.ecritures.push({ kind: input.kind, cle: input.idempotencyKey });
+    this.ecritures.push({ kind: input.kind, cle: input.idempotencyKey, payload: input.payload });
     if (input.kind === "action_executee") {
       this.resultats.set(id, input.payload["resultat"]);
     } else {
@@ -386,7 +388,18 @@ describe("les échecs, et leur borne", () => {
     expect(dernier.kind).toBe("echec_definitif");
   });
 
-  it("un moteur introuvable est un échec définitif, pas une tentative sans fin", async () => {
+  it("⭐ un moteur introuvable est une ATTENTE, jamais un échec définitif", async () => {
+    // ⚠️ CE CAS A CHANGÉ DE SENS LE 2026-08-30, ET LE MOTIF COMPTE PLUS QUE LE NOM.
+    //
+    // Il exigeait `echec_definitif`. C'était défendable — rien ne sera retenté — mais la
+    // conséquence ne l'était pas : la mission finissait en `failed`, TERMINALE, donc jamais
+    // reprise, et son sujet exclu du vivier pour toujours. Or rien n'est cassé quand un moteur
+    // manque : il MANQUE quelque chose, et quelqu'un peut le fournir — monter le moteur est un
+    // déploiement.
+    //
+    // Le bon critère n'est pas « quelle couche a échoué » mais « quelqu'un peut-il y remédier ».
+    // La mission attend donc (`needs_attention`) et repart quand le moteur apparaît, comme une
+    // capacité non activée repart quand le dirigeant l'active.
     const ledger = new RegistreFactice();
     const deps = {
       registry: registre(),
@@ -402,9 +415,14 @@ describe("les échecs, et leur borne", () => {
       decision: decisionAgir(),
     });
 
-    expect(resultat.kind).toBe("echec_definitif");
+    expect(resultat.kind).toBe("moteur_absent");
     // L'engagement a bien eu lieu avant : la trace existe même quand rien n'a été tenté.
     expect(ledger.engages.size).toBe(1);
+    // ⚠️ Et la trace dit `definitif: false` : c'est elle que relira quiconque cherchera pourquoi
+    // une mission attend. « Définitif » y aurait fait renoncer à la reprendre.
+    const trace = ledger.ecritures.find((e) => e.kind === "action_echouee");
+    expect(trace?.payload["definitif"]).toBe(false);
+    expect(trace?.payload["motif"]).toBe("moteur_absent");
   });
 
   it("un échec n'est jamais confondu avec un succès au battement suivant", async () => {
