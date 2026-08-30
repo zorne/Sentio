@@ -19,8 +19,24 @@
 #      voire sauté quand la plateforme est chargée. C'est acceptable pour un battement dont le
 #      travail se compte en jours ; ça ne le serait pas pour une horloge.
 #   2. **GitHub désactive un `schedule` après 60 jours sans activité sur le dépôt.** Un dépôt qui
-#      dort arrête donc Lady, silencieusement. À retenir le jour où il y aura un vrai client :
-#      c'est la raison qui fera passer à un hébergement continu.
+#      dort arrête donc Lady, silencieusement — et il ne reste alors AUCUN workflow pour échouer.
+#      Ce fichier est structurellement aveugle à sa propre absence : c'est ce qui rend le guetteur
+#      externe nécessaire (`docs/36-fermer-le-silence.md`, étape 7), et non facultatif.
+#
+# ══ CE QUI FAIT ÉCHOUER CE WORKFLOW, ET RIEN D'AUTRE ══
+#
+# Le battement rend un VERDICT — `normal` ou `anormal` —, calculé par `verdict.ts` avec ses tests.
+# Ce fichier le LIT. Il ne le reconstitue jamais à partir des chiffres.
+#
+# ⚠️ **AUCUNE DÉCISION DANS LE BASH.** Écrire ici « si echoues > 0 alors échouer » mettrait la règle
+# d'alerte à deux endroits : elles divergeraient au premier changement, et c'est ce script — sans
+# test, sans revue — qui déciderait alors si l'on alerte.
+#
+# ⚠️ **ET SURTOUT : IL N'ÉCHOUE PAS SUR UN ÉTAT NORMAL.** « Rien à faire aujourd'hui » n'est pas une
+# panne, c'est le cas le plus fréquent. Le piège est écrit dans l'histoire de ce dépôt :
+# `prospect-cron` échouait 72 fois par jour, plusieurs centaines d'échecs s'étaient accumulés, et le
+# vrai coût n'était pas le bruit — c'était l'accoutumance. Un canal qui crie tous les jours ne dit
+# plus rien le jour où il a raison.
 #
 # ══ CE QUI PROTÈGE CETTE ADRESSE ══
 #
@@ -61,17 +77,25 @@ jobs:
         env:
           URL: ${{ secrets.SENTIO_BATTEMENT_URL }}
           SECRET: ${{ secrets.SENTIO_HEARTBEAT_SECRET }}
+          # ⚠️ L'ADRESSE DU GUETTEUR EST UN SECRET, ET PAS PAR HABITUDE. Qui la possède peut
+          # envoyer le signal à notre place — c'est-à-dire FAIRE TAIRE l'alarme. C'est le seul
+          # jeton du produit dont la fuite se traduit par un silence plutôt que par du bruit.
+          GUETTEUR: ${{ secrets.SENTIO_GUETTEUR_URL }}
         run: |
           set -euo pipefail
 
-          # ⚠️ ON SORT SANS ERREUR SI LES SECRETS MANQUENT, ET C'EST VOULU.
+          # ⚠️ UN SECRET ABSENT EST DÉSORMAIS UNE PANNE. LA VERSION D'AVANT SORTAIT EN 0.
           #
-          # Tant que la fonction n'est pas déployée, ce planificateur n'a rien à appeler. Échouer
-          # toutes les dix minutes remplirait la boîte du fondateur d'alertes pour une situation
-          # normale — et le jour d'une VRAIE panne, il ne les lirait plus.
+          # Le raisonnement d'origine était juste et n'est plus vrai : « tant que la fonction n'est
+          # pas déployée, ce planificateur n'a rien à appeler ». Elle est déployée. Un secret
+          # retiré, tourné ou expiré arrête donc Lady **en laissant le planificateur vert** — un
+          # interrupteur silencieux, exactement la panne muette que ce lot ferme.
+          #
+          # Le coût de ce changement est borné : ces deux secrets ne disparaissent pas tout seuls.
+          # S'ils manquent, quelque chose s'est passé, et il faut le savoir le jour même.
           if [ -z "${URL}" ] || [ -z "${SECRET}" ]; then
-            echo "::notice::Battement non configuré (SENTIO_BATTEMENT_URL ou SENTIO_HEARTBEAT_SECRET absent). Rien à réveiller."
-            exit 0
+            echo "::error::Battement NON CONFIGURÉ : SENTIO_BATTEMENT_URL ou SENTIO_HEARTBEAT_SECRET est absent. Lady ne se réveille pas."
+            exit 1
           fi
 
           # La signature ne couvre que l'horodatage : le corps du battement est vide, il n'y a rien
@@ -86,10 +110,21 @@ jobs:
             | tr '+/' '-_' \
             | tr -d '=')"
 
-          # ⚠️ On veut le CODE, pas le corps. La réponse peut contenir le détail du travail fait ;
-          # l'écrire dans un journal public de CI exposerait des noms d'entreprises.
-          code="$(curl --silent --show-error --fail-with-body \
-            --output /dev/null --write-out '%{http_code}' \
+          # ⚠️ LE CORPS EST LU, MAIS IL N'EST JAMAIS AFFICHÉ TEL QUEL.
+          #
+          # Il fallait autrefois jeter la réponse (`--output /dev/null`) : elle pouvait contenir le
+          # détail du travail fait, et l'écrire dans un journal public de CI exposerait des noms
+          # d'entreprises. Le verdict s'y trouve désormais, et il faut le lire — la composition ne
+          # rend donc plus que des chiffres, un verdict et des anomalies nommées, toutes issues
+          # d'une liste fermée du code (`verdict.ts`). Le détail par employé, lui, ne sort pas du
+          # processus.
+          #
+          # On n'affiche malgré tout que les deux champs dont on a besoin, jamais le corps entier :
+          # ce qui est vrai aujourd'hui du contenu de la réponse doit rester vrai le jour où
+          # quelqu'un y ajoutera un champ sans penser à ce fichier.
+          corps="$(mktemp)"
+          code="$(curl --silent --show-error \
+            --output "${corps}" --write-out '%{http_code}' \
             --max-time 120 \
             --request POST "${URL}" \
             --header "x-sentio-heartbeat: ${horodatage}.${signature}" \
@@ -101,9 +136,59 @@ jobs:
           # ⚠️ UN ÉCHEC DOIT ÊTRE BRUYANT. Un battement qui ne réveille personne pendant trois
           # semaines sans que rien ne le dise est exactement le défaut que ce fichier corrige.
           case "${code}" in
-            2*) echo "::notice::Battement accepté (${code})." ;;
+            2*) : ;;
             401|403) echo "::error::Battement REFUSÉ (${code}) : la signature n'est pas acceptée. Le secret de GitHub et celui de la fonction diffèrent."; exit 1 ;;
             404) echo "::error::Battement introuvable (404) : la fonction n'est pas déployée, ou « enabled = false » dans supabase/config.toml."; exit 1 ;;
             000) echo "::error::Aucune réponse : adresse injoignable ou délai dépassé."; exit 1 ;;
             *)   echo "::error::Battement en échec (${code})."; exit 1 ;;
           esac
+
+          # ── Le verdict, LU et jamais recalculé ────────────────────────────────────────────────
+          #
+          # ⚠️ Un verdict ABSENT n'est pas un verdict normal. Une réponse sans ce champ vient d'une
+          # version qui ne le rend pas, ou d'un corps qu'on n'a pas su lire : dans les deux cas on
+          # ne sait pas si Lady a travaillé, et « on ne sait pas » se traite comme une panne. C'est
+          # le même choix que le code de sortie 2 de `scripts/surveiller.mjs`.
+          verdict="$(jq -r '.verdict // "absent"' "${corps}" 2>/dev/null || echo "illisible")"
+          anomalies="$(jq -r '(.anomalies // []) | join(", ")' "${corps}" 2>/dev/null || echo "")"
+          rm -f "${corps}"
+
+          case "${verdict}" in
+            normal)
+              echo "::notice::Battement accepté (${code}), verdict normal."
+              ;;
+            anormal)
+              echo "::error::Battement ANORMAL : ${anomalies}. Lady a été réveillée, mais son travail n'aboutit pas."
+              exit 1
+              ;;
+            *)
+              echo "::error::Battement sans verdict lisible (« ${verdict} »). On ne sait pas si Lady a travaillé, et on ne le suppose pas."
+              exit 1
+              ;;
+          esac
+
+          # ── Le guetteur externe — le signal dont l'ARRÊT est l'alerte ─────────────────────────
+          #
+          # ⚠️ TOUT CE QUI PRÉCÈDE EST AVEUGLE À SA PROPRE ABSENCE. Un workflow qui ne s'exécute pas
+          # n'échoue pas : GitHub désactive un `schedule` après 60 jours sans activité, un secret
+          # peut être tourné, la plateforme peut s'arrêter. Dans les trois cas, il ne reste RIEN
+          # pour échouer. Seul un guetteur qui attend un signal peut voir qu'il ne vient plus.
+          #
+          # ⚠️ **LE SIGNAL PART, IL N'EST PAS INTERROGÉ.** Aucun point d'entrée public à défendre,
+          # et une seule mécanique couvre toutes les pannes indistinctement.
+          #
+          # ⚠️ **ET IL NE PART QUE SUR UN VERDICT NORMAL** — la ligne est ici, après le `case`, donc
+          # inatteignable autrement. Le pinguer quoi qu'il arrive surveillerait que GitHub tourne,
+          # pas que Lady travaille : le guetteur resterait vert pendant que rien ne se fait, ce qui
+          # est exactement le rapport rassurant et faux que ce lot a passé son temps à démonter.
+          #
+          # Rien ne sort du réseau qu'un jeton opaque : ni entreprise, ni chiffre, ni motif.
+          if [ -z "${GUETTEUR}" ]; then
+            # Pas d'erreur : tant que le planificateur n'est pas armé, il n'y a pas de guetteur à
+            # créer, et une alarme sur un silence qu'on a DÉCIDÉ apprend à ignorer les alarmes.
+            echo "::notice::Aucun guetteur configuré (SENTIO_GUETTEUR_URL absent). Le battement n'est pas encore surveillé de l'extérieur."
+          else
+            curl --silent --show-error --max-time 10 --retry 3 \
+              --output /dev/null "${GUETTEUR}" \
+              || echo "::warning::Le guetteur n'a pas pu être joint. Le battement, lui, a bien eu lieu."
+          fi
