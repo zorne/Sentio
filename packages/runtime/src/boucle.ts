@@ -90,8 +90,19 @@ export interface OptionsDeBoucle {
   readonly maintenant?: Date;
   /** Borne d'un battement. Sans elle, un battement pourrait tourner sans fin. */
   readonly maxTravaux?: number;
-  /** Classe de données. `real` en production ; les tests utilisent `synthetic`. */
-  readonly dataClass?: "real" | "synthetic";
+  /**
+   * Classe de données traitées pendant ce battement.
+   *
+   * ⚠️ **OBLIGATOIRE, ET CE N'ÉTAIT PAS LE CAS.** Ce champ était facultatif et retombait sur
+   * `real` par un `??`. Le défaut était le bon — `real` est la valeur prudente, c'est `synthetic`
+   * qui abaisse la garde du Gateway — mais il était **invisible** : `composition.ts` ne le passait
+   * pas, et personne ne pouvait dire, en lisant le montage, dans quelle classe l'exécutant
+   * tournait.
+   *
+   * Le rendre obligatoire déplace la garantie du runtime vers le COMPILATEUR : aucun appelant,
+   * présent ou futur, ne peut plus hériter d'une classe de données sans l'avoir écrite.
+   */
+  readonly dataClass: "real" | "synthetic";
   readonly envelope?: string;
 }
 
@@ -259,7 +270,7 @@ async function executerUnPas(
         tenantId,
         taskId,
         employeeId,
-        dataClass: options.dataClass ?? "real",
+        dataClass: options.dataClass,
         envelope: options.envelope ?? "sold_employees",
       },
     );
@@ -393,7 +404,7 @@ async function unPasDeDecision(
         tenantId: travail.tenantId,
         taskId: travail.taskId,
         employeeId: travail.employeeId,
-        dataClass: options.dataClass ?? "real",
+        dataClass: options.dataClass,
         envelope: options.envelope ?? "sold_employees",
       },
     );

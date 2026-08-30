@@ -222,6 +222,9 @@ describeIfDatabase("EXEC-19 — les vrais moteurs, sur la vraie base", () => {
     await executerLesTravauxDus(await deps(), {
       prisPar: "exec-19",
       maxTravaux: 1,
+      // Le champ est désormais obligatoire : plus aucun appelant n'hérite d'une classe de données
+      // sans l'avoir écrite. Ce cas travaille sur des fixtures, donc « synthetic ».
+      dataClass: "synthetic",
     });
   }
 

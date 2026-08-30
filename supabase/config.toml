@@ -394,16 +394,35 @@ deno_version = 2
 # le drapeau `SENTIO_PUBLIC_DIAGNOSTIC_ENABLED` (fermé par défaut), la limitation par visiteur et
 # par adresse (`ACQUIS-17`), et la borne de taille du corps.
 # → docs/adr/0021-execution-serveur-en-ue.md
-# PROTOTYPE D16 — l'exécutant sous Deno. Non déployé : il sert à mesurer la viabilité de
-# l'hébergement en fonction serveur (docs/15-decisions-ouvertes.md, D16). Le worker Node reste
-# la référence tant que D16 n'est pas finalisée.
+# L'EXÉCUTANT, sous Deno. D16 est TRANCHÉE depuis le 2026-08-07 : l'exécutant vit dans une
+# fonction serveur, la condition posée par le fondateur (mesurer d'abord la durée réelle d'un
+# battement) a été levée par la mesure (`docs/15-decisions-ouvertes.md`, `adr/0028`).
+#
+# ⚠️ Ce commentaire disait encore « PROTOTYPE — non déployé, le worker Node reste la référence ».
+# C'était faux depuis trois semaines : `apps/worker` n'a même pas de script de démarrage, il ne
+# peut donc être la référence de rien. Un commentaire périmé sur un réglage de déploiement est
+# exactement ce qui fait hésiter le jour de la mise en service.
+#
+# `verify_jwt = false` : le planificateur GitHub n'a pas de session Supabase. Ce qui autorise
+# l'appel est la SIGNATURE (`x-sentio-heartbeat`), sur l'horodatage et le corps — et le démarrage
+# REFUSE de servir tant que `SENTIO_HEARTBEAT_SECRET` est absent (`configuration.ts`).
 [functions.battement]
-enabled = false
+enabled = true
 verify_jwt = false
 import_map = "./functions/deno.json"
 
+# ⚠️ FERMÉE TANT QUE LA MENTION DE TRANSPARENCE N'EST PAS ÉCRITE.
+#
+# `ADR-0015` (acceptée le 2026-07-29) décide que le diagnostic doit informer le visiteur, en clair
+# et dès le premier écran, qu'il converse avec un système d'IA — l'article 50 § 1 du règlement
+# européen s'applique depuis le 2026-08-02. L'audit du 2026-08-30 a constaté que cette mention
+# n'existe nulle part dans l'interface.
+#
+# Tant qu'elle manque, cette fonction ne doit pas partir. `enabled = false` le rend MÉCANIQUE :
+# un `supabase functions deploy` sans argument ne peut plus l'emporter par inadvertance. La
+# rouvrir est une ligne — après avoir écrit la mention, pas avant.
 [functions.diagnostic]
-enabled = true
+enabled = false
 verify_jwt = false
 # Le code partagé avec le domaine est recopié par `pnpm run functions:sync`.
 # → docs/adr/0023-code-partage-vers-les-fonctions.md
@@ -420,6 +439,27 @@ import_map = "./functions/deno.json"
 # fermée par `verifierLaCharge` — mais mieux vaut ne pas l'exposer du tout.
 [functions.recrutement]
 enabled = false
+verify_jwt = false
+import_map = "./functions/deno.json"
+
+# METIER-10 — le lien de désinscription, cliqué par une personne qui n'a aucun compte.
+#
+# ⚠️ CETTE FONCTION N'ÉTAIT PAS DÉCLARÉE, ET C'ÉTAIT UNE PANNE EN ATTENTE.
+#
+# Les trois autres portent `verify_jwt = false` explicitement ; celle-ci, non déclarée, prenait le
+# défaut de l'outil — où `verify_jwt` vaut **true**. Un prospect qui clique son lien d'opposition
+# n'a évidemment pas de session Supabase : le lien aurait été rejeté. Le manquement le moins
+# pardonnable du produit, causé par une ligne absente d'un fichier de configuration.
+#
+# Ce qui autorise l'appel n'est pas un jeton de session mais le JETON SIGNÉ du lien lui-même
+# (`SENTIO_OPTOUT_SECRET`, HMAC). Sans ce secret, aucun lien n'est valide — la fonction refuse,
+# elle ne désinscrit pas « au mieux ».
+#
+# Le commentaire d'en-tête de ce fichier dit qu'une fonction « qui apparaît sans décision est une
+# porte ouverte sans décision ». L'inverse est vrai aussi : une fonction qui n'apparaît pas prend
+# une décision que personne n'a prise.
+[functions.desinscription]
+enabled = true
 verify_jwt = false
 import_map = "./functions/deno.json"
 

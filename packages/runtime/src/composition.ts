@@ -218,6 +218,10 @@ export function composerLExecutant(
       },
       {
         prisPar: config.nomDeLExecutant,
+        // ⚠️ Explicite, et venant de la CONFIGURATION — jamais d'un défaut au fond de `boucle.ts`.
+        // Avant, ce champ n'était pas passé du tout : la production tournait en `real` par un `??`
+        // que personne ne voyait en lisant ce montage. Le défaut était bon, son invisibilité non.
+        dataClass: config.classeDeDonnees,
         ...(options.travauxMaxParBattement !== undefined && {
           maxTravaux: options.travauxMaxParBattement,
         }),
@@ -237,6 +241,12 @@ export function composerLExecutant(
 
     options.log?.({
       route: "battement",
+      // ⚠️ À CHAQUE CYCLE, PAS SEULEMENT AU DÉMARRAGE. Un exécutant en « synthetic » traite des
+      // données d'essai et n'oppose plus la garde d'opt-out du Gateway : c'est un réglage
+      // d'ABAISSEMENT, et un réglage d'abaissement qu'on ne voit qu'au démarrage est un réglage
+      // qu'on oublie posé. Ici, il ne peut pas tourner six mois en silence — il est dans chaque
+      // ligne de journal, à côté de ce qu'il a fait.
+      classeDeDonnees: config.classeDeDonnees,
       approvisionnement,
       reevaluation,
       progression,
