@@ -55,6 +55,10 @@ Tout est en français ; seuls les noms de tables et de modules sont en anglais.
 23. [`24-strategie-business.md`](24-strategie-business.md) — positionnement, modèle économique,
     lancement, objectifs **(document interne — contient des prix)**
 
+**Avant d'armer le planificateur**
+24. [`36-fermer-le-silence.md`](36-fermer-le-silence.md) — ⭐ **les dix façons de tomber en panne
+    sans le dire**, ce qui les détecte, et le critère qui autorise la fusion
+
 **Journal des décisions** : [`adr/`](adr/) — une entrée par décision structurante.
 
 ---
