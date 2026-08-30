@@ -51,7 +51,13 @@ import {
   RechercherProspectsCapability,
   UpdateFicheCapability,
 } from "@sentio/capabilities";
-import { ModelGateway, OpenAICompatibleProvider, PolicyEngine, type CapabilityEngine } from "@sentio/core";
+import {
+  ModelGateway,
+  OpenAICompatibleProvider,
+  PolicyEngine,
+  jugerLeBattement,
+  type CapabilityEngine,
+} from "@sentio/core";
 
 import { PostgresApprovisionnementStore, RegistreDeGisementsEnMemoire } from "./adapters/approvisionnement.js";
 import {
@@ -260,8 +266,21 @@ export function composerLExecutant(
     //    est annoncé, adossé à sa preuve.
     const progression = await faireProgresserLesEmployes({ sql, journal }, instant);
 
+    // ⚠️ LE VERDICT EST CALCULÉ ICI, PAS PAR CELUI QUI LIRA. Le planificateur doit le LIRE, jamais
+    // le reconstituer à partir des chiffres : la règle qui distingue un silence légitime d'une
+    // panne est écrite une fois, en TypeScript, avec ses tests. La recopier dans un script la
+    // ferait diverger au premier changement — et c'est le script qui déciderait alors d'alerter.
+    const jugement = jugerLeBattement({
+      approvisionnement,
+      reprise,
+      travaux,
+      capacitesEcartees: ecartees,
+    });
+
     options.log?.({
       route: "battement",
+      verdict: jugement.verdict,
+      ...(jugement.anomalies.length > 0 && { anomalies: jugement.anomalies }),
       // ⚠️ À CHAQUE CYCLE, PAS SEULEMENT AU DÉMARRAGE. Un exécutant en « synthetic » traite des
       // données d'essai et n'oppose plus la garde d'opt-out du Gateway : c'est un réglage
       // d'ABAISSEMENT, et un réglage d'abaissement qu'on ne voit qu'au démarrage est un réglage
@@ -277,7 +296,11 @@ export function composerLExecutant(
       capacitesEcartees: ecartees,
     });
 
-    return travaux;
+    return {
+      ...travaux,
+      verdict: jugement.verdict,
+      anomalies: jugement.anomalies,
+    };
   }
 
   // ⚠️ Idempotent, comme l'arrêt du serveur : fermer un pool deux fois lève. Un arrêt demandé

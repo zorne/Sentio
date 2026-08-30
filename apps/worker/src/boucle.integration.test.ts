@@ -327,7 +327,10 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
       maxTravaux: 1,
     });
 
-    expect(rapport).toEqual({ traites: 1, echoues: 0 });
+    // ⚠️ `motifs` compte ce que le pas a PRODUIT, pas seulement qu'il est passé. Sans lui,
+    // « traité » ne disait que « aucune exception levée » — un run reporté faute de fournisseur
+    // conforme comptait donc comme un succès.
+    expect(rapport).toEqual({ traites: 1, echoues: 0, motifs: { pas_suivant: 1 } });
 
     // La chaîne complète est au journal, dans l'ordre, et `run_demarre` ouvre la marche.
     const chaine = await natures(tenantId, await laMission(tenantId));

@@ -51,7 +51,19 @@ import {
 import { ExecutionJournal, TenantScope, type SqlClient } from "@sentio/db";
 import type { TaskId, TenantId } from "@sentio/domain";
 
-import type { HeartbeatReport } from "./heartbeat/index.js";
+/**
+ * Ce que la boucle rapporte — distinct du compte rendu du battement, et c'est délibéré.
+ *
+ * La boucle DIT ce qu'elle a fait ; elle ne JUGE pas. Le verdict « normal / anormal » se calcule
+ * en connaissant aussi l'approvisionnement et la reprise, donc dans la composition. Mêler les deux
+ * ici obligerait la boucle à connaître des choses qu'elle n'exécute pas.
+ */
+export interface RapportDeBoucle {
+  readonly traites: number;
+  readonly echoues: number;
+  /** Ce que chaque pas a produit, par motif. Sans lui, un report ressemble à un succès. */
+  readonly motifs: Readonly<Record<string, number>>;
+}
 import { atteler, EntreeRefusee } from "./attelage.js";
 import { decideNextStep } from "./next-step.js";
 import { reflechirApresLeRun } from "./reflexion.js";
@@ -116,11 +128,13 @@ export interface OptionsDeBoucle {
 export async function executerLesTravauxDus(
   deps: BoucleDeps,
   options: OptionsDeBoucle,
-): Promise<HeartbeatReport> {
+): Promise<RapportDeBoucle> {
   const reglages = deps.reglages ?? REGLAGES_RUNTIME_PAR_DEFAUT;
   const maxTravaux = options.maxTravaux ?? reglages.travauxMaxParBattement;
   let traites = 0;
   let echoues = 0;
+  /** Ce que chaque pas a produit, par motif. Sans ce compte, un report ressemble à un succès. */
+  const motifs: Record<string, number> = {};
 
   for (let i = 0; i < maxTravaux; i++) {
     // ⚠️ `maintenant` est passé TEL QUEL, `undefined` compris : c'est ainsi que la base devient
@@ -133,7 +147,13 @@ export async function executerLesTravauxDus(
     if (travail === null) break;
 
     try {
-      await executerUnPas(deps, options, travail);
+      // ⚠️ LE MOTIF EST COMPTÉ, PAS SEULEMENT LE PASSAGE. « Traité » disait seulement qu'aucune
+      // exception n'avait été levée : un run reporté faute de fournisseur conforme comptait donc
+      // comme un succès, et le compte rendu annonçait `{traites:N, echoues:0}` pendant que rien
+      // n'aboutissait. Un rapport rassurant et faux, toutes les dix minutes. C'est le motif qui
+      // dit si quelque chose a AVANCÉ.
+      const motif = await executerUnPas(deps, options, travail);
+      motifs[motif] = (motifs[motif] ?? 0) + 1;
       traites += 1;
     } catch (erreur) {
       echoues += 1;
@@ -150,7 +170,7 @@ export async function executerLesTravauxDus(
     }
   }
 
-  return { traites, echoues };
+  return { traites, echoues, motifs };
 }
 
 /** L'état du run, relu depuis le journal. Jamais gardé, jamais recalculé de tête. */
@@ -179,7 +199,7 @@ async function executerUnPas(
   deps: BoucleDeps,
   options: OptionsDeBoucle,
   travail: TravailPris,
-): Promise<void> {
+): Promise<string> {
   const reglages = deps.reglages ?? REGLAGES_RUNTIME_PAR_DEFAUT;
   const { tenantId, taskId, employeeId } = travail;
 
@@ -191,21 +211,21 @@ async function executerUnPas(
       "reprises_epuisees",
       `Cette mission a été reprise ${travail.reprises} fois sans aboutir : elle n'est plus rejouée.`,
     );
-    return;
+    return "reprises_epuisees";
   }
 
   // ── 2. Un journal incohérent ne rend pas un état, et on ne devine pas à sa place (EXEC-02).
   const avant = await relire(deps.sql, tenantId, taskId);
   if (!avant.ok) {
     await arreterPourHumain(deps, travail, "journal_incoherent", avant.detail);
-    return;
+    return "journal_incoherent";
   }
 
   // ── 3. Le journal fait foi : s'il dit que ce run ne peut pas reprendre, la file avait tort.
   //    On la remet d'accord avec lui plutôt que de travailler sur un état que personne n'assume.
   if (!peutReprendre(avant.etat)) {
     await remettreLaFileDaccord(deps, travail, avant.etat);
-    return;
+    return "file_remise_d_accord";
   }
 
   // ── Le premier événement de toute mission, sans exception. Sans lui, la reconstruction du pas
@@ -236,7 +256,7 @@ async function executerUnPas(
   const apres = await relire(deps.sql, tenantId, taskId);
   if (!apres.ok) {
     await arreterPourHumain(deps, travail, "journal_incoherent", apres.detail);
-    return;
+    return "journal_incoherent";
   }
 
   // ⚠️ ICI, L'HORLOGE DU PROCESSUS RESTE LA BONNE. `deciderLaSuite` calcule une échéance future
@@ -275,6 +295,8 @@ async function executerUnPas(
       },
     );
   }
+
+  return suite.motif;
 }
 
 /**
