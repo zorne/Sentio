@@ -150,6 +150,26 @@ notification, ou où le dépôt change de propriétaire. Une preuve n'est valabl
 **Terminé quand :** une capture datée de l'email d'échec reçu est archivée, et le battement est
 repassé au vert après rétablissement du secret.
 
+### 0.7 — Créer le guetteur externe, et le voir s'alarmer
+
+⛔ **Geste humain.** L'étape 0.6 couvre les pannes que le planificateur peut RAPPORTER. Celle-ci
+couvre celle qu'il ne peut pas : un workflow qui ne s'exécute plus n'échoue pas. Le guetteur est
+le seul témoin de sa propre absence.
+
+1. créer un contrôle sur [healthchecks.io](https://healthchecks.io) — gratuit, open source, et
+   rien qu'un jeton opaque n'en sort. Période **10 minutes**, tolérance **1 heure** : six
+   battements manqués, le même seuil que le signal interne ;
+2. poser son adresse de ping dans le secret GitHub `SENTIO_GUETTEUR_URL` ;
+3. **le voir s'alarmer** : désactiver le workflow une heure et attendre l'alerte. Un guetteur
+   qu'on n'a pas vu sonner est une hypothèse, pas une surveillance ;
+4. réactiver, et vérifier que le contrôle repasse au vert.
+
+⚠️ À faire **au moment d'armer le planificateur**, pas avant : tant que le cron est désarmé, le
+guetteur s'alarmerait d'un silence qu'on a décidé, et on apprendrait à ignorer ses alertes.
+
+**Terminé quand :** une capture datée de l'alerte reçue est archivée, et le contrôle est repassé
+au vert.
+
 ---
 
 # Phase 1 — Lot 0 : Fondations (~15 h, 38 tâches `FOND-01`→`FOND-38`)
