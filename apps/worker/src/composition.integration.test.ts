@@ -311,9 +311,54 @@ describeIfDatabase("EXEC-18 — le worker démarre et sert un battement signé",
   it("le compte rendu du battement remonte au planificateur, incidents compris", async () => {
     await entreprise(1);
     const journal: Record<string, unknown>[] = [];
+    let reponseDuBattement: Response | undefined;
 
     const config = lireLaConfiguration(environnement());
     const worker = composerLeWorker(config, { log: (record) => journal.push(record) });
+    try {
+      const entete = await signHeartbeat(SECRET, new Date());
+      const reponse = await worker.battement(
+        new Request("http://worker.local/battement", {
+          method: "POST",
+          headers: { [HEARTBEAT_HEADER]: entete },
+        }),
+      );
+      expect(reponse.status).toBe(200);
+      reponseDuBattement = reponse;
+    } finally {
+      await worker.fermer();
+    }
+
+    // Le planificateur est le seul témoin extérieur : ce qu'il lit doit suffire à voir un incident.
+    expect(journal.some((ligne) => ligne["route"] === "battement")).toBe(true);
+    expect(journal.some((ligne) => ligne["status"] === 200)).toBe(true);
+
+    // ⚠️ ET LE VERDICT, DANS LA RÉPONSE ELLE-MÊME. C'est lui que le planificateur lit pour décider
+    // d'échouer (`.github/workflows/battement.yml`) : sans ce champ, le workflow ne sait pas si
+    // Lady a travaillé, et il traite « je ne sais pas » comme une panne.
+    const rendu = (await reponseDuBattement!.json()) as Record<string, unknown>;
+    expect(rendu["verdict"]).toMatch(/^(normal|anormal)$/);
+
+    // ⚠️ ET RIEN QUI DÉSIGNE UNE ENTREPRISE. Ce corps part dans un journal d'intégration continue
+    // public : le détail par employé porte des identifiants et ne doit jamais en sortir.
+    expect(Object.keys(rendu).sort()).toEqual([
+      "anomalies",
+      "echoues",
+      "motifs",
+      "traites",
+      "verdict",
+    ]);
+  });
+
+  it("⭐ un battement qui va au bout laisse une TRACE DE FRAÎCHEUR", async () => {
+    // ⚠️ LE SIGNAL DONT L'ARRÊT EST L'ALERTE. Un planificateur qui ne s'exécute plus n'échoue pas :
+    // il se tait, et le canal de l'étape 6 est aveugle à sa propre absence. La trace est écrite au
+    // tout dernier point du cycle — donc seulement si la chaîne entière a fonctionné.
+    await entreprise(1);
+    await sql.query("delete from dernier_battement", []);
+
+    const config = lireLaConfiguration(environnement());
+    const worker = composerLeWorker(config, {});
     try {
       const entete = await signHeartbeat(SECRET, new Date());
       const reponse = await worker.battement(
@@ -327,9 +372,21 @@ describeIfDatabase("EXEC-18 — le worker démarre et sert un battement signé",
       await worker.fermer();
     }
 
-    // Le planificateur est le seul témoin extérieur : ce qu'il lit doit suffire à voir un incident.
-    expect(journal.some((ligne) => ligne["route"] === "battement")).toBe(true);
-    expect(journal.some((ligne) => ligne["status"] === 200)).toBe(true);
+    const [trace] = await sql.query<{ verdict: string; fraiche: boolean }>(
+      "select verdict, passe_le > now() - interval '1 minute' as fraiche from dernier_battement",
+      [],
+    );
+    expect(trace, "aucune trace : le cycle n'est pas allé au bout").toBeDefined();
+    expect(trace?.fraiche).toBe(true);
+    expect(trace?.verdict).toMatch(/^(normal|anormal)$/);
+
+    // Et la surveillance interne se tait tant que la trace est fraîche : une alarme qui sonne sur
+    // un système sain apprend à l'exploitant à ne plus la lire.
+    const muette = await sql.query(
+      "select 1 from etat_de_sante() where sujet = 'battement absent'",
+      [],
+    );
+    expect(muette).toHaveLength(0);
   });
 
   // ═══════════════════════════════════════════════════════════════════════════

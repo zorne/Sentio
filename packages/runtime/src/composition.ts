@@ -319,6 +319,22 @@ export function composerLExecutant(
       capacitesEcartees: ecartees,
     });
 
+    // ── La trace de fraîcheur, EN DERNIER, et c'est tout son sens.
+    //
+    // ⚠️ C'est le seul point du programme qu'on n'atteint que si la chaîne ENTIÈRE a fonctionné :
+    // registre chargé, reprise, approvisionnement, file vidée, réévaluation, progression, compteur,
+    // verdict. Une exception n'importe où avant, et la trace ne bouge pas — c'est ce qui la rend
+    // probante. L'écrire plus haut la ferait attester d'un cycle qui n'a pas fini.
+    //
+    // ⚠️ **Elle enregistre le PASSAGE, pas le succès.** Un cycle anormal la rafraîchit : il a bien
+    // eu lieu, et le verdict dit ce qu'il vaut. Ne l'écrire que sur un verdict normal ferait dire
+    // à la fraîcheur ce que le verdict dit déjà, et lui ferait perdre ce qu'elle seule sait : que
+    // le battement bat. Un planificateur qui cesse de partir n'échoue pas — il se tait.
+    await sql.query("select inscrire_le_battement($1, $2)", [
+      jugement.verdict,
+      JSON.stringify(jugement.anomalies),
+    ]);
+
     // ⚠️ LE DÉTAIL PAR EMPLOYÉ NE SORT PAS D'ICI. `travaux` porte désormais `pas`, et un
     // `...travaux` ferait partir des identifiants d'entreprise dans la réponse HTTP rendue au
     // planificateur — un tiers, hors de l'UE pour certains. Les trois champs sont donc nommés un
