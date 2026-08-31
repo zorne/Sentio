@@ -24,6 +24,7 @@ function pas(modifications: Partial<PasDuBattement> = {}): PasDuBattement {
     employeeId: CAMILLE,
     motif: "travail_acheve",
     manque: null,
+    aPayeSansRienProduire: false,
     ...modifications,
   };
 }
@@ -59,6 +60,17 @@ describe("à qui s'adresse un blocage", () => {
     ]) {
       expect(destinataireDuBlocage(motif, null), motif).toBe("nous");
     }
+  });
+
+  it("⭐ la cause décide, pas le motif : un travail qui ne s'ouvre pas va aussi au dirigeant", () => {
+    // Un employé sans aucun outil activé n'a pas de mission bloquée : il n'a pas de mission du
+    // tout, et son motif n'est pas `capacite_absente`. Le dirigeant tient pourtant la solution.
+    expect(
+      destinataireDuBlocage("aucun_outil_actif", {
+        cause: "capacite_non_activee",
+        sujetKind: null,
+      }),
+    ).toBe("dirigeant");
   });
 
   it("un motif de capacité absente SANS cause ne dérange pas le dirigeant", () => {

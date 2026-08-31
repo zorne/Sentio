@@ -121,6 +121,7 @@ describeIfDatabase("Le compteur, et à qui il parle", () => {
       employeeId: qui.employeeId,
       motif: "capacite_absente",
       manque,
+      aPayeSansRienProduire: false,
     };
   }
 
@@ -239,7 +240,15 @@ describeIfDatabase("Le compteur, et à qui il parle", () => {
     await battement([bloquee(qui, NON_ACTIVEE)], MARDI);
 
     const reprise = await battement(
-      [{ tenantId: qui.tenantId, employeeId: qui.employeeId, motif: "travail_acheve", manque: null }],
+      [
+        {
+          tenantId: qui.tenantId,
+          employeeId: qui.employeeId,
+          motif: "travail_acheve",
+          manque: null,
+          aPayeSansRienProduire: false,
+        },
+      ],
       MERCREDI,
     );
     expect(reprise.remisAZero).toBe(1);
@@ -271,7 +280,13 @@ describeIfDatabase("Le compteur, et à qui il parle", () => {
     const rapport = await battement(
       [
         bloquee(qui, NON_ACTIVEE),
-        { tenantId: qui.tenantId, employeeId: qui.employeeId, motif: "pas_suivant", manque: null },
+        {
+          tenantId: qui.tenantId,
+          employeeId: qui.employeeId,
+          motif: "pas_suivant",
+          manque: null,
+          aPayeSansRienProduire: false,
+        },
       ],
       LUNDI,
     );

@@ -43,6 +43,14 @@ export interface HeartbeatReport {
    */
   readonly motifs: Readonly<Record<string, number>>;
   /**
+   * Runs qui ont consommé leur budget sans exécuter une seule action.
+   *
+   * ⚠️ AUCUN MOTIF NE LE DIT. Un run qui tourne dix fois sur une réponse illisible rend
+   * `{pas_suivant: 9, budget_epuise: 1}` : deux motifs qui veulent dire « le travail avance ». Ils
+   * ne mentent pas, des pas ont bien eu lieu — c'est le RÉSULTAT qui manque.
+   */
+  readonly sansAction: number;
+  /**
    * Le jugement du battement — **calculé ici, jamais reconstitué par l'appelant**.
    *
    * ⚠️ C'EST UNE FRONTIÈRE, PAS UN CONFORT. Le planificateur doit LIRE ce verdict, jamais le

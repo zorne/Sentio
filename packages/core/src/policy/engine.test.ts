@@ -22,8 +22,11 @@ class FakeApprovals implements ApprovalStore {
 
 class FakeJournal implements JournalWriter {
   entries: string[] = [];
-  async append(entry: { kind: string }): Promise<void> {
+  /** La charge, et pas seulement la nature : c'est elle qui doit distinguer les deux refus. */
+  payloads: Record<string, unknown>[] = [];
+  async append(entry: { kind: string; payload?: unknown }): Promise<void> {
     this.entries.push(entry.kind);
+    this.payloads.push((entry.payload ?? {}) as Record<string, unknown>);
   }
 }
 
@@ -132,9 +135,36 @@ describe("Policy Engine — traçabilité", () => {
     const decision = await engine.refuse(
       request({ capabilityKey: "tenir_la_comptabilite" }),
       ["rechercher.prospect"],
+      "hors_du_perimetre",
     );
 
     expect(decision.outcome).toBe("refuse");
     expect(journal.entries).toEqual(["politique_refuse"]);
+  });
+
+  it("⭐ le refus DIT quelle garde a refusé, et les deux ne se ressemblent pas", async () => {
+    // ⚠️ Les deux gardes écrivaient le même événement, sans un champ pour les distinguer. Elles
+    // n'appellent pourtant pas la même réparation : l'une regarde ce que le dirigeant a activé,
+    // l'autre un contrat qui manque de notre côté.
+    const horsPerimetre = build();
+    await horsPerimetre.engine.refuse(
+      request({ capabilityKey: "tenir_la_comptabilite" }),
+      ["rechercher.prospect"],
+      "hors_du_perimetre",
+    );
+
+    const inconnue = build();
+    const decision = await inconnue.engine.refuse(
+      request({ capabilityKey: "rechercher.prospect" }),
+      ["rechercher.prospect"],
+      "capacite_inconnue_du_registre",
+    );
+
+    expect(horsPerimetre.journal.payloads[0]?.["cause"]).toBe("hors_du_perimetre");
+    expect(inconnue.journal.payloads[0]?.["cause"]).toBe("capacite_inconnue_du_registre");
+    expect(decision.outcome).toBe("refuse");
+    // Et la raison lisible suit la cause : un journal qui dit « refusé » sans dire quoi faire
+    // oblige à rouvrir le code pour comprendre.
+    expect(String(inconnue.journal.payloads[0]?.["raison"])).toContain("manque chez nous");
   });
 });

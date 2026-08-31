@@ -162,17 +162,17 @@ fichier réel**, de sorte qu'elle ne puisse pas diverger de ce qui tourne.
 |---|---|---|---|
 | 1 — un run échoue | un moteur qui lève au moment d'agir | `echec_definitif`, verdict `anormal`, workflow **1**, « missions en échec » à la surveillance | ✅ |
 | 2 — capacité sans moteur | `envoyer.prospect` activée, aucun moteur monté | `needs_attention` avec cause `moteur_non_monte`, verdict `anormal`, **aucune** notification au dirigeant | ✅ |
-| 3 — travail écarté faute de capacité | un employé sans aucun outil activé | rien ne s'ouvre, rien ne se déclenche, personne n'est prévenu | ❌ |
+| 3 — travail écarté faute de capacité | un employé sans aucun outil activé, trois journées | aucune mission ouverte, et pourtant une notification nommant les outils à activer | ✅ |
 | 4a — modèle retiré | un fournisseur HTTP qui répond 404 `model_not_found` | verdict `anormal`, workflow **1**, aucun ping | ✅ |
-| 4b — modèle qui répond du vide | un fournisseur HTTP qui répond 200 avec un contenu vide | `{pas_suivant: 9, budget_epuise: 1}`, verdict **`normal`**, workflow **0**, guetteur **pingé** | ❌ |
+| 4b — modèle qui répond du vide | un fournisseur HTTP qui répond 200 avec un contenu vide | mêmes motifs, mais `sansAction` les dément : verdict `anormal` (`run_sans_action`), workflow **1**, aucun ping | ✅ |
 | 5a — un secret manque | la garde réelle du workflow, secrets vides | code de sortie **1** | ✅ |
 | 5b — le planificateur s'est tu | trace de fraîcheur vieillie de trois heures | alerte « battement absent » à 180 minutes | ⚠️ partiel |
 | 6a — aucun fournisseur conforme | opt-out déclaré non prouvé | `NonCompliantRouting` en exception, verdict `anormal`, workflow **1** | ✅ |
 | 6b — plafond atteint | `usage_counter` poussé au-dessus du quota | `{report_de_quota: 2}`, **aucun échec**, verdict `anormal`, workflow **1** | ✅ |
-| 7 — réévaluation muette | une Lady configurée, sans rien à mesurer | silence journalisé et compté, **aucun consommateur** | ❌ |
+| 7 — réévaluation muette | une Lady configurée, sans rien à mesurer | silence journalisé et compté, **aucun consommateur** | ❌ *(ouvert, assumé)* |
 | 8 — blocage qui draine le vivier | trois journées avec la capacité applicable retirée | notification au dirigeant, **nommant l'outil à activer** | ✅ |
-| 9 — deux gardes, un `politique_refuse` | le modèle propose une capacité non autorisée | l'événement ne porte **ni raison ni cause** : les deux gardes restent indiscernables | ❌ |
-| 10 — la reprise | mission bloquée, outil activé, second battement | **deux défauts** : la reprise est affamée, puis défaite dans le cycle qui la fait | ❌ |
+| 9 — deux gardes, un `politique_refuse` | le modèle propose une capacité non autorisée | l'événement porte sa `cause` (`hors_du_perimetre` / `capacite_inconnue_du_registre`) et sa raison lisible | ✅ |
+| 10 — la reprise | mission bloquée, outil activé, second battement | avec les réglages **réels** : la mission est reprise et repart pour de bon | ✅ |
 
 ### Le cas 6b, celui qui a ouvert le lot
 
@@ -180,14 +180,30 @@ fichier réel**, de sorte qu'elle ne puisse pas diverger de ce qui tourne.
 rassurant et faux qui serait parti 144 fois par jour si le planificateur avait été armé. Il est
 désormais attrapé, et le workflow échoue dessus.
 
-### Les quatre trous, et ce qu'ils coûtent
+### Les quatre trous, et ce qu'ils ont coûté
 
-**4b — un modèle qui répond du vide passe pour un modèle qui travaille.** C'est le plus grave.
+> **Corrigés le 2026-09-01**, sauf le cas 7, laissé ouvert et assumé. Ce qui suit décrit ce que la
+> répétition a trouvé et ce que chaque correctif a changé — parce qu'un défaut dont on efface la
+> trace est un défaut qu'on refera.
+
+**4b — un modèle qui répond du vide passait pour un modèle qui travaille.** C'était le plus grave.
 `proposition_illisible` fait avancer le pas ; le run consomme tout son budget — dix appels
 facturés — et se referme sur `budget_epuise`. Or `pas_suivant` et `budget_epuise` comptent tous
 deux comme « du travail a avancé ». Verdict normal, workflow vert, guetteur pingé. **Dix appels
-payants, rien de fait, et toutes les alarmes disent que tout va bien.** C'est la classe de défaut
-que ce lot existe pour fermer, et elle ne l'est pas.
+payants, rien de fait, et toutes les alarmes disaient que tout allait bien.**
+
+⚠️ **Le correctif ne vise PAS `proposition_illisible`, et c'est le point.** Un correctif ciblé
+laisserait passer la variante suivante — un modèle qui répond toujours « terminer » sans jamais
+agir, une politique qui refuse tout. La règle posée est générale :
+
+> **Un run qui consomme son budget sans une seule action réellement exécutée est anormal, quelle
+> que soit la façon dont il s'est terminé.**
+
+Elle vit dans `aPayeSansRienProduire` (noyau, fonction pure, testée), la boucle la RAPPORTE sans la
+rejouer, et le verdict en fait l'anomalie `run_sans_action`. Ce qui était confondu et ne l'est
+plus : **faire avancer le pas est un geste mécanique de protection ; compter que du travail a
+avancé est un jugement.** Les mêler était exactement le défaut de `traites`, qui s'incrémentait dès
+qu'un pas ne levait pas d'exception.
 
 **10 — l'étape 3 ne tient pas de bout en bout, pour deux raisons indépendantes.**
 
@@ -201,17 +217,50 @@ que ce lot existe pour fermer, et elle ne l'est pas.
      `peutReprendre` refuse, et `remettreLaFileDaccord` remet la mission de côté. Le dirigeant
      active l'outil manquant, et il ne se passe toujours rien.
 
-Le test unitaire de la reprise passe : il éprouve le module, jamais la boucle qui le suit. C'est
+Le test unitaire de la reprise passait : il éprouve le module, jamais la boucle qui le suit. C'est
 précisément ce que la répétition générale était là pour trouver.
 
-**3 — ce qui n'existe pas n'est surveillé par personne.** Un employé sans outil activé n'ouvre
-aucune mission. « Rien à faire » est un silence légitime, et tous nos détecteurs raisonnent sur du
-travail commencé. Le dirigeant n'apprend jamais qu'il lui manque un outil.
+**Les deux correctifs.** `reconstruireEtatRun` traite désormais `reprise_apres_outil` comme un
+retour en `en_cours`, avec un budget de pas remis à zéro — une mission débloquée aujourd'hui entame
+un nouveau cycle. Et la borne de reprise est passée **par entreprise** : servir les N plus anciennes
+sur une file partagée, c'est laisser la plus malchanceuse décider pour toutes. C'est le même défaut
+d'équité que le FIFO du gisement, à un autre étage.
 
-**7 et 9 — deux silences internes.** La réévaluation compte ses silences dans un rapport que
-personne ne lit. Et `decideNextAction` appelle `policy.refuse` depuis deux endroits — « hors de la
-liste autorisée » et « capacité inconnue du registre » — avec exactement la même charge : rien ne
-dit laquelle a refusé. Les étapes 1 et 5 ont fermé autre chose, et il ne faut pas les confondre.
+⚠️ Coût assumé : le travail d'un cycle croît avec le nombre d'entreprises au lieu d'être plafonné
+une fois pour toutes. C'est le bon compromis — chacune a sa part — et il reste borné pour chacune.
+Ce qui reste : une entreprise peut encore s'affamer elle-même si ses N plus anciennes missions sont
+durablement bloquées. Le dommage est alors contenu à elle.
+
+Et le cas 10 de la répétition tourne désormais **avec les réglages réels**, sans borne relevée :
+c'est ce qui le rend probant.
+
+**3 — ce qui n'existe pas n'était surveillé par personne.** Un employé sans outil activé n'ouvre
+aucune mission. « Rien à faire » est un silence légitime, et tous nos détecteurs raisonnaient sur du
+travail COMMENCÉ. Le dirigeant n'apprenait jamais qu'il lui manquait un outil — alors que c'est
+littéralement la promesse du produit : *« elle demande de l'aide uniquement quand une limite réelle
+l'en empêche »*. Une limite réelle l'en empêchait, et elle ne demandait rien.
+
+La matière première existait depuis `451780c` : `justification.ecartes` porte
+« aucune_capacite_active », journalisé « sans qu'aucun mécanisme ne s'en saisisse encore, et c'est
+délibéré ». Le mécanisme est là — ces employés entrent dans le compteur comme un cycle muet.
+
+⚠️ Et il a fallu corriger une seconde chose pour que ça marche : le destinataire d'un blocage se
+décidait sur le MOTIF. Un employé dont rien ne s'ouvre porte `aucun_outil_actif`, pas
+`capacite_absente`, et partait donc chez nous. **C'est la cause qui dit qui peut réparer, jamais le
+motif** : faire dépendre le destinataire du motif oblige à penser à cette règle chaque fois qu'un
+motif apparaît, et c'est le genre de règle qu'on oublie.
+
+**9 — deux gardes, un seul refus.** `decideNextAction` appelait `policy.refuse` depuis deux
+endroits — « hors de la liste autorisée » et « capacité inconnue du registre » — avec exactement la
+même charge. Tant que c'était vrai, aucune alerte fondée sur le journal ne pouvait distinguer ce qui
+relève du dirigeant de ce qui relève de nous, et ça plafonnait la qualité de tout le reste.
+`cause` et `raison` sont désormais écrites, et la cause est obligatoire à l'appel.
+
+**7 — le seul laissé ouvert, et c'est assumé.** La réévaluation compte ses silences
+(`trop_tot`, `hors_perimetre`, `deja_proposee`) dans un rapport que personne ne lit. C'est interne,
+sans conséquence pour un client, et le signaler sans savoir quoi en faire coûterait de
+l'accoutumance. Le cas reste dans la répétition, asserté tel qu'il est : le jour où un consommateur
+apparaît, le test échoue et force la mise à jour.
 
 ### Ce que la répétition a appris sur elle-même
 
@@ -234,20 +283,31 @@ Deux fois, le banc a failli mentir, et les deux méritent d'être connus :
 Tant qu'on n'a pas vu chaque alarme sonner pour de vrai, on ne sait pas si le silence est fermé —
 on le suppose. Et supposer qu'une alarme fonctionne est précisément le défaut que ce lot répare.
 
-⚠️ **La répétition a eu lieu, et son verdict est que le critère n'est PAS atteint.** Six cas sur
-dix sonnent, un partiellement, et **quatre restent muets** — dont deux qui laissent une employée
-tourner sans rien faire pendant que toutes les alarmes affichent vert. Ce n'est pas un échec de
-l'étape 8 : c'est son résultat, et c'est exactement pourquoi elle passait avant la fusion et non
-après.
+La répétition a eu lieu, elle a trouvé quatre trous, et quatre sur quatre ont été traités — le
+septième cas excepté, laissé ouvert par décision et documenté comme tel.
 
-Ce qu'il reste à trancher, dans cet ordre de gravité :
+**Douze cas sur treize sonnent, un partiellement (le cas 5b, dont l'autre moitié vit chez
+healthchecks.io), un ouvert et assumé.** Chaque alarme a été vue sonner sur un vrai battement, un
+vrai fournisseur et le workflow réel.
 
-| # | Ce qu'il faut décider | Pourquoi maintenant |
+⚠️ **Ce qui reste avant d'armer, et ce ne sont pas des lignes de code :**
+
+| # | Le geste | Pourquoi il ne se mécanise pas |
 |---|---|---|
-| 4b | un pas qui ne produit aucune proposition lisible doit-il compter comme « du travail a avancé » ? | c'est le seul trou qui rende le guetteur VERT pendant que rien ne se fait |
-| 10 | `reprise_apres_outil` doit-il ramener un run en `en_cours` ? et la reprise doit-elle cesser de servir les plus anciennes d'abord ? | l'étape 3 est livrée et ne fonctionne pas hors de son test |
-| 9 | le refus de politique doit-il nommer la garde qui a refusé ? | c'est le cas 9 tel qu'il était énoncé, et il est resté ouvert |
-| 3, 7 | un travail qui n'existe pas, et un silence que personne ne lit, doivent-ils remonter ? | les deux sont des silences légitimes aujourd'hui : les signaler à tort coûterait l'accoutumance |
+| 0.5 | prouver l'opt-out d'entraînement | tant qu'il ne l'est pas, aucune donnée réelle ne part, et chaque run est refusé (cas 6a) |
+| 0.6 | voir arriver l'email d'échec du planificateur | un canal auquel personne n'est abonné est un silence de plus |
+| 0.7 | créer le guetteur externe et **le voir s'alarmer** | un guetteur qu'on n'a pas vu sonner est une hypothèse |
 
-Jusque-là, et sans exception : **aucune fusion, aucun envoi, aucun `db push`, planificateur
-désarmé.**
+Ces trois-là sont dans [`20-plan-action.md`](20-plan-action.md). Tant qu'ils ne sont pas faits :
+**aucune fusion, aucun envoi, aucun `db push`, planificateur désarmé.**
+
+### La leçon de méthode, à garder
+
+La conception n'avait vu aucun de ces quatre trous. Les tests unitaires non plus — celui de la
+reprise passait au vert sur un module qui ne fonctionnait pas dans sa boucle. **Seule une
+provocation de bout en bout les a montrés**, et deux d'entre eux ne se voyaient qu'en regardant ce
+qu'un humain aurait réellement sous les yeux.
+
+Et le banc lui-même a failli mentir deux fois. Un banc d'essai qui ne vérifie pas que l'essai a eu
+lieu produit exactement le faux vert qu'on démonte : il refuse désormais d'observer un battement
+refusé, et cette règle-là vaut pour tout ce qu'on écrira ensuite.

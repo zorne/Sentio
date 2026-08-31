@@ -49,6 +49,14 @@ export interface PasDuBattement {
   readonly motif: string;
   /** Renseigné pour le seul motif `capacite_absente`. C'est lui qui porte la distinction. */
   readonly manque: ManqueDOutil | null;
+  /**
+   * Ce run a consommé son budget sans exécuter une seule action — il a payé sans rien produire.
+   *
+   * ⚠️ Le fait est calculé par `aPayeSansRienProduire`, dans le noyau. La boucle le RAPPORTE ;
+   * elle ne le juge pas. C'est ce qui sépare le geste mécanique — faire avancer le pas — du
+   * jugement : compter que du travail a avancé.
+   */
+  readonly aPayeSansRienProduire: boolean;
 }
 
 /** Ce qu'un blocage appelle : un motif, et la personne qui peut y remédier. */
@@ -76,14 +84,21 @@ export interface ReleveDEmploye {
  * pas, et le jour où il le concerne vraiment, il ne le lit plus. Se tromper dans l'autre sens ne
  * coûte qu'une ligne de journal chez nous.
  */
-export function destinataireDuBlocage(motif: string, manque: ManqueDOutil | null): Destinataire {
-  // Le seul cas où le dirigeant tient la solution : un outil existe, il est à sa portée, et il
-  // n'est pas activé. Encore faut-il qu'il ait le droit de l'activer — cette vérification-là se
-  // fait UNE FOIS, côté canal, au moment de la notification (`runtime/compteur.ts`), et non à
-  // chaque pas : elle coûte deux lectures qui n'apprendraient rien tant que rien n'est envoyé.
-  if (motif === "capacite_absente" && manque?.cause === "capacite_non_activee") {
-    return "dirigeant";
-  }
+export function destinataireDuBlocage(_motif: string, manque: ManqueDOutil | null): Destinataire {
+  // ⚠️ **C'EST LA CAUSE QUI DÉCIDE, PAS LE MOTIF.** La première version exigeait aussi le motif
+  // `capacite_absente`, et ça a coûté un cas : un employé dont AUCUN travail ne s'ouvre porte le
+  // motif `aucun_outil_actif` — il n'a pas de mission bloquée, il n'a pas de mission du tout — et
+  // partait donc chez nous alors que le dirigeant tenait la solution.
+  //
+  // Le motif dit CE QUI s'est passé ; la cause dit QUI peut y remédier. Faire dépendre le
+  // destinataire du motif oblige à penser à cette fonction chaque fois qu'un motif apparaît, et
+  // c'est exactement le genre de règle qu'on oublie de mettre à jour.
+  //
+  // Encore faut-il que le dirigeant ait le DROIT d'activer quelque chose — cette vérification-là
+  // se fait UNE FOIS, côté canal, au moment de la notification (`runtime/compteur.ts`) : elle
+  // coûte deux lectures qui n'apprendraient rien tant que rien n'est envoyé, et elle peut
+  // renverser ce verdict-ci.
+  if (manque?.cause === "capacite_non_activee") return "dirigeant";
   return "nous";
 }
 

@@ -137,6 +137,32 @@ describeIfDatabase("La reprise après qu'un outil est apparu", () => {
     return { tenantId: tenantId as TenantId, employeeId: employeeId as EmployeeId, taskId };
   }
 
+  /** Une mission bloquée de PLUS, dans une entreprise qui existe déjà. */
+  async function missionBloqueeDe(
+    entreprise: { tenantId: TenantId; employeeId: EmployeeId },
+    motif: string,
+  ): Promise<string> {
+    const [lead] = await sql.query<{ id: string }>(
+      `insert into lead (tenant_id, company_name, email, source, qualification)
+       values ($1, 'Bloquée aussi', $2, 'import_client', 'nouveau') returning id`,
+      [entreprise.tenantId, `encore-${randomUUID().slice(0, 8)}@exemple.fr`],
+    );
+    const [tache] = await sql.query<{ id: string }>(
+      `insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id, state)
+       select $1, $2, (select id from objective where tenant_id = $1 and state = 'actif'),
+              'lead', $3, 'needs_attention'
+       returning id`,
+      [entreprise.tenantId, entreprise.employeeId, lead?.id],
+    );
+    await sql.query(
+      `insert into execution_event (tenant_id, task_id, employee_id, kind, payload)
+       values ($1, $2, $3, 'attention_requise', jsonb_build_object('motif', $4::text))`,
+      [entreprise.tenantId, tache?.id, entreprise.employeeId, motif],
+    );
+    await sql.query("delete from job where tenant_id = $1", [entreprise.tenantId]);
+    return tache?.id as string;
+  }
+
   async function etat(taskId: string): Promise<string> {
     const [t] = await sql.query<{ state: string }>("select state from task where id = $1", [taskId]);
     return t?.state as string;
@@ -263,20 +289,60 @@ describeIfDatabase("La reprise après qu'un outil est apparu", () => {
     expect(await repriseJournalisee(taskId)).toBe(false);
   });
 
-  it("⭐ la borne tient : au plus `reprisesMaxParCycle` par passage", async () => {
+  it("⭐ la borne tient : au plus `reprisesMaxParCycle` PAR ENTREPRISE", async () => {
     // ⚠️ CETTE BORNE EXISTE CONTRE UNE FACTURE SURPRISE. Un dirigeant qui active une capacité peut
     // débloquer des centaines de missions ; les reprendre ensemble ferait de la réparation un
     // incident.
+    //
+    // ⚠️ **ELLE ÉTAIT GLOBALE, ET C'ÉTAIT UN DÉFAUT D'ÉQUITÉ.** Servir les N plus anciennes toutes
+    // entreprises confondues laissait une seule entreprise durablement bloquée geler tout le parc :
+    // ses missions, dont la cause ne disparaît jamais, occupaient les N places pour toujours.
+    // Trouvé par la répétition générale (`docs/36-fermer-le-silence.md`, cas 10).
     const plafond = REGLAGES_RUNTIME_PAR_DEFAUT.reprisesMaxParCycle;
+    const premiere = await entrepriseAvecMissionBloquee({
+      motif: "capacite_absente",
+      capaciteActivee: "qualifier.prospect",
+    });
     for (let i = 0; i < plafond + 3; i++) {
-      await entrepriseAvecMissionBloquee({
-        motif: "capacite_absente",
-        capaciteActivee: "qualifier.prospect",
-      });
+      await missionBloqueeDe(premiere, "capacite_absente");
     }
 
-    const rapport = await reprendreLesMissionsDebloquees(deps(registreQuiSert(["qualifier.prospect"])));
+    await reprendreLesMissionsDebloquees(deps(registreQuiSert(["qualifier.prospect"])));
 
-    expect(rapport.examinees).toBeLessThanOrEqual(plafond);
+    // ⚠️ On compte les reprises DE CETTE ENTREPRISE, jamais le total du rapport : la reprise
+    // examine toute la flotte, et les cas voisins de ce fichier y laissent leurs missions. Un
+    // total mesurerait le voisin autant que soi — la même règle que le reste du fichier.
+    const [pourLaPremiere] = await sql.query<{ n: string }>(
+      `select count(*) as n from execution_event
+        where tenant_id = $1 and kind = 'reprise_apres_outil'`,
+      [premiere.tenantId],
+    );
+    expect(Number(pourLaPremiere?.n)).toBeLessThanOrEqual(plafond);
+  });
+
+  it("⭐ une entreprise durablement bloquée n'affame plus les autres", async () => {
+    // Le cœur du défaut : les missions de la première ne se débloqueront jamais — aucun moteur ne
+    // sert leur capacité — et elles sont les plus anciennes. Avec une borne globale, la seconde
+    // n'était plus jamais servie. Avec une borne par entreprise, elle l'est le même cycle.
+    const gelee = await entrepriseAvecMissionBloquee({
+      motif: "capacite_absente",
+      capaciteActivee: null,
+    });
+    for (let i = 0; i < REGLAGES_RUNTIME_PAR_DEFAUT.reprisesMaxParCycle + 2; i++) {
+      await missionBloqueeDe(gelee, "capacite_absente");
+    }
+    const servie = await entrepriseAvecMissionBloquee({
+      motif: "capacite_absente",
+      capaciteActivee: "qualifier.prospect",
+    });
+
+    await reprendreLesMissionsDebloquees(deps(registreQuiSert(["qualifier.prospect"])));
+
+    const [reprise] = await sql.query<{ n: string }>(
+      `select count(*) as n from execution_event
+        where tenant_id = $1 and kind = 'reprise_apres_outil'`,
+      [servie.tenantId],
+    );
+    expect(Number(reprise?.n)).toBeGreaterThan(0);
   });
 });

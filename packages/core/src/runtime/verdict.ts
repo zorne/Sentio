@@ -34,7 +34,9 @@
  *   3. un travail a **échoué** ;
  *   4. du travail était **dû** et **rien n'a abouti** ;
  *   5. le cycle d'un employé a été **bloqué par quelque chose qui est de notre ressort** — même
- *      si d'autres entreprises, elles, ont travaillé.
+ *      si d'autres entreprises, elles, ont travaillé ;
+ *   6. un run a **consommé son budget sans exécuter une seule action** — il a payé sans rien
+ *      produire.
  *
  * Tout le reste est normal, y compris — et surtout — l'absence totale d'activité. Une entreprise
  * sans abonnement, un objectif atteint, un quota consommé, un travail du jour déjà ouvert : ce
@@ -97,6 +99,15 @@ export interface EntreeDuVerdict {
     readonly traites: number;
     readonly echoues: number;
     readonly motifs: Readonly<Record<string, number>>;
+    /**
+     * Runs qui ont consommé leur budget sans exécuter une seule action.
+     *
+     * ⚠️ **CE COMPTE NE SE DÉDUIT D'AUCUN MOTIF, ET C'EST TOUT SON INTÉRÊT.** Un run qui tourne
+     * dix fois sur une réponse illisible rend `{pas_suivant: 9, budget_epuise: 1}` — deux motifs
+     * qui, l'un comme l'autre, veulent dire « le travail avance ». Ils ne mentent pas : des pas
+     * ont bien eu lieu. C'est le RÉSULTAT qui manque, et seul ce compte le voit.
+     */
+    readonly sansAction: number;
   };
   /** Capacités dont le contrat était illisible en base. Voir `chargerLeRegistre`. */
   readonly capacitesEcartees: readonly unknown[];
@@ -152,6 +163,13 @@ export function jugerLeBattement(entree: EntreeDuVerdict): VerdictDuBattement {
 
   if (entree.compteur.aNotreCharge > 0) {
     anomalies.push("travail_bloque_chez_nous");
+  }
+
+  // ⚠️ LA RÈGLE GÉNÉRALE, ET ELLE EST INDÉPENDANTE DES MOTIFS. Un run qui a consommé son budget
+  // sans une seule action exécutée a payé sans rien produire — quelle que soit la façon dont il
+  // s'est terminé. Viser un motif en particulier laisserait passer la variante suivante.
+  if (entree.travaux.sansAction > 0) {
+    anomalies.push("run_sans_action");
   }
 
   // Du travail était dû si quelque chose a été ouvert, repris, ou pris dans la file. Un battement

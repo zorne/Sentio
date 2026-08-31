@@ -12,6 +12,7 @@ import {
   issueDepuisErreur,
   type IssueDuPas,
   type SuiteDuRun,
+  aPayeSansRienProduire,
 } from "./suite-du-run.js";
 
 const MAINTENANT = new Date("2026-08-07T09:00:00.000Z");
@@ -328,5 +329,26 @@ describe("la fonction est pure", () => {
     expect(resultat.kind).toBe("reporter");
     if (resultat.kind !== "reporter") return;
     expect(resultat.quand).toEqual(new Date(ailleurs.getTime() + 24 * HEURE));
+  });
+});
+
+describe("un run qui a payé sans rien produire", () => {
+  // ⚠️ LA RÈGLE EST GÉNÉRALE, ET C'EST TOUT SON INTÉRÊT. Elle ne vise pas `proposition_illisible` :
+  // la variante suivante — un modèle qui répond toujours « terminer », une politique qui refuse
+  // tout — passerait à travers un correctif ciblé.
+  it("⭐ budget consommé, aucune action : oui", () => {
+    expect(aPayeSansRienProduire({ pasDuCycle: 10, actionsExecutees: 0 }, 10)).toBe(true);
+  });
+
+  it("budget consommé APRÈS avoir agi : non", () => {
+    expect(aPayeSansRienProduire({ pasDuCycle: 10, actionsExecutees: 3 }, 10)).toBe(false);
+  });
+
+  it("budget non consommé, aucune action : non — le cycle n'est pas fini", () => {
+    expect(aPayeSansRienProduire({ pasDuCycle: 4, actionsExecutees: 0 }, 10)).toBe(false);
+  });
+
+  it("un run qui dépasse la borne compte aussi : la comparaison est un « au moins »", () => {
+    expect(aPayeSansRienProduire({ pasDuCycle: 12, actionsExecutees: 0 }, 10)).toBe(true);
   });
 });

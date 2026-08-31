@@ -31,6 +31,7 @@ import { REGLAGES_RUNTIME_PAR_DEFAUT, type ReglagesRuntime } from "@sentio/confi
 import {
   ATTENTION_REQUISE,
   RUN_DEMARRE,
+  aPayeSansRienProduire,
   deciderLaSuite,
   executeDecidedAction,
   issueDepuisErreur,
@@ -65,6 +66,8 @@ export interface RapportDeBoucle {
   readonly echoues: number;
   /** Ce que chaque pas a produit, par motif. Sans lui, un report ressemble à un succès. */
   readonly motifs: Readonly<Record<string, number>>;
+  /** Runs qui ont consommé leur budget sans exécuter une seule action. */
+  readonly sansAction: number;
   /**
    * Ce que chaque pas a produit, **rattaché à son employé**.
    *
@@ -151,6 +154,7 @@ export async function executerLesTravauxDus(
   const motifs: Record<string, number> = {};
   /** Le même détail, rattaché à son employé : c'est ce que le compteur relit. */
   const pas: PasDuBattement[] = [];
+  let sansAction = 0;
 
   for (let i = 0; i < maxTravaux; i++) {
     // ⚠️ `maintenant` est passé TEL QUEL, `undefined` compris : c'est ainsi que la base devient
@@ -170,11 +174,13 @@ export async function executerLesTravauxDus(
       // dit si quelque chose a AVANCÉ.
       const issue = await executerUnPas(deps, options, travail);
       motifs[issue.motif] = (motifs[issue.motif] ?? 0) + 1;
+      if (issue.aPayeSansRienProduire) sansAction += 1;
       pas.push({
         tenantId: travail.tenantId,
         employeeId: travail.employeeId,
         motif: issue.motif,
         manque: issue.manque,
+        aPayeSansRienProduire: issue.aPayeSansRienProduire,
       });
       traites += 1;
     } catch (erreur) {
@@ -187,6 +193,7 @@ export async function executerLesTravauxDus(
         employeeId: travail.employeeId,
         motif: "pas_interrompu",
         manque: null,
+        aPayeSansRienProduire: false,
       });
       // ⚠️ Le travail n'est PAS remis en file ici. Son bail expirera, et un exécutant le
       // reprendra — en comptant la reprise. Le remettre tout de suite ferait tourner en boucle
@@ -201,7 +208,7 @@ export async function executerLesTravauxDus(
     }
   }
 
-  return { traites, echoues, motifs, pas };
+  return { traites, echoues, motifs, sansAction, pas };
 }
 
 /** L'état du run, relu depuis le journal. Jamais gardé, jamais recalculé de tête. */
@@ -230,7 +237,11 @@ async function executerUnPas(
   deps: BoucleDeps,
   options: OptionsDeBoucle,
   travail: TravailPris,
-): Promise<{ readonly motif: string; readonly manque: ManqueDOutil | null }> {
+): Promise<{
+  readonly motif: string;
+  readonly manque: ManqueDOutil | null;
+  readonly aPayeSansRienProduire: boolean;
+}> {
   const reglages = deps.reglages ?? REGLAGES_RUNTIME_PAR_DEFAUT;
   const { tenantId, taskId, employeeId } = travail;
 
@@ -242,21 +253,21 @@ async function executerUnPas(
       "reprises_epuisees",
       `Cette mission a été reprise ${travail.reprises} fois sans aboutir : elle n'est plus rejouée.`,
     );
-    return { motif: "reprises_epuisees", manque: null };
+    return { motif: "reprises_epuisees", manque: null, aPayeSansRienProduire: false };
   }
 
   // ── 2. Un journal incohérent ne rend pas un état, et on ne devine pas à sa place (EXEC-02).
   const avant = await relire(deps.sql, tenantId, taskId);
   if (!avant.ok) {
     await arreterPourHumain(deps, travail, "journal_incoherent", avant.detail);
-    return { motif: "journal_incoherent", manque: null };
+    return { motif: "journal_incoherent", manque: null, aPayeSansRienProduire: false };
   }
 
   // ── 3. Le journal fait foi : s'il dit que ce run ne peut pas reprendre, la file avait tort.
   //    On la remet d'accord avec lui plutôt que de travailler sur un état que personne n'assume.
   if (!peutReprendre(avant.etat)) {
     await remettreLaFileDaccord(deps, travail, avant.etat);
-    return { motif: "file_remise_d_accord", manque: null };
+    return { motif: "file_remise_d_accord", manque: null, aPayeSansRienProduire: false };
   }
 
   // ── Le premier événement de toute mission, sans exception. Sans lui, la reconstruction du pas
@@ -287,7 +298,7 @@ async function executerUnPas(
   const apres = await relire(deps.sql, tenantId, taskId);
   if (!apres.ok) {
     await arreterPourHumain(deps, travail, "journal_incoherent", apres.detail);
-    return { motif: "journal_incoherent", manque: null };
+    return { motif: "journal_incoherent", manque: null, aPayeSansRienProduire: false };
   }
 
   // ⚠️ ICI, L'HORLOGE DU PROCESSUS RESTE LA BONNE. `deciderLaSuite` calcule une échéance future
@@ -329,7 +340,15 @@ async function executerUnPas(
 
   // ⚠️ LE MANQUE VOYAGE AVEC LE MOTIF, ET IL S'ARRÊTERAIT ICI SANS CETTE LIGNE. C'est le dernier
   // maillon du fil qui distingue « le dirigeant peut l'activer » de « nous devons le monter ».
-  return { motif: suite.motif, manque: suite.kind === "attendre_humain" ? suite.manque : null };
+  //
+  // ⚠️ Et le second fait, celui qui ne se lit dans AUCUN motif : ce run a-t-il payé sans rien
+  // produire ? La règle est écrite une fois, dans le noyau ; la boucle la rapporte, elle ne la
+  // rejoue pas.
+  return {
+    motif: suite.motif,
+    manque: suite.kind === "attendre_humain" ? suite.manque : null,
+    aPayeSansRienProduire: aPayeSansRienProduire(apres.etat, reglages.pasMaximumParRun),
+  };
 }
 
 /**

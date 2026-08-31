@@ -297,7 +297,24 @@ export function composerLExecutant(
     //    un travail fait — l'erreur exacte que ce lot a trouvée en production.
     const compteur = await compterLeTravailQuiNAboutitPas(
       { sql },
-      { pas: travaux.pas, maintenant: instant },
+      {
+        pas: [
+          ...travaux.pas,
+          // ⚠️ **LE TRAVAIL QUI N'A PAS PU S'OUVRIR COMPTE COMME UN CYCLE MUET.** Sans cette
+          // ligne, un employé dont aucun outil n'est activé n'apparaît nulle part : il n'a pas de
+          // mission bloquée, il n'a pas de mission du tout, et tous les détecteurs raisonnent sur
+          // du travail commencé. Le dirigeant ne pouvait donc jamais apprendre qu'il lui manquait
+          // un outil — alors que c'est le cas le plus simple à réparer pour lui.
+          ...approvisionnement.sansOutil.map((employe) => ({
+            tenantId: employe.tenantId,
+            employeeId: employe.employeeId,
+            motif: "aucun_outil_actif",
+            manque: { cause: "capacite_non_activee", sujetKind: null } as const,
+            aPayeSansRienProduire: false,
+          })),
+        ],
+        maintenant: instant,
+      },
     );
 
     // ⚠️ LE VERDICT EST CALCULÉ ICI, PAS PAR CELUI QUI LIRA. Le planificateur doit le LIRE, jamais
@@ -359,6 +376,7 @@ export function composerLExecutant(
       traites: travaux.traites,
       echoues: travaux.echoues,
       motifs: travaux.motifs,
+      sansAction: travaux.sansAction,
       verdict: jugement.verdict,
       anomalies: jugement.anomalies,
     };

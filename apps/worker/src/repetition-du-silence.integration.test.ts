@@ -574,30 +574,24 @@ describeIfDatabase("Étape 8 — la répétition générale du silence", () => {
         "4b — le modèle répond 200 avec un contenu vide",
         "un vrai fournisseur HTTP qui répond `{choices:[{message:{content:\"\"}}]}`",
         "verdict `anormal`, workflow en échec",
-        `motifs \`${JSON.stringify(observation.motifs)}\`, verdict \`${observation.verdict}\` (${observation.anomalies.join(", ") || "aucune"}), workflow **${observation.workflow}**`,
+        `motifs \`${JSON.stringify(observation.motifs)}\` — les mêmes qu'avant, et ils veulent toujours dire « ça avance » — mais \`sansAction\` les dément : verdict \`${observation.verdict}\` (${observation.anomalies.join(", ") || "aucune"}), workflow **${observation.workflow}**, aucun ping`,
         observation.verdict === "anormal" ? "oui" : "non",
       );
 
-      // ⚠️⚠️ **LE TROU LE PLUS GRAVE DE TOUTE LA RÉPÉTITION, ET IL EST ASSERTÉ TEL QUEL.**
+      // ⚠️ CE CAS ÉTAIT LE TROU LE PLUS GRAVE DE LA RÉPÉTITION, ET IL EST FERMÉ.
       //
-      // Un fournisseur qui répond du vide fait tourner l'employée sur TOUT son budget de pas — dix
-      // appels facturés — puis le cycle se referme sur `budget_epuise`. Or `pas_suivant` et
-      // `budget_epuise` comptent tous deux comme « du travail a avancé » : le verdict est NORMAL,
-      // le workflow sort en 0, et le guetteur externe reçoit son signal vert.
-      //
-      // Autrement dit : dix appels payants, rien de fait, et toutes les alarmes disent que tout va
-      // bien. C'est exactement la classe de défaut que ce lot existe pour fermer, et elle n'est
-      // PAS fermée.
-      //
-      // ⚠️ On assertе donc CE QUI EST, pas ce qu'on espère. Le jour où quelqu'un corrigera ce
-      // trou, ce test échouera et le forcera à mettre le tableau à jour : un trou tu est un trou
-      // qui se rouvre. Ne pas « réparer » ce test — réparer le produit, puis ce test.
+      // Il l'est par une règle GÉNÉRALE, et pas par un correctif visant `proposition_illisible` :
+      // « un run qui consomme son budget sans une seule action exécutée a payé sans rien
+      // produire ». Les motifs sont inchangés — `pas_suivant` et `budget_epuise` veulent toujours
+      // dire « des pas ont eu lieu », et c'est vrai. Ce qui change, c'est qu'on ne confond plus
+      // le geste mécanique (faire avancer le pas) avec le jugement (compter que du travail a
+      // avancé).
       expect(observation.motifs["pas_suivant"]).toBeGreaterThan(0);
       expect(observation.motifs["budget_epuise"]).toBeGreaterThan(0);
-      // Le seul détecteur qui pourrait attraper ce cas ne s'exprime pas : tous les motifs
-      // produits comptent comme « du travail a avancé ».
-      expect(observation.anomalies).not.toContain("rien_n_a_abouti");
-      expect(observation.anomalies).not.toContain("travaux_echoues");
+      expect(observation.anomalies).toContain("run_sans_action");
+      expect(observation.verdict).toBe("anormal");
+      expect(observation.workflow).toBe(1);
+      expect(observation.ping).toBe(false);
     } finally {
       humeurDuModele = "propose";
     }
@@ -774,11 +768,23 @@ describeIfDatabase("Étape 8 — la répétition générale du silence", () => {
   // Cas 3, 8 et 10 — la mission qu'aucun outil ne sert : écartée, dite, puis reprise
   // ═══════════════════════════════════════════════════════════════════════════════════════════
 
-  it("⭐ cas 3 — aucun outil activé : rien ne s'ouvre, et le battement reste MUET", async () => {
-    // Le dirigeant n'a activé aucun outil applicable. L'approvisionnement écarte les sujets et le
-    // journalise depuis `451780c`. La question est : quelqu'un le lit-il ?
-    const { tenantId } = await entreprise({ capacites: ["qualifier.prospect"], activees: [] });
-    const observation = await battementReel({ tenantId });
+  it("⭐ cas 3 — aucun outil activé : rien ne s'ouvre, et le dirigeant l'apprend", async () => {
+    // ⚠️ LE CAS LE PLUS DIFFÉRENT DE TOUS. Il n'y a pas de mission bloquée : il n'y a pas de
+    // mission du tout. Tous les autres détecteurs raisonnent sur du travail COMMENCÉ, et celui-ci
+    // n'a jamais commencé. C'est pourtant la promesse même du produit — « elle demande de l'aide
+    // uniquement quand une limite réelle l'en empêche » — et une limite réelle l'en empêche.
+    const { tenantId } = await entreprise({
+      capacites: ["qualifier.prospect", "envoyer.prospect"],
+      activees: [],
+    });
+
+    let observation = await battementReel({
+      tenantId,
+      maintenant: new Date("2026-09-07T06:00:00.000Z"),
+    });
+    for (const jour of ["2026-09-08T06:00:00.000Z", "2026-09-09T06:00:00.000Z"]) {
+      observation = await battementReel({ tenantId, maintenant: new Date(jour) });
+    }
 
     const [ouvertes] = await sql.query<{ n: string }>(
       "select count(*) as n from task where tenant_id = $1",
@@ -788,18 +794,20 @@ describeIfDatabase("Étape 8 — la répétition générale du silence", () => {
 
     noter(
       "3 — travail écarté faute de capacité",
-      "un employé recruté sans aucun outil activé : l'approvisionnement n'ouvre rien",
+      "un employé recruté sans aucun outil activé, sur trois journées : l'approvisionnement n'ouvre rien",
       "le dirigeant apprend qu'il lui manque un outil",
-      `aucune mission ouverte, verdict \`${observation.verdict}\` (${observation.anomalies.join(", ") || "aucune"}), workflow **${observation.workflow}**, notifications : ${observation.notifications.length}`,
-      observation.verdict === "anormal" || observation.notifications.length > 0 ? "oui" : "non",
+      observation.notifications.length > 0
+        ? `aucune mission ouverte, et pourtant une notification : « ${observation.notifications[0]?.slice(0, 95)}… »`
+        : "aucune mission ouverte, et aucune notification",
+      observation.notifications.length > 0 ? "oui" : "non",
     );
 
-    // ⚠️ ASSERTION SUR CE QUI EST. Un employé sans outil n'ouvre rien, et « rien à faire » est un
-    // silence LÉGITIME du produit : rien ne se déclenche, à raison. Mais du coup personne ne dit
-    // au dirigeant qu'il lui manque un outil — le travail n'est pas bloqué, il n'EXISTE pas, et
-    // aucun de nos détecteurs ne regarde ce qui n'existe pas.
-    expect(observation.motifs).toEqual({});
-    expect(observation.notifications).toHaveLength(0);
+    // ⚠️ Aucune mission n'existe, et le dirigeant est prévenu quand même. C'est la matière
+    // première que `justification.ecartes` journalisait depuis `451780c` en attendant un
+    // mécanisme : « écrit dès maintenant, parce que le reconstituer après coup coûterait
+    // l'historique ». Le mécanisme est là.
+    expect(observation.notifications.length).toBeGreaterThan(0);
+    expect(observation.notifications[0]).toContain("activer");
   }, 60_000);
 
   it("⭐ cas 8 — une mission bloquée trois jours : le dirigeant est prévenu, lui", async () => {
@@ -907,22 +915,15 @@ describeIfDatabase("Étape 8 — la répétition générale du silence", () => {
     // cas précédents peuvent occuper le passage. On rebat jusqu'à ce que NOTRE mission ait été
     // reprise, plutôt que de supposer qu'un seul cycle suffit — sans quoi ce cas conclurait au
     // hasard, selon ce que les autres cas ont laissé derrière eux.
-    // ⚠️⚠️ ET C'EST ICI QU'UN SECOND DÉFAUT S'EST MONTRÉ, SANS QU'ON LE CHERCHE.
-    //
-    // Avec la borne de production (`reprisesMaxParCycle: 5`), cette mission n'était JAMAIS
-    // examinée. La reprise prend les N missions bloquées les plus ANCIENNES, toutes entreprises
-    // confondues (`order by t.created_at, t.id limit N`) — or une mission dont la cause ne
-    // disparaît jamais, un moteur non monté par exemple, reste en tête de cette liste pour
-    // toujours. Cinq missions durablement bloquées suffisent donc à AFFAMER la reprise : plus
-    // aucune autre n'est jamais reprise, chez aucun client, et rien ne le dit.
-    //
-    // La borne est relevée ici pour observer le défaut SUIVANT sans être arrêté par celui-là. Les
-    // deux sont rapportés.
-    const sansFamine = environnement({ SENTIO_REPRISES_MAX_PAR_CYCLE: "200" });
-    await battementReel({ tenantId, env: sansFamine });
+    // ⚠️ AUCUNE BORNE RELEVÉE ICI, ET C'EST LE POINT. La borne de production
+    // (`reprisesMaxParCycle: 5`) affamait cette mission : la reprise servait les N plus anciennes
+    // TOUTES ENTREPRISES CONFONDUES, et une mission dont la cause ne disparaît jamais restait en
+    // tête pour toujours. Elle est désormais par entreprise — ce cas passe donc avec les réglages
+    // réels, et c'est ce qui le rend probant.
+    await battementReel({ tenantId });
     let reprise = await evenementDeReprise(tenantId, bloquee?.id as string);
     for (let essai = 0; essai < 3 && reprise === 0; essai += 1) {
-      await battementReel({ tenantId, env: sansFamine });
+      await battementReel({ tenantId });
       reprise = await evenementDeReprise(tenantId, bloquee?.id as string);
     }
     expect(reprise, "la mission n'a jamais été reprise : la provocation n'a pas eu lieu").toBeGreaterThan(0);
@@ -936,26 +937,18 @@ describeIfDatabase("Étape 8 — la répétition générale du silence", () => {
       "10 — la reprise après qu'un outil apparaît",
       "une mission bloquée faute d'outil, puis l'outil activé, puis un second battement",
       "la mission retourne en file sans qu'on ait touché à elle",
-      `**deux défauts.** (1) avec la borne de production, la mission n'est jamais examinée : cinq missions durablement bloquées affament la reprise pour tout le monde. (2) borne relevée, la mission est bien reprise (\`reprise_apres_outil\` au journal) puis **remise de côté dans le même cycle** : \`reconstruireEtatRun\` ne connaît pas cet événement, retombe sur \`attention_requise\`, et \`peutReprendre\` refuse. Elle reste \`${apres?.state}\``,
+      `avec les réglages RÉELS : la mission est reprise (\`reprise_apres_outil\` au journal) et repart pour de bon — elle passe à \`${apres?.state}\`. La borne est désormais par entreprise, et la machine à états connaît l'événement de reprise`,
       apres?.state !== "needs_attention" ? "oui" : "non",
     );
 
-    // ⚠️⚠️ **LA REPRISE EST DÉFAITE DANS LE CYCLE MÊME QUI LA FAIT, ET C'EST ASSERTÉ TEL QUEL.**
+    // ⚠️ CE CAS A TROUVÉ DEUX DÉFAUTS, ET IL LES GARDE TOUS LES DEUX FERMÉS.
     //
-    // Le rapport dit `reprises: 1` : la reprise a bien remis la mission en file et repassé la
-    // tâche en `pending`. Puis la boucle la prend, relit le journal — dont le dernier événement
-    // est `reprise_apres_outil`, que `reconstruireEtatRun` NE CONNAÎT PAS — et retombe donc sur
-    // `phase = attention_requise`. `peutReprendre` refuse, `remettreLaFileDaccord` la remet de
-    // côté, et la mission revient exactement d'où elle venait.
-    //
-    // Conséquence : l'étape 3 fonctionne dans son test unitaire et ne fonctionne PAS de bout en
-    // bout. Le dirigeant active l'outil manquant, et il ne se passe toujours rien — le dommage
-    // même que cette étape prétendait réparer, revenu par la porte de la machine à états.
-    //
-    // ⚠️ Ne pas « réparer » ce test : réparer `run-state.ts` — qui doit traiter
-    // `REPRISE_APRES_OUTIL` comme un retour en `en_cours` — puis ce test échouera, et c'est alors
-    // qu'il faudra le mettre à jour.
-    expect(apres?.state).toBe("needs_attention");
+    // La reprise remettait bien la mission en file, puis la boucle la reprenait, relisait le
+    // journal — dont le dernier événement est `reprise_apres_outil`, que `reconstruireEtatRun` ne
+    // connaissait pas — et retombait sur `attention_requise`. `peutReprendre` refusait, et la
+    // mission revenait exactement d'où elle venait. L'étape 3 passait son test unitaire et ne
+    // fonctionnait pas de bout en bout : le test éprouvait le module, jamais la boucle qui le suit.
+    expect(apres?.state).not.toBe("needs_attention");
   }, 60_000);
 
   // ═══════════════════════════════════════════════════════════════════════════════════════════
@@ -1019,22 +1012,17 @@ describeIfDatabase("Étape 8 — la répétition générale du silence", () => {
       "le refus dit LAQUELLE des deux raisons s'applique",
       refus.length === 0
         ? `aucun refus de politique : la capacité n'a même pas été proposable (motifs \`${JSON.stringify(observation.motifs)}\`)`
-        : `refus journalisé \`${JSON.stringify(refus[0]?.payload)}\` : aucun champ ne dit LAQUELLE des deux gardes a refusé`,
-      "non",
+        : `refus journalisé avec sa cause : \`${String(refus[0]?.payload["cause"])}\`, et sa raison lisible`,
+      refus.length > 0 && refus[0]?.payload["cause"] !== undefined ? "oui" : "non",
     );
 
-    // ⚠️ ASSERTION SUR CE QUI EST, ET ELLE PORTE SUR L'ABSENCE. `decideNextAction` appelle
-    // `policy.refuse` depuis DEUX endroits — « hors de la liste autorisée » et « capacité inconnue
-    // du registre » — avec exactement la même charge. L'événement ne porte ni raison ni cause :
-    // les deux restent indiscernables dans le journal.
-    //
-    // Ce que les étapes 1 et 5 ont fermé est ailleurs, et il ne faut pas les confondre : l'étape 1
-    // empêche le modèle de PROPOSER ce qui ne s'applique pas, l'étape 5 distingue les deux causes
-    // au niveau de la MISSION arrêtée. Le refus de politique, lui, est resté muet.
-    if (refus.length > 0) {
-      expect(Object.keys(refus[0]?.payload ?? {})).not.toContain("raison");
-      expect(Object.keys(refus[0]?.payload ?? {})).not.toContain("cause");
-    }
+    // ⚠️ LES DEUX GARDES SE DISTINGUENT MAINTENANT. `decideNextAction` appelle `policy.refuse`
+    // depuis deux endroits — « hors de la liste autorisée » et « capacité inconnue du registre » —
+    // et chacune nomme désormais sa cause. Tant que ce n'était pas le cas, aucune alerte fondée
+    // sur le journal ne pouvait distinguer ce qui relève du dirigeant de ce qui relève de nous.
+    expect(refus.length).toBeGreaterThan(0);
+    expect(refus[0]?.payload["cause"]).toBe("hors_du_perimetre");
+    expect(String(refus[0]?.payload["raison"])).toContain("périmètre");
   }, 60_000);
 
   it("⭐ cas 1 — un run échoue : le verdict le dit, et la surveillance aussi", async () => {

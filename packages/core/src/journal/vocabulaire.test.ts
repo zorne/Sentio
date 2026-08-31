@@ -53,7 +53,7 @@ describe("tout ce que le runtime écrit au journal est déclaré", () => {
 
     await engine.decide({ ...DEMANDE, effectClass: "read" }); // allow
     await engine.decide({ ...DEMANDE, effectClass: "external_irreversible" }); // allow, accord permanent
-    await engine.refuse({ ...DEMANDE, effectClass: "read" }, ["autre_capacite"]); // refuse
+    await engine.refuse({ ...DEMANDE, effectClass: "read" }, ["autre_capacite"], "hors_du_perimetre"); // refuse
 
     const sansAccord = new PolicyEngine(
       { ...accords, hasStandingApproval: async () => false },

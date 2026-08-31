@@ -41,7 +41,8 @@
  *   · **La cause disparue.** On ne reprend que si une capacité applicable au sujet est MAINTENANT
  *     activée et servie. Sans ce contrôle, une mission encore bloquée serait reprise à chaque
  *     cycle, échouerait, reviendrait — une boucle inutile.
- *   · **La borne.** Au plus `reprisesMaxParCycle` par passage.
+ *   · **La borne.** Au plus `reprisesMaxParCycle` par passage **et par entreprise** : une borne
+ *     globale laissait une seule entreprise durablement bloquée geler tout le parc.
  */
 
 import type { ReglagesRuntime } from "@sentio/config";
@@ -115,19 +116,40 @@ export async function reprendreLesMissionsDebloquees(
   // contrainte de vérification. C'est ce plafond, et non une intention, qui garantit que l'alerte
   // précède la purge d'une vingtaine de jours. Le desserrer au-delà rendrait cette limite-ci
   // silencieusement destructrice, et il faudrait alors persister le motif.
+  // ⚠️ **LA BORNE EST PAR ENTREPRISE, ET ELLE ÉTAIT GLOBALE.** Un simple `limit N` servait les N
+  // missions bloquées les plus anciennes, toutes entreprises confondues. Or une mission dont la
+  // cause ne disparaît jamais — un moteur qu'on ne montera pas de sitôt — reste en tête de cette
+  // liste POUR TOUJOURS : cinq d'entre elles suffisaient à ce que plus aucune reprise n'ait lieu,
+  // chez aucun client. Une seule entreprise durablement bloquée gelait tout le parc.
+  //
+  // C'est le même défaut d'équité que le FIFO du gisement, à un autre étage : servir « les plus
+  // anciens d'abord » sur une file partagée entre entreprises, c'est laisser la plus malchanceuse
+  // décider pour toutes.
+  //
+  // Coût assumé : le travail d'un cycle croît désormais avec le NOMBRE d'entreprises, au lieu
+  // d'être plafonné une fois pour toutes. C'est le bon compromis — chaque entreprise a sa part —
+  // et il reste borné par `reprisesMaxParCycle` pour chacune.
+  //
+  // ⚠️ Ce qui reste, et qu'il faut savoir : une entreprise peut encore s'affamer elle-même si ses
+  // N plus anciennes missions sont durablement bloquées. Le dommage est alors contenu à elle, et
+  // c'est ce qui rend ce repli acceptable.
   const bloquees = await deps.sql.query<MissionBloquee>(
-    `select t.tenant_id, t.id as task_id, t.employee_id, t.subject_kind
-       from task t
-      where t.state = 'needs_attention'
-        and (
-          select e.payload ->> 'motif'
-            from execution_event e
-           where e.tenant_id = t.tenant_id and e.task_id = t.id and e.kind = $1
-           order by e.seq desc
-           limit 1
-        ) = 'capacite_absente'
-      order by t.created_at, t.id
-      limit $2`,
+    `select tenant_id, task_id, employee_id, subject_kind
+       from (
+         select t.tenant_id, t.id as task_id, t.employee_id, t.subject_kind,
+                row_number() over (partition by t.tenant_id order by t.created_at, t.id) as rang
+           from task t
+          where t.state = 'needs_attention'
+            and (
+              select e.payload ->> 'motif'
+                from execution_event e
+               where e.tenant_id = t.tenant_id and e.task_id = t.id and e.kind = $1
+               order by e.seq desc
+               limit 1
+            ) = 'capacite_absente'
+       ) classees
+      where rang <= $2
+      order by tenant_id, rang`,
     [ATTENTION_REQUISE, reglages.reprisesMaxParCycle],
   );
 

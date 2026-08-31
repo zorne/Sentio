@@ -207,6 +207,36 @@ export type SuiteDuRun =
       readonly manque: ManqueDOutil | null;
     };
 
+/**
+ * **Un run qui a consommé son budget sans une seule action exécutée a payé sans rien produire.**
+ *
+ * ══ LA CONFUSION QUE CETTE FONCTION SÉPARE ══
+ *
+ * Faire avancer le pas après une réponse illisible est un geste **mécanique de protection** : il
+ * évite de rejouer indéfiniment la même réponse inexploitable. Compter que du travail a avancé est
+ * un **jugement**. Les conflater est exactement le défaut de `traites`, qui s'incrémentait dès
+ * qu'un pas ne levait pas d'exception.
+ *
+ * ══ CE QU'ELLE ATTRAPE, ET QUI N'AVAIT ÉTÉ VU PAR PERSONNE ══
+ *
+ * La répétition générale (`docs/36-fermer-le-silence.md`, cas 4b) a provoqué un fournisseur qui
+ * répond 200 avec un contenu VIDE. Résultat mesuré : `{pas_suivant: 9, budget_epuise: 1}`, verdict
+ * **normal**, workflow vert, guetteur pingé. Dix appels facturés, rien de fait, et toutes les
+ * alarmes affichant que tout va bien.
+ *
+ * ⚠️ **LA RÈGLE EST GÉNÉRALE, ET ELLE L'EST EXPRÈS.** Viser `proposition_illisible` en particulier
+ * laisserait passer la variante suivante — un modèle qui répond toujours « terminer » sans jamais
+ * agir, une politique qui refuse tout, un moteur qui rend systématiquement « déjà fait ». La
+ * question posée ici ne regarde pas COMMENT le run s'est terminé : elle regarde s'il a produit
+ * quelque chose en échange de ce qu'il a coûté.
+ */
+export function aPayeSansRienProduire(
+  etat: Pick<EtatRun, "pasDuCycle" | "actionsExecutees">,
+  pasMaximumParRun: number,
+): boolean {
+  return etat.pasDuCycle >= pasMaximumParRun && etat.actionsExecutees === 0;
+}
+
 export interface EntreeSuiteDuRun {
   readonly issue: IssueDuPas;
   /** L'état reconstruit APRÈS le pas — c'est lui qui porte `pasDuCycle` (EXEC-02). */

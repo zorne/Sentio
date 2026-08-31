@@ -22,7 +22,7 @@ function battement(modifications: Partial<EntreeDuVerdict> = {}): EntreeDuVerdic
   return {
     approvisionnement: { ouvertes: 0, refus: {} },
     reprise: { reprises: 0 },
-    travaux: { traites: 0, echoues: 0, motifs: {} },
+    travaux: { traites: 0, echoues: 0, motifs: {}, sansAction: 0 },
     capacitesEcartees: [],
     compteur: { aNotreCharge: 0 },
     ...modifications,
@@ -66,7 +66,7 @@ describe("les silences légitimes ne déclenchent rien", () => {
       const jugement = jugerLeBattement(
         battement({
           approvisionnement: { ouvertes: 2, refus: {} },
-          travaux: { traites: 2, echoues: 0, motifs: { [motif]: 2 } },
+          travaux: { traites: 2, echoues: 0, motifs: { [motif]: 2 }, sansAction: 0 },
         }),
       );
       expect(jugement.verdict, `« ${motif} » est un aboutissement`).toBe("normal");
@@ -77,7 +77,7 @@ describe("les silences légitimes ne déclenchent rien", () => {
     const jugement = jugerLeBattement(
       battement({
         approvisionnement: { ouvertes: 1, refus: {} },
-        travaux: { traites: 1, echoues: 0, motifs: { accord_attendu: 1 } },
+        travaux: { traites: 1, echoues: 0, motifs: { accord_attendu: 1 }, sansAction: 0 },
       }),
     );
     expect(jugement.verdict).toBe("normal");
@@ -99,7 +99,7 @@ describe("ce qui ne peut pas passer pour un succès", () => {
     const jugement = jugerLeBattement(
       battement({
         approvisionnement: { ouvertes: 10, refus: {} },
-        travaux: { traites: 10, echoues: 0, motifs: { report_de_quota: 10 } },
+        travaux: { traites: 10, echoues: 0, motifs: { report_de_quota: 10 }, sansAction: 0 },
       }),
     );
 
@@ -111,7 +111,7 @@ describe("ce qui ne peut pas passer pour un succès", () => {
     const jugement = jugerLeBattement(
       battement({
         approvisionnement: { ouvertes: 4, refus: {} },
-        travaux: { traites: 4, echoues: 0, motifs: { capacite_absente: 4 } },
+        travaux: { traites: 4, echoues: 0, motifs: { capacite_absente: 4 }, sansAction: 0 },
       }),
     );
     expect(jugement.verdict).toBe("anormal");
@@ -120,7 +120,7 @@ describe("ce qui ne peut pas passer pour un succès", () => {
 
   it("un travail échoué est anormal", () => {
     const jugement = jugerLeBattement(
-      battement({ travaux: { traites: 0, echoues: 1, motifs: {} } }),
+      battement({ travaux: { traites: 0, echoues: 1, motifs: {}, sansAction: 0 } }),
     );
     expect(jugement.verdict).toBe("anormal");
     expect(jugement.anomalies).toContain("travaux_echoues");
@@ -151,7 +151,7 @@ describe("ce qui ne peut pas passer pour un succès", () => {
     const jugement = jugerLeBattement(
       battement({
         approvisionnement: { ouvertes: 1, refus: { employe_inconnu: 1 } },
-        travaux: { traites: 0, echoues: 2, motifs: {} },
+        travaux: { traites: 0, echoues: 2, motifs: {}, sansAction: 0 },
         capacitesEcartees: ["x"],
       }),
     );
@@ -171,7 +171,7 @@ describe("une entreprise bloquée au milieu de dix qui travaillent", () => {
     // sans que rien ne le signale.
     const jugement = jugerLeBattement(
       battement({
-        travaux: { traites: 11, echoues: 0, motifs: { travail_acheve: 10, capacite_absente: 1 } },
+        travaux: { traites: 11, echoues: 0, motifs: { travail_acheve: 10, capacite_absente: 1 }, sansAction: 0 },
         compteur: { aNotreCharge: 1 },
       }),
     );
@@ -185,8 +185,42 @@ describe("une entreprise bloquée au milieu de dix qui travaillent", () => {
     // notre propre canal pour un outil que nous n'avons pas à activer à sa place.
     const jugement = jugerLeBattement(
       battement({
-        travaux: { traites: 11, echoues: 0, motifs: { travail_acheve: 10, capacite_absente: 1 } },
+        travaux: { traites: 11, echoues: 0, motifs: { travail_acheve: 10, capacite_absente: 1 }, sansAction: 0 },
         compteur: { aNotreCharge: 0 },
+      }),
+    );
+
+    expect(jugement.verdict).toBe("normal");
+  });
+});
+
+describe("un run qui a payé sans rien produire", () => {
+  it("⭐ dix pas, aucune action : ANORMAL, quels que soient les motifs", () => {
+    // ⚠️ LE CAS 4b DE LA RÉPÉTITION GÉNÉRALE. Un fournisseur qui répond 200 avec un contenu vide
+    // fait tourner l'employée sur tout son budget : `{pas_suivant: 9, budget_epuise: 1}`. Les deux
+    // motifs veulent dire « le travail avance », et ils ne mentent pas — des pas ont bien eu lieu.
+    // C'est le RÉSULTAT qui manque, et aucun motif ne le dit.
+    const jugement = jugerLeBattement(
+      battement({
+        travaux: {
+          traites: 1,
+          echoues: 0,
+          motifs: { pas_suivant: 9, budget_epuise: 1 },
+          sansAction: 1,
+        },
+      }),
+    );
+
+    expect(jugement.verdict).toBe("anormal");
+    expect(jugement.anomalies).toContain("run_sans_action");
+  });
+
+  it("un budget épuisé APRÈS avoir agi reste normal", () => {
+    // Un run qui a fait dix vraies actions et manque de budget n'est pas en panne : il a travaillé
+    // et il reprendra demain. Le signaler apprendrait à ignorer le canal.
+    const jugement = jugerLeBattement(
+      battement({
+        travaux: { traites: 1, echoues: 0, motifs: { budget_epuise: 1 }, sansAction: 0 },
       }),
     );
 
@@ -211,7 +245,7 @@ describe("du travail était-il réellement dû", () => {
     ).toBe(true);
     expect(jugerLeBattement(battement({ reprise: { reprises: 1 } })).duTravailEtaitDu).toBe(true);
     expect(
-      jugerLeBattement(battement({ travaux: { traites: 1, echoues: 0, motifs: { pas_suivant: 1 } } }))
+      jugerLeBattement(battement({ travaux: { traites: 1, echoues: 0, motifs: { pas_suivant: 1 }, sansAction: 0 } }))
         .duTravailEtaitDu,
     ).toBe(true);
   });
@@ -221,7 +255,7 @@ describe("le jugement est reproductible", () => {
   it("mêmes chiffres, même verdict — à chaque appel", () => {
     const entree = battement({
       approvisionnement: { ouvertes: 3, refus: { aucun_sujet_eligible: 1 } },
-      travaux: { traites: 3, echoues: 0, motifs: { report_de_quota: 3 } },
+      travaux: { traites: 3, echoues: 0, motifs: { report_de_quota: 3 }, sansAction: 0 },
     });
     const premier = jugerLeBattement(entree);
     for (let i = 0; i < 20; i += 1) expect(jugerLeBattement(entree)).toEqual(premier);

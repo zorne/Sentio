@@ -49,6 +49,7 @@ import {
   ACTION_ENGAGEE,
   ACTION_EXECUTEE,
   ATTENTION_REQUISE,
+  REPRISE_APRES_OUTIL,
   CONTEXTE_ASSEMBLE,
   NATURES_TERMINALES,
   PAS_REPORTE,
@@ -377,6 +378,25 @@ export function reconstruireEtatRun(entrees: readonly JournalEntry[]): Reconstru
         if (etape.kind === RUN_REPORTE) pasDuCycle = 0;
         break;
       }
+
+      case REPRISE_APRES_OUTIL:
+        // ⚠️ **CE CAS MANQUAIT, ET LA REPRISE NE REPRENAIT DONC RIEN.** Sans lui, l'événement
+        // tombait dans le vide : la phase restait `attention_requise`, `peutReprendre` refusait, et
+        // la boucle remettait aussitôt de côté la mission que la reprise venait de remettre en
+        // file. Le dirigeant activait l'outil manquant, et il ne se passait toujours rien — le
+        // dommage même que la reprise avait été écrite pour réparer.
+        //
+        // Trouvé par la répétition générale (`docs/36-fermer-le-silence.md`, cas 10), et par elle
+        // seule : le test unitaire de la reprise éprouve le module, jamais la boucle qui le suit.
+        //
+        // ⚠️ Et le budget de pas REPART DE ZÉRO, comme après un report de run. Une mission arrêtée
+        // hier puis débloquée aujourd'hui entame un nouveau cycle de travail : lui laisser le
+        // compteur de l'ancien la ferait se refermer au premier pas, en boucle, sans jamais
+        // avancer.
+        phase = "en_cours";
+        pasDuCycle = 0;
+        actionEnAttente = null;
+        break;
 
       case ATTENTION_REQUISE:
         // Ni fin ni échec : le run est **arrêté**, et seul un geste humain le rouvrira. Aucune

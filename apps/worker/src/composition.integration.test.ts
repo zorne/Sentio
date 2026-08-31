@@ -345,6 +345,7 @@ describeIfDatabase("EXEC-18 — le worker démarre et sert un battement signé",
       "anomalies",
       "echoues",
       "motifs",
+      "sansAction",
       "traites",
       "verdict",
     ]);

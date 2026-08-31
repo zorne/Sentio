@@ -31,7 +31,7 @@ function handler(overrides: {
   const respond = createHeartbeatHandler({
     secret: () => ("secret" in overrides ? overrides.secret : SECRET),
     clock: horloge(overrides.now ?? MAINTENANT),
-    executerLesTravauxDus: overrides.travaux ?? (async () => ({ traites: 0, echoues: 0, motifs: {}, verdict: "normal" as const, anomalies: [] })),
+    executerLesTravauxDus: overrides.travaux ?? (async () => ({ traites: 0, echoues: 0, motifs: {}, sansAction: 0, verdict: "normal" as const, anomalies: [] })),
     log: (record) => journal.push(record),
   });
   return { respond, journal };
@@ -103,7 +103,7 @@ describe("verifyHeartbeat — qui a le droit de réveiller l'exécution", () => 
 
 describe("le point d'entrée du battement", () => {
   it("exécute les travaux dus et rend le rapport", async () => {
-    const { respond, journal } = handler({ travaux: async () => ({ traites: 3, echoues: 1, motifs: { travail_acheve: 3 }, verdict: "anormal" as const, anomalies: ["travaux_echoues"] }) });
+    const { respond, journal } = handler({ travaux: async () => ({ traites: 3, echoues: 1, motifs: { travail_acheve: 3 }, sansAction: 0, verdict: "anormal" as const, anomalies: ["travaux_echoues"] }) });
     const reponse = await respond(requete(await signHeartbeat(SECRET, MAINTENANT)));
 
     expect(reponse.status).toBe(200);
@@ -114,6 +114,7 @@ describe("le point d'entrée du battement", () => {
       traites: 3,
       echoues: 1,
       motifs: { travail_acheve: 3 },
+      sansAction: 0,
       verdict: "anormal",
       anomalies: ["travaux_echoues"],
     });
@@ -125,7 +126,7 @@ describe("le point d'entrée du battement", () => {
     const { respond } = handler({
       travaux: async () => {
         appele = true;
-        return { traites: 0, echoues: 0, motifs: {}, verdict: "normal" as const, anomalies: [] };
+        return { traites: 0, echoues: 0, motifs: {}, sansAction: 0, verdict: "normal" as const, anomalies: [] };
       },
     });
     const reponse = await respond(requete("1754474400000.signature-fausse"));
@@ -184,7 +185,7 @@ describe("le point d'entrée du battement", () => {
     const respond = createHeartbeatHandler({
       secret: () => secretCourant,
       clock: horloge(MAINTENANT),
-      executerLesTravauxDus: async () => ({ traites: 0, echoues: 0, motifs: {}, verdict: "normal" as const, anomalies: [] }),
+      executerLesTravauxDus: async () => ({ traites: 0, echoues: 0, motifs: {}, sansAction: 0, verdict: "normal" as const, anomalies: [] }),
       log: () => {},
     });
 

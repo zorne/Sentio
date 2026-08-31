@@ -51,6 +51,22 @@ export interface RapportDApprovisionnement {
   readonly ouvertes: number;
   /** Employés pour lesquels rien n'a été ouvert, par raison. Un chiffre sans raison n'aide pas. */
   readonly refus: Readonly<Record<string, number>>;
+  /**
+   * Les employés dont AUCUN travail n'a pu s'ouvrir faute d'outil activé.
+   *
+   * ⚠️ **LE CAS 3, ET IL EST DIFFÉRENT DE TOUS LES AUTRES.** Partout ailleurs, le silence se
+   * constate sur du travail COMMENCÉ : une mission bloquée, un run reporté. Ici il n'y a pas de
+   * mission — elle ne s'ouvre même pas — et tous nos détecteurs raisonnaient sur du travail
+   * existant. Le dirigeant ne pouvait donc jamais apprendre qu'il lui manquait un outil.
+   *
+   * Or c'est littéralement la promesse du produit : « elle demande de l'aide uniquement quand une
+   * limite réelle l'en empêche ». Une limite réelle l'en empêche, et elle ne demandait rien.
+   *
+   * La matière première existait depuis `451780c` — `justification.ecartes` porte
+   * « aucune_capacite_active » — et attendait un mécanisme. Le voici : ces employés entrent dans
+   * le compteur comme un cycle muet dont la cause est du ressort du dirigeant.
+   */
+  readonly sansOutil: readonly { tenantId: TenantId; employeeId: EmployeeId }[];
 }
 
 /** Le jour civil UTC, au format `AAAA-MM-JJ` — jamais le fuseau du processus, qui déciderait
@@ -73,13 +89,14 @@ export async function approvisionnerLeJour(
   const reglages = deps.reglages ?? REGLAGES_RUNTIME_PAR_DEFAUT;
   const jour = jourUtc(maintenant);
   const refus: Record<string, number> = {};
+  const sansOutil: { tenantId: TenantId; employeeId: EmployeeId }[] = [];
   let ouvertes = 0;
   let examines = 0;
 
   for (const employe of await deps.store.employesAExaminer()) {
     examines += 1;
     try {
-      ouvertes += await approvisionnerUnEmploye(deps, reglages, jour, employe, refus);
+      ouvertes += await approvisionnerUnEmploye(deps, reglages, jour, employe, refus, sansOutil);
     } catch (error) {
       refus["erreur"] = (refus["erreur"] ?? 0) + 1;
       await journaliser(deps, employe, APPROVISIONNEMENT_SANS_OUVERTURE, {
@@ -90,7 +107,7 @@ export async function approvisionnerLeJour(
     }
   }
 
-  return { examines, ouvertes, refus };
+  return { examines, ouvertes, refus, sansOutil };
 }
 
 async function approvisionnerUnEmploye(
@@ -99,6 +116,7 @@ async function approvisionnerUnEmploye(
   jour: string,
   employe: { tenantId: TenantId; employeeId: EmployeeId; gisement: string },
   refus: Record<string, number>,
+  sansOutil: { tenantId: TenantId; employeeId: EmployeeId }[],
 ): Promise<number> {
   const verdict = await deps.store.verdict(employe.tenantId, employe.employeeId);
 
@@ -147,6 +165,16 @@ async function approvisionnerUnEmploye(
   });
 
   if (plan.kind === "rien") {
+    // ⚠️ AUCUNE NATURE DE TRAVAIL N'A SURVÉCU AU FILTRE DES CAPACITÉS. Ce n'est pas « rien à
+    // faire » : c'est « rien de faisable », et c'est le dirigeant qui tient la solution. La
+    // distinction se lit dans la justification — des travaux écartés, et aucun retenu.
+    if (
+      recolte.justification !== null &&
+      recolte.justification.parts.length === 0 &&
+      recolte.justification.ecartes.length > 0
+    ) {
+      sansOutil.push({ tenantId: employe.tenantId, employeeId: employe.employeeId });
+    }
     refus[plan.raison] = (refus[plan.raison] ?? 0) + 1;
     if (plan.bloqueLaJournee) {
       await deps.store.enregistrerAucuneOuverture({

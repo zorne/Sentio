@@ -341,6 +341,8 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
         employeeId: expect.any(String),
         motif: "pas_suivant",
         manque: null,
+        // Le run a bien exécuté une action : il n'a pas payé pour rien.
+        aPayeSansRienProduire: false,
       },
     ]);
 

@@ -107,7 +107,7 @@ describe("les quatre issues d'une demande, et ce qui les distingue", () => {
     const { engine, journal } = moteurPolitique();
     const decision = await engine.refuse(demande({ capabilityKey: "faire_la_compta" }), [
       "envoyer_message",
-    ]);
+    ], "hors_du_perimetre");
 
     expect(decision.outcome).toBe("refuse");
     expect(journal.entrees.map((e) => e.kind)).toContain("politique_refuse");
