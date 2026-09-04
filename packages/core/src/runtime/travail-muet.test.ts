@@ -25,6 +25,10 @@ function pas(modifications: Partial<PasDuBattement> = {}): PasDuBattement {
     motif: "travail_acheve",
     manque: null,
     aPayeSansRienProduire: false,
+    // Le défaut du constructeur : une action a bien été exécutée. Les cas qui éprouvent la règle
+    // du taux le remplacent par zéro — c'est le seul chiffre qui distingue « il a jugé » de
+    // « la chaîne tourne à vide ».
+    actionsExecutees: 1,
     ...modifications,
   };
 }
@@ -109,6 +113,30 @@ describe("le relevé par employé", () => {
     expect(releve[0]?.aAbouti).toBe(false);
     expect(releve[0]?.blocages).toHaveLength(2);
     expect(releve[0]?.blocages.every((blocage) => blocage.destinataire === "nous")).toBe(true);
+  });
+
+  it("⭐ une mission terminée SANS avoir rien exécuté ne compte pas comme un aboutissement", () => {
+    // ⚠️ LA RÈGLE DU TAUX. Prise seule, une mission terminée sans action est légitime : le modèle
+    // a jugé qu'il n'y avait rien à faire. C'est le compteur qui en fait un signal, en la répétant
+    // — le mécanisme de `garde_du_silence`, pas un second.
+    const releve = releverParEmploye([pas({ motif: "travail_acheve", actionsExecutees: 0 })]);
+
+    expect(releve[0]?.aAbouti).toBe(false);
+    expect(releve[0]?.blocages[0]?.motif).toBe("travail_acheve_sans_action");
+    // Le dirigeant n'y peut rien : c'est notre chaîne qui tourne à vide.
+    expect(releve[0]?.blocages[0]?.destinataire).toBe("nous");
+  });
+
+  it("⭐ mais une mission qui atteint une PERSONNE aboutit sans action, et c'est voulu", () => {
+    // Le Policy Engine suspend AVANT d'exécuter : un cycle qui pose une question au dirigeant a
+    // légitimement zéro action. Le compter muet ferait sonner l'alarme au moment précis où le
+    // produit fait ce qu'on lui demande.
+    for (const motif of ["accord_attendu", "verification_humaine"]) {
+      expect(
+        releverParEmploye([pas({ motif, actionsExecutees: 0 })])[0]?.aAbouti,
+        motif,
+      ).toBe(true);
+    }
   });
 
   it("une mission arrivée jusqu'à une personne a ABOUTI", () => {

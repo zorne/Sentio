@@ -141,6 +141,7 @@ describeIfDatabase("La reprise après qu'un outil est apparu", () => {
   async function missionBloqueeDe(
     entreprise: { tenantId: TenantId; employeeId: EmployeeId },
     motif: string,
+    sujet = "lead",
   ): Promise<string> {
     const [lead] = await sql.query<{ id: string }>(
       `insert into lead (tenant_id, company_name, email, source, qualification)
@@ -150,9 +151,9 @@ describeIfDatabase("La reprise après qu'un outil est apparu", () => {
     const [tache] = await sql.query<{ id: string }>(
       `insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id, state)
        select $1, $2, (select id from objective where tenant_id = $1 and state = 'actif'),
-              'lead', $3, 'needs_attention'
+              $4, $3, 'needs_attention'
        returning id`,
-      [entreprise.tenantId, entreprise.employeeId, lead?.id],
+      [entreprise.tenantId, entreprise.employeeId, lead?.id, sujet],
     );
     await sql.query(
       `insert into execution_event (tenant_id, task_id, employee_id, kind, payload)
@@ -318,6 +319,40 @@ describeIfDatabase("La reprise après qu'un outil est apparu", () => {
       [premiere.tenantId],
     );
     expect(Number(pourLaPremiere?.n)).toBeLessThanOrEqual(plafond);
+  });
+
+  it("⭐ une entreprise ne s'affame plus ELLE-MÊME", async () => {
+    // ⚠️ LE RÉSIDU DE FAMINE, ET IL VENAIT DE L'ASSIETTE DE LA BORNE. Elle comptait les missions
+    // EXAMINÉES : les N plus anciennes d'une entreprise, si leur cause était toujours là, étaient
+    // écartées — mais elles avaient consommé les N places, et rien d'autre n'était regardé. La
+    // mission suivante n'était jamais reprise, indéfiniment.
+    //
+    // La borne compte désormais les missions REPRISES. Elle protège du coût, or une mission
+    // écartée ne coûte rien : les capacités de l'employé sont lues une seule fois, et l'examen se
+    // réduit à une comparaison en mémoire.
+    const entreprise = await entrepriseAvecMissionBloquee({
+      motif: "capacite_absente",
+      capaciteActivee: null,
+    });
+    // Assez de missions DURABLEMENT bloquées pour saturer l'ancienne borne, et elles sont les PLUS
+    // ANCIENNES : c'est ce qui les mettait en tête de file pour toujours. Leur sujet n'est servi
+    // par aucune capacité — leur cause ne disparaîtra donc jamais.
+    for (let i = 0; i < REGLAGES_RUNTIME_PAR_DEFAUT.reprisesMaxParCycle + 2; i++) {
+      await missionBloqueeDe(entreprise, "capacite_absente", "facture");
+    }
+    // Le dirigeant active l'outil, et une mission dont la cause A disparu arrive derrière elles.
+    await sql.query(
+      `insert into employee_capability (tenant_id, employee_id, capability_id, enabled)
+       select $1, $2, c.id, true from capability c where c.key = 'qualifier.prospect'`,
+      [entreprise.tenantId, entreprise.employeeId],
+    );
+    const derniere = await missionBloqueeDe(entreprise, "capacite_absente");
+
+    await reprendreLesMissionsDebloquees(deps(registreQuiSert(["qualifier.prospect"])));
+
+    // Les sept anciennes restent écartées, à raison : rien ne sert leur sujet. Mais elles ne
+    // barrent plus le passage — la dernière est reprise, alors qu'elle est la plus récente.
+    expect(await repriseJournalisee(derniere)).toBe(true);
   });
 
   it("⭐ une entreprise durablement bloquée n'affame plus les autres", async () => {

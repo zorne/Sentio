@@ -118,7 +118,12 @@ describeIfDatabase("Étape 8 — la répétition générale du silence", () => {
   let modele: Server;
   let portDuModele = 0;
   /** Ce que le faux fournisseur répond. Changé par les cas qui coupent le modèle. */
-  let humeurDuModele: "propose" | "modele_retire" | "reponse_vide" | "sans_contenu" = "propose";
+  let humeurDuModele:
+    | "propose"
+    | "modele_retire"
+    | "reponse_vide"
+    | "sans_contenu"
+    | "termine_sans_agir" = "propose";
   /** Ce que le modèle propose quand il propose. Les cas qui éprouvent les gardes le changent. */
   let capaciteProposee = "qualifier.prospect";
   let tlsInitial: string | undefined;
@@ -234,12 +239,17 @@ describeIfDatabase("Étape 8 — la répétition générale du silence", () => {
         const contenu =
           humeurDuModele === "reponse_vide"
             ? ""
-            : JSON.stringify({
-                action: "agir",
-                capacite: capaciteProposee,
-                entree: {},
-                pourquoi: "éprouver la chaîne de bout en bout",
-              });
+            : humeurDuModele === "termine_sans_agir"
+              ? JSON.stringify({
+                  action: "terminer",
+                  pourquoi: "il n'y a rien à faire sur ce sujet",
+                })
+              : JSON.stringify({
+                  action: "agir",
+                  capacite: capaciteProposee,
+                  entree: {},
+                  pourquoi: "éprouver la chaîne de bout en bout",
+                });
         reponse.writeHead(200, { "content-type": "application/json" });
         reponse.end(
           JSON.stringify(
@@ -596,6 +606,59 @@ describeIfDatabase("Étape 8 — la répétition générale du silence", () => {
       humeurDuModele = "propose";
     }
   }, 300_000);
+
+  it("⭐ cas 4c — le modèle conclut toujours « rien à faire », et n'agit jamais", async () => {
+    // ⚠️ LA VARIANTE QUE LA RÈGLE GÉNÉRALE DEVAIT ATTRAPER, ET QU'ON N'AVAIT PAS IMAGINÉE. Le
+    // modèle répond parfaitement : un JSON lisible, une action « terminer », un motif. Chaque run
+    // se referme sur `travail_acheve` — un motif qui veut dire « le travail a avancé ». Rien n'est
+    // jamais exécuté.
+    //
+    // ⚠️ **PRIS ISOLÉMENT, C'EST LÉGITIME** : une mission ouverte sur un sujet qui s'avère ne rien
+    // exiger, c'est un jugement rendu, pas une panne. C'est la RÉPÉTITION qui fait le signal, et
+    // c'est le compteur qui la mesure — le mécanisme de `garde_du_silence`, pas un second.
+    const { tenantId } = await entreprise({ prospects: 4 });
+    humeurDuModele = "termine_sans_agir";
+    const env = environnement({
+      [VARIABLES.principal.url]: `https://127.0.0.1:${portDuModele}/v1`,
+    });
+
+    let observation = await battementReel({
+      tenantId,
+      env,
+      maintenant: new Date("2026-09-07T06:00:00.000Z"),
+      travauxMax: 1,
+    });
+    for (const jour of ["2026-09-08T06:00:00.000Z", "2026-09-09T06:00:00.000Z"]) {
+      observation = await battementReel({
+        tenantId,
+        env,
+        maintenant: new Date(jour),
+        travauxMax: 1,
+      });
+    }
+
+    const compteur = observation.rapport["compteur"] as { aNotreCharge: number };
+
+    noter(
+      "4c — le modèle conclut toujours « rien à faire »",
+      "un fournisseur qui répond un `terminer` parfaitement lisible, trois journées de suite",
+      "un cycle isolé reste normal ; la répétition devient anormale",
+      `motifs \`${JSON.stringify(observation.motifs)}\` — un « terminé » à chaque fois — mais zéro action exécutée : le compteur le retient (\`aNotreCharge: ${compteur.aNotreCharge}\`) et le verdict devient \`${observation.verdict}\` (${observation.anomalies.join(", ") || "aucune"}), workflow **${observation.workflow}**`,
+      observation.verdict === "anormal" ? "oui" : "non",
+    );
+
+    // Le motif dit « terminé », et pourtant le cycle est compté muet : c'est exactement ce que la
+    // règle du taux devait produire.
+    expect(observation.motifs["travail_acheve"]).toBeGreaterThan(0);
+    expect(compteur.aNotreCharge).toBeGreaterThan(0);
+    expect(observation.anomalies).toContain("travail_bloque_chez_nous");
+    expect(observation.verdict).toBe("anormal");
+    expect(observation.workflow).toBe(1);
+
+    // ⚠️ ET LE DIRIGEANT N'EN SAIT RIEN, à raison : il ne peut rien y faire. C'est notre chaîne qui
+    // tourne à vide, et le canal client doit rester silencieux.
+    expect(observation.notifications).toHaveLength(0);
+  }, 60_000);
 
   // ═══════════════════════════════════════════════════════════════════════════════════════════
   // Cas 5 — le battement ne part plus. DÉJÀ ARRIVÉ POUR DE VRAI, ET EN DEUX MOITIÉS.

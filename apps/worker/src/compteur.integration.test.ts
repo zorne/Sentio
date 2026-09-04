@@ -122,6 +122,7 @@ describeIfDatabase("Le compteur, et à qui il parle", () => {
       motif: "capacite_absente",
       manque,
       aPayeSansRienProduire: false,
+      actionsExecutees: 0,
     };
   }
 
@@ -247,6 +248,8 @@ describeIfDatabase("Le compteur, et à qui il parle", () => {
           motif: "travail_acheve",
           manque: null,
           aPayeSansRienProduire: false,
+          // Une action a bien été exécutée : sans elle, un « terminé » ne referme plus la série.
+          actionsExecutees: 1,
         },
       ],
       MERCREDI,
@@ -286,6 +289,7 @@ describeIfDatabase("Le compteur, et à qui il parle", () => {
           motif: "pas_suivant",
           manque: null,
           aPayeSansRienProduire: false,
+          actionsExecutees: 1,
         },
       ],
       LUNDI,

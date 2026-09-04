@@ -41,8 +41,10 @@
  *   · **La cause disparue.** On ne reprend que si une capacité applicable au sujet est MAINTENANT
  *     activée et servie. Sans ce contrôle, une mission encore bloquée serait reprise à chaque
  *     cycle, échouerait, reviendrait — une boucle inutile.
- *   · **La borne.** Au plus `reprisesMaxParCycle` par passage **et par entreprise** : une borne
- *     globale laissait une seule entreprise durablement bloquée geler tout le parc.
+ *   · **La borne.** Au plus `reprisesMaxParCycle` REPRISES par passage et par entreprise. Elle compte
+ *     ce qui coûte — une remise en file — et non ce qui ne coûte rien : une mission dont la cause
+ *     est toujours là est écartée sans occuper de place. Une borne globale, ou une borne sur les
+ *     missions EXAMINÉES, laissait une entreprise durablement bloquée geler le parc ou elle-même.
  */
 
 import type { ReglagesRuntime } from "@sentio/config";
@@ -116,6 +118,22 @@ export async function reprendreLesMissionsDebloquees(
   // contrainte de vérification. C'est ce plafond, et non une intention, qui garantit que l'alerte
   // précède la purge d'une vingtaine de jours. Le desserrer au-delà rendrait cette limite-ci
   // silencieusement destructrice, et il faudrait alors persister le motif.
+  // ⚠️ **LA BORNE COMPTE LES MISSIONS REPRISES, PAS LES MISSIONS EXAMINÉES.** C'était l'inverse, et
+  // ça laissait un résidu de famine même une fois la borne passée par entreprise : les N plus
+  // anciennes missions d'une entreprise, si leur cause est toujours là, sont écartées — mais elles
+  // avaient consommé les N places, et rien d'autre n'était regardé. Une entreprise pouvait donc
+  // s'affamer elle-même indéfiniment.
+  //
+  // Le raisonnement qui le corrige tient en une phrase : **la borne protège du COÛT, et une mission
+  // écartée ne coûte rien.** Elle ne produit ni écriture, ni appel de modèle — seulement une
+  // comparaison en mémoire, puisque les capacités de l'employé sont lues une seule fois. On examine
+  // donc autant qu'il faut, et on reprend au plus N.
+  //
+  // ⚠️ Ce que ça coûte, écrit ici plutôt que découvert plus tard : la LECTURE n'est plus bornée.
+  // Elle croît avec le nombre de missions durablement bloquées — une quantité qui est elle-même
+  // surveillée (`etat_de_sante`, « missions immobiles » et « missions en échec »). Si elle devenait
+  // grande, c'est qu'il y a un problème à traiter, pas une borne à remettre.
+  //
   // ⚠️ **LA BORNE EST PAR ENTREPRISE, ET ELLE ÉTAIT GLOBALE.** Un simple `limit N` servait les N
   // missions bloquées les plus anciennes, toutes entreprises confondues. Or une mission dont la
   // cause ne disparaît jamais — un moteur qu'on ne montera pas de sitôt — reste en tête de cette
@@ -134,36 +152,43 @@ export async function reprendreLesMissionsDebloquees(
   // N plus anciennes missions sont durablement bloquées. Le dommage est alors contenu à elle, et
   // c'est ce qui rend ce repli acceptable.
   const bloquees = await deps.sql.query<MissionBloquee>(
-    `select tenant_id, task_id, employee_id, subject_kind
-       from (
-         select t.tenant_id, t.id as task_id, t.employee_id, t.subject_kind,
-                row_number() over (partition by t.tenant_id order by t.created_at, t.id) as rang
-           from task t
-          where t.state = 'needs_attention'
-            and (
-              select e.payload ->> 'motif'
-                from execution_event e
-               where e.tenant_id = t.tenant_id and e.task_id = t.id and e.kind = $1
-               order by e.seq desc
-               limit 1
-            ) = 'capacite_absente'
-       ) classees
-      where rang <= $2
-      order by tenant_id, rang`,
-    [ATTENTION_REQUISE, reglages.reprisesMaxParCycle],
+    `select t.tenant_id, t.id as task_id, t.employee_id, t.subject_kind
+       from task t
+      where t.state = 'needs_attention'
+        and (
+          select e.payload ->> 'motif'
+            from execution_event e
+           where e.tenant_id = t.tenant_id and e.task_id = t.id and e.kind = $1
+           order by e.seq desc
+           limit 1
+        ) = 'capacite_absente'
+      order by t.tenant_id, t.created_at, t.id`,
+    [ATTENTION_REQUISE],
   );
 
+  const reprisesParEntreprise = new Map<string, number>();
+  /** Les capacités servies, lues UNE FOIS par employé : c'est ce qui rend l'examen gratuit. */
+  const capacitesParEmploye = new Map<string, readonly string[]>();
   let reprises = 0;
   let toujoursBloquees = 0;
 
   for (const mission of bloquees) {
+    const dejaReprises = reprisesParEntreprise.get(mission.tenant_id) ?? 0;
+    if (dejaReprises >= reglages.reprisesMaxParCycle) {
+      // Cette entreprise a eu sa part pour ce cycle. Le reste attend le suivant — et c'est une
+      // attente bornée, contrairement à la famine que cette borne produisait avant.
+      toujoursBloquees += 1;
+      continue;
+    }
+
     try {
-      if (!(await laCauseADisparu(deps, mission))) {
+      if (!(await laCauseADisparu(deps, mission, capacitesParEmploye))) {
         toujoursBloquees += 1;
         continue;
       }
       await remettreEnFile(deps, mission);
       reprises += 1;
+      reprisesParEntreprise.set(mission.tenant_id, dejaReprises + 1);
     } catch (erreur) {
       toujoursBloquees += 1;
       await deps.journal.append({
@@ -186,19 +211,33 @@ export async function reprendreLesMissionsDebloquees(
  * divergeaient, on reprendrait des missions que le pas suivant rebloquerait aussitôt : une boucle
  * qui ne coûte pas d'appel de modèle, mais qui ne finit jamais.
  */
-async function laCauseADisparu(deps: RepriseDeps, mission: MissionBloquee): Promise<boolean> {
-  const actives = await deps.sql.query<{ key: string }>(
-    `select c.key
-       from employee_capability ec
-       join capability c on c.id = ec.capability_id
-      where ec.tenant_id = $1 and ec.employee_id = $2 and ec.enabled`,
-    [mission.tenant_id, mission.employee_id],
-  );
+async function laCauseADisparu(
+  deps: RepriseDeps,
+  mission: MissionBloquee,
+  cache: Map<string, readonly string[]>,
+): Promise<boolean> {
+  // ⚠️ UNE LECTURE PAR EMPLOYÉ, PAS PAR MISSION. C'est ce qui rend l'examen assez bon marché pour
+  // qu'on puisse l'exercer sans borne : un employé dont vingt missions sont bloquées ne coûte plus
+  // vingt lectures identiques, mais une seule. Sans ça, « examine autant qu'il faut » remplacerait
+  // une famine par une facture.
+  const cle = `${mission.tenant_id}/${mission.employee_id}`;
+  let actives = cache.get(cle);
+  if (actives === undefined) {
+    actives = (
+      await deps.sql.query<{ key: string }>(
+        `select c.key
+           from employee_capability ec
+           join capability c on c.id = ec.capability_id
+          where ec.tenant_id = $1 and ec.employee_id = $2 and ec.enabled`,
+        [mission.tenant_id, mission.employee_id],
+      )
+    ).map((ligne) => ligne.key);
+    cache.set(cle, actives);
+  }
 
   return actives.some(
-    (ligne) =>
-      capaciteApplicableAuSujet(ligne.key, mission.subject_kind) &&
-      deps.registry.sertLaCapacite(ligne.key),
+    (key) =>
+      capaciteApplicableAuSujet(key, mission.subject_kind) && deps.registry.sertLaCapacite(key),
   );
 }
 

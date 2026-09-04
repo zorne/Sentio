@@ -165,6 +165,7 @@ fichier réel**, de sorte qu'elle ne puisse pas diverger de ce qui tourne.
 | 3 — travail écarté faute de capacité | un employé sans aucun outil activé, trois journées | aucune mission ouverte, et pourtant une notification nommant les outils à activer | ✅ |
 | 4a — modèle retiré | un fournisseur HTTP qui répond 404 `model_not_found` | verdict `anormal`, workflow **1**, aucun ping | ✅ |
 | 4b — modèle qui répond du vide | un fournisseur HTTP qui répond 200 avec un contenu vide | mêmes motifs, mais `sansAction` les dément : verdict `anormal` (`run_sans_action`), workflow **1**, aucun ping | ✅ |
+| 4c — modèle qui conclut toujours « rien à faire » | un fournisseur qui répond un `terminer` parfaitement lisible, trois journées | `{travail_acheve}` à chaque cycle, zéro action exécutée : le compteur le retient, verdict `anormal` (`travail_bloque_chez_nous`), et **rien chez le dirigeant** | ✅ |
 | 5a — un secret manque | la garde réelle du workflow, secrets vides | code de sortie **1** | ✅ |
 | 5b — le planificateur s'est tu | trace de fraîcheur vieillie de trois heures | alerte « battement absent » à 180 minutes | ⚠️ partiel |
 | 6a — aucun fournisseur conforme | opt-out déclaré non prouvé | `NonCompliantRouting` en exception, verdict `anormal`, workflow **1** | ✅ |
@@ -205,6 +206,30 @@ plus : **faire avancer le pas est un geste mécanique de protection ; compter qu
 avancé est un jugement.** Les mêler était exactement le défaut de `traites`, qui s'incrémentait dès
 qu'un pas ne levait pas d'exception.
 
+#### La même règle, un étage plus haut : le taux
+
+Ce correctif-là ne couvre qu'un run qui épuise son budget. Une variante y échappait, et elle a été
+trouvée en cherchant : **un modèle qui répond parfaitement et conclut toujours « rien à faire ».**
+Chaque run se referme sur `travail_acheve` — un motif qui veut dire « le travail a avancé » — et
+rien n'est jamais exécuté.
+
+⚠️ **Elle n'a PAS été corrigée au niveau du run, et c'est délibéré.** Un run qui se termine tôt
+sans action peut être parfaitement légitime : une mission ouverte sur un sujet qui s'avère ne rien
+exiger, c'est un jugement rendu, pas une panne. Durcir la règle par run produirait de fausses
+alarmes sur du fonctionnement normal — l'accoutumance, encore.
+
+Le signal est à un autre étage : **le taux**. Une mission terminée sans action ne veut rien dire ;
+un cycle entier sans une seule action exécutée est un système cassé. La règle vit donc dans le
+COMPTEUR : un cycle sans action exécutée n'est pas un aboutissement, et c'est le mécanisme existant
+— seuil en base, `prevenu_le`, remise à zéro — qui agrège. Un cycle muet ne dit rien ; trois
+journées de suite en disent long. C'est exactement le raisonnement de `garde_du_silence`, et c'est
+son mécanisme, pas un second.
+
+Deux exceptions, et elles sont nécessaires : `accord_attendu` et `verification_humaine` atteignent
+une **personne**. Le Policy Engine suspend avant d'exécuter quoi que ce soit, donc un cycle qui
+pose une question au dirigeant a légitimement zéro action. Le compter muet ferait sonner l'alarme
+au moment précis où le produit fait ce qu'on lui demande.
+
 **10 — l'étape 3 ne tient pas de bout en bout, pour deux raisons indépendantes.**
 
   1. **La reprise est affamée.** Elle prend les `reprisesMaxParCycle` (5) missions bloquées les
@@ -228,8 +253,17 @@ d'équité que le FIFO du gisement, à un autre étage.
 
 ⚠️ Coût assumé : le travail d'un cycle croît avec le nombre d'entreprises au lieu d'être plafonné
 une fois pour toutes. C'est le bon compromis — chacune a sa part — et il reste borné pour chacune.
-Ce qui reste : une entreprise peut encore s'affamer elle-même si ses N plus anciennes missions sont
-durablement bloquées. Le dommage est alors contenu à elle.
+
+**Et le résidu a été fermé lui aussi.** Une entreprise pouvait encore s'affamer elle-même : la
+borne comptait les missions EXAMINÉES, donc ses N plus anciennes, si leur cause était toujours là,
+étaient écartées après avoir consommé les N places. La borne compte désormais les missions
+**reprises** — elle protège du coût, et une mission écartée ne coûte rien. Pour que ce soit vrai,
+les capacités de l'employé sont lues **une fois par employé** et non par mission : sans ça,
+« examine autant qu'il faut » aurait remplacé une famine par une facture.
+
+⚠️ Ce que ça coûte, écrit plutôt que découvert : la LECTURE n'est plus bornée. Elle croît avec le
+nombre de missions durablement bloquées — une quantité qui est elle-même surveillée. Si elle
+devenait grande, c'est qu'il y a un problème à traiter, pas une borne à remettre.
 
 Et le cas 10 de la répétition tourne désormais **avec les réglages réels**, sans borne relevée :
 c'est ce qui le rend probant.
@@ -286,9 +320,13 @@ on le suppose. Et supposer qu'une alarme fonctionne est précisément le défaut
 La répétition a eu lieu, elle a trouvé quatre trous, et quatre sur quatre ont été traités — le
 septième cas excepté, laissé ouvert par décision et documenté comme tel.
 
-**Douze cas sur treize sonnent, un partiellement (le cas 5b, dont l'autre moitié vit chez
-healthchecks.io), un ouvert et assumé.** Chaque alarme a été vue sonner sur un vrai battement, un
-vrai fournisseur et le workflow réel.
+**Treize cas sur quatorze sonnent, un partiellement (le cas 5b, dont l'autre moitié vit chez
+healthchecks.io), un ouvert et assumé (le cas 7).** Chaque alarme a été vue sonner sur un vrai
+battement, un vrai fournisseur et le workflow réel.
+
+⚠️ **Le cas 5b ne se prouve qu'en armant.** L'alarme du guetteur externe ne se déclenche que dans
+le monde réel : elle ne peut pas être fermée avant l'armement, seulement après. C'est une contrainte
+de l'ordre des opérations, pas un trou.
 
 ⚠️ **Ce qui reste avant d'armer, et ce ne sont pas des lignes de code :**
 

@@ -181,6 +181,7 @@ export async function executerLesTravauxDus(
         motif: issue.motif,
         manque: issue.manque,
         aPayeSansRienProduire: issue.aPayeSansRienProduire,
+        actionsExecutees: issue.actionsExecutees,
       });
       traites += 1;
     } catch (erreur) {
@@ -194,6 +195,7 @@ export async function executerLesTravauxDus(
         motif: "pas_interrompu",
         manque: null,
         aPayeSansRienProduire: false,
+        actionsExecutees: 0,
       });
       // ⚠️ Le travail n'est PAS remis en file ici. Son bail expirera, et un exécutant le
       // reprendra — en comptant la reprise. Le remettre tout de suite ferait tourner en boucle
@@ -241,6 +243,7 @@ async function executerUnPas(
   readonly motif: string;
   readonly manque: ManqueDOutil | null;
   readonly aPayeSansRienProduire: boolean;
+  readonly actionsExecutees: number;
 }> {
   const reglages = deps.reglages ?? REGLAGES_RUNTIME_PAR_DEFAUT;
   const { tenantId, taskId, employeeId } = travail;
@@ -253,21 +256,21 @@ async function executerUnPas(
       "reprises_epuisees",
       `Cette mission a été reprise ${travail.reprises} fois sans aboutir : elle n'est plus rejouée.`,
     );
-    return { motif: "reprises_epuisees", manque: null, aPayeSansRienProduire: false };
+    return { motif: "reprises_epuisees", manque: null, aPayeSansRienProduire: false, actionsExecutees: 0 };
   }
 
   // ── 2. Un journal incohérent ne rend pas un état, et on ne devine pas à sa place (EXEC-02).
   const avant = await relire(deps.sql, tenantId, taskId);
   if (!avant.ok) {
     await arreterPourHumain(deps, travail, "journal_incoherent", avant.detail);
-    return { motif: "journal_incoherent", manque: null, aPayeSansRienProduire: false };
+    return { motif: "journal_incoherent", manque: null, aPayeSansRienProduire: false, actionsExecutees: 0 };
   }
 
   // ── 3. Le journal fait foi : s'il dit que ce run ne peut pas reprendre, la file avait tort.
   //    On la remet d'accord avec lui plutôt que de travailler sur un état que personne n'assume.
   if (!peutReprendre(avant.etat)) {
     await remettreLaFileDaccord(deps, travail, avant.etat);
-    return { motif: "file_remise_d_accord", manque: null, aPayeSansRienProduire: false };
+    return { motif: "file_remise_d_accord", manque: null, aPayeSansRienProduire: false, actionsExecutees: 0 };
   }
 
   // ── Le premier événement de toute mission, sans exception. Sans lui, la reconstruction du pas
@@ -298,7 +301,7 @@ async function executerUnPas(
   const apres = await relire(deps.sql, tenantId, taskId);
   if (!apres.ok) {
     await arreterPourHumain(deps, travail, "journal_incoherent", apres.detail);
-    return { motif: "journal_incoherent", manque: null, aPayeSansRienProduire: false };
+    return { motif: "journal_incoherent", manque: null, aPayeSansRienProduire: false, actionsExecutees: 0 };
   }
 
   // ⚠️ ICI, L'HORLOGE DU PROCESSUS RESTE LA BONNE. `deciderLaSuite` calcule une échéance future
@@ -348,6 +351,9 @@ async function executerUnPas(
     motif: suite.motif,
     manque: suite.kind === "attendre_humain" ? suite.manque : null,
     aPayeSansRienProduire: aPayeSansRienProduire(apres.etat, reglages.pasMaximumParRun),
+    // ⚠️ CE QUE LE RUN A RÉELLEMENT FAIT, et non ce qu'il a traversé. C'est la seule mesure qui
+    // distingue « le modèle a jugé qu'il n'y avait rien à faire » de « la chaîne tourne à vide ».
+    actionsExecutees: apres.etat.actionsExecutees,
   };
 }
 

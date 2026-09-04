@@ -341,8 +341,11 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
         employeeId: expect.any(String),
         motif: "pas_suivant",
         manque: null,
-        // Le run a bien exécuté une action : il n'a pas payé pour rien.
+        // Le run a bien exécuté une action : il n'a pas payé pour rien, et son « terminé » vaut
+        // vraiment aboutissement. C'est le chiffre qui distingue « le modèle a jugé qu'il n'y
+        // avait rien à faire » de « la chaîne tourne à vide ».
         aPayeSansRienProduire: false,
+        actionsExecutees: 1,
       },
     ]);
 

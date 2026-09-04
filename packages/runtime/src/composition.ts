@@ -311,6 +311,7 @@ export function composerLExecutant(
             motif: "aucun_outil_actif",
             manque: { cause: "capacite_non_activee", sujetKind: null } as const,
             aPayeSansRienProduire: false,
+            actionsExecutees: 0,
           })),
         ],
         maintenant: instant,
