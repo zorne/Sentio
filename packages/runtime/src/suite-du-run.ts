@@ -74,6 +74,16 @@ export async function appliquerLaSuite(
       payload: {
         motif: suite.motif,
         detail: suite.detail,
+        // ⚠️ LA CAUSE EST ÉCRITE À CÔTÉ DU MOTIF, JAMAIS À SA PLACE. La reprise cherche le motif
+        // `capacite_absente` et doit continuer à le trouver — les deux causes sont une même
+        // attente, qu'une même relance résout. Ce qui change, c'est le DESTINATAIRE de l'alerte,
+        // et cette ligne est ce qui le rend encore lisible demain, quand plus personne n'aura la
+        // mémoire du battement qui l'a écrite.
+        ...(suite.kind === "attendre_humain" &&
+          suite.manque !== null && {
+            cause: suite.manque.cause,
+            ...(suite.manque.sujetKind !== null && { sujet: suite.manque.sujetKind }),
+          }),
         ...(suite.kind === "reporter" && {
           reprise: suite.quand.toISOString(),
           // Le message que le client lirait si on le lui montrait. On ne le lui envoie PAS : un

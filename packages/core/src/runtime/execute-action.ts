@@ -122,7 +122,20 @@ export type ResultatExecution =
    */
   | { readonly kind: "verification_humaine_requise"; readonly cle: string; readonly detail: string }
   /** La décision n'autorisait pas d'agir. Aucun moteur n'a été approché. */
-  | { readonly kind: "non_autorise"; readonly detail: string };
+  | { readonly kind: "non_autorise"; readonly detail: string }
+  /**
+   * Aucun moteur ne sert cette capacité — rien n'a été tenté.
+   *
+   * ⚠️ **CE N'EST PAS UN ÉCHEC, C'EST UNE ATTENTE.** Ce cas rendait `echec_definitif`, donc une
+   * mission `failed` : terminale, jamais reprise, et son sujet exclu du vivier pour toujours. Or
+   * rien n'est cassé — il MANQUE quelque chose, et quelqu'un peut le fournir (monter le moteur
+   * est un déploiement).
+   *
+   * Le bon critère n'est pas « quelle couche a échoué » mais « quelqu'un peut-il y remédier ». Un
+   * moteur absent et une capacité non activée appellent le même traitement : la mission attend, et
+   * repart quand la cause disparaît.
+   */
+  | { readonly kind: "moteur_absent"; readonly detail: string };
 
 export interface ExecuteDeps {
   readonly registry: CapabilityRegistry;
@@ -268,9 +281,17 @@ async function exécuter(
       kind: ACTION_ECHOUEE,
       idempotencyKey: cle,
       ...(input.stepId !== undefined && { stepId: input.stepId }),
-      payload: { cle, capacite: proposition.capabilityKey, definitif: true, detail: String(error) },
+      payload: {
+        cle,
+        capacite: proposition.capabilityKey,
+        // ⚠️ `definitif: false` : rien n'est cassé, il manque un moteur. La mission repartira
+        // quand il sera monté (`capability.disponible`), sans intervention sur elle.
+        definitif: false,
+        motif: "moteur_absent",
+        detail: String(error),
+      },
     });
-    return { kind: "echec_definitif", detail: String(error) };
+    return { kind: "moteur_absent", detail: String(error) };
   }
 
   try {

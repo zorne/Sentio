@@ -46,6 +46,7 @@ import {
   type AssembledContext,
   type EtatRun,
   type SectorKnowledge,
+  type VarianteAppliquee,
 } from "@sentio/core";
 import { ExecutionJournal, TenantScope, forTenant, globalRepositories, type SqlClient } from "@sentio/db";
 import type { CompanyProfileEntry, LearnedFact } from "@sentio/domain";
@@ -73,11 +74,54 @@ export type ChargementContexte =
       /** L'objectif visé, en clair. Rendu pour la trace (EXEC-07) : « pourquoi ? » commence par
        *  « pour quoi ? ». */
       readonly objectif: string;
+      /** La NATURE du sujet de la mission (`lead`, `recherche`, …), telle qu'elle est en base. */
+      readonly sujetKind: string;
     }
   | { readonly ok: false; readonly manques: readonly Manque[] };
 
 /** Clé de `company_profile` où le client déclare son secteur. */
 const CLE_SECTEUR = "secteur";
+
+/**
+ * La façon de travailler cette mission-ci, telle qu'elle a été TIRÉE À SON OUVERTURE.
+ *
+ * ⚠️ On lit ce qui a été attribué ; on ne le rechoisit pas. Rechoisir au moment du pas ferait
+ * dépendre la variante de l'état des variantes actives ce jour-là — donc deux pas d'une même
+ * mission pourraient jouer deux angles différents, et les résultats seraient attribués à une
+ * stratégie qui n'a pas tourné.
+ *
+ * Une mission ouverte avant que les variantes ne soient attribuées n'en a aucune : la couche est
+ * alors absente, et déclarée comme telle. On ne lui en invente pas une après coup.
+ */
+async function chargerLesVariantes(
+  sql: SqlClient,
+  tenantId: string,
+  taskId: string,
+): Promise<readonly VarianteAppliquee[]> {
+  const lignes = await sql.query<{ kind: string; content: Record<string, unknown> }>(
+    `select v.kind, v.content
+       from task_variant tv
+       join strategy_variant v on v.id = tv.variant_id
+      where tv.tenant_id = $1 and tv.task_id = $2
+      order by v.kind`,
+    [tenantId, taskId],
+  );
+
+  return lignes.flatMap((ligne) => {
+    const consigne = ligne.content["consigne"];
+    // Une variante sans consigne lisible ne se traduit pas en instruction — un « moment de
+    // relance », par exemple, agit sur la cadence en base, pas sur ce que l'employé lit.
+    if (typeof consigne !== "string" || consigne.trim() === "") return [];
+    const aEviter = ligne.content["a_eviter"];
+    return [
+      {
+        kind: ligne.kind,
+        consigne,
+        ...(typeof aEviter === "string" && aEviter.trim() !== "" && { aEviter }),
+      },
+    ];
+  });
+}
 
 /**
  * Choisit le profil sectoriel à injecter.
@@ -183,15 +227,39 @@ export async function loadStepContext(
 
   // ── Couche 2 — le secteur. Facultative par construction.
   const secteur = await chargerSecteur(sql, profil);
+  const variantes = await chargerLesVariantes(sql, input.tenantId, input.taskId);
+
+  // ── La configuration active — ce que Lady fait pour CETTE entreprise, et pourquoi.
+  //
+  // Elle porte le rôle, que le noyau ne porte plus (`20260815120004`). Absente, la ligne de rôle
+  // ne s'écrit simplement pas : Lady sans configuration n'a pas de rôle, et lui en inventer un
+  // serait exactement la faute que tout le reste de l'architecture rend impossible.
+  const [configuration] = await sql.query<{ role: string; priorites: unknown }>(
+    `select role, priorites
+       from lady_configuration
+      where tenant_id = $1 and employee_id = $2 and active
+      limit 1`,
+    [input.tenantId, employe.id],
+  );
 
   // ── Couche 5 — l'objectif et l'état du run.
-  const objectifs = await repos.objective.list();
+  //
+  // ⚠️ `state = 'actif'` n'est pas un détail de requête. Sans ce filtre, un objectif ATTEINT ou
+  // RETIRÉ comptait encore comme « déclaré » : l'employé continuait de travailler vers un but que
+  // son client venait de retirer, et le contexte du modèle citait cette cible comme si elle tenait
+  // toujours. Le défaut date de `20260806120003`, qui a donné un état aux objectifs sans que ce
+  // chemin de lecture le reprenne.
+  //
+  // Une entreprise n'en porte qu'un actif (`20260815120002`) : la liste rend donc zéro ou une
+  // ligne, et « lequel » ne se pose plus.
+  const objectifs = await repos.objective.list({ state: "actif" });
   if (objectifs.length === 0) {
     manques.push({
       quoi: "objectif",
       detail:
-        "Aucun objectif déclaré par cette entreprise. Le moteur n'en invente pas : un employé " +
-        "lancé sur un but que son client n'a jamais formulé travaille pour personne.",
+        "Aucun objectif actif dans cette entreprise. Le moteur n'en invente pas : un employé " +
+        "lancé sur un but que son client n'a jamais formulé — ou qu'il vient de retirer — " +
+        "travaille pour personne.",
     });
   }
 
@@ -227,7 +295,18 @@ export async function loadStepContext(
 
   const contexte = assembleContext({
     dna,
+    ...(configuration === undefined
+      ? {}
+      : {
+          configuration: {
+            role: configuration.role,
+            priorites: Array.isArray(configuration.priorites)
+              ? (configuration.priorites as string[])
+              : [],
+          },
+        }),
     ...(secteur !== undefined && { sector: secteur }),
+    ...(variantes.length > 0 && { variantes }),
     profile: profil,
     facts: faits,
     task: {
@@ -243,5 +322,8 @@ export async function loadStepContext(
     etat,
     couchesAbsentes: contexte.missingLayers,
     objectif: `${objectif.metric} — cible ${objectif.targetValue} (${objectif.horizon})`,
+    // La tâche était déjà chargée ; seule son exposition manquait. C'est elle qui permet de ne
+    // proposer au modèle que les capacités applicables à CE sujet (`next-step.ts`).
+    sujetKind: tache.subjectKind,
   };
 }

@@ -1,0 +1,1747 @@
+/* ════════════════════════════════════════════════════════════════════
+   LA SCÈNE — l'espace du dirigeant.
+   ────────────────────────────────────────────────────────────────────
+   Direction artistique reprise de la landing (`landing.css`) : mêmes
+   couleurs, mêmes trois voix (sérif humain, mono machine, Inter qui
+   s'efface), même grain sur le noir.
+
+   Ce qui change ici, c'est la FORME. La landing raconte ; cet espace se
+   consulte. Il n'a donc ni section ni arc : une présence au centre, et
+   des tiroirs qui s'ouvrent d'un geste.
+
+   ⚠️ LE MOUVEMENT DIT QUELQUE CHOSE, OU IL N'EXISTE PAS.
+
+     · la silhouette respire → elle est là, elle tourne ;
+     · le halo bat          → quelque chose attend une personne ;
+     · les capacités se déploient DEPUIS le centre → ce sont ses pouvoirs
+       à elle, pas une liste posée à côté ;
+     · les tiroirs montent  → ils viennent de sous la scène, ils ne la
+       remplacent pas.
+
+   Aucune animation « d'ambiance ». Une page qu'on ouvre douze fois par
+   jour et qui se rejoue douze fois devient une page qu'on n'ouvre plus.
+   ════════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..600;1,6..72,200..600&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+/* ⚠️ Les jetons sont posés sur la scène ET sur le tiroir. Le tiroir est
+   bien un enfant de la scène dans l'application — mais une variable CSS
+   ne s'hérite que par l'arborescence : le jour où il passe dans un
+   portail, `var(--mint)` ne résout plus rien et les couleurs
+   disparaissent SANS ERREUR, silencieusement. Deux lignes ici valent
+   mieux qu'une panne qui ne se signale pas. */
+.sc, .sc-tiroir, .sc-voile {
+  --ink: #f4f5f6;
+  --ink-2: rgba(244, 245, 246, 0.62);
+  --ink-3: rgba(244, 245, 246, 0.38);
+  --void: #000000;
+  --line: rgba(244, 245, 246, 0.09);
+  --line-2: rgba(244, 245, 246, 0.16);
+  --mint: #2ee6f5;
+  --mint-dim: rgba(46, 230, 245, 0.12);
+  --mint-line: rgba(46, 230, 245, 0.32);
+  --amber: #f5c451;
+  --amber-line: rgba(245, 196, 81, 0.32);
+  --serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sc {
+  position: relative;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* ⚠️ `center` seul COUPE le haut dès que le contenu dépasse la hauteur : sur un écran large et
+     court — un portable posé sur un bureau — la silhouette se retrouvait hors champ, et l'espace
+     s'ouvrait sur un prénom flottant au-dessus du vide. Constaté sur une capture, pas déduit.
+     `safe center` recentre sans jamais rogner le début du flux ; le `padding` généreux et les
+     tailles en `svh` font le reste. */
+  justify-content: safe center;
+  gap: clamp(1.1rem, 2.4svh, 2rem);
+  padding: clamp(4rem, 9svh, 6rem) 1.5rem clamp(2rem, 5svh, 3.5rem);
+  color: var(--ink);
+  overflow-x: hidden;
+}
+
+/* Une profondeur, pas un fond. Le noir pur est plat ; cette lueur très large donne à la scène un
+   sol et un horizon, sans qu'aucune forme ne soit dessinée. */
+.sc::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 62% 46% at 50% 34%, rgba(46, 230, 245, 0.055), transparent 68%),
+    radial-gradient(ellipse 90% 60% at 50% 108%, rgba(244, 245, 246, 0.035), transparent 70%);
+}
+
+/* ─── La barre ───────────────────────────────────────────────────────
+   Deux informations, aux deux bords. Elle ancre la page comme un produit :
+   sans elle, la scène flotte — jolie, et impossible à situer. */
+.sc-barre {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  /* Au-dessus du voile, sous le tiroir : la scène recule, le cadre du produit reste. Une barre
+     qui s'efface avec le reste donne l'impression que l'application a disparu. */
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 58px;
+  padding: 0 clamp(1rem, 3vw, 2rem);
+  border-bottom: 1px solid var(--line);
+  background: rgba(3, 3, 3, 0.55);
+  backdrop-filter: saturate(160%) blur(14px);
+}
+.sc-marque {
+  font-family: var(--serif);
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.sc-vie {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.sc-vie i {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--mint);
+  box-shadow: 0 0 10px var(--mint-line);
+  animation: sc-pouls 2.4s ease-in-out infinite;
+}
+.sc-vie.est-arretee { color: var(--amber); }
+.sc-vie.est-arretee i { background: var(--amber); box-shadow: 0 0 10px var(--amber-line); }
+
+/* Le grain de la landing : c'est lui qui fait reconnaître la même maison
+   en passant de la page publique à son espace. */
+.sc::after {
+  content: "";
+  position: fixed; inset: 0; z-index: 60; pointer-events: none;
+  opacity: 0.035; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   LA PRÉSENCE
+   ════════════════════════════════════════════════════════════════════ */
+
+.sc-scene {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(30rem, 100%);
+}
+
+/* Un tiroir ouvert fait RECULER la scène. Sans ce retrait, le tiroir se pose sur elle comme une
+   étiquette collée ; avec, il vient au premier plan et la scène passe derrière. C'est le même
+   geste qu'un plan qui change de mise au point. */
+.sc[data-tiroir="1"] .sc-scene,
+.sc[data-tiroir="1"] .sc-parler,
+.sc[data-tiroir="1"] .tb,
+.sc[data-tiroir="1"] .sc-orbes {
+  transform: scale(0.965);
+  opacity: 0.4;
+  filter: blur(1px);
+}
+.sc-scene, .sc-parler, .tb, .sc-orbes {
+  transition: opacity 0.55s var(--ease), transform 0.55s var(--ease), filter 0.55s var(--ease);
+}
+
+/* ─── L'ENTRÉE ───────────────────────────────────────────────────────
+   La scène se monte, elle n'apparaît pas d'un bloc. L'ordre EST le sens :
+   d'abord elle, puis son nom, puis ce qu'on peut lui dire, puis le reste.
+   Un fondu global aurait tout mis sur le même plan.
+
+   Les pièces partent à l'état monté (`opacity: 1`) : si le script ne
+   s'exécute pas, la page est complète et lisible. Une animation d'entrée
+   ne doit jamais être ce qui rend une page visible. */
+.sc[data-monte="0"] .sc-scene,
+.sc[data-monte="0"] .sc-parler,
+.sc[data-monte="0"] .tb,
+.sc[data-monte="0"] .sc-orbes,
+.sc[data-monte="0"] .sc-barre {
+  opacity: 0;
+  transform: translateY(14px);
+}
+.sc-scene, .sc-parler, .tb, .sc-orbes, .sc-barre {
+  transition: opacity 0.9s var(--ease), transform 0.9s var(--ease);
+}
+.sc[data-monte="1"] .sc-scene   { transition-delay: 0.05s; }
+.sc[data-monte="1"] .sc-barre   { transition-delay: 0.5s; }
+.sc[data-monte="1"] .sc-parler  { transition-delay: 0.62s; }
+.sc[data-monte="1"] .tb         { transition-delay: 0.74s; }
+.sc[data-monte="1"] .sc-orbes   { transition-delay: 0.86s; }
+
+/* ─── LA PRÉSENCE ────────────────────────────────────────────────────
+   Trois couches, et chacune dit quelque chose :
+
+     · la lueur         → elle est allumée ;
+     · les deux anneaux → elle tourne, à deux vitesses différentes, dans
+       deux sens opposés. C'est ce qui donne l'impression d'un mécanisme
+       vivant plutôt que d'une image qui pivote ;
+     · le souffle       → une respiration très lente, à peine perceptible.
+       C'est elle qui fait la différence entre « présent » et « affiché ».
+
+   ⚠️ Rien de tout cela ne clignote ni n'accélère. Une interface qui
+   s'agite en permanence fatigue en trois jours — et il ne reste alors
+   plus rien pour signaler ce qui compte vraiment. */
+.sc-aura {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 132%; aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(46, 230, 245, 0.13), transparent 58%);
+  filter: blur(6px);
+  pointer-events: none;
+  animation: sc-respire 7s ease-in-out infinite;
+}
+@keyframes sc-respire {
+  0%, 100% { opacity: 0.62; transform: translate(-50%, -50%) scale(1); }
+  50%      { opacity: 1;    transform: translate(-50%, -50%) scale(1.045); }
+}
+
+.sc-anneau {
+  position: absolute;
+  left: 50%; top: 50%;
+  border-radius: 50%;
+  border: 1px solid rgba(46, 230, 245, 0.16);
+  pointer-events: none;
+}
+/* L'anneau extérieur : lent, dans le sens des aiguilles. Il est ouvert
+   (une portion transparente) — c'est l'ouverture qui rend la rotation
+   visible sur un cercle parfait. */
+.sc-anneau--large {
+  width: 104%; aspect-ratio: 1;
+  border-color: transparent;
+  border-top-color: rgba(46, 230, 245, 0.3);
+  border-right-color: rgba(46, 230, 245, 0.1);
+  animation: sc-tourne 26s linear infinite;
+}
+/* L'intérieur : plus rapide, en sens inverse. Deux rotations opposées se
+   lisent comme un mécanisme ; deux rotations parallèles, comme un défaut. */
+.sc-anneau--serre {
+  width: 84%; aspect-ratio: 1;
+  border-color: transparent;
+  border-bottom-color: rgba(46, 230, 245, 0.22);
+  border-left-color: rgba(46, 230, 245, 0.07);
+  animation: sc-tourne 17s linear infinite reverse;
+}
+@keyframes sc-tourne {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* La silhouette EST le bouton. Pas d'icône « voir plus » à côté d'elle :
+   ce qu'on veut savoir d'une employée, on le lui demande à elle. */
+.sc-corps {
+  position: relative;
+  /* Dictée par la hauteur DISPONIBLE. Une taille en pixels tenait sur l'écran du concepteur et
+     débordait sur celui du client. */
+  width: clamp(180px, 34svh, 300px);
+  height: clamp(230px, 44svh, 380px);
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: transform 0.6s var(--ease);
+}
+/* La parallaxe : quelques pixels, jamais plus. Au-delà, ce n'est plus de la profondeur, c'est un
+   objet qui glisse — et le regard suit le mouvement au lieu de suivre la silhouette.
+   ⚠️ TOUT tient dans UNE déclaration, avec des variables pour chaque terme. Elles vivaient dans
+   trois règles séparées (repos, survol, ouvert) qui se remplaçaient l'une l'autre : à l'ouverture,
+   `scale(0.9)` écrasait la parallaxe et la silhouette FAISAIT UN BOND de côté pour revenir au
+   centre. Une propriété ne peut pas être animée par deux règles à la fois. */
+.sc-corps {
+  --leve: 0px;
+  --zoom: 1;
+  transform:
+    translate3d(calc(var(--px, 0) * 9px), calc(var(--py, 0) * 7px + var(--leve)), 0)
+    scale(var(--zoom));
+}
+.sc-corps:hover { --leve: -6px; }
+.sc-corps.est-ouvert { --zoom: 0.9; }
+.sc-corps:focus-visible { outline: 1px solid var(--mint); outline-offset: 12px; }
+
+.sc-corps .agt-stage {
+  position: absolute;
+  inset: 0;
+  top: 0;
+  left: 0;
+  transform: none;
+  width: 100%;
+  height: 100%;
+}
+
+/* Le halo — il ne bat QUE quand quelque chose attend une personne. Une
+   pulsation permanente devient un papier peint en deux jours. */
+.sc-halo {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 78%; aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1px solid var(--amber-line);
+  animation: sc-souffle 2.6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes sc-souffle {
+  0%, 100% { opacity: 0.15; transform: translate(-50%, -50%) scale(0.94); }
+  50%      { opacity: 0.55; transform: translate(-50%, -50%) scale(1.04); }
+}
+
+/* Les jalons — un point par capacité, à la place qu'elle occupera.
+   Au repos la STRUCTURE se devine ; au clic elle se nomme. C'est ce qui
+   donne envie de cliquer sans qu'aucun texte n'ait à le demander. */
+.sc-jalons {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 0; height: 0;
+  pointer-events: none;
+}
+.sc-jalons i {
+  position: absolute;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--mint);
+  opacity: 0.32;
+  transform:
+    translate(-50%, -50%)
+    translate(calc(var(--x) * 52%), calc(var(--y) * 52%))
+    translate(calc(var(--x) * clamp(90px, 17svh, 128px)), calc(var(--y) * clamp(90px, 17svh, 128px)));
+  transition: opacity 0.4s var(--ease), transform 0.6s var(--ease);
+  transition-delay: calc(var(--i) * 45ms);
+}
+.sc-corps:hover .sc-jalons i { opacity: 0.65; }
+/* Ouverts, les jalons s'effacent : ce sont les pastilles qui prennent le relais, au même endroit. */
+.sc-corps.est-ouvert .sc-jalons i { opacity: 0; }
+
+/* ─── La couronne de capacités ───────────────────────────────────────
+   Chaque capacité part du CENTRE et rejoint sa place sur le cercle, avec
+   un décalage. C'est la seule mise en scène de la page, et elle dit une
+   chose vraie : ces pouvoirs sont les siens. */
+.sc-couronne {
+  position: absolute;
+  left: 50%;
+  top: min(28vh, 190px);
+  width: 0; height: 0;
+  z-index: 3;
+}
+.sc-couronne ul {
+  list-style: none;
+  margin: 0; padding: 0;
+}
+.sc-couronne li {
+  position: absolute;
+  left: 0; top: 0;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mint);
+  border: 1px solid var(--mint-line);
+  /* ⚠️ PAS de `backdrop-filter` ici, et c'est un correctif, pas une préférence.
+     Une pastille floutant son arrière-plan ET animée en `transform` fait apparaître, le temps de
+     l'animation, un RECTANGLE : la couche de flou n'est pas découpée par le `border-radius` tant
+     que la transformation court. Le fond est donc opaque — sur du noir, ça se voit exactement
+     pareil, et ça ne coûte plus un re-floutage à chaque image. */
+  background: rgba(4, 4, 5, 0.94);
+  border-radius: 100px;
+  padding: 0.42rem 0.9rem 0.42rem 0.75rem;
+  /* Au repos : au centre, invisible, replié. */
+  transform: translate(-50%, -50%) scale(0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 0.65s var(--ease),
+    opacity 0.4s var(--ease);
+  transition-delay: calc(var(--i) * 45ms);
+}
+/* Le point reprend le jalon qu'on voyait au repos, à la même place : la pastille ne remplace pas
+   le repère, elle le prolonge. */
+.sc-couronne li::before {
+  content: "";
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--mint);
+  flex: 0 0 auto;
+}
+.sc-couronne.est-ouverte li {
+  /* Déployé : sur le cercle, à sa place. Le rayon suit la largeur de la
+     scène — pas une valeur en pixels qui déborderait sur un téléphone. */
+  transform:
+    translate(-50%, -50%)
+    translate(calc(var(--x) * min(38vw, 200px)), calc(var(--y) * min(26vh, 155px)))
+    scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ─── Le nom ─────────────────────────────────────────────────────── */
+/* ⚠️ Quand la couronne se déploie, son point bas tombe pile sur le nom.
+   Le nom s'écarte donc, au lieu qu'on rétrécisse la couronne : c'est la
+   scène qui fait de la place à ce qu'on vient d'ouvrir, pas l'inverse. */
+/* ⚠️ `margin-top` et pas `transform` : il faut que la scène REFLOWE. Un
+   décalage par transform aurait poussé le nom sur les orbes, qui elles
+   ne bougent pas — on aurait déplacé le chevauchement au lieu de le
+   supprimer. */
+.sc-identite {
+  text-align: center;
+  margin-top: 1.2rem;
+  transition: margin-top 0.65s var(--ease);
+}
+.sc-couronne.est-ouverte + .sc-identite { margin-top: 4.4rem; }
+.sc-identite h1 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(2.4rem, 7svh, 4.2rem);
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+}
+/* L'état est une PASTILLE, pas une phrase posée sous le nom.
+   ⚠️ Écrit en ligne libre, il se coupait en deux au milieu d'un groupe de mots — « ne retenir que
+   les bonnes / entreprises » — et une coupure au hasard se lit comme un défaut, pas comme une
+   mise en page. Une pastille ne se coupe pas : elle rétrécit ou elle passe à la ligne entière. */
+.sc-etat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 1rem;
+  padding: 0.4rem 0.9rem 0.4rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 100px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  max-width: min(90vw, 34rem);
+}
+.sc-etat::before {
+  content: "";
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--mint);
+  flex: 0 0 auto;
+}
+
+.sc-arret-mot { color: var(--amber); }
+.sc-etat:has(.sc-arret-mot) { border-color: var(--amber-line); }
+.sc-etat:has(.sc-arret-mot)::before { background: var(--amber); }
+
+/* ─── Lui parler ─────────────────────────────────────────────────────
+   ⚠️ Exclu de la règle de base des boutons, comme `.oui` a dû l'être :
+   cette règle porte des `:not()`, dont la spécificité compte celle de
+   leurs arguments, et elle écrasait la menthe en silence.
+
+   Le geste principal après la silhouette elle-même. Il porte la menthe —
+   c'est une adresse à quelqu'un, pas une consultation — et une onde très
+   lente en part, comme une voix. */
+.sc-parler {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  height: 46px;
+  padding: 0 1.6rem;
+  border-radius: 100px;
+  border: 1px solid var(--mint-line);
+  background: var(--mint-dim);
+  color: var(--mint);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.3s var(--ease), background 0.3s var(--ease),
+              box-shadow 0.4s var(--ease);
+}
+.sc-parler:hover {
+  transform: translateY(-2px);
+  background: rgba(46, 230, 245, 0.2);
+  box-shadow: 0 10px 36px rgba(46, 230, 245, 0.16);
+}
+.sc-parler.est-actif { background: rgba(46, 230, 245, 0.22); }
+.sc-parler:focus-visible { outline: 1px solid var(--mint); outline-offset: 3px; }
+
+.sc-parler-onde {
+  position: absolute;
+  inset: -1px;
+  border-radius: 100px;
+  border: 1px solid var(--mint-line);
+  animation: sc-onde 3.4s var(--ease) infinite;
+  pointer-events: none;
+}
+@keyframes sc-onde {
+  0%   { opacity: 0.5; transform: scale(1); }
+  70%  { opacity: 0;   transform: scale(1.22); }
+  100% { opacity: 0;   transform: scale(1.22); }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   LE TABLEAU — ce qui se lit sans cliquer
+   ────────────────────────────────────────────────────────────────────
+   Quatre nombres et une courbe. Pas de graphique à barres : une poignée
+   de valeurs de tête se lit en pastilles, et un histogramme à quatre
+   barres demanderait au lecteur de mesurer avec les yeux ce qu'un
+   chiffre lui donne directement.
+
+   Une seule série sur la courbe, donc une seule couleur et aucune
+   légende — la légende du dessous la nomme.
+   ════════════════════════════════════════════════════════════════════ */
+
+.tb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.4rem;
+  width: min(40rem, 100%);
+}
+
+/* ─── Les indicateurs ────────────────────────────────────────────────
+   Quatre colonnes égales, séparées par un filet. Alignés sur une ligne
+   de base commune, ils se lisent d'un balayage ; empilés sans structure,
+   ils se lisent un par un. */
+.tb-chiffres {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  width: 100%;
+  margin: 0;
+}
+.tb-pastille {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 0.3rem;
+  text-align: center;
+  padding: 0 0.5rem;
+  border-left: 1px solid var(--line);
+}
+.tb-pastille:first-child { border-left: none; }
+/* Le libellé AU-DESSUS dans le flux, en dessous à l'écran (`column-reverse`) : le balisage reste
+   « terme puis définition », ce qui est ce qu'un lecteur d'écran doit entendre. */
+.tb-pastille dt {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  line-height: 1.4;
+}
+.tb-pastille dd {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+}
+.tb-pastille dd strong {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 2rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+/* La précision (le chiffre d'affaires) vit SOUS la valeur, plus petite : c'est une seconde
+   lecture, pas un second indicateur. */
+.tb-pastille dd span {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--ink-2);
+}
+.tb-pastille.est-accent dd strong { color: var(--mint); }
+
+/* ─── Le taux ────────────────────────────────────────────────────────
+   Une valeur, son nom, sa base. Le nom À CÔTÉ de la valeur et non
+   au-dessus : « 14,4 % taux de réponse » se lit comme une phrase. */
+.tb-taux {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  text-align: center;
+}
+.tb-taux-nombre {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.tb-taux-nombre strong {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 2.6rem;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+.tb-taux-nombre span {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.tb-taux-base { font-size: 0.85rem; color: var(--ink-2); max-width: 46ch; line-height: 1.5; }
+/* Un taux qu'on ne peut pas encore calculer s'écrit en toutes lettres. Une case vide, un tiret
+   ou un « 0 % » se lisent tous les trois comme un échec, or il ne s'est rien passé de mal. */
+.tb-pas-encore {
+  font-family: var(--mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.tb-tendance {
+  /* ⚠️ `flex-wrap: nowrap` et un texte qui peut rétrécir : en enveloppant, la phrase se cassait
+     en deux lignes CENTRÉES à côté de la pastille, et l'ensemble se lisait comme un défaut de
+     gabarit plutôt que comme une variation. */
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  max-width: 46ch;
+  line-height: 1.6;
+}
+.tb-delta {
+  flex: 0 0 auto;
+  border: 1px solid currentColor;
+  border-radius: 100px;
+  padding: 0.2rem 0.5rem;
+  white-space: nowrap;
+}
+.tb-tendance--hausse { color: var(--mint); }
+.tb-tendance--baisse { color: var(--amber); }
+.tb-tendance--muette { color: var(--ink-3); display: block; text-align: center; }
+
+@media (max-width: 40rem) {
+  /* Sur un téléphone, la phrase passe SOUS la pastille plutôt que de se comprimer. */
+  .tb-tendance { flex-direction: column; gap: 0.35rem; text-align: center; }
+}
+
+/* ─── La courbe ──────────────────────────────────────────────────────
+   Une ligne seule montre une forme sans donner d'ordre de grandeur.
+   Trois ajouts la rendent lisible, et aucun de plus : une graduation
+   haute qui porte le maximum, une ligne de sol, et les deux bornes de
+   dates. Un axe complet serait illisible sur cette largeur. */
+.tb-courbe { width: 100%; display: flex; flex-direction: column; gap: 0.4rem; }
+.tb-courbe svg { display: block; width: 100%; height: 72px; }
+
+.tb-courbe figcaption {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.tb-fenetre { color: var(--ink-3); opacity: 0.75; }
+
+/* Trait fin, sans point sur chaque jour : quatorze marqueurs transforment une tendance en nuage
+   de points. Le point n'apparaît qu'au survol, là où le regard est déjà. */
+.tb-trace {
+  fill: none;
+  stroke: var(--mint);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.tb-surface { fill: url(#tb-degrade); fill-opacity: 0.16; stroke: none; }
+
+/* Récessifs, tous les deux. La graduation est pointillée : une ligne pleine entrerait en
+   concurrence avec la courbe qu'elle sert à mesurer. */
+.tb-graduation {
+  stroke: var(--line-2);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+  vector-effect: non-scaling-stroke;
+}
+.tb-sol { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.tb-viseur { stroke: var(--line-2); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.tb-pointeur { fill: var(--mint); }
+
+.tb-echelle {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.tb-max { color: var(--ink-2); }
+.tb-bornes { display: inline-flex; align-items: center; gap: 0.5rem; }
+/* Un filet entre les deux dates : il dit que l'espace entre elles est du temps, pas une liste. */
+.tb-bornes i { width: 2.5rem; height: 1px; background: var(--line); display: inline-block; }
+
+/* La lecture d'un jour survolé occupe une ligne RÉSERVÉE. Sans elle, le texte apparaissant au
+   survol pousserait la courbe vers le haut, et le graphique bougerait sous le pointeur. */
+.tb-lu {
+  min-height: 1.1rem;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  opacity: 0.55;
+  transition: opacity 0.25s var(--ease), color 0.25s var(--ease);
+}
+.tb-lu.est-lu { color: var(--mint); opacity: 1; }
+
+/* ════════════════════════════════════════════════════════════════════
+   LES ORBES — quatre mots, et c'est tout ce que la page dit au repos
+   ════════════════════════════════════════════════════════════════════ */
+
+.sc-orbes {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  z-index: 4;
+}
+
+/* ⚠️ UNE ICÔNE, PAS UN LIBELLÉ. Cinq mots alignés redeviennent un menu, et la page cesse d'être
+   une scène. Le nom apparaît au survol — et il reste toujours lisible par un lecteur d'écran
+   (`aria-label`) et au survol système (`title`). */
+.sc-orbe {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: rgba(244, 245, 246, 0.02);
+  color: var(--ink-3);
+  font: inherit;
+  cursor: pointer;
+  transition: color 0.3s var(--ease), border-color 0.3s var(--ease),
+              transform 0.3s var(--ease), background 0.3s var(--ease),
+              box-shadow 0.35s var(--ease);
+}
+
+/* Le nom : une étiquette qui monte au survol. `pointer-events: none` pour qu'elle ne s'interpose
+   jamais entre le pointeur et l'orbe — sinon l'étiquette qu'on vient de faire apparaître empêche
+   de cliquer sur ce qu'elle nomme. */
+.sc-orbe-nom {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  transform: translate(-50%, 4px);
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  background: rgba(4, 4, 5, 0.94);
+  border: 1px solid var(--line);
+  border-radius: 100px;
+  padding: 0.3rem 0.65rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s var(--ease), transform 0.25s var(--ease);
+}
+
+/* ⚠️ AU REPOS, AUCUNE ORBE N'EST ALLUMÉE — pas même celle qui a quelque chose en attente.
+   Elle l'était : contour ambré, point à pleine opacité, pulsation. Le résultat était une barre
+   dont un élément brillait en permanence, et une lumière permanente cesse d'être un signal au
+   bout de deux jours — elle devient un décor.
+
+   Ce qui attend se dit par le COMPTE, en ambre : c'est un fait, il est petit, et il disparaît
+   quand il n'y a plus rien. L'appel au regard, lui, est déjà porté par le halo qui bat autour de
+   la silhouette — un seul endroit sur cette page a le droit d'appeler, et ce n'est pas une
+   pastille de menu.
+
+   Ce qui attend une décision porte donc UN POINT, posé sur la boîte aux lettres — le signal
+   universel « il y a du courrier ». Rouge : c'est la seule chose de cette page qui ne peut pas
+   attendre, et l'ambre est déjà pris par « ça s'est arrêté ». */
+.sc-orbe-compte.est-alerte {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 0.25rem;
+  border-radius: 100px;
+  background: #f0544c;
+  color: #0a0a0b;
+  border: 2px solid var(--void);
+  font-family: var(--mono);
+  font-size: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Il bat, mais lentement. Un point rouge fixe se fond dans le décor en deux jours ; un point qui
+   clignote vite devient une alarme, et on finit par fermer l'onglet. */
+.sc-orbe-compte.est-alerte { animation: sc-pouls 2.6s ease-in-out infinite; }
+
+/* Le compte des autres orbes n'est pas une alerte : c'est une quantité. Il reste discret. */
+.sc-orbe-compte:not(.est-alerte) {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 0.2rem;
+  border-radius: 100px;
+  background: var(--void);
+  border: 1px solid var(--mint-line);
+  color: var(--mint);
+  font-family: var(--mono);
+  font-size: 8.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+@keyframes sc-pouls { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+.sc-orbe-compte {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--void);
+  background: var(--amber);
+  border-radius: 100px;
+  min-width: 1.05rem;
+  height: 1.05rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.3rem;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   LE TIROIR — il monte de sous la scène, il ne la remplace pas
+   ════════════════════════════════════════════════════════════════════ */
+
+.sc-voile {
+  position: fixed; inset: 0; z-index: 20;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  animation: sc-fondu 0.35s var(--ease);
+}
+@keyframes sc-fondu { from { opacity: 0; } to { opacity: 1; } }
+
+.sc-tiroir {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  z-index: 30;
+  width: min(38rem, 100%);
+  max-height: 76svh;
+  overflow-y: auto;
+  transform: translateX(-50%);
+  background: rgba(6, 6, 7, 0.94);
+  backdrop-filter: saturate(160%) blur(20px);
+  border: 1px solid var(--line);
+  border-bottom: none;
+  border-radius: 18px 18px 0 0;
+  padding: 2rem 1.9rem 2.4rem;
+  animation: sc-monte 0.5s var(--ease);
+}
+@keyframes sc-monte {
+  from { transform: translate(-50%, 30px); opacity: 0; }
+  to   { transform: translate(-50%, 0); opacity: 1; }
+}
+
+.sc-fermer {
+  position: absolute;
+  top: 1rem; right: 1rem;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+  font-size: 12px;
+  transition: color 0.3s var(--ease), border-color 0.3s var(--ease);
+}
+.sc-fermer:hover { color: var(--ink); border-color: var(--line-2); }
+
+.sc-contenu { display: flex; flex-direction: column; gap: 1rem; }
+.sc-contenu h2 {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* Ce que l'employée « dit » garde la voix humaine — sérif. */
+.sc-dit {
+  font-family: var(--serif);
+  font-size: 1.45rem;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.sc-dit em { font-style: italic; color: var(--mint); }
+
+.sc-note { color: var(--ink-2); font-size: 0.9rem; line-height: 1.6; }
+.sc-vide { color: var(--ink-3); font-size: 0.9rem; line-height: 1.6; }
+
+.sc-chiffre {
+  font-family: var(--serif);
+  font-size: 3.4rem;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+.sc-chiffre span {
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  color: var(--ink-3);
+  margin-left: 0.4rem;
+}
+
+.sc-priorites {
+  list-style: none;
+  padding: 0;
+  counter-reset: p;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.sc-priorites li {
+  counter-increment: p;
+  display: flex;
+  gap: 0.85rem;
+  font-size: 0.97rem;
+  line-height: 1.5;
+}
+.sc-priorites li::before {
+  content: counter(p);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+  padding-top: 0.3em;
+}
+
+.sc-faits {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.sc-faits li {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--ink-2);
+  padding-left: 1.1rem;
+  position: relative;
+}
+.sc-faits li::before {
+  content: "";
+  position: absolute; left: 0; top: 0.85em;
+  width: 0.5rem; height: 1px;
+  background: var(--line-2);
+}
+
+.sc-progression {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.sc-progression li {
+  border-left: 2px solid var(--mint-line);
+  padding-left: 0.9rem;
+  color: var(--ink-2);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+.sc-progression strong { color: var(--ink); font-weight: 500; }
+
+.sc-journal {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+}
+.sc-journal li { display: flex; gap: 1rem; align-items: baseline; }
+.sc-journal time {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  min-width: 5.2rem;
+  flex: 0 0 auto;
+}
+.sc-journal span { color: var(--ink-2); font-size: 0.88rem; line-height: 1.55; }
+
+.sc-proposition, .sc-accord {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: 1.1rem 1.2rem;
+  border-radius: 12px;
+  border: 1px solid var(--amber-line);
+  background: rgba(245, 196, 81, 0.045);
+}
+
+.sc-separateur {
+  border-top: 1px solid var(--line);
+  padding-top: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  align-items: flex-start;
+}
+
+/* ─── Boutons — la pilule de la landing ────────────────────────────
+   ⚠️ Le tiroir est visé EXPLICITEMENT, en plus de `.sc`. Il est bien un
+   enfant de la scène dans l'application, mais s'appuyer là-dessus rend
+   le style dépendant d'un détail d'arborescence : le jour où le tiroir
+   passe dans un portail, tous ses boutons redeviennent des boutons de
+   navigateur, et rien ne le signale. */
+.sc button:not(.sc-orbe):not(.sc-corps):not(.sc-fermer):not(.sc-parler),
+.sc-tiroir button:not(.sc-fermer) {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 100px;
+  color: var(--ink-2);
+  background: transparent;
+  border: 1px solid var(--line-2);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s var(--ease), background 0.3s var(--ease),
+              border-color 0.3s var(--ease), color 0.3s var(--ease);
+}
+.sc button:not(.sc-orbe):not(.sc-corps):not(.sc-fermer):not(.sc-parler):hover:not(:disabled),
+.sc-tiroir button:not(.sc-fermer):hover:not(:disabled) {
+  color: var(--ink);
+  border-color: var(--ink-3);
+  transform: translateY(-2px);
+}
+.sc button:disabled, .sc-tiroir button:disabled { opacity: 0.45; cursor: default; }
+/* ⚠️ `button.oui` et pas `.oui` : la règle de base porte un `:not()`, dont
+   la spécificité compte celle de son argument. Un simple `.oui` perdait
+   donc contre elle — et les accents disparaissaient sans qu'aucune erreur
+   ne le dise. Trouvé en lisant les styles calculés, pas le fichier. */
+.sc button.oui, .sc-tiroir button.oui { background: var(--mint-dim); color: var(--mint); border-color: var(--mint-line); }
+.sc button.oui:hover:not(:disabled), .sc-tiroir button.oui:hover:not(:disabled) { background: rgba(46, 230, 245, 0.2); color: var(--mint); }
+.sc button.refus, .sc-tiroir button.refus { color: var(--ink-3); }
+.sc button.arret, .sc-tiroir button.arret { color: var(--amber); border-color: var(--amber-line); background: rgba(245, 196, 81, 0.08); }
+.sc button.arret:hover:not(:disabled), .sc-tiroir button.arret:hover:not(:disabled) { color: var(--amber); border-color: var(--amber); }
+.sc .decision, .sc-tiroir .decision { display: inline-flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+.sc .autonomie, .sc-tiroir .autonomie { display: flex; gap: 0.45rem; flex-wrap: wrap; }
+.sc .autonomie button.actif, .sc-tiroir .autonomie button.actif { color: var(--ink); border-color: var(--ink-3); background: rgba(244, 245, 246, 0.05); }
+.sc .erreur, .sc-tiroir .erreur { font-family: var(--mono); font-size: 11px; color: var(--amber); font-style: normal; }
+
+/* ════════════════════════════════════════════════════════════════════
+   LA CONVERSATION
+   ════════════════════════════════════════════════════════════════════ */
+
+.cv { display: flex; flex-direction: column; gap: 1rem; }
+
+.cv-fil {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  /* Pas de hauteur minimale : un fil vide réservait un trou sous la première phrase, et un vide
+     qui ne se remplit jamais se lit comme un élément qui n'a pas chargé. */
+  max-height: 38svh;
+  overflow-y: auto;
+}
+.cv-invite { color: var(--ink-3); font-size: 0.9rem; }
+
+.cv-tour { animation: sc-arrive 0.45s var(--ease); }
+@keyframes sc-arrive {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* La question du dirigeant est alignée à droite et discrète : c'est lui
+   qui parle, il sait déjà ce qu'il a dit. */
+.cv-tour--moi { align-self: flex-end; max-width: 85%; }
+.cv-tour--moi p {
+  font-size: 0.92rem;
+  color: var(--ink-3);
+  text-align: right;
+}
+
+/* Ce qu'ELLE dit garde la voix humaine — sérif, comme partout où le
+   produit parle à la première personne. */
+.cv-tour--elle { max-width: 92%; }
+.cv-tour--elle p {
+  font-family: var(--serif);
+  font-size: 1.3rem;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+
+/* Les trois points. Un état d'attente muet se lit comme une panne. */
+.cv-attente { display: inline-flex; gap: 5px; padding: 0.5rem 0; }
+.cv-attente i {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--mint);
+  opacity: 0.3;
+  animation: sc-pouls 1.2s ease-in-out infinite;
+}
+.cv-attente i:nth-child(2) { animation-delay: 0.16s; }
+.cv-attente i:nth-child(3) { animation-delay: 0.32s; }
+
+/* Les questions suggérées ne sont pas de la décoration : ce sont les
+   rails. Un champ libre sans elles laisserait croire à un assistant
+   général, et chaque question hors piste serait vécue comme une panne. */
+.cv-rails {
+  list-style: none;
+  padding: 0;
+  margin-top: 0.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.cv-rails--depart { margin-top: 0; }
+.cv-rails button {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 100px;
+  padding: 0.42rem 0.8rem;
+  cursor: pointer;
+  transition: color 0.3s var(--ease), border-color 0.3s var(--ease);
+}
+.cv-rails button:hover { color: var(--mint); border-color: var(--mint-line); }
+
+.cv-saisie { display: flex; gap: 0.5rem; }
+.cv-saisie input {
+  flex: 1;
+  font: inherit;
+  font-size: 0.92rem;
+  height: 38px;
+  padding: 0 1rem;
+  border-radius: 100px;
+  border: 1px solid var(--line-2);
+  background: rgba(244, 245, 246, 0.03);
+  color: var(--ink);
+}
+.cv-saisie input::placeholder { color: var(--ink-3); }
+.cv-saisie input:focus { outline: none; border-color: var(--mint-line); }
+
+/* ─── Un employé arrêté : la scène entière se retire ─────────────── */
+.sc--arrete .sc-corps { opacity: 0.45; filter: saturate(0.35); }
+.sc--arrete .sc-corps:hover { opacity: 0.7; }
+
+/* ─── Écrans COURTS ──────────────────────────────────────────────────
+   Un portable posé sur un bureau, c'est large et bas. Toute la scène doit
+   y tenir d'un coup d'œil, sinon les chiffres — la raison même d'ouvrir
+   cette page — passent sous la ligne de flottaison.
+
+   ⚠️ C'est la HAUTEUR qu'on interroge, pas la largeur. Un écran 1500×730
+   n'est pas « un petit écran » : il est large et court, et c'est
+   exactement le cas que les deux premières versions rataient. */
+@media (max-height: 860px) {
+  .sc { gap: 0.6rem; padding-top: 4rem; padding-bottom: 1.2rem; }
+  .sc-corps { width: clamp(140px, 24svh, 210px); height: clamp(170px, 30svh, 265px); }
+  .sc-identite { margin-top: 0.1rem; }
+  .sc-identite h1 { font-size: clamp(1.9rem, 5svh, 2.7rem); }
+  .sc-etat { margin-top: 0.5rem; }
+  .sc-parler { height: 42px; }
+  .tb { gap: 0.6rem; }
+  .tb-pastille strong { font-size: 1.35rem; }
+  .tb-taux-nombre strong { font-size: 1.7rem; }
+  .tb-courbe svg { height: 38px; }
+  .tb-courbe figcaption { margin-bottom: 0.25rem; }
+  /* Les jalons se rapprochent avec la silhouette, sinon ils flottent loin d'elle. */
+  .sc-jalons i {
+    transform:
+      translate(-50%, -50%)
+      translate(calc(var(--x) * 52%), calc(var(--y) * 52%))
+      translate(calc(var(--x) * clamp(70px, 13svh, 100px)), calc(var(--y) * clamp(70px, 13svh, 100px)));
+  }
+  .sc-couronne.est-ouverte li {
+    transform:
+      translate(-50%, -50%)
+      translate(calc(var(--x) * min(30vw, 175px)), calc(var(--y) * min(20svh, 125px)))
+      scale(1);
+  }
+}
+
+/* ─── Petits écrans ──────────────────────────────────────────────── */
+@media (max-width: 40rem) {
+  .sc { gap: 1.8rem; padding: 3.5rem 1rem 2rem; }
+  .sc-corps { width: min(52vw, 220px); height: clamp(210px, 34svh, 290px); }
+  .sc-barre { height: 50px; }
+  /* ⚠️ PAS DE COURONNE SUR UN TÉLÉPHONE. Une pastille placée à ±40 % de
+     la largeur porte encore sa propre largeur : sur 375 px, les deux
+     capacités latérales sortent de l'écran et se font couper par le
+     `overflow-x: hidden`. Constaté à l'écran, pas déduit.
+
+     Elles se déploient donc EN COLONNE sous la silhouette. Le geste reste
+     le même — elles jaillissent d'elle, en décalé — mais la forme change :
+     sur un téléphone, une couronne n'a pas la place d'exister.
+
+     `grid-template-rows: 0fr → 1fr` ouvre la colonne SANS hauteur devinée.
+     La version précédente pariait sur un `max-height` en dur : juste avec
+     quatre capacités, faux avec six, et personne pour le signaler. */
+  .sc-couronne {
+    position: static;
+    width: 100%;
+    height: auto;
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.55s var(--ease), margin-top 0.55s var(--ease);
+    margin-top: 0;
+  }
+  .sc-couronne.est-ouverte { grid-template-rows: 1fr; margin-top: 1rem; }
+  .sc-couronne ul {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 0;
+  }
+  .sc-couronne li {
+    position: static;
+    /* Elles sortent d'elle : par le haut, resserrées, puis se posent. Le décalage se lit comme
+       une distribution — une main qui pose des cartes — plutôt que comme une liste qui apparaît. */
+    transform: translateY(-14px) scale(0.86);
+    transform-origin: top center;
+    font-size: 10px;
+    padding: 0.42rem 0.85rem 0.42rem 0.7rem;
+    transition:
+      transform 0.5s var(--ease),
+      opacity 0.35s var(--ease);
+    transition-delay: calc(var(--i) * 55ms);
+  }
+  .sc-couronne.est-ouverte li { transform: none; }
+  /* Le nom n'a plus besoin de s'écarter : la colonne pousse déjà le flux. */
+  .sc-couronne.est-ouverte + .sc-identite { margin-top: 1.2rem; }
+  .sc-identite h1 { font-size: 2.6rem; }
+  .tb-chiffres { grid-template-columns: repeat(2, 1fr); gap: 0.9rem 0.6rem; }
+  .tb-pastille strong { font-size: 1.5rem; }
+  .tb-taux-nombre strong { font-size: 2rem; }
+  .sc-tiroir { padding: 1.6rem 1.15rem 2rem; max-height: 82svh; }
+  .sc-chiffre { font-size: 2.6rem; }
+  .sc .decision, .sc-tiroir .decision { display: flex; width: 100%; }
+  .sc .decision button { flex: 1 1 10rem; height: 42px; }
+  .sc-journal li { flex-direction: column; gap: 0.2rem; }
+  .sc-journal time { min-width: 0; }
+}
+
+/* ⚠️ Sans mouvement, la scène doit rester COMPRÉHENSIBLE — pas juste
+   immobile. Les capacités déployées gardent donc leur place ; c'est la
+   transition qui disparaît, pas l'information. */
+@media (prefers-reduced-motion: reduce) {
+  .sc-halo, .sc-orbe-compte.est-alerte { animation: none; opacity: 1; }
+  .sc-aura, .sc-anneau, .sc-parler-onde, .cv-attente i, .cv-tour, .sc-vie i { animation: none; }
+  /* L'entrée est jouée d'un coup : la page est là, tout de suite. */
+  .sc-scene, .sc-parler, .sc-orbes, .sc-barre { transition: none; }
+  .sc[data-monte="0"] .sc-scene, .sc[data-monte="0"] .sc-parler,
+  .sc[data-monte="0"] .sc-orbes, .sc[data-monte="0"] .sc-barre {
+    opacity: 1; transform: none;
+  }
+  .sc[data-tiroir="1"] .sc-scene, .sc[data-tiroir="1"] .sc-parler,
+  .sc[data-tiroir="1"] .sc-orbes { filter: none; transform: none; opacity: 0.5; }
+  .sc-corps, .sc-corps:hover { transform: none; }
+  .sc-orbe:hover { box-shadow: none; }
+  .sc-aura { opacity: 0.8; }
+  .sc-couronne li { transition: none; }
+  .sc-tiroir, .sc-voile { animation: none; }
+  .sc-corps, .sc-orbe, .sc button { transition: none; }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   LA FORMULE — ce qu'il paie, et ce qu'il lui reste
+   ────────────────────────────────────────────────────────────────────
+   Le grief le plus répété contre les produits d'en face, après la
+   qualité des messages, est l'OPACITÉ : ne pas savoir ce qu'on
+   consomme. La réponse n'est pas une page de tarifs — c'est de le
+   montrer là où le client vit.
+
+   ⚠️ Des nombres, jamais des pourcentages. « 41 sur 300 » se lit ; un
+   pourcentage oblige à refaire le calcul dans l'autre sens pour obtenir
+   ce qu'on cherche vraiment — ce qu'il reste.
+   ════════════════════════════════════════════════════════════════════ */
+
+.sc-formule {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding-bottom: 1rem;
+  margin-bottom: 0.3rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.ab-jauge {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.25rem 1rem;
+  align-items: baseline;
+}
+.ab-jauge-mot {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.ab-jauge-nombre {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink);
+  text-align: right;
+}
+.ab-jauge-nombre em { font-style: normal; color: var(--ink-3); }
+
+/* La piste occupe les deux colonnes : le trait doit courir sous les deux
+   informations qu'il résume, pas à côté de l'une d'elles. */
+.ab-jauge-piste {
+  grid-column: 1 / -1;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+.ab-jauge-piste i {
+  display: block;
+  height: 100%;
+  background: var(--mint);
+  border-radius: 2px;
+  transition: width 0.6s var(--ease);
+}
+
+/* À 80 %, on prévient — pendant qu'il reste le temps d'y faire quelque
+   chose. Prévenir à 100 % serait annoncer un arrêt déjà survenu. */
+.ab-jauge.est-serre .ab-jauge-nombre { color: var(--amber); }
+.ab-jauge.est-serre .ab-jauge-piste i { background: var(--amber); }
+
+
+/* ─── La récolte ─────────────────────────────────────────────────────
+   Ce qui a abouti. Une ligne par entreprise, jamais un tableau : le
+   dirigeant lit trois noms, pas une grille. */
+.rc {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.rc li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.15rem 1rem;
+  padding-left: 0.9rem;
+  border-left: 2px solid var(--mint-line);
+}
+.rc-qui { font-size: 0.97rem; color: var(--ink); }
+.rc-qui em { font-style: normal; color: var(--ink-3); }
+.rc-quoi {
+  grid-column: 1;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mint);
+}
+.rc time {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* ─── Avant un rendez-vous ───────────────────────────────────────────
+   Une fiche par entreprise, et chaque élément porte SA PROVENANCE. Un
+   briefing dont on ignore d'où vient chaque ligne ne se défend pas en
+   réunion — et c'est précisément là qu'on en a besoin. */
+.rv { display: flex; flex-direction: column; gap: 1.4rem; }
+
+.rv-fiche {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--mint-line);
+  border-radius: 12px;
+  background: rgba(244, 245, 246, 0.018);
+}
+.rv-fiche header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.8rem;
+}
+.rv-fiche header strong {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 1.3rem;
+  letter-spacing: -0.015em;
+}
+.rv-qui { font-size: 0.88rem; color: var(--ink-2); }
+.rv-fiche header time {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* Ce qu'elle a retenu de l'échange : la matière la plus précieuse de la
+   fiche, donc la plus lisible. En mono — c'est une note prise sur le
+   vif, pas une phrase rédigée. */
+.rv-notes { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+.rv-notes li {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ink);
+  padding-left: 0.9rem;
+  border-left: 1px solid var(--mint-line);
+}
+.rv-source {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 0.2rem;
+}
+.rv-rien { font-size: 0.88rem; line-height: 1.6; color: var(--ink-3); }
+
+.rv-faits {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--line);
+}
+.rv-faits dt {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+  padding-top: 0.15em;
+}
+.rv-faits dd { margin: 0; font-size: 0.88rem; line-height: 1.5; color: var(--ink-2); }
+
+@media (max-width: 40rem) {
+  .rv-faits { grid-template-columns: 1fr; gap: 0.1rem; }
+  .rv-faits dd { margin-bottom: 0.5rem; }
+  .rv-fiche header time { margin-left: 0; width: 100%; }
+}
+
+
+/* La cible d'une action : sur sa propre ligne, sous l'action. Recollée à la phrase, elle
+   produisait « Écrire à un prospect à Cabinet Martin ». */
+.ac-cible { font-size: 0.95rem; color: var(--ink-2); }
+.ac-cible strong { color: var(--mint); font-weight: 500; }
+
+/* ─── Ce qu'une action contient ──────────────────────────────────────
+   Le message tel qu'il partirait. On demande au dirigeant d'autoriser
+   une action irréversible : le lui cacher reviendrait à lui faire
+   signer une page blanche. */
+.ac-message {
+  border-left: 2px solid var(--amber-line);
+  padding: 0.6rem 0 0.6rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.ac-objet {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+/* Le corps garde ses retours à la ligne : un message réécrit en un seul bloc ne ressemble plus
+   à ce qui partirait, et c'est pourtant ce qu'on fait valider. */
+.ac-corps {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.75;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+}
+
+/* ─── Ce qu'une proposition change ───────────────────────────────────
+   Deux colonnes face à face : aujourd'hui, et si vous acceptez. Une
+   phrase de résumé dit une intention ; le dirigeant, lui, valide une
+   conséquence. Il doit pouvoir comparer. */
+.ch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 0.9rem 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.ch-colonne { display: flex; flex-direction: column; gap: 0.4rem; }
+.ch-titre {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.ch-colonne strong {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 1.15rem;
+  line-height: 1.25;
+  color: var(--ink-2);
+}
+/* La colonne proposée porte la couleur : c'est celle qu'on adopte en cliquant. */
+.ch-colonne.est-proposee strong { color: var(--mint); }
+.ch-colonne ol {
+  margin: 0;
+  padding-left: 1rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+.ch-capacites {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.ch-capacites li {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  line-height: 1.6;
+}
+.ch-capacites span {
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  margin-right: 0.4rem;
+}
+.ch-capacites .est-ajout { color: var(--mint); }
+/* Ce qu'elle CESSE de faire porte la couleur de l'attention : c'est la seule perte de cet écran,
+   et celle qu'un dirigeant découvrirait autrement trois semaines plus tard. */
+.ch-capacites .est-retrait { color: var(--amber); }
+
+@media (max-width: 40rem) {
+  .ch { grid-template-columns: 1fr; gap: 0.9rem; }
+  /* Sur une colonne, une flèche remplacerait le face-à-face : un filet suffit à dire l'ordre. */
+  .ch-colonne.est-proposee { border-top: 1px solid var(--line); padding-top: 0.9rem; }
+}
+
+/* Le nom de l'entreprise affichée, quand le compte en a plusieurs. Un repère, jamais un titre :
+   il se lit si on le cherche, et ne dispute rien au prénom de l'employée. */
+.sc-entreprise {
+  margin: 0 0 6px;
+  font-size: 11.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sc-faible, rgba(255, 255, 255, 0.42));
+}
+
+/* ── Ce qu'elle fait en ce moment ─────────────────────────────────────────────────────────────
+   Une ligne par chose ouverte, son état en toutes lettres. Pas de tableau : le dirigeant compte
+   d'un coup d'œil, il ne lit pas des colonnes. */
+.sc-missions { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.sc-missions li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.sc-missions li:last-child { border-bottom: none; padding-bottom: 0; }
+
+.sc-etat { font-size: 13.5px; color: rgba(255, 255, 255, 0.86); }
+/* Deux états seulement se distinguent, et ce sont les deux qui appellent une personne. Colorer
+   les six ferait un sapin de Noël où plus rien ne ressort. */
+.sc-etat--waiting_approval { color: var(--sc-ambre, #f5c451); }
+.sc-etat--needs_attention { color: var(--sc-ambre, #f5c451); }
+
+.sc-mission-depuis {
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.34);
+  white-space: nowrap;
+}
+
+/* ── Pourquoi elle travaille sur ce sujet, sous son nom ───────────────────────────────────────
+   Une phrase, jamais plus : elle explique, elle ne se défend pas. Et elle est volontairement
+   moins forte que le prénom, parce que c'est lui qu'on vient voir. */
+.sc-pourquoi {
+  margin: 10px 0 0;
+  max-width: 46ch;
+  font-size: 13px;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.44);
+}
+
+/* ── Ce qu'elle sait faire, en toutes lettres ─────────────────────────────────────────────── */
+.sc-capacites { list-style: none; margin: 0 0 4px; padding: 0; display: grid; gap: 9px; }
+.sc-capacites li {
+  position: relative;
+  padding-left: 15px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.84);
+}
+.sc-capacites li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--sc-menthe, rgba(255, 255, 255, 0.4));
+}
+.sc-sous-titre {
+  margin: 20px 0 8px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.34);
+}
+
+/* ── Ce qu'elle a fait, et si elle vous l'a demandé ───────────────────────────────────────── */
+.sc-faits { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; }
+.sc-faits li { padding-bottom: 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.sc-faits li:last-child { border-bottom: none; padding-bottom: 0; }
+
+.sc-fait-ligne { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
+.sc-fait-quoi { font-size: 14px; color: rgba(255, 255, 255, 0.88); }
+.sc-fait-quand {
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.32);
+  white-space: nowrap;
+}
+.sc-fait-cible { margin: 4px 0 0; font-size: 13px; color: rgba(255, 255, 255, 0.56); }
+.sc-fait-mode { margin: 6px 0 0; font-size: 12.5px; line-height: 1.55; color: rgba(255, 255, 255, 0.4); }
+/* Ce qui est passé sans le déranger se distingue : c'est la ligne qu'il vient vérifier. */
+.sc-fait-mode--seule { color: var(--sc-ambre, #f5c451); }
+
+.sc-fait-retirer {
+  margin-top: 9px;
+  padding: 7px 13px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: none;
+  color: rgba(255, 255, 255, 0.74);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.sc-fait-retirer:hover:not(:disabled) { border-color: rgba(255, 255, 255, 0.3); }
+.sc-fait-retirer:disabled { opacity: 0.5; cursor: default; }
+.sc-fait-erreur { margin: 12px 0 0; font-size: 12.5px; color: #e88f7a; }
+
+/* ── Le troisième geste de l'écran des décisions ──────────────────────────────────────────────
+   Volontairement plus discret que « Autoriser » et « Refuser » : autoriser pour toujours élargit
+   l'autonomie de quelqu'un qui travaille pour vous. Le mettre au même poids ferait cliquer
+   dessus par habitude du bouton d'à côté. */
+.decision .toujours {
+  padding: 7px 13px;
+  border-radius: 7px;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  background: none;
+  color: rgba(255, 255, 255, 0.6);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.decision .toujours:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.34);
+  color: rgba(255, 255, 255, 0.82);
+}
+.decision .toujours:disabled { opacity: 0.5; cursor: default; }
+
+/* ── Le point rouge : « il y a du nouveau », sans nombre ──────────────────────────────────────
+   Demandé par le fondateur, mais sur ce qu'il n'a PAS ENCORE VU, jamais sur « elle travaille ».
+   Elle travaille en permanence : un point allumé sur son activité serait allumé toujours, donc
+   invisible en deux jours. C'est sa propre décision du 2026-08-26, et elle tient.
+
+   Sans nombre, exprès : on sait qu'il y a du neuf, pas combien. Écrire le total en rouge dirait
+   « douze choses vous attendent » quand une seule est nouvelle, et le rouge perdrait son crédit. */
+.sc-orbe-point {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 100px;
+  background: #f0544c;
+  border: 2px solid var(--void);
+  /* Le même battement lent que la boîte aux lettres : deux signaux qui pulsent différemment se
+     lisent comme deux urgences différentes, ce qu'ils ne sont pas. */
+  animation: sc-pouls 2.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sc-orbe-point { animation: none; }
+}
+
+/* ── Une capacité configurée dont le moteur n'est pas monté ────────────────────────────────────
+   Constat P0-3 de `docs/35` : elle était affichée exactement comme les autres, alors que le
+   runtime la refuse. Elle recule, et surtout elle le DIT — l'estompage seul se lirait comme
+   « secondaire », jamais comme « ne fonctionne pas encore ». */
+.sc-capacite--dormante { opacity: 0.5; }
+.sc-capacite-etat {
+  display: block;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-style: normal;
+  color: var(--ink-3);
+  margin-top: 3px;
+}
+.sc-jalon--dormant { opacity: 0.28; }

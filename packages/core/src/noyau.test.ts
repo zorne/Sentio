@@ -53,7 +53,7 @@ describe("Tour de conversation", () => {
           role: "assistant",
           type: "capability_call",
           callId: "1",
-          capabilityKey: "trouver_des_prospects",
+          capabilityKey: "rechercher.prospect",
           input: {},
         },
         { role: "capability", type: "capability_result", callId: "1", output: [], failed: false },
@@ -185,6 +185,35 @@ describe("Registre de capacités", () => {
         capabilityKey: "inconnue",
         execute: async () => null,
       }),
+    ).toThrow(CapabilityUnavailable);
+  });
+
+  it("⭐⭐ deux capacités peuvent avoir un moteur du même nom, sans se marcher dessus", () => {
+    // `capability_binding` nomme « base » le moteur de CHACUNE des cinq capacités de l'ADN
+    // Commercial : c'est le nom d'une implémentation pour une capacité, pas un identifiant
+    // global. Rangés par ce seul nom, les moteurs s'écrasaient — et « qualifier un prospect »
+    // exécutait « mettre à jour une fiche », silencieusement, avec les bons journaux.
+    const reg = registry();
+    reg.registerContract({ ...contract, key: "autre.capacite" });
+    reg.registerEngine({ engineKey: "base", capabilityKey: contract.key, execute: async () => "le bon" });
+    reg.registerEngine({ engineKey: "base", capabilityKey: "autre.capacite", execute: async () => "l'autre" });
+
+    const engine = reg.resolve({
+      capabilityKey: contract.key,
+      planId: "start" as PlanId,
+      bindings: [binding({ engineKey: "base" })],
+      capabilityKeyOf: () => contract.key,
+    });
+
+    expect(engine.capabilityKey).toBe(contract.key);
+  });
+
+  it("⭐ refuse deux moteurs du même nom pour la MÊME capacité", () => {
+    // Écraser en silence est ce qui rendait la panne ci-dessus invisible.
+    const reg = registry();
+    reg.registerEngine({ engineKey: "base", capabilityKey: contract.key, execute: async () => null });
+    expect(() =>
+      reg.registerEngine({ engineKey: "base", capabilityKey: contract.key, execute: async () => null }),
     ).toThrow(CapabilityUnavailable);
   });
 

@@ -11,11 +11,11 @@ const SECTIONS = [
   { id: "mission", label: "Mission" },
   { id: "seuil", label: "Seuil" },
   { id: "disponibilite", label: "Disponibilité" },
-  { id: "reglage", label: "Réglage" },
+  { id: "parcours", label: "Parcours" },
+  { id: "jamais", label: "Jamais" },
+  { id: "commandes", label: "Commandes" },
   { id: "conseiller", label: "Conseiller" },
-  { id: "apres-recrutement", label: "Après" },
-  { id: "retard", label: "Retard" },
-  { id: "tarifs", label: "Tarifs" },
+  { id: "prix", label: "Prix" },
 ];
 
 export function ScrollNav() {

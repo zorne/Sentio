@@ -53,9 +53,14 @@ describeIfDatabase("Accords permanents et autonomie, sur un vrai Postgres", () =
 
   async function creerEntreprise(tenantId: string, nom: string) {
     await sql.query("insert into tenant (id, name) values ($1, $2)", [tenantId, nom]);
+    // Une mission sert toujours un objectif (`20260815120002`).
+    await sql.query(
+      "insert into objective (tenant_id, metric, target_value, horizon) values ($1, 'chiffre_affaires', 5000, 'mois')",
+      [tenantId],
+    );
     const [definition] = await sql.query<{ id: string }>(
-      `insert into employee_definition (profession, version, dna)
-       values ('commercial', $1, '{}'::jsonb) returning id`,
+      `insert into employee_definition (gisement, version, dna, capacites)
+       values ('commercial', $1, '{}'::jsonb, '["relancer.prospect","qualifier.prospect"]'::jsonb) returning id`,
       [versionUnique()],
     );
     const [identity] = await sql.query<{ id: string }>("select * from reserve_identity($1)", ["commercial"]);
@@ -65,8 +70,8 @@ describeIfDatabase("Accords permanents et autonomie, sur un vrai Postgres", () =
       [tenantId, definition?.id, identity?.id],
     );
     const [task] = await sql.query<{ id: string }>(
-      "insert into task (tenant_id, employee_id, subject_kind, subject_id) " +
-        "values ($1, $2, 'lead', gen_random_uuid()) returning id",
+      "insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id) " +
+        "values ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), 'lead', gen_random_uuid()) returning id",
       [tenantId, employee?.id],
     );
     return { employeeId: employee?.id as EmployeeId, taskId: task?.id as string };
@@ -272,11 +277,16 @@ describeIfDatabase("Les capacités activées, lues dans la base", () => {
       [tenantB, "Capacités B"],
     ] as const) {
       await sql.query("insert into tenant (id, name) values ($1, $2)", [tenantId, nom]);
+    // Une mission sert toujours un objectif (`20260815120002`).
+    await sql.query(
+      "insert into objective (tenant_id, metric, target_value, horizon) values ($1, 'chiffre_affaires', 5000, 'mois')",
+      [tenantId],
+    );
     }
 
     const [definition] = await sql.query<{ id: string }>(
-      `insert into employee_definition (profession, version, dna)
-       values ('commercial', $1, '{}'::jsonb) returning id`,
+      `insert into employee_definition (gisement, version, dna, capacites)
+       values ('commercial', $1, '{}'::jsonb, '["relancer.prospect","qualifier.prospect"]'::jsonb) returning id`,
       [versionUnique()],
     );
     const employes: EmployeeId[] = [];
@@ -294,13 +304,18 @@ describeIfDatabase("Les capacités activées, lues dans la base", () => {
     employeA = employes[0] as EmployeeId;
     employeB = employes[1] as EmployeeId;
 
+    // La clé n'est plus saisie : elle est engendrée depuis l'acte et l'objet
+    // (`20260815120001_acte_et_objet.sql`). L'unicité de la suite porte donc sur l'objet — deux
+    // exécutions ne se marchent pas dessus, et la capacité reste lisible : « envoyer à quoi ».
     const [envoi] = await sql.query<{ id: string }>(
-      `insert into capability (key, name, contract) values ($1, 'Écrire', '{}'::jsonb) returning id`,
-      [`envoyer_message_${versionUnique()}`],
+      `insert into capability (acte, objet, name, contract)
+       values ('envoyer', $1, 'Écrire', '{}'::jsonb) returning id`,
+      [`prospect_${versionUnique()}`],
     );
     const [qualif] = await sql.query<{ id: string }>(
-      `insert into capability (key, name, contract) values ($1, 'Qualifier', '{}'::jsonb) returning id`,
-      [`qualifier_${versionUnique()}`],
+      `insert into capability (acte, objet, name, contract)
+       values ('qualifier', $1, 'Qualifier', '{}'::jsonb) returning id`,
+      [`prospect_${versionUnique()}`],
     );
     capaciteEnvoi = envoi?.id as string;
     capaciteQualif = qualif?.id as string;

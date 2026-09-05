@@ -57,7 +57,22 @@ export async function resolveDiagnosticVisitor(): Promise<{ visitorId: string; i
   const h = await headers();
   const forwarded = h.get("x-forwarded-for")?.split(",")[0]?.trim();
   const ip = forwarded || h.get("x-real-ip") || "adresse-inconnue";
-  const salt = process.env.SENTIO_IP_HASH_SALT ?? "sel-de-developpement-jamais-en-production";
+  // ⚠️ AUCUNE VALEUR DE REPLI, ET C'EST LE POINT.
+  //
+  // Il y en avait une, écrite en clair juste ici. Un sel publié dans un dépôt ne sale rien : le
+  // SHA-256 des quatre milliards d'adresses IPv4 se retourne en quelques minutes sur une machine
+  // ordinaire, et les « adresses hachées » de `diagnostic_rate_limit` redevenaient des adresses
+  // IP en clair, c'est-à-dire des données personnelles. Le repli s'appliquait en silence, donc
+  // exactement le jour où on aurait voulu être prévenu.
+  //
+  // En développement, poser la variable coûte une ligne dans `.env.local`.
+  const salt = process.env.SENTIO_IP_HASH_SALT;
+  if (!salt) {
+    throw new Error(
+      "SENTIO_IP_HASH_SALT manquante. Sans elle, les adresses des visiteurs seraient stockées " +
+        "sous une forme réversible : la limitation du diagnostic refuse de fonctionner.",
+    );
+  }
   const ipHash = createHash("sha256").update(`${salt}:${ip}`).digest("hex");
 
   return { visitorId, ipHash };

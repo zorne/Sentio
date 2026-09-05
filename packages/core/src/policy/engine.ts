@@ -24,6 +24,16 @@ export type EffectClass = "read" | "internal_write" | "external_irreversible";
 /** Les quatre niveaux d'autonomie, choisis par le client (`docs/05-runtime-employe.md`). */
 export type AutonomyLevel = "auto" | "notify" | "confirm" | "confirm_once";
 
+/**
+ * Laquelle des deux gardes a refusé.
+ *
+ *   · `hors_du_perimetre` — le modèle a proposé une capacité qui n'est pas dans la liste autorisée
+ *     de cet employé. Ce que le dirigeant a activé décide ;
+ *   · `capacite_inconnue_du_registre` — la capacité n'a aucun contrat chez cet exécutant. Le
+ *     dirigeant n'y peut rien : c'est un manque de notre côté.
+ */
+export type CauseDuRefus = "hors_du_perimetre" | "capacite_inconnue_du_registre";
+
 export interface PolicyRequest {
   readonly tenantId: TenantId;
   readonly taskId: TaskId;
@@ -44,7 +54,15 @@ export type AllowBasis =
   /** Ni effet extérieur, ni irréversibilité : l'action n'a jamais eu besoin d'un accord. */
   | "sans_effet_exterieur"
   /** Un accord permanent en vigueur couvre CETTE capacité (« confirmer une fois »). */
-  | "accord_permanent";
+  | "accord_permanent"
+  /**
+   * Le client a autorisé CETTE action-là, une fois, depuis son espace.
+   *
+   * Distinct d'un accord permanent, et la distinction n'est pas cosmétique : un accord ponctuel
+   * ne couvre rien d'autre et ne se révoque pas — il est déjà consommé. Les confondre reviendrait
+   * à répondre « vous l'aviez autorisé » à un client qui n'a jamais rien autorisé de général.
+   */
+  | "accord_ponctuel";
 
 export type PolicyDecision =
   | { readonly outcome: "allow"; readonly notify: boolean; readonly basis: AllowBasis }
@@ -117,9 +135,26 @@ export class PolicyEngine {
    * seulement que l'employé refuse : il exige que **le refus soit tracé**. Un refus non tracé est
    * indistinguable d'une panne, pour le client comme pour nous.
    */
-  async refuse(request: PolicyRequest, allowed: readonly string[]): Promise<PolicyDecision> {
-    const decision = refuseOutOfScope(request.capabilityKey, allowed);
-    await this.trace(request, decision);
+  /**
+   * Refuse une capacité que le modèle a proposée sans y avoir droit.
+   *
+   * ⚠️ **`cause` EST OBLIGATOIRE, ET CE N'ÉTAIT PAS LE CAS.** Deux gardes appellent cette méthode
+   * — « hors de la liste autorisée » et « capacité inconnue du registre » — et elles écrivaient
+   * exactement le même `politique_refuse`. Indiscernables dans le journal, alors qu'elles
+   * n'appellent pas la même réparation : la première regarde ce que le dirigeant a activé, la
+   * seconde un contrat qui manque chez nous.
+   *
+   * Tant que c'était vrai, aucune alerte fondée sur le journal ne pouvait distinguer ce qui
+   * relevait du dirigeant de ce qui relevait de nous — et c'est ce qui plafonnait la qualité de
+   * tout le reste (`docs/36-fermer-le-silence.md`, cas 9).
+   */
+  async refuse(
+    request: PolicyRequest,
+    allowed: readonly string[],
+    cause: CauseDuRefus,
+  ): Promise<PolicyDecision> {
+    const decision = refuseOutOfScope(request.capabilityKey, allowed, cause);
+    await this.trace(request, decision, cause);
     return decision;
   }
 
@@ -141,7 +176,11 @@ export class PolicyEngine {
    * `TEST-02` exige que le refus d'un employé soit tracé : un refus non tracé est
    * indistinguable d'une panne, pour le client comme pour nous.
    */
-  private async trace(request: PolicyRequest, decision: PolicyDecision): Promise<void> {
+  private async trace(
+    request: PolicyRequest,
+    decision: PolicyDecision,
+    cause?: CauseDuRefus,
+  ): Promise<void> {
     await this.journal.append({
       tenantId: request.tenantId,
       taskId: request.taskId,
@@ -157,6 +196,10 @@ export class PolicyEngine {
         // Sur quoi repose une autorisation — sans quoi une action autorisée par un accord
         // permanent est indistinguable d'une action qui n'en avait pas besoin.
         ...(decision.outcome === "allow" && { fondement: decision.basis }),
+        // ⚠️ QUELLE GARDE A REFUSÉ, ET POURQUOI. Sans ces deux champs, deux pannes très
+        // différentes s'écrivaient à l'identique — et une alerte ne pouvait qu'annoncer « refusé ».
+        ...(cause !== undefined && { cause }),
+        ...(decision.outcome === "refuse" && { raison: decision.reason }),
       },
     });
   }
@@ -169,7 +212,20 @@ export class PolicyEngine {
  * une règle de prompt se contourne, une politique non. En production, passer par
  * `PolicyEngine.refuse()`, qui journalise.
  */
-export function refuseOutOfScope(capabilityKey: string, allowed: readonly string[]): PolicyDecision {
+export function refuseOutOfScope(
+  capabilityKey: string,
+  allowed: readonly string[],
+  cause: CauseDuRefus = "hors_du_perimetre",
+): PolicyDecision {
+  if (cause === "capacite_inconnue_du_registre") {
+    return {
+      outcome: "refuse",
+      reason:
+        `La capacité « ${capabilityKey} » n'a aucun contrat dans le registre de cet exécutant : ` +
+        "rien ne dit ce qu'elle fait, donc rien ne l'exécute. C'est un manque chez nous, pas un " +
+        "réglage du dirigeant.",
+    };
+  }
   return {
     outcome: "refuse",
     reason:

@@ -14,6 +14,8 @@
  * Réalise : METIER-07, METIER-22
  */
 
+import { CAPACITES } from "@sentio/domain";
+
 import { looksLikeEmail } from "./import.js";
 
 /** Ce que le client vend, et à qui — lu du Contexte Entreprise, jamais deviné. */
@@ -118,4 +120,71 @@ export function qualifyLead(lead: LeadToQualify, criteria: ClientCriteria = {}):
  */
 export function selectionReason(lead: LeadToQualify, qualification: Qualification): string {
   return `${lead.companyName} — ${qualification.reason} (origine : ${lead.source})`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Le moteur — la règle ci-dessus, branchée sur des ports
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+//
+// La décision reste `qualifyLead`, déterministe et testable sans rien. Ce qui suit ne fait que
+// lire la fiche, appliquer la règle, et consigner la réponse.
+//
+// ⚠️ **Le prospect n'est pas choisi ici, et surtout pas par le modèle.** Il vient de la mission
+// (`packages/runtime/src/attelage.ts`) : une mission porte un sujet, et c'est ce sujet-là qu'on
+// qualifie. Laisser le modèle nommer la fiche à juger ouvrirait la porte qu'on ferme partout
+// ailleurs — une consigne glissée dans un nom d'entreprise ferait qualifier autre chose.
+
+/** Ce que la base sait d'un prospect et de ce que son client vend. */
+export interface FichesAQualifier {
+  /** `null` quand la fiche n'existe pas, ou appartient à une autre entreprise. */
+  lire(input: {
+    tenantId: string;
+    leadId: string;
+  }): Promise<{ lead: LeadToQualify; criteria: ClientCriteria } | null>;
+
+  /** Écrit la qualification ET sa raison. Les séparer laisserait un verdict sans explication. */
+  consigner(input: {
+    tenantId: string;
+    leadId: string;
+    qualification: "qualifie" | "ecarte";
+    raison: string;
+    motifDeSelection: string;
+  }): Promise<boolean>;
+}
+
+export type QualifierResult =
+  | { readonly status: "qualifie" | "ecarte"; readonly leadId: string; readonly raison: string }
+  | { readonly status: "prospect_inconnu" };
+
+export interface QualifierInput {
+  readonly tenantId: string;
+  readonly leadId: string;
+}
+
+export class QualifierProspectCapability {
+  /** Le moteur de base, celui que `capability_binding` lie aux trois formules. */
+  readonly engineKey = "base";
+  readonly capabilityKey = CAPACITES.qualifierProspect;
+
+  constructor(private readonly fiches: FichesAQualifier) {}
+
+  async execute(input: QualifierInput): Promise<QualifierResult> {
+    const fiche = await this.fiches.lire(input);
+    if (fiche === null) return { status: "prospect_inconnu" };
+
+    const verdict = qualifyLead(fiche.lead, fiche.criteria);
+
+    const ecrit = await this.fiches.consigner({
+      tenantId: input.tenantId,
+      leadId: input.leadId,
+      qualification: verdict.qualification,
+      raison: verdict.reason,
+      motifDeSelection: selectionReason(fiche.lead, verdict),
+    });
+    // La fiche a disparu entre la lecture et l'écriture — un effacement RGPD, par exemple. Ce
+    // n'est pas une erreur : c'est le résultat correct.
+    if (!ecrit) return { status: "prospect_inconnu" };
+
+    return { status: verdict.qualification, leadId: input.leadId, raison: verdict.reason };
+  }
 }

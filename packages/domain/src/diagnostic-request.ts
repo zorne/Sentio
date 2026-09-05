@@ -60,7 +60,11 @@ const PROFILE_FIELDS = [
   "objective",
   "targetCustomers",
   "hasProspectList",
+  "inboundHandling",
 ] as const;
+
+/** Ce qui arrive aux demandes reçues sans avoir été cherchées. Fermé : rien ne se devine. */
+const KNOWN_INBOUND: readonly string[] = ["traite", "irregulier", "perdu"];
 
 const OBJECTIVE_FIELDS = ["metric", "target", "horizon"] as const;
 
@@ -117,12 +121,21 @@ export function parseDiagnosticProfile(input: unknown): DiagnosticRequestParse {
   const friction = parseFriction(input["friction"], violations);
   const objective = parseObjective(input["objective"], violations);
   const hasProspectList = parseOptionalBoolean(input["hasProspectList"], violations);
+  const inboundHandling = parseInbound(input["inboundHandling"], violations);
 
   if (violations.length > 0) return { ok: false, violations };
 
   return {
     ok: true,
-    profile: { sector, headcount, friction, objective, targetCustomers, hasProspectList },
+    profile: {
+      sector,
+      headcount,
+      friction,
+      objective,
+      targetCustomers,
+      hasProspectList,
+      inboundHandling,
+    },
   };
 }
 
@@ -261,4 +274,17 @@ function parseOptionalBoolean(
     return null;
   }
   return value;
+}
+
+/** Liste fermée, comme les freins : une valeur inconnue est refusée, jamais rapprochée. */
+function parseInbound(
+  value: unknown,
+  violations: { field: string; reason: string }[],
+): DiagnosticProfile["inboundHandling"] {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string" || !KNOWN_INBOUND.includes(value)) {
+    violations.push({ field: "inboundHandling", reason: "valeur inconnue" });
+    return null;
+  }
+  return value as DiagnosticProfile["inboundHandling"];
 }

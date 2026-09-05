@@ -87,8 +87,8 @@ Deno.test({
         [tenantId],
       );
       const definition = await sql.query<{ id: string }>(
-        `insert into employee_definition (profession, version, dna)
-         values ('commercial', $1, $2::jsonb) returning id`,
+        `insert into employee_definition (gisement, version, dna, capacites)
+         values ('commercial', $1, $2::jsonb, '["relancer.prospect"]'::jsonb) returning id`,
         [
           Math.floor(Math.random() * 2_000_000_000),
           JSON.stringify({
@@ -102,10 +102,18 @@ Deno.test({
       const identity = await sql.query<{ id: string }>("select * from reserve_identity($1)", [
         "commercial",
       ]);
-      await sql.query(
+      const employee = await sql.query<{ id: string }>(
         `insert into employee (tenant_id, employee_definition_id, identity_id, autonomy)
-         values ($1, $2, $3, 'confirm_once')`,
+         values ($1, $2, $3, 'confirm_once') returning id`,
         [tenantId, definition[0]?.id, identity[0]?.id],
+      );
+      // L'approvisionnement écarte tout travail qu'aucune capacité activée ne sert. En production
+      // ces lignes viennent de `appliquer_la_configuration` ; ici on les pose à la main, comme le
+      // reste du recrutement de ce cas.
+      await sql.query(
+        `insert into employee_capability (tenant_id, employee_id, capability_id, enabled)
+         select $1, $2, c.id, true from capability c where c.key = 'qualifier.prospect'`,
+        [tenantId, employee[0]?.id],
       );
       await sql.query(
         `insert into lead (tenant_id, company_name, email, source, qualification)

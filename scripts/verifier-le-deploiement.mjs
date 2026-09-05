@@ -39,13 +39,34 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const executer = promisify(execFile);
 
 /** Les secrets que la fonction exige pour être opérationnelle. **Des noms, jamais des valeurs.** */
+/**
+ * Les secrets attendus côté Supabase, AVEC la fonction qui s'en sert et ce qui casse sans eux.
+ *
+ * ⚠️ CETTE LISTE ÉTAIT INCOMPLÈTE, ET SON INCOMPLÉTUDE ÉTAIT SILENCIEUSE.
+ *
+ * Elle ne couvrait que l'exécutant (`battement`), parce que c'est la seule fonction qui existait
+ * quand elle a été écrite. Trois autres fonctions ont été déployées depuis, chacune avec son
+ * secret, et chacune **échoue fermé** sans lui : la confirmation de paiement refuse tout, la
+ * désinscription invalide tous les jetons, le diagnostic public n'autorise aucune origine.
+ *
+ * Le produit ne tombe donc pas, il refuse — poliment, en silence, exactement comme s'il n'y avait
+ * pas de client. C'est la panne la plus coûteuse à diagnostiquer, et elle se serait produite le
+ * jour de la mise en vente.
+ *
+ * ⚠️ **Ne pas mettre ici les secrets de la vitrine.** `RESEND_API_KEY`, `STRIPE_SECRET_KEY`,
+ * `CRON_SECRET`, `SENTIO_IP_HASH_SALT` vivent chez l'hébergeur de l'interface, pas chez Supabase.
+ * Les mélanger ferait chercher au mauvais endroit le jour où l'un manque.
+ */
 const SECRETS_REQUIS = [
-  "DATABASE_URL",
-  "SENTIO_HEARTBEAT_SECRET",
-  "SENTIO_MODELE_PRINCIPAL_URL",
-  "SENTIO_MODELE_PRINCIPAL_NOM",
-  "SENTIO_MODELE_PRINCIPAL_CLE",
-  "SENTIO_MODELE_PRINCIPAL_POLITIQUE",
+  ["DATABASE_URL", "battement", "sans elle, l'exécutant ne joint aucune base"],
+  ["SENTIO_HEARTBEAT_SECRET", "battement", "un battement non signé serait accepté, ou aucun ne le serait"],
+  ["SENTIO_MODELE_PRINCIPAL_URL", "battement", "le fournisseur principal, en groupe de quatre"],
+  ["SENTIO_MODELE_PRINCIPAL_NOM", "battement", "idem"],
+  ["SENTIO_MODELE_PRINCIPAL_CLE", "battement", "idem"],
+  ["SENTIO_MODELE_PRINCIPAL_POLITIQUE", "battement", "« no_train » ou « free » : décide où partent les données réelles"],
+  ["SENTIO_PAIEMENT_SECRET", "recrutement", "sans lui, AUCUN paiement ne recrute : la fonction refuse tout"],
+  ["SENTIO_OPTOUT_SECRET", "desinscription", "sans lui, tout lien de désinscription est invalide — obligation légale"],
+  ["SENTIO_ALLOWED_ORIGINS", "diagnostic", "sans lui, aucune origine n'est autorisée et le diagnostic public est muet"],
 ];
 
 const constats = [];
@@ -136,14 +157,17 @@ async function verifierLesSecrets() {
   }
   const poses = (rendu.secrets ?? []).map((secret) => secret.name);
 
-  const absents = SECRETS_REQUIS.filter((nom) => !poses.includes(nom));
+  const absents = SECRETS_REQUIS.filter(([nom]) => !poses.includes(nom));
   constater(
     absents.length === 0,
-    "secrets du runtime posés",
+    "secrets des fonctions posés",
     absents.length === 0
       ? `${SECRETS_REQUIS.length} secrets présents`
-      : `absents : ${absents.join(", ")} — à poser en console ou par « supabase secrets set », ` +
-        "jamais depuis le dépôt ni depuis un agent.",
+      : "absents, à poser en console ou par « supabase secrets set », jamais depuis le dépôt ni " +
+        "depuis un agent :\n" +
+        absents
+          .map(([nom, fonction, pourquoi]) => `        ${nom}  (${fonction}) ${pourquoi}`)
+          .join("\n"),
   );
 
   // ⚠️ Le drapeau d'opt-out est FERMÉ par défaut, et c'est voulu : sans preuve d'entraînement

@@ -17,7 +17,7 @@
 
 ## Avancement
 
-**119 tâches sur 185** portent une preuve dans le dépôt.
+**137 tâches sur 185** portent une preuve dans le dépôt.
 
 | Lot | Fait | Total | |
 |---|---|---|---|
@@ -25,11 +25,11 @@
 | Noyau (Lot 1) | 22 | 22 | `████████████████████` |
 | Métier Commercial (Lot 2) | 23 | 24 | `███████████████████·` |
 | Acquisition (Lot 4) | 16 | 24 | `█████████████·······` |
-| Recrutement & Paiement (Lot 5) | 0 | 10 | `····················` |
-| Dashboard (Lot 6) | 0 | 21 | `····················` |
-| Exécution autonome (Lot 3) | 12 | 19 | `█████████████·······` |
-| Évolution (Lot 7) | 0 | 8 | `····················` |
-| Conformité & Lancement (Lot 8) | 1 | 10 | `██··················` |
+| Recrutement & Paiement (Lot 5) | 6 | 10 | `████████████········` |
+| Dashboard (Lot 6) | 8 | 21 | `████████············` |
+| Exécution autonome (Lot 3) | 13 | 19 | `██████████████······` |
+| Évolution (Lot 7) | 1 | 8 | `███·················` |
+| Conformité & Lancement (Lot 8) | 3 | 10 | `██████··············` |
 | Vérification (transverse) | 7 | 9 | `████████████████····` |
 ---
 
@@ -126,7 +126,7 @@
 | ✅ | **METIER-11** Garde-fou : respect immédiat des désinscriptions | P0 | [`packages/domain/src/optout.ts`](../packages/domain/src/optout.ts) |
 | ✅ | **METIER-12** Capacité "relancer un prospect" : contrat + moteur | P1 | [`packages/capabilities/src/email/follow-up.ts`](../packages/capabilities/src/email/follow-up.ts) · [`supabase/migrations/20260812120002_relance.sql`](../supabase/migrations/20260812120002_relance.sql) |
 | ✅ | **METIER-13** Capacité "mettre à jour une fiche CRM" : contrat + moteur | P0 | [`packages/capabilities/src/prospects/update-fiche.ts`](../packages/capabilities/src/prospects/update-fiche.ts) |
-| ✅ | **METIER-14** Réflexion post-run spécifique au Commercial (0 à 3 faits par run) | P1 | [`packages/core/src/runtime/reflexion.ts`](../packages/core/src/runtime/reflexion.ts) |
+| ✅ | **METIER-14** Réflexion post-run spécifique au Commercial (0 à 3 faits par run) | P1 | [`packages/runtime/src/reflexion.ts`](../packages/runtime/src/reflexion.ts) · [`packages/core/src/runtime/reflexion.ts`](../packages/core/src/runtime/reflexion.ts) |
 | ✅ | **METIER-15** Variantes de stratégie du Commercial (angles d'accroche, moments de relance) | P1 | [`packages/core/src/runtime/variantes.ts`](../packages/core/src/runtime/variantes.ts) · [`supabase/migrations/20260812120003_variantes_de_strategie.sql`](../supabase/migrations/20260812120003_variantes_de_strategie.sql) |
 | ✅ | **METIER-16** Migration : table suppression_entry (exclusions par entreprise - clients, concurrents, comptes sensibles) | P0 | [`supabase/migrations/20260729120038_prospection.sql`](../supabase/migrations/20260729120038_prospection.sql) |
 | ✅ | **METIER-17** Garde-fou : vérification des exclusions avant tout envoi (bloquant, pas consultatif) | P0 | [`supabase/migrations/20260729120038_prospection.sql`](../supabase/migrations/20260729120038_prospection.sql) |
@@ -174,15 +174,15 @@
 | | Tâche | Priorité | Preuve dans le dépôt |
 |---|---|---|---|
 | ☐ | **RECRUT-01** Intégration du prestataire de paiement (paiement hébergé) | P0 | — |
-| ☐ | **RECRUT-02** Point d'entrée de confirmation serveur du paiement (jamais la redirection navigateur) | P0 | — |
-| ☐ | **RECRUT-03** Réservation atomique d'une identité dans le réservoir | P0 | — |
-| ☐ | **RECRUT-04** Création de l'employé sur une version figée d'ADN | P0 | — |
-| ☐ | **RECRUT-05** Initialisation du Contexte Entreprise depuis le profil du diagnostic et le profil sectoriel | P0 | — |
-| ☐ | **RECRUT-06** Notification de recrutement ("Bienvenue, X rejoint votre entreprise") | P0 | — |
+| ✅ | **RECRUT-02** Point d'entrée de confirmation serveur du paiement (jamais la redirection navigateur) | P0 | [`supabase/functions/recrutement/index.ts`](../supabase/functions/recrutement/index.ts) · [`packages/domain/src/charge-signee.test.ts`](../packages/domain/src/charge-signee.test.ts) |
+| ✅ | **RECRUT-03** Réservation atomique d'une identité dans le réservoir | P0 | [`supabase/migrations/20260815120009_recrutement.sql`](../supabase/migrations/20260815120009_recrutement.sql) |
+| ✅ | **RECRUT-04** Création de l'employé sur une version figée d'ADN | P0 | [`supabase/migrations/20260815120009_recrutement.sql`](../supabase/migrations/20260815120009_recrutement.sql) |
+| ✅ | **RECRUT-05** Initialisation du Contexte Entreprise depuis le profil du diagnostic et le profil sectoriel | P0 | [`supabase/migrations/20260815120009_recrutement.sql`](../supabase/migrations/20260815120009_recrutement.sql) |
+| ✅ | **RECRUT-06** Notification de recrutement ("Bienvenue, X rejoint votre entreprise") | P0 | [`supabase/migrations/20260815120009_recrutement.sql`](../supabase/migrations/20260815120009_recrutement.sql) |
 | ☐ | **RECRUT-07** Page de succès de paiement + ouverture de l'accès à l'espace privé | P0 | — |
 | ☐ | **RECRUT-08** Authentification par lien magique (connexion) | P0 | — |
 | ☐ | **RECRUT-09** Protection anti-scanner du lien de connexion (callback) | P1 | — |
-| ☐ | **RECRUT-10** Rattachement automatique de l'utilisateur au tenant créé pendant le diagnostic | P0 | — |
+| ✅ | **RECRUT-10** Rattachement automatique de l'utilisateur au tenant créé pendant le diagnostic | P0 | [`supabase/migrations/20260815120009_recrutement.sql`](../supabase/migrations/20260815120009_recrutement.sql) · [`supabase/migrations/20260815120010_un_visiteur_devient_client.sql`](../supabase/migrations/20260815120010_un_visiteur_devient_client.sql) |
 
 ---
 
@@ -190,22 +190,22 @@
 
 | | Tâche | Priorité | Preuve dans le dépôt |
 |---|---|---|---|
-| ☐ | **DASH-01** Layout de l'espace privé (dashboard) | P0 | — |
-| ☐ | **DASH-02** Fiche employé : mission, objectif, périmètre | P0 | — |
-| ☐ | **DASH-03** Fiche employé : performances et progression | P0 | — |
-| ☐ | **DASH-04** Fiche employé : compétences / capacités actives | P1 | — |
-| ☐ | **DASH-05** Vue "progression vers l'objectif" (CA attribué / objectif déclaré) | P0 | — |
+| ✅ | **DASH-01** Layout de l'espace privé (dashboard) | P0 | [`apps/vitrine/src/app/espace/page.tsx`](../apps/vitrine/src/app/espace/page.tsx) |
+| ✅ | **DASH-02** Fiche employé : mission, objectif, périmètre | P0 | [`apps/vitrine/src/app/espace/page.tsx`](../apps/vitrine/src/app/espace/page.tsx) · [`supabase/migrations/20260815120012_le_client_voit_son_employe.sql`](../supabase/migrations/20260815120012_le_client_voit_son_employe.sql) |
+| ✅ | **DASH-03** Fiche employé : performances et progression | P0 | [`apps/vitrine/src/app/espace/page.tsx`](../apps/vitrine/src/app/espace/page.tsx) |
+| ✅ | **DASH-04** Fiche employé : compétences / capacités actives | P1 | [`apps/vitrine/src/app/espace/page.tsx`](../apps/vitrine/src/app/espace/page.tsx) |
+| ✅ | **DASH-05** Vue "progression vers l'objectif" (CA attribué / objectif déclaré) | P0 | [`apps/vitrine/src/app/espace/page.tsx`](../apps/vitrine/src/app/espace/page.tsx) |
 | ☐ | **DASH-06** Déclaration de vente par le client (confirmation d'attribution) | P0 | — |
 | ☐ | **DASH-07** Calcul du CA généré (fenêtre d'attribution annoncée) | P0 | — |
 | ☐ | **DASH-08** Calcul du temps économisé (estimation documentée et affichée comme telle) | P1 | — |
 | ☐ | **DASH-09** Calcul du ROI dérivé (CA attribué − prix / prix) | P1 | — |
-| ☐ | **DASH-10** État vide soigné du dashboard (montée en puissance lisible) | P0 | — |
-| ☐ | **DASH-11** Liste des notifications (Recrutement/Travail/Évolution) | P0 | — |
+| ✅ | **DASH-10** État vide soigné du dashboard (montée en puissance lisible) | P0 | [`apps/vitrine/src/app/espace/page.tsx`](../apps/vitrine/src/app/espace/page.tsx) |
+| ✅ | **DASH-11** Liste des notifications (Recrutement/Travail/Évolution) | P0 | [`apps/vitrine/src/app/espace/page.tsx`](../apps/vitrine/src/app/espace/page.tsx) |
 | ☐ | **DASH-12** Guide de première connexion (bulles, affiché une seule fois) | P1 | — |
 | ☐ | **DASH-13** Gestion de l'abonnement (visualisation, statut) | P1 | — |
 | ☐ | **DASH-14** Section CRM minimal côté client ("vos prospects") | P1 | — |
 | ☐ | **DASH-15** Contrôles de validation humaine (approuver/refuser une action suspendue) | P0 | — |
-| ☐ | **DASH-16** Réglage du niveau d'autonomie par le client | P1 | — |
+| ✅ | **DASH-16** Réglage du niveau d'autonomie par le client | P1 | [`supabase/migrations/20260815120011_regler_l_autonomie.sql`](../supabase/migrations/20260815120011_regler_l_autonomie.sql) |
 | ☐ | **DASH-17** Vue temps réel d'exécution d'une tâche (abonnement live) | P2 | — |
 | ☐ | **DASH-18** Affichage des repères de performance réalistes à côté des résultats mesurés | P0 | — |
 | ☐ | **DASH-19** Affichage du motif de sélection d'un prospect ("pourquoi cette entreprise") | P1 | — |
@@ -228,7 +228,7 @@
 | ✅ | **EXEC-08** Runtime : replanifier le pas suivant ou terminer le run | P0 | [`packages/core/src/ports.ts`](../packages/core/src/ports.ts) · [`packages/runtime/src/suite-du-run.ts`](../packages/runtime/src/suite-du-run.ts) |
 | ☐ | **EXEC-09** Reprise après interruption (reconstruction d'état depuis le journal) | P0 | — |
 | ☐ | **EXEC-10** Suspension d'un run en attente d'accord humain | P0 | — |
-| ☐ | **EXEC-11** Reprise après validation humaine (approve/reject/trustFuture) | P0 | — |
+| ✅ | **EXEC-11** Reprise après validation humaine (approve/reject/trustFuture) | P0 | [`supabase/migrations/20260815120016_reprendre_apres_accord.sql`](../supabase/migrations/20260815120016_reprendre_apres_accord.sql) |
 | ✅ | **EXEC-12** Verrouillage par ligne de la file job + saut des lignes verrouillées | P0 | [`packages/runtime/src/boucle.ts`](../packages/runtime/src/boucle.ts) · [`packages/runtime/src/adapters/moteurs.ts`](../packages/runtime/src/adapters/moteurs.ts) |
 | ☐ | **EXEC-13** Priorité d'exécution pilotée par la formule du client | P1 | — |
 | ☐ | **EXEC-14** Notifications de travail émises depuis les outcomes journalisés | P0 | — |
@@ -236,7 +236,7 @@
 | ☐ | **EXEC-16** Ordre total sur objective : le dernier objectif ne se déduit pas de created_at (identique dans une même transaction) | P1 | — |
 | ✅ | **EXEC-17** Approvisionnement : ouvrir les nouvelles missions du jour, de façon déterministe et bornée | P0 | [`packages/core/src/ports.ts`](../packages/core/src/ports.ts) · [`packages/runtime/src/battement.ts`](../packages/runtime/src/battement.ts) |
 | ✅ | **EXEC-18** Racine de composition du worker : environnement validé, adaptateurs assemblés, battement signé servi | P0 | [`apps/worker/src/main.ts`](../apps/worker/src/main.ts) · [`apps/worker/src/serveur.ts`](../apps/worker/src/serveur.ts) |
-| ✅ | **EXEC-19** Exécutant en fonction serveur (Deno) : runtime partagé, pilote, boucle complète et parité avec Node | P0 | [`supabase/functions/battement/index.ts`](../supabase/functions/battement/index.ts) |
+| ✅ | **EXEC-19** Exécutant en fonction serveur (Deno) : runtime partagé, pilote, boucle complète et parité avec Node | P0 | [`packages/runtime/src/attelage.ts`](../packages/runtime/src/attelage.ts) · [`packages/runtime/src/attelage.test.ts`](../packages/runtime/src/attelage.test.ts) |
 
 ---
 
@@ -247,7 +247,7 @@
 | ☐ | **EVOL-01** Écriture des faits appris (learned_fact) depuis la réflexion post-run | P0 | — |
 | ☐ | **EVOL-02** Application des modifications proposées au profil entreprise par l'apprentissage | P2 | — |
 | ☐ | **EVOL-03** Notification client sur modification du profil entreprise par l'apprentissage | P2 | — |
-| ☐ | **EVOL-04** Sélection de la variante gagnante à partir des outcomes mesurés | P2 | — |
+| ✅ | **EVOL-04** Sélection de la variante gagnante à partir des outcomes mesurés | P2 | [`packages/domain/src/progression.ts`](../packages/domain/src/progression.ts) · [`packages/runtime/src/progression.ts`](../packages/runtime/src/progression.ts) |
 | ☐ | **EVOL-05** Écriture de strategy_change à chaque évolution réelle | P0 | — |
 | ☐ | **EVOL-06** Notification d'évolution adossée strictement à strategy_change | P0 | — |
 | ☐ | **EVOL-07** Interface client : consulter les faits appris | P1 | — |
@@ -264,8 +264,8 @@
 | ☐ | **CONF-03** Rédaction du registre des traitements RGPD | P0 | — |
 | ☐ | **CONF-04** Rédaction de l'analyse d'impact (AIPD, décision automatisée) | P0 | — |
 | ✅ | **CONF-05** Implémentation de la procédure d'effacement (anonymisation du journal) | P0 | [`supabase/migrations/20260729120036_effacement.sql`](../supabase/migrations/20260729120036_effacement.sql) |
-| ☐ | **CONF-06** Script de sauvegarde exportée hors plateforme | P0 | — |
-| ☐ | **CONF-07** Surveillance minimale : alerte email sur quota/échecs/taille base/tâches bloquées | P0 | — |
+| ✅ | **CONF-06** Script de sauvegarde exportée hors plateforme | P0 | [`scripts/sauvegarder.mjs`](../scripts/sauvegarder.mjs) |
+| ✅ | **CONF-07** Surveillance minimale : alerte email sur quota/échecs/taille base/tâches bloquées | P0 | [`scripts/surveiller.mjs`](../scripts/surveiller.mjs) · [`supabase/migrations/20260815120014_etat_de_sante.sql`](../supabase/migrations/20260815120014_etat_de_sante.sql) |
 | ☐ | **CONF-08** Contrôle automatique du lexique interdit en intégration continue | P1 | — |
 | ☐ | **CONF-09** Checklist de vérification des conditions d'usage commercial des offres gratuites (préparation, décision humaine finale) | P0 | — |
 | ☐ | **CONF-10** Modèle de contrat de sous-traitance par prestataire (préparation, signature humaine) | P0 | — |

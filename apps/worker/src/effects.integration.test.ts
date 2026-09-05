@@ -54,9 +54,14 @@ describeIfDatabase("L'exécution d'un effet, sur un vrai Postgres", () => {
 
   async function creerEntreprise(tenantId: string, nom: string) {
     await sql.query("insert into tenant (id, name) values ($1, $2)", [tenantId, nom]);
+    // Une mission sert toujours un objectif (`20260815120002`).
+    await sql.query(
+      "insert into objective (tenant_id, metric, target_value, horizon) values ($1, 'chiffre_affaires', 5000, 'mois')",
+      [tenantId],
+    );
     const [definition] = await sql.query<{ id: string }>(
-      `insert into employee_definition (profession, version, dna)
-       values ('commercial', $1, '{}'::jsonb) returning id`,
+      `insert into employee_definition (gisement, version, dna, capacites)
+       values ('commercial', $1, '{}'::jsonb, '["relancer.prospect","qualifier.prospect"]'::jsonb) returning id`,
       [versionUnique()],
     );
     const [identity] = await sql.query<{ id: string }>("select * from reserve_identity($1)", ["commercial"]);
@@ -66,8 +71,8 @@ describeIfDatabase("L'exécution d'un effet, sur un vrai Postgres", () => {
       [tenantId, definition?.id, identity?.id],
     );
     const [task] = await sql.query<{ id: string }>(
-      "insert into task (tenant_id, employee_id, subject_kind, subject_id) " +
-        "values ($1, $2, 'lead', gen_random_uuid()) returning id",
+      "insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id) " +
+        "values ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), 'lead', gen_random_uuid()) returning id",
       [tenantId, employee?.id],
     );
     return { employeeId: employee?.id as EmployeeId, taskId: task?.id as TaskId };
@@ -112,8 +117,8 @@ describeIfDatabase("L'exécution d'un effet, sur un vrai Postgres", () => {
     ({ employeeId: employeB, taskId: tacheB } = await creerEntreprise(tenantB, "Effets B"));
 
     const [seconde] = await sql.query<{ id: string }>(
-      "insert into task (tenant_id, employee_id, subject_kind, subject_id) " +
-        "values ($1, $2, 'lead', gen_random_uuid()) returning id",
+      "insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id) " +
+        "values ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), 'lead', gen_random_uuid()) returning id",
       [tenantA, employeA],
     );
     tacheA2 = seconde?.id as TaskId;

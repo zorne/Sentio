@@ -9,7 +9,7 @@
  */
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Cookies — Sentio" };
+export const metadata: Metadata = { title: "Cookies | Sentio" };
 
 export default function CookiesPage() {
   return (
@@ -41,6 +41,16 @@ export default function CookiesPage() {
             <td>Renouvellement de session</td>
             <td>30 jours</td>
             <td>Sentio (via Supabase)</td>
+          </tr>
+          <tr>
+            <td>sentio_diag_visitor</td>
+            <td>
+              Compte le nombre d&apos;échanges d&apos;un même visiteur pendant le diagnostic, pour
+              en limiter l&apos;usage abusif. Ne sert à rien d&apos;autre, et ne suit aucune
+              navigation.
+            </td>
+            <td>30 jours</td>
+            <td>Sentio</td>
           </tr>
         </tbody>
       </table>

@@ -34,6 +34,33 @@ export interface HeartbeatReport {
   readonly traites: number;
   /** Travaux échoués sans interrompre le battement — un run cassé n'arrête pas les autres. */
   readonly echoues: number;
+  /**
+   * Ce que chaque pas a produit, par motif (`travail_acheve`, `report_de_quota`, …).
+   *
+   * ⚠️ SANS CE COMPTE, UN REPORT RESSEMBLE À UN SUCCÈS. « Traité » ne disait que « aucune
+   * exception n'a été levée » : dix runs tous reportés faute de fournisseur conforme rendaient
+   * `{traites:10, echoues:0}`, un rapport rassurant et faux.
+   */
+  readonly motifs: Readonly<Record<string, number>>;
+  /**
+   * Runs qui ont consommé leur budget sans exécuter une seule action.
+   *
+   * ⚠️ AUCUN MOTIF NE LE DIT. Un run qui tourne dix fois sur une réponse illisible rend
+   * `{pas_suivant: 9, budget_epuise: 1}` : deux motifs qui veulent dire « le travail avance ». Ils
+   * ne mentent pas, des pas ont bien eu lieu — c'est le RÉSULTAT qui manque.
+   */
+  readonly sansAction: number;
+  /**
+   * Le jugement du battement — **calculé ici, jamais reconstitué par l'appelant**.
+   *
+   * ⚠️ C'EST UNE FRONTIÈRE, PAS UN CONFORT. Le planificateur doit LIRE ce verdict, jamais le
+   * recalculer à partir des chiffres : la règle qui distingue un silence légitime d'une panne est
+   * écrite une fois, en TypeScript, avec ses tests. La recopier dans un script la ferait diverger
+   * au premier changement — et c'est le script qui déciderait alors si l'on alerte.
+   */
+  readonly verdict: "normal" | "anormal";
+  /** Ce qui rend ce battement anormal. Vide quand il est normal — un chiffre sans raison n'aide pas. */
+  readonly anomalies: readonly string[];
 }
 
 export interface HeartbeatDeps {

@@ -22,7 +22,13 @@ import type { ConversationTurn } from "../conversation/turn.js";
  * anti-contradiction ci-dessous.
  */
 export interface EmployeeDna {
-  readonly profession: string;
+  /**
+   * ⚠️ Facultatif depuis `20260815120004`. Le noyau n'est plus un métier : ce qui décrit ce que
+   * Lady fait pour une entreprise est le RÔLE de sa configuration, une sortie du diagnostic
+   * (`docs/adr/0029`). Le champ subsiste pour les ADN publiés avant la bascule ; rien ne le lit
+   * plus dans le contexte assemblé.
+   */
+  readonly profession?: string;
   readonly mission: string;
   readonly perimetre: readonly string[];
   readonly limites: readonly string[];
@@ -57,8 +63,11 @@ export function parseDna(raw: unknown): EmployeeDna {
 
   const profession = record["profession"];
   const mission = record["mission"];
-  if (typeof profession !== "string" || typeof mission !== "string") {
-    throw new MalformedDna("ADN invalide : « profession » et « mission » sont obligatoires.");
+  if (typeof mission !== "string") {
+    throw new MalformedDna("ADN invalide : « mission » est obligatoire.");
+  }
+  if (profession !== undefined && typeof profession !== "string") {
+    throw new MalformedDna("ADN invalide : « profession », si présente, est un texte.");
   }
 
   const perimetre = strings(record["perimetre"], "perimetre");
@@ -71,9 +80,9 @@ export function parseDna(raw: unknown): EmployeeDna {
   }
 
   const regles = record["regles"] === undefined ? undefined : strings(record["regles"], "regles");
-  return regles === undefined
-    ? { profession, mission, perimetre, limites }
-    : { profession, mission, perimetre, limites, regles };
+  const socle = { mission, perimetre, limites };
+  const avecMetier = profession === undefined ? socle : { ...socle, profession };
+  return regles === undefined ? avecMetier : { ...avecMetier, regles };
 }
 
 /**
@@ -212,12 +221,31 @@ export interface TaskContext {
   readonly done?: readonly string[];
 }
 
+/**
+ * La configuration active de Lady pour cette entreprise. Elle porte ce que le noyau ne porte
+ * plus : **le rôle**, qui est une sortie du diagnostic et non un métier choisi (`docs/adr/0029`).
+ *
+ * Absente tant qu'aucune configuration n'a été publiée. Dans ce cas la ligne de rôle ne s'écrit
+ * pas — Lady sans configuration n'a pas de rôle, et en inventer un serait exactement la faute que
+ * tout le reste de l'architecture cherche à rendre impossible.
+ */
+export interface ConfigurationActive {
+  readonly role: string;
+  /** L'ordre de travail décidé par le diagnostic. */
+  readonly priorites: readonly string[];
+}
+
 export interface AssembleInput {
   readonly dna: EmployeeDna;
+  readonly configuration?: ConfigurationActive;
   /** Couche 2 — la connaissance du SECTEUR, rédigée par Sentio et jamais dérivée d'un client
    *  (`docs/adr/0011`). Absente tant qu'aucun profil n'existe pour le secteur du client : dans
    *  ce cas la couche ne s'écrit pas, elle ne se remplace pas par du générique. */
   readonly sector?: SectorKnowledge;
+  /** Couche 2 bis — la FAÇON de faire ce travail-ci (`strategy_variant`). Absente tant qu'aucune
+   *  variante n'a été attribuée à la mission : dans ce cas l'employé travaille à sa manière, et
+   *  la couche est déclarée manquante plutôt que remplacée par une consigne générique. */
+  readonly variantes?: readonly VarianteAppliquee[];
   readonly profile: readonly CompanyProfileEntry[];
   readonly facts: readonly LearnedFact[];
   readonly task: TaskContext;
@@ -226,7 +254,25 @@ export interface AssembleInput {
 
 /** Les couches qui n'ont rien eu à dire. Rendues explicitement pour que le runtime les
  *  journalise : une absence qu'on ne nomme pas est indistinguable d'un oubli de branchement. */
-export type MissingLayer = "secteur" | "profil_entreprise" | "faits_appris";
+export type MissingLayer =
+  | "secteur"
+  | "facon_de_travailler"
+  | "profil_entreprise"
+  | "faits_appris";
+
+/**
+ * Une variante telle que l'employé la lit : une consigne, et ce qu'elle proscrit.
+ *
+ * ⚠️ La clé de la variante n'est PAS donnée au modèle. Il doit suivre la consigne, pas savoir
+ * qu'il est comparé à une autre façon de faire — un modèle qui se sait mesuré écrit pour la
+ * mesure. Le lien entre la mission et la variante vit en base (`task_variant`), là où il sert à
+ * compter des résultats.
+ */
+export interface VarianteAppliquee {
+  readonly kind: string;
+  readonly consigne: string;
+  readonly aEviter?: string;
+}
 
 export interface AssembledContext {
   readonly turns: readonly ConversationTurn[];
@@ -280,8 +326,14 @@ export function assembleContext(input: AssembleInput): AssembledContext {
   const excluded: { factId: string; reason: string }[] = [];
 
   // ── Couche 1 — l'ADN. Position non négociable : le premier tour, toujours.
+  // ⚠️ Le rôle vient de la CONFIGURATION, jamais de l'ADN. C'est ce qui distingue un noyau
+  // généraliste configuré d'un agent spécialisé : deux entreprises portant le même noyau peuvent
+  // lire ici deux rôles différents.
   const dnaLines = [
-    `Métier : ${input.dna.profession}.`,
+    ...(input.configuration === undefined ? [] : [`Rôle actuel : ${input.configuration.role}.`]),
+    ...(input.configuration === undefined || input.configuration.priorites.length === 0
+      ? []
+      : [`Priorités, dans l'ordre : ${input.configuration.priorites.join(" ; ")}.`]),
     `Mission : ${input.dna.mission}.`,
     `Périmètre : ${input.dna.perimetre.join(" ; ")}.`,
     `Limites, jamais franchies : ${input.dna.limites.join(" ; ")}.`,
@@ -317,6 +369,28 @@ export function assembleContext(input: AssembleInput): AssembledContext {
     );
   }
 
+  // ── Couche 2 bis — COMMENT travailler cette mission-ci.
+  //
+  // Elle vient après le secteur et avant la mémoire : c'est une manière de faire, pas un fait.
+  // Une variante ne peut ni élargir le périmètre ni lever une limite — elle change l'entrée en
+  // matière, jamais ce qui est permis. C'est pourquoi elle est écrite APRÈS l'ADN, qui reste le
+  // premier tour et la seule autorité sur les limites.
+  const varianteLines: string[] = [];
+  for (const variante of input.variantes ?? []) {
+    if (variante.consigne.trim() === "") continue;
+    varianteLines.push(`- ${variante.consigne}`);
+    if (variante.aEviter !== undefined && variante.aEviter.trim() !== "") {
+      varianteLines.push(`  À éviter : ${variante.aEviter}`);
+    }
+  }
+  if (varianteLines.length > 0) {
+    varianteLines.unshift("Pour ce travail-ci, procédez ainsi :");
+    varianteLines.push(
+      "Ces consignes précisent la manière. Elles n'étendent jamais votre périmètre et ne lèvent " +
+        "aucune de vos limites.",
+    );
+  }
+
   // ── Couche 3 — la mémoire d'entreprise. Seul ce qui est ACTIF est injecté : une ligne retirée
   //    reste lisible pour expliquer le passé, elle ne guide plus l'action.
   const profileLines = input.profile
@@ -335,11 +409,27 @@ export function assembleContext(input: AssembleInput): AssembledContext {
     usable.push(fact);
   }
 
-  // Les plus utilisés d'abord, puis les plus récents : c'est le tri que sert l'index
-  // `learned_fact_relevance_idx`. Le bornage vient après le tri, jamais avant.
+  // ⚠️ LES PLUS RÉCENTS D'ABORD — et surtout PAS « les plus utilisés ».
+  //
+  // Le tri par `usageCount` a existé ici, et il reposait sur un compteur que **rien n'incrémente
+  // en production**. Le classement était donc, en fait, purement chronologique — mais en le
+  // disant autrement, ce qui est la pire des deux situations : le code affirmait une pertinence
+  // qu'il ne mesurait pas.
+  //
+  // Et le rétablir aurait été pire encore. Un compteur nourri par la sélection qu'il alimente
+  // n'est pas une mesure, c'est une boucle : un fait injecté souvent est injecté souvent PARCE
+  // QU'il l'a déjà été. Les premiers faits appris deviendraient des gagnants permanents, un fait
+  // neuf partant à zéro ne serait jamais choisi, donc jamais compté — et la mémoire se figerait
+  // pour de bon au bout des cinq premières observations.
+  //
+  // La récence, elle, se mesure sans rien fausser : ce qu'un employé vient d'observer chez ce
+  // client est ce qui a le plus de chances de valoir encore. `usage_count` reste en base pour le
+  // jour où l'on saura relier un fait à un RÉSULTAT — ce qui, là, serait une vraie mesure.
+  //
+  // Le bornage vient après le tri, jamais avant.
   const ranked = usable
     .slice()
-    .sort((a, b) => b.usageCount - a.usageCount || b.createdAt.getTime() - a.createdAt.getTime());
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || a.id.localeCompare(b.id));
 
   const usedFacts = ranked.slice(0, max);
   // Les écartés viennent du classement, pas de l'ordre d'arrivée : sinon on bornerait au hasard.
@@ -367,6 +457,7 @@ export function assembleContext(input: AssembleInput): AssembledContext {
 
   const missingLayers: MissingLayer[] = [];
   if (sectorLines.length === 0) missingLayers.push("secteur");
+  if (varianteLines.length === 0) missingLayers.push("facon_de_travailler");
   if (profileLines.length === 0) missingLayers.push("profil_entreprise");
   if (usedFacts.length === 0) missingLayers.push("faits_appris");
 
@@ -375,6 +466,9 @@ export function assembleContext(input: AssembleInput): AssembledContext {
   ];
   if (sectorLines.length > 0) {
     turns.push({ role: "system", type: "text", text: sectorLines.join("\n") });
+  }
+  if (varianteLines.length > 0) {
+    turns.push({ role: "system", type: "text", text: varianteLines.join("\n") });
   }
   if (memoryLines.length > 0) {
     turns.push({ role: "system", type: "text", text: memoryLines.join("\n") });

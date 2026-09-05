@@ -8,7 +8,7 @@ const email: OutgoingEmail = {
   to: { address: "contact@prospect.fr" },
   subject: "Vos fenêtres",
   text: "Bonjour.",
-  idempotencyKey: "envoyer_un_message:abc",
+  idempotencyKey: "envoyer.prospect:abc",
   headers: { "Auto-Submitted": "auto-generated" },
 };
 
@@ -36,7 +36,7 @@ describe("Adaptateur d'expédition", () => {
     await provider.send(email);
 
     const init = (calls[0] as { init: { headers: Record<string, string>; body: string } }).init;
-    expect(init.headers["Idempotency-Key"]).toBe("envoyer_un_message:abc");
+    expect(init.headers["Idempotency-Key"]).toBe("envoyer.prospect:abc");
     // Le nom d'affichage voyage avec l'adresse : le message vient de l'entreprise cliente.
     expect(JSON.parse(init.body).from).toBe("Carter — Menuiseries Duval <carter@client.fr>");
     expect(JSON.parse(init.body).headers["Auto-Submitted"]).toBe("auto-generated");

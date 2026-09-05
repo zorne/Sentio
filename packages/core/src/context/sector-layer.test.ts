@@ -25,6 +25,12 @@ const DNA: EmployeeDna = {
   limites: ["comptabilité", "juridique"],
 };
 
+/** La configuration active : c'est elle qui porte le rôle, plus l'ADN (`docs/adr/0029`). */
+const CONFIGURATION = {
+  role: "prospection",
+  priorites: ["élargir le nombre d'entreprises approchées"],
+};
+
 const TACHE = { objective: "rendez-vous qualifiés — cible 10 (ce mois)" };
 
 function profileEntry(key: string, value: unknown): CompanyProfileEntry {
@@ -65,7 +71,14 @@ const SECTEUR_COMPLET: SectorKnowledge = {
 };
 
 function assembler(over: Partial<Parameters<typeof assembleContext>[0]> = {}) {
-  return assembleContext({ dna: DNA, profile: [], facts: [], task: TACHE, ...over });
+  return assembleContext({
+    dna: DNA,
+    configuration: CONFIGURATION,
+    profile: [],
+    facts: [],
+    task: TACHE,
+    ...over,
+  });
 }
 
 describe("parseSectorKnowledge — ce qu'on accepte de lire", () => {
@@ -126,7 +139,7 @@ describe("l'ordre des couches n'est pas une préférence", () => {
     });
 
     const textes = contexte.turns.map((t) => textOf([t]));
-    const rangADN = textes.findIndex((t) => t.includes("Métier : commercial"));
+    const rangADN = textes.findIndex((t) => t.includes("Rôle actuel : prospection"));
     const rangSecteur = textes.findIndex((t) => t.includes("secteur « menuiserie »"));
     const rangEntreprise = textes.findIndex((t) => t.includes("architectes en Bretagne"));
     const rangTache = textes.findIndex((t) => t.includes("Objectif de ce travail"));
@@ -172,18 +185,20 @@ describe("une couche absente se déclare, elle ne se remplace pas", () => {
     expect(textOf(contexte.turns).concat("\n")).not.toContain("menuiserie");
   });
 
-  it("déclare aussi l'absence de contexte entreprise et de faits appris", () => {
+  it("déclare aussi l'absence de façon de travailler, de contexte entreprise et de faits appris", () => {
     const contexte = assembler();
     expect([...contexte.missingLayers].sort()).toEqual([
+      "facon_de_travailler",
       "faits_appris",
       "profil_entreprise",
       "secteur",
     ]);
   });
 
-  it("ne déclare rien d'absent quand les trois couches parlent", () => {
+  it("ne déclare rien d'absent quand toutes les couches parlent", () => {
     const contexte = assembler({
       sector: SECTEUR_COMPLET,
+      variantes: [{ kind: "angle", consigne: "Ouvrir sur un problème concret." }],
       profile: [profileEntry("cible", "architectes")],
       facts: [fact("Julie préfère le matin")],
     });

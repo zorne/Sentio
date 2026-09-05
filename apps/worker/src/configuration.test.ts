@@ -79,6 +79,44 @@ describe("le drapeau d'opt-out est fermé par défaut", () => {
   });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// La classe de données — le réglage qui ABAISSE, et qu'on doit donc voir
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("la classe de données", () => {
+  it("⭐ vaut « real » quand la variable est absente — le défaut PROTÈGE", () => {
+    // ⚠️ Le geste dangereux est l'inverse de celui qu'on croit. `real` n'est pas un risque : le
+    // Gateway refuse alors tout fournisseur non conforme (invariant 5). C'est « synthetic » qui
+    // lève cette garde. Un oubli doit donc retomber sur `real`, jamais l'inverse.
+    expect(lireLaConfiguration(COMPLET).classeDeDonnees).toBe("real");
+  });
+
+  it("ne s'abaisse que sur « synthetic », exactement", () => {
+    expect(
+      lireLaConfiguration({ ...COMPLET, [VARIABLES.classeDeDonnees]: "synthetic" }).classeDeDonnees,
+    ).toBe("synthetic");
+    expect(
+      lireLaConfiguration({ ...COMPLET, [VARIABLES.classeDeDonnees]: "real" }).classeDeDonnees,
+    ).toBe("real");
+  });
+
+  it("⭐ REFUSE de démarrer sur une valeur approchante, au lieu de retomber sur « real »", () => {
+    // Retomber silencieusement sur « real » serait pourtant le choix prudent — et c'est
+    // précisément pourquoi il est refusé : quelqu'un qui écrit « Synthetic » CROIT tourner en
+    // essai. Le laisser démarrer en réel sans rien dire produirait un exécutant qui traite des
+    // données réelles pendant qu'on le croit inoffensif. Mieux vaut ne pas démarrer.
+    for (const valeur of ["Synthetic", "SYNTHETIC", "synth", "test", "fake", "1", "true", ""]) {
+      const trouves = manquements({ ...COMPLET, [VARIABLES.classeDeDonnees]: valeur });
+      if (valeur === "") {
+        // Une chaîne vide est traitée comme une absence : elle retombe sur « real », sans manquement.
+        expect(trouves).toEqual([]);
+        continue;
+      }
+      expect(trouves).toEqual([expect.stringContaining(VARIABLES.classeDeDonnees)]);
+    }
+  });
+});
+
 describe("ce qui manque est refusé, et dit d'un coup", () => {
   it("rend TOUS les manquements, pas le premier", () => {
     // Échouer sur le premier oblige à redéployer pour découvrir le second.

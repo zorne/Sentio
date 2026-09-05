@@ -5,7 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { composerLeWorker } from "./composition.js";
 import { demarrer } from "./main.js";
-import { LONGUEUR_MINIMALE_DU_SECRET, VARIABLES, lireLaConfiguration } from "@sentio/runtime";
+import { LONGUEUR_MINIMALE_DU_SECRET, VARIABLES, lireLaConfiguration, moteursMontesParDefaut } from "@sentio/runtime";
 import { HEARTBEAT_HEADER, signHeartbeat } from "@sentio/runtime";
 import { ROUTE_DU_BATTEMENT, demarrerLeServeur } from "./serveur.js";
 
@@ -100,8 +100,8 @@ describeIfDatabase("EXEC-18 — le worker démarre et sert un battement signé",
       [tenantId],
     );
     const [definition] = await sql.query<{ id: string }>(
-      `insert into employee_definition (profession, version, dna)
-       values ('commercial', $1, $2::jsonb) returning id`,
+      `insert into employee_definition (gisement, version, dna, capacites)
+       values ('commercial', $1, $2::jsonb, '["relancer.prospect","qualifier.prospect"]'::jsonb) returning id`,
       [
         versionUnique(),
         JSON.stringify({
@@ -115,10 +115,18 @@ describeIfDatabase("EXEC-18 — le worker démarre et sert un battement signé",
     const [identity] = await sql.query<{ id: string }>("select * from reserve_identity($1)", [
       "commercial",
     ]);
-    await sql.query(
+    const [employee] = await sql.query<{ id: string }>(
       `insert into employee (tenant_id, employee_definition_id, identity_id, autonomy)
-       values ($1, $2, $3, 'confirm_once')`,
+       values ($1, $2, $3, 'confirm_once') returning id`,
       [tenantId, definition?.id, identity?.id],
+    );
+    // L'approvisionnement n'ouvre plus un travail qu'aucune capacité activée ne sert : sans ces
+    // lignes, l'employé serait recruté sans rien pouvoir faire — et ce n'est pas ce qu'on éprouve
+    // ici. En production, c'est `appliquer_la_configuration` qui les écrit.
+    await sql.query(
+      `insert into employee_capability (tenant_id, employee_id, capability_id, enabled)
+       select $1, $2, c.id, true from capability c where c.key = 'qualifier.prospect'`,
+      [tenantId, employee?.id],
     );
     for (let i = 0; i < prospects; i++) {
       await sql.query(
@@ -303,9 +311,55 @@ describeIfDatabase("EXEC-18 — le worker démarre et sert un battement signé",
   it("le compte rendu du battement remonte au planificateur, incidents compris", async () => {
     await entreprise(1);
     const journal: Record<string, unknown>[] = [];
+    let reponseDuBattement: Response | undefined;
 
     const config = lireLaConfiguration(environnement());
     const worker = composerLeWorker(config, { log: (record) => journal.push(record) });
+    try {
+      const entete = await signHeartbeat(SECRET, new Date());
+      const reponse = await worker.battement(
+        new Request("http://worker.local/battement", {
+          method: "POST",
+          headers: { [HEARTBEAT_HEADER]: entete },
+        }),
+      );
+      expect(reponse.status).toBe(200);
+      reponseDuBattement = reponse;
+    } finally {
+      await worker.fermer();
+    }
+
+    // Le planificateur est le seul témoin extérieur : ce qu'il lit doit suffire à voir un incident.
+    expect(journal.some((ligne) => ligne["route"] === "battement")).toBe(true);
+    expect(journal.some((ligne) => ligne["status"] === 200)).toBe(true);
+
+    // ⚠️ ET LE VERDICT, DANS LA RÉPONSE ELLE-MÊME. C'est lui que le planificateur lit pour décider
+    // d'échouer (`.github/workflows/battement.yml`) : sans ce champ, le workflow ne sait pas si
+    // Lady a travaillé, et il traite « je ne sais pas » comme une panne.
+    const rendu = (await reponseDuBattement!.json()) as Record<string, unknown>;
+    expect(rendu["verdict"]).toMatch(/^(normal|anormal)$/);
+
+    // ⚠️ ET RIEN QUI DÉSIGNE UNE ENTREPRISE. Ce corps part dans un journal d'intégration continue
+    // public : le détail par employé porte des identifiants et ne doit jamais en sortir.
+    expect(Object.keys(rendu).sort()).toEqual([
+      "anomalies",
+      "echoues",
+      "motifs",
+      "sansAction",
+      "traites",
+      "verdict",
+    ]);
+  });
+
+  it("⭐ un battement qui va au bout laisse une TRACE DE FRAÎCHEUR", async () => {
+    // ⚠️ LE SIGNAL DONT L'ARRÊT EST L'ALERTE. Un planificateur qui ne s'exécute plus n'échoue pas :
+    // il se tait, et le canal de l'étape 6 est aveugle à sa propre absence. La trace est écrite au
+    // tout dernier point du cycle — donc seulement si la chaîne entière a fonctionné.
+    await entreprise(1);
+    await sql.query("delete from dernier_battement", []);
+
+    const config = lireLaConfiguration(environnement());
+    const worker = composerLeWorker(config, {});
     try {
       const entete = await signHeartbeat(SECRET, new Date());
       const reponse = await worker.battement(
@@ -319,9 +373,21 @@ describeIfDatabase("EXEC-18 — le worker démarre et sert un battement signé",
       await worker.fermer();
     }
 
-    // Le planificateur est le seul témoin extérieur : ce qu'il lit doit suffire à voir un incident.
-    expect(journal.some((ligne) => ligne["route"] === "battement")).toBe(true);
-    expect(journal.some((ligne) => ligne["status"] === 200)).toBe(true);
+    const [trace] = await sql.query<{ verdict: string; fraiche: boolean }>(
+      "select verdict, passe_le > now() - interval '1 minute' as fraiche from dernier_battement",
+      [],
+    );
+    expect(trace, "aucune trace : le cycle n'est pas allé au bout").toBeDefined();
+    expect(trace?.fraiche).toBe(true);
+    expect(trace?.verdict).toMatch(/^(normal|anormal)$/);
+
+    // Et la surveillance interne se tait tant que la trace est fraîche : une alarme qui sonne sur
+    // un système sain apprend à l'exploitant à ne plus la lire.
+    const muette = await sql.query(
+      "select 1 from etat_de_sante() where sujet = 'battement absent'",
+      [],
+    );
+    expect(muette).toHaveLength(0);
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -371,4 +437,33 @@ describeIfDatabase("EXEC-18 — le worker démarre et sert un battement signé",
       Object.assign(process.env, ancien);
     }
   });
+
+  /**
+   * ⚠️ CE TEST EXISTE POUR QU'UNE COLONNE NE DEVIENNE PAS UN COMMENTAIRE QUI MENT.
+   *
+   * `capability.disponible` dit au client et au diagnostic quelles capacités s'exécutent
+   * vraiment. Cette vérité est écrite à DEUX endroits : la colonne, et la liste des moteurs
+   * montés dans `composition.ts`. Deux endroits divergent — et ici la divergence serait
+   * **silencieuse** : on ne la découvrirait qu'en écoutant un client s'étonner.
+   *
+   * Ce test rend la divergence bruyante. Monter un moteur sans le déclarer en base, ou déclarer
+   * une capacité sans monter son moteur, fait échouer `pnpm run verify`.
+   *
+   * C'est le constat P0-3 de `docs/35-audit-avant-production.md`.
+   */
+  it("ce que la base annonce comme disponible est exactement ce que le code sait exécuter", async () => {
+    const annoncees = (
+      await sql.query<{ key: string }>(
+        "select key from capability where disponible order by key",
+        [],
+      )
+    ).map((ligne) => ligne.key);
+
+    // Les moteurs réellement montés par défaut, demandés au code plutôt que recopiés : une liste
+    // recopiée ici serait un troisième endroit à tenir à jour, donc un troisième mensonge possible.
+    const montees = [...moteursMontesParDefaut(sql)].map((m) => m.capabilityKey).sort();
+
+    expect(annoncees).toEqual(montees);
+  });
+
 });

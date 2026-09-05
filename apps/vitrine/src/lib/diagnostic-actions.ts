@@ -30,13 +30,26 @@ export type { DiagnosticMessage, EmployeePresentation };
 
 export type DiagnosticTurnResult =
   | { readonly kind: "message"; readonly reply: string }
-  | { readonly kind: "presentation"; readonly presentation: EmployeePresentation }
+  | {
+      readonly kind: "presentation";
+      readonly presentation: EmployeePresentation;
+      /**
+       * Le profil qui a produit cette employée.
+       *
+       * ⚠️ Il fait l'aller-retour par le navigateur, et il n'autorise RIEN par lui-même : au
+       * recrutement, le serveur rejoue la composition à partir de lui plutôt que de croire ce
+       * qui revient (`recrutement-actions.ts`). Sans ce transport, il faudrait garder l'état de
+       * chaque conversation côté serveur, et deux visiteurs simultanés partageraient un jour le
+       * même — exactement ce que le fondateur redoute le plus.
+       */
+      readonly profil: unknown;
+    }
   | { readonly kind: "hors_perimetre"; readonly reason: string }
   | { readonly kind: "limite"; readonly message: string }
   | { readonly kind: "panne"; readonly message: string };
 
 const LIMITE_VISITEUR =
-  "Nous avons échangé longuement aujourd'hui. Revenez demain pour continuer — rien n'est perdu.";
+  "Nous avons échangé longuement aujourd'hui. Revenez demain pour continuer : rien n'est perdu.";
 const LIMITE_ADRESSE =
   "Beaucoup d'échanges sont partis de votre réseau aujourd'hui. Réessayez un peu plus tard.";
 const PANNE = "Nous n'avons pas pu vous répondre à l'instant. Réessayez dans un moment.";
@@ -70,7 +83,7 @@ async function runTurn(history: DiagnosticMessage[]): Promise<DiagnosticTurnResu
   }
 
   const presentation = await presentEmployee(decision, { present: createModelPresent(gateway) });
-  return { kind: "presentation", presentation };
+  return { kind: "presentation", presentation, profil: step.profil };
 }
 
 /**

@@ -115,7 +115,17 @@ export const RUN_TERMINE = "run_termine";
 /** Fin anormale, et assumée comme telle : un run échoué est un fait, pas un silence. */
 export const RUN_ECHOUE = "run_echoue";
 
+/**
+ * Une mission mise de côté faute d'outil est **remise en file** : sa cause a disparu.
+ *
+ * ⚠️ Le pendant de `accord_accorde` pour un blocage qui n'est PAS une question posée au client.
+ * Sans cet événement, une mission repartirait sans qu'aucune trace ne dise pourquoi, et « elle
+ * s'est débloquée toute seule » deviendrait indistinguable d'un rejeu.
+ */
+export const REPRISE_APRES_OUTIL = "reprise_apres_outil";
+
 export const NATURES_CONNUES = [
+  REPRISE_APRES_OUTIL,
   RUN_DEMARRE,
   CONTEXTE_ASSEMBLE,
   ACTION_DECIDEE,

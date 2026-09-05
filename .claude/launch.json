@@ -2,9 +2,9 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "sentia-web",
+      "name": "vitrine",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@employes-ia/web", "dev"],
+      "runtimeArgs": ["--filter", "@sentio/vitrine", "dev"],
       "port": 3000
     }
   ]

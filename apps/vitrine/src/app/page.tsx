@@ -1,27 +1,43 @@
 // ════════════════════════════════════════════════════════════════════
-// LANDING — un arc en quatre actes, pas une liste de sections.
+// LANDING — elle raconte le parcours RÉEL, et rien d'autre.
 //
-//   I.   PRÉSENCE  — le noyau. On ne vend rien encore, on installe.
-//   II.  MISSION   — le scroll devient le temps ; il travaille.
-//   III. SEUIL     — il s'arrête. Vous décidez, pour de vrai.
-//   IV.  APRÈS     — court, parce que l'essentiel est déjà vécu.
+// ⚠️ RÉÉCRITE LE 2026-08-27, ET IL FAUT SAVOIR CONTRE QUOI.
 //
-// Ce qui a été SUPPRIMÉ de la version précédente, et pourquoi :
-//   · les trois cartes de bénéfices → la mission les démontre, les
-//     énoncer ensuite serait redondant et c'est la section la plus
-//     copiée du web
-//   · la grille « comment ça marche » en trois colonnes → le scroll EST
-//     le déroulé, l'expliquer à côté reviendrait à sous-titrer un film
-//     qu'on est en train de regarder
-//   · la troisième offre tarifaire → moins d'options, moins d'hésitation
+// La version précédente promettait six étapes après le recrutement —
+// une conversation qui façonne l'employé, un choix entre plusieurs
+// profils, une construction visible à l'écran. Son propre commentaire
+// avouait : « rien ici n'est encore câblé ». Deux descriptions
+// contradictoires du même produit vivaient sur le même site, et le
+// visiteur n'avait aucun moyen de savoir laquelle était vraie
+// (constat A3.3 de `docs/32`).
+//
+// C'est le reproche numéro un fait aux concurrents dans les avis
+// publics : la démonstration ne ressemble pas au produit livré. Écrire
+// une page qui décrit un produit qu'on n'a pas, c'est se placer
+// exactement là où ils sont.
+//
+// Chaque bloc ci-dessous correspond donc à quelque chose qui EXISTE :
+//
+//   · la conversation             → /diagnostic
+//   · la composition              → packages/domain, `recommend()`
+//   · l'email de présentation     → packages/domain, `redigerLaPresentation()`
+//   · le mot de passe et l'espace → /acces puis /espace
+//   · les quatre « jamais »       → quatre garanties tenues par la base
+//   · les trois commandes         → l'autonomie, l'arrêt, les accords
+//
+// ⚠️ ET AUCUN PRIX. Décision du fondateur le 2026-08-27 : c'est gratuit
+// pour l'instant, les formules viendront après. La grille précédente
+// vendait 33 fonctionnalités dont presque aucune n'existait, dont un
+// engagement de disponibilité chiffré sur une infrastructure gratuite.
+// Elle est partie avec cette réécriture.
 // ════════════════════════════════════════════════════════════════════
 
 import type { Metadata } from "next";
+
+import { DONNEES_EXPLIQUEES } from "@sentio/domain";
 import Link from "next/link";
 import { Nav } from "@/components/landing/Nav";
 import { RecruitLink } from "@/components/landing/RecruitLink";
-import { PlanCard } from "@/components/landing/PlanCard";
-import { PLAN_ORDER, PLANS } from "@/lib/plans";
 import { CoreStage } from "@/components/landing/CoreStage";
 import { Mission } from "@/components/landing/Mission";
 import { Threshold } from "@/components/landing/Threshold";
@@ -31,12 +47,12 @@ import { ScrollNav } from "@/components/landing/ScrollNav";
 import "./landing.css";
 
 export const metadata: Metadata = {
-  title: "Sentio : ils travaillent seuls. Ils vous demandent avant ce qui compte.",
+  title: "Sentio : un employé numérique composé pour votre entreprise",
   description:
-    "Des employés numériques qui consultent vos données, arbitrent et agissent : 8 760 heures par an contre 1 607 pour un salarié. Vous voyez chaque étape. Rien d'irréversible ne part sans votre accord.",
+    "Vous racontez votre situation, Sentio compose votre employé à partir de vos réponses. Il travaille seul, et rien ne part sans votre accord. Gratuit pour l'instant.",
   openGraph: {
     title: "Sentio",
-    description: "Ils travaillent seuls. Ils vous demandent avant ce qui compte.",
+    description: "Un employé numérique composé pour votre entreprise, à partir de ce que vous dites.",
     locale: "fr_FR",
     type: "website",
   },
@@ -45,9 +61,17 @@ export const metadata: Metadata = {
 // ── Disponibilité ────────────────────────────────────────────────────
 // Le seul argument économique qu'on puisse tenir sans client pour le
 // prouver : une comparaison d'heures. 1 607 h est la durée légale du
-// travail en France, 8 760 h le nombre d'heures d'une année, et les
-// vingt minutes sont la fréquence réelle du cron (.github/workflows/
-// prospect-cron.yml). Trois chiffres vérifiables, zéro pourcentage
+// travail en France et 8 760 h le nombre d'heures d'une année. Deux
+// chiffres vérifiables par n'importe qui, zéro pourcentage
+//
+// ⚠️ UNE TROISIÈME CARTE A ÉTÉ RETIRÉE : « un cycle toutes les 20
+// minutes, c'est la fréquence programmée ». Elle se présentait comme le
+// chiffre le plus vérifiable des trois, et elle était fausse — la
+// planification était commentée dans le dépôt (constat A3.4 de
+// docs/32), et le cycle lui-même a été retiré avec l'ancienne
+// génération (adr/0030). Ne pas la remettre sans une planification qui
+// tourne vraiment : c'est la seule des trois qu'un client pourrait
+// prendre en défaut.
 // inventé — une allégation chiffrée invérifiable est une pratique
 // commerciale trompeuse (art. L121-2), et nous n'avons aucune donnée
 // client derrière un « +40 % de CA ».
@@ -71,17 +95,6 @@ const DISPONIBILITE = [
       <>
         Il n&apos;y a pas de calcul caché derrière ce nombre : <b>c&apos;est une année entière</b>.
         Pas de pause déjeuner, pas de vendredi après-midi, pas de mois d&apos;août.
-      </>
-    ),
-  },
-  {
-    cle: "rythme",
-    rang: "Le rythme réel",
-    titre: "Un cycle toutes les 20 minutes",
-    texte: (
-      <>
-        Ce n&apos;est pas une façon de parler : <b>c&apos;est la fréquence programmée</b>, nuit et
-        week-end compris. Il reprend son travail pendant que vous dormez.
       </>
     ),
   },
@@ -132,164 +145,176 @@ const DISPONIBILITE = [
   },
 ];
 
-// ── Réglage ──────────────────────────────────────────────────────────
-// Chacun des trois correspond à une commande qui existe réellement :
-// ProspectingConfig (deux champs), ApproveControls (la case « faire
-// confiance pour les prochaines fois », qui écrit une standing approval),
-// et le bouton de démarrage/arrêt. Rien d'annoncé ici n'est à construire.
-const REGLAGE = [
+// ── Comment vous l'obtenez ──────────────────────────────────────────
+// Quatre étapes, et les quatre existent. C'est le parcours qu'on peut
+// jouer aujourd'hui, de la première question à l'espace privé.
+const PARCOURS = [
   {
-    cle: "perimetre",
-    rang: "Son périmètre",
-    titre: "Vous l'écrivez avec vos mots",
+    cle: "conversation",
+    rang: "01 · Vous racontez",
+    titre: "Une conversation, pas un formulaire",
     texte: (
       <>
-        Ce qu&apos;est un bon prospect chez vous, et l&apos;offre qu&apos;il met en avant.{" "}
-        <b>Deux champs libres</b>, remplis une fois : ni cases à cocher, ni menu déroulant.
+        Ce que vous vendez, à qui, ce qui vous ralentit, ce que vous voulez atteindre. Sentio pose
+        les questions et <b>s&apos;arrête quand il a compris</b>. Aucune case à cocher, aucun menu
+        déroulant.
       </>
     ),
   },
+  {
+    cle: "composition",
+    rang: "02 · Sentio compose",
+    titre: "Votre employé se dessine sous vos yeux",
+    texte: (
+      <>
+        Son métier, ses priorités, ce qu&apos;il saura faire : tout est <b>déduit de vos
+        réponses</b>. Deux dirigeants qui répondent différemment reçoivent deux employés
+        différents. Rien n&apos;est choisi dans un catalogue.
+      </>
+    ),
+  },
+  {
+    cle: "refus",
+    rang: "03 · Ou il vous le dit",
+    titre: "Si ce n'est pas pour vous, on vous le dit",
+    texte: (
+      <>
+        Quand ce qui vous bloque n&apos;est pas ce qu&apos;un employé numérique sait régler, la
+        conversation le dit et <b>s&apos;arrête là</b>. Nous préférons vous perdre maintenant que
+        vous vendre quelqu&apos;un qui ne réglerait pas le problème.
+      </>
+    ),
+  },
+  {
+    cle: "arrivee",
+    rang: "04 · Vous le recevez",
+    titre: "Par email, puis chez vous",
+    texte: (
+      <>
+        Un message vous présente qui il est, ce qu&apos;il fera et <b>ce qu&apos;il ne fera
+        jamais</b>. Vous choisissez votre mot de passe, et vous entrez dans votre espace. Aucun
+        mot de passe ne vous est jamais envoyé.
+      </>
+    ),
+  },
+];
+
+// ── Ce qui n'arrivera jamais ────────────────────────────────────────
+// ⚠️ Ces quatre lignes ne sont pas du marketing : chacune correspond à
+// une garantie tenue par la BASE, pas par une intention.
+//
+//   1. l'accord avant tout envoi  → standing_approval + le cliquet ;
+//   2. seul le dirigeant élargit  → déclencheur, pas convention ;
+//   3. jamais de rôle changé seul → une réévaluation publie INACTIF ;
+//   4. étanchéité entre clients   → verify_tenant_isolation, adr/0014.
+//
+// Les écrire sans qu'elles soient vraies serait exactement le mensonge
+// que ce produit ne peut pas se permettre.
+const JAMAIS = [
+  {
+    cle: "accord",
+    rang: "Aucun envoi sans vous",
+    titre: "Vous lisez avant que ça parte",
+    texte: (
+      <>
+        Chaque message vous est soumis avec <b>son texte exact</b> et le nom de l&apos;entreprise à
+        qui il s&apos;adresse. Jamais « une action attend votre accord ».
+      </>
+    ),
+  },
+  {
+    cle: "cliquet",
+    rang: "L'autonomie ne s'élargit pas seule",
+    titre: "Rien ne peut se donner plus de liberté",
+    texte: (
+      <>
+        N&apos;importe quoi peut la restreindre. <b>Vous seul pouvez l&apos;ouvrir</b>, et ça se
+        retire aussi vite que ça se donne.
+      </>
+    ),
+  },
+  {
+    cle: "role",
+    rang: "Le métier ne change pas sans vous",
+    titre: "Il propose, vous décidez",
+    texte: (
+      <>
+        Si les résultats suggèrent autre chose, la proposition vous est soumise <b>terme à
+        terme</b> : ce qu&apos;il fait aujourd&apos;hui, ce qu&apos;il ferait, et surtout ce
+        qu&apos;il cesserait de faire.
+      </>
+    ),
+  },
+  {
+    cle: "usage",
+    rang: DONNEES_EXPLIQUEES.titre,
+    titre: "Il apprend de vous, pour vous",
+    texte: (
+      <>
+        {DONNEES_EXPLIQUEES.corps} <b>Il ne part de rien</b> et devient le vôtre.
+      </>
+    ),
+  },
+  {
+    cle: "etancheite",
+    rang: "Rien ne traverse d'un client à l'autre",
+    titre: "Et ça s'arrête à votre entreprise",
+    texte: (
+      <>
+        Aucune donnée ne circule vers un autre client. <b>Jamais, même agrégée, même
+        anonymisée</b>, même si on nous le demandait.
+      </>
+    ),
+  },
+  {
+    cle: "silence",
+    rang: "Il s'arrête tout seul",
+    titre: "Quarante silences, et il vous prévient",
+    texte: (
+      <>
+        Après quarante entreprises approchées sans la moindre réponse, le travail{" "}
+        <b>s&apos;interrompt de lui-même</b>. Un collaborateur qui parle dans le vide vous coûte
+        votre réputation, pas seulement son temps.
+      </>
+    ),
+  },
+];
+
+// ── Ce que vous gardez en main ──────────────────────────────────────
+// Les trois commandes qui existent réellement dans l'espace client :
+// le réglage d'autonomie (trois niveaux), le bouton d'arrêt, et les
+// accords. Rien d'annoncé ici n'est à construire.
+const COMMANDES = [
   {
     cle: "autonomie",
     rang: "Son autonomie",
-    titre: "Vous l'élargissez quand vous voulez",
+    titre: "Trois niveaux, et vous en changez quand vous voulez",
     texte: (
       <>
-        À chaque décision qu&apos;il vous soumet, une case : <b>« faire confiance pour les
-        prochaines fois »</b>. Vous lui accordez les envois le jour où vous êtes prêt, pas avant.
+        Il vous demande à chaque fois, il vous demande la première fois, ou il agit seul.{" "}
+        <b>Chaque changement est daté</b>, et vous savez qui l&apos;a décidé.
       </>
     ),
   },
   {
-    cle: "rythme",
-    rang: "Son rythme",
-    titre: "Vous le lancez, vous l'arrêtez",
+    cle: "arret",
+    rang: "Le bouton d'arrêt",
+    titre: "Tout s'arrête, immédiatement",
     texte: (
       <>
-        Un bouton pour le mettre au travail, un autre pour le suspendre. <b>Il s&apos;arrête
-        immédiatement</b>, sans préavis à donner ni conversation à avoir.
-      </>
-    ),
-  },
-];
-
-// ── Après le recrutement ────────────────────────────────────────────
-// Décrit le parcours voulu par le fondateur, pas ce que le produit fait
-// aujourd'hui : la conversation qui construit l'agent visuellement,
-// le choix parmi plusieurs profils, la fiche de résultats. Rien ici
-// n'est encore câblé — /plans (« Le déroulé ») décrit le parcours
-// RÉEL actuel (deux champs, pas de conversation, pas de choix). Les
-// deux textes divergent volontairement tant que celui-ci n'est pas
-// construit ; à réconcilier au moment de l'implémenter.
-const APRES_RECRUTEMENT = [
-  {
-    cle: "espace",
-    rang: "01 · Votre espace",
-    titre: "Vous quittez cette page, pour de bon",
-    texte: (
-      <>
-        Le recrutement vous ouvre un espace privé, <b>une fois le paiement effectué, jamais
-        avant</b>. Toute la suite s&apos;y déroule : la conversation, le suivi, les résultats.
-        Vous n&apos;avez plus de raison d&apos;y revenir.
+        Un bouton, et plus rien ne part. <b>Sans préavis à donner</b>, sans conversation à avoir,
+        sans rien à justifier. Vous le relancez quand vous voulez.
       </>
     ),
   },
   {
-    cle: "conversation",
-    rang: "02 · La conversation",
-    titre: "Vous parlez à Sentio avant toute chose",
+    cle: "accords",
+    rang: "Ce qui attend votre réponse",
+    titre: "Vous voyez ce que vous autorisez",
     texte: (
       <>
-        Pas de formulaire à remplir seul dans un coin : Sentio vous pose les questions qui
-        comptent, sur votre activité, vos objectifs, ce qui vous ralentit. <b>Vos réponses
-        restent hébergées en Europe</b>, protégées comme toute donnée sensible de votre
-        entreprise.
-      </>
-    ),
-  },
-  {
-    cle: "choix",
-    rang: "03 · Vous choisissez",
-    titre: "Sentio propose, vous décidez",
-    texte: (
-      <>
-        Selon vos réponses, plusieurs profils d&apos;employé se dessinent. <b>Vous choisissez
-        celui qui vous correspond</b>, jamais un catalogue imposé.
-      </>
-    ),
-  },
-  {
-    cle: "construction",
-    rang: "04 · Il se construit",
-    titre: "Vous le voyez prendre forme",
-    texte: (
-      <>
-        Une fois choisi, il se construit sous vos yeux. <b>Pas une ligne de code affichée</b>,
-        juste ce qu&apos;il devient, en train de se faire.
-      </>
-    ),
-  },
-  {
-    cle: "cadrage",
-    rang: "05 · Son terrain de jeu",
-    titre: "Vous lui donnez ce qui lui manque",
-    texte: (
-      <>
-        Le profil d&apos;un bon prospect chez vous, les informations qui comptent avant qu&apos;il
-        agisse. <b>Vous validez</b>, et il se met au travail.
-      </>
-    ),
-  },
-  {
-    cle: "resultats",
-    rang: "06 · Sa fiche, ses chiffres",
-    titre: "Vous voyez tout, sans avoir à demander",
-    texte: (
-      <>
-        Sa fiche de poste, le chiffre d&apos;affaires généré, son taux de conversion, les
-        prospects contactés et ceux réellement intéressés. <b>Aucun chiffre décoratif</b> : que
-        ce qui compte pour vous.
-      </>
-    ),
-  },
-];
-
-// ── Le retard ────────────────────────────────────────────────────────
-// Une conviction, annoncée comme telle. Aucune étude n'est citée parce
-// qu'aucune n'est vérifiée — et une statistique inventée sur ce sujet
-// serait exactement le genre de page qu'un dirigeant a déjà vue trente
-// fois, donc contre-productive en plus d'être fausse.
-const RETARD = [
-  {
-    cle: "conviction",
-    rang: "Ce que nous pensons",
-    titre: "Ça deviendra la norme",
-    texte: (
-      <>
-        Comme le site web, comme le terminal de paiement. <b>Plus personne ne se demande s&apos;il
-        en faut un</b>. On se demande seulement pourquoi certains n&apos;en ont toujours pas.
-      </>
-    ),
-  },
-  {
-    cle: "ecart",
-    rang: "Ce que ça implique",
-    titre: "L'écart se creuse lentement",
-    texte: (
-      <>
-        Pas d&apos;un coup, et c&apos;est ce qui le rend difficile à voir : <b>un prospect relancé
-        pendant que le vôtre attend</b>, répété chaque jour pendant deux ans.
-      </>
-    ),
-  },
-  {
-    cle: "cout",
-    rang: "Ce que ça vous coûte",
-    titre: "Attendre a un prix",
-    texte: (
-      <>
-        Et ce n&apos;est pas celui de l&apos;abonnement. C&apos;est <b>le temps qu&apos;il faudra
-        pour rattraper</b> ceux qui n&apos;auront pas attendu.
+        Chaque bouton dit ce qu&apos;il déclenche : <b>si vous autorisez, ce message part tel
+        quel ; si vous refusez, il ne partira pas</b>. Pas « autoriser » tout court.
       </>
     ),
   },
@@ -305,18 +330,13 @@ export default function LandingPage() {
       <header className="lp-hero" id="hero">
         <CoreStage />
         <div className="lp-shell lp-hero-in">
-          <span className="lp-hero-tag">Employé commercial · en service</span>
+          <span className="lp-hero-tag">Gratuit pour l&apos;instant</span>
           <h1>
-            <span>Ils travaillent seuls.</span>
-            <span>Ils vous demandent.</span>
+            <span>Il travaille seul.</span>
+            <span>Il vous demande.</span>
           </h1>
-          <p className="lp-hero-sub">
-            Des employés numériques qui ouvrent vos données, arbitrent et agissent, la nuit, le
-            dimanche, en août. Vous voyez chaque décision. Rien d&apos;irréversible ne part sans
-            vous.
-          </p>
           <div className="lp-hero-act">
-            <RecruitLink href="/plans" className="lp-btn lp-btn--primary">
+            <RecruitLink href="/diagnostic" className="lp-btn lp-btn--primary">
               Recruter mon employé
             </RecruitLink>
           </div>
@@ -357,25 +377,82 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── LE RÉGLAGE ──────────────────────────────────────────── */}
-      <section className="lp-sec" id="reglage">
+      {/* ── COMMENT VOUS L'OBTENEZ ──────────────────────────────── */}
+      <section className="lp-sec" id="parcours">
         <div className="lp-shell">
           <Reveal className="lp-sec-head">
-            <span className="lp-mono">Le réglage</span>
-            <h2>Il se règle. Il ne se subit pas.</h2>
+            <span className="lp-mono">Comment vous l&apos;obtenez</span>
+            <h2>Vous racontez. Sentio compose.</h2>
             <p>
-              Un collaborateur qu&apos;on ne peut pas cadrer est un gadget. Trois réglages suffisent,
-              et aucun n&apos;est technique.
+              Il n&apos;y a pas de catalogue à parcourir, pas de formule à comparer. Vous décrivez
+              votre situation, et votre employé se dessine à partir de ce que vous avez dit.
             </p>
           </Reveal>
 
           <Reveal>
             <div className="lp-memo">
-              {REGLAGE.map((r) => (
-                <div className="lp-memo-cell" key={r.cle}>
-                  <div className="lp-memo-day">{r.rang}</div>
+              {PARCOURS.map((p) => (
+                <div className="lp-memo-cell" key={p.cle}>
+                  <div className="lp-memo-day">{p.rang}</div>
                   <div className="lp-memo-fact">
-                    <b>{r.titre}.</b> {r.texte}
+                    <b>{p.titre}.</b> {p.texte}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── CE QUI N'ARRIVERA JAMAIS ────────────────────────────────
+             La section la plus importante de la page. Ce qui inquiète un
+             dirigeant, ce n'est pas ce qu'un employé numérique sait faire,
+             c'est ce qu'il pourrait faire sans lui. ────────────────────*/}
+      <section className="lp-sec" id="jamais">
+        <div className="lp-shell">
+          <Reveal className="lp-sec-head">
+            <span className="lp-mono">Ce qui n&apos;arrivera jamais</span>
+            <h2>Ce qu&apos;il ne fera pas compte plus que le reste.</h2>
+            <p>
+              Chacune de ces lignes est tenue par la base de données, pas par une promesse.
+              Elles ne se désactivent pas, et nous ne pouvons pas les lever nous-mêmes.
+            </p>
+          </Reveal>
+
+          <Reveal>
+            <div className="lp-memo">
+              {JAMAIS.map((j) => (
+                <div className="lp-memo-cell" key={j.cle}>
+                  <div className="lp-memo-day">{j.rang}</div>
+                  <div className="lp-memo-fact">
+                    <b>{j.titre}.</b> {j.texte}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── CE QUE VOUS GARDEZ EN MAIN ──────────────────────────────── */}
+      <section className="lp-sec" id="commandes">
+        <div className="lp-shell">
+          <Reveal className="lp-sec-head">
+            <span className="lp-mono">Ce que vous gardez en main</span>
+            <h2>Il se règle. Il ne se subit pas.</h2>
+            <p>
+              Un collaborateur qu&apos;on ne peut pas cadrer est un gadget. Trois commandes
+              suffisent, et aucune n&apos;est technique.
+            </p>
+          </Reveal>
+
+          <Reveal>
+            <div className="lp-memo">
+              {COMMANDES.map((c) => (
+                <div className="lp-memo-cell" key={c.cle}>
+                  <div className="lp-memo-day">{c.rang}</div>
+                  <div className="lp-memo-fact">
+                    <b>{c.titre}.</b> {c.texte}
                   </div>
                 </div>
               ))}
@@ -405,92 +482,65 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── APRÈS LE RECRUTEMENT ────────────────────────────────────
-          Vision du fondateur, pas le comportement actuel du produit —
-          voir le commentaire au-dessus d'APRES_RECRUTEMENT. ──────────*/}
-      <section className="lp-sec" id="apres-recrutement">
+      {/* ── GRATUIT POUR L'INSTANT ──────────────────────────────────
+             ⚠️ Ce qui était ici : trois formules à 499, 1 999 et 9 999 €
+             par mois, vendant 33 fonctionnalités dont presque aucune
+             n'existait — jusqu'à un engagement de disponibilité chiffré
+             sur une infrastructure gratuite (constat A3.1 de docs/32).
+             Décision du fondateur le 2026-08-27 : c'est gratuit, et les
+             formules viendront quand elles seront vraies. ─────────────*/}
+      <section className="lp-sec" id="prix">
         <div className="lp-shell">
           <Reveal className="lp-sec-head">
-            <span className="lp-mono">Après le recrutement</span>
-            <h2>Le recrutement n&apos;est que le premier geste.</h2>
+            <span className="lp-mono">Combien</span>
+            <h2>Rien, pour l&apos;instant.</h2>
             <p>
-              Six étapes vous séparent d&apos;un employé qui travaille vraiment pour vous, de la
-              conversation qui le façonne à la fiche qui prouve son travail.
+              Sentio est en début de vie. Nous préférons quelques dirigeants qui s&apos;en servent
+              vraiment à une grille de prix qui promettrait ce que nous n&apos;avons pas encore.
             </p>
           </Reveal>
 
           <Reveal>
             <div className="lp-memo">
-              {APRES_RECRUTEMENT.map((a) => (
-                <div className="lp-memo-cell" key={a.cle}>
-                  <div className="lp-memo-day">{a.rang}</div>
-                  <div className="lp-memo-fact">
-                    <b>{a.titre}.</b> {a.texte}
-                  </div>
+              <div className="lp-memo-cell">
+                <div className="lp-memo-day">Aujourd&apos;hui</div>
+                <div className="lp-memo-fact">
+                  <b>Gratuit, sans carte bancaire.</b> Vous parlez à Sentio, vous recevez votre
+                  employé, vous l&apos;utilisez. Aucun moyen de paiement ne vous est demandé, à
+                  aucun moment.
                 </div>
-              ))}
+              </div>
+              <div className="lp-memo-cell">
+                <div className="lp-memo-day">Plus tard</div>
+                <div className="lp-memo-fact">
+                  <b>Des formules, quand elles seront vraies.</b> Elles diront ce que le produit
+                  fait, pas ce qu&apos;on aimerait qu&apos;il fasse. Vous serez prévenu avant, et
+                  rien ne vous sera prélevé sans que vous l&apos;ayez accepté.
+                </div>
+              </div>
+              <div className="lp-memo-cell">
+                <div className="lp-memo-day">Ce que ça vous coûte</div>
+                <div className="lp-memo-fact">
+                  <b>Une conversation.</b> Et si ce que vous décrivez n&apos;est pas ce
+                  qu&apos;un employé numérique sait régler, on vous le dit et on s&apos;arrête là.
+                </div>
+              </div>
             </div>
           </Reveal>
-        </div>
-      </section>
-
-      {/* ── LE RETARD ───────────────────────────────────────────── */}
-      <section className="lp-sec" id="retard">
-        <div className="lp-shell">
-          <Reveal className="lp-sec-head">
-            <span className="lp-mono">Le retard</span>
-            <h2>Dans quelques années, la question ne se posera plus.</h2>
-            <p>
-              Nous n&apos;avons pas d&apos;étude à vous citer, et nous n&apos;allons pas en inventer
-              une. Nous avons une conviction : la voici en clair, à vous d&apos;en faire ce que vous
-              voulez.
-            </p>
-          </Reveal>
-
-          <Reveal>
-            <div className="lp-memo">
-              {RETARD.map((r) => (
-                <div className="lp-memo-cell" key={r.cle}>
-                  <div className="lp-memo-day">{r.rang}</div>
-                  <div className="lp-memo-fact">
-                    <b>{r.titre}.</b> {r.texte}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      <section className="lp-sec" id="tarifs">
-        <div className="lp-shell">
-          <Reveal className="lp-sec-head">
-            <span className="lp-mono">Tarifs</span>
-            <h2>Choisissez la génération de votre équipe.</h2>
-            <p>
-              Trois paliers, pas trois quotas différents : chacun change ce que vos employés numériques
-              sont capables de faire seuls.
-            </p>
-          </Reveal>
-
-          <div className="lp-plans">
-            {PLAN_ORDER.map((id, i) => (
-              <Reveal key={id} delay={i * 90}>
-                <PlanCard plan={PLANS[id]} ctaHref={`/checkout?plan=${id}`} ctaLabel={`Choisir ${PLANS[id].name}`} />
-              </Reveal>
-            ))}
-          </div>
         </div>
       </section>
 
       <section className="lp-end">
         <div className="lp-shell">
           <Reveal>
-            <h2>Une équipe commence par une personne.</h2>
-            <p>Deux minutes pour le cadrer, et il travaille pendant que vous fermez boutique.</p>
+            <h2>Commencez par lui raconter votre situation.</h2>
+            <p>
+              Quelques minutes de conversation, et vous saurez si Sentio peut vous aider. Y compris
+              si la réponse est non.
+            </p>
             <div className="lp-th-act">
-              <RecruitLink href="/plans" className="lp-btn lp-btn--primary">
-                Recruter mon employé
+              <RecruitLink href="/diagnostic" className="lp-btn lp-btn--primary">
+                Parler à Sentio
               </RecruitLink>
             </div>
           </Reveal>

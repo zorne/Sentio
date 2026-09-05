@@ -8,7 +8,7 @@
  */
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Conditions générales — Sentio" };
+export const metadata: Metadata = { title: "Conditions générales | Sentio" };
 
 export default function CguPage() {
   return (
@@ -17,9 +17,8 @@ export default function CguPage() {
       <p className="legal-updated">Dernière mise à jour · à définir</p>
 
       <div className="legal-todo">
-        <strong>Squelette à faire relire par un juriste.</strong> Les CGU
-        engagent contractuellement vos clients — leurs formulations doivent
-        être vérifiées par un professionnel avant mise en ligne publique.
+        Ces conditions seront définitives à l&apos;immatriculation de la société. Leur version
+        applicable et sa date figureront ici.
       </div>
 
       <h2>1. Objet</h2>
@@ -38,7 +37,7 @@ export default function CguPage() {
 
       <h2>3. Description du Service</h2>
       <p>
-        Sentio fournit une plateforme d&apos;employés numériques — des
+        Sentio fournit une plateforme d&apos;employés numériques, c&apos;est-à-dire des
         agents autonomes capables de consulter des données, arbitrer et
         agir dans le cadre d&apos;autorisations définies par le client.
         Chaque action est journalisée. Les actions irréversibles nécessitent

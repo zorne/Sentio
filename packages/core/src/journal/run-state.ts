@@ -49,6 +49,7 @@ import {
   ACTION_ENGAGEE,
   ACTION_EXECUTEE,
   ATTENTION_REQUISE,
+  REPRISE_APRES_OUTIL,
   CONTEXTE_ASSEMBLE,
   NATURES_TERMINALES,
   PAS_REPORTE,
@@ -218,6 +219,8 @@ export function reconstruireEtatRun(entrees: readonly JournalEntry[]): Reconstru
   let actionsExecutees = 0;
   let pasDuCycle = 0;
   let actionEnAttente: unknown = null;
+  /** La dernière proposition lue, en attente d'être suspendue ou exécutée. */
+  let derniereProposition: unknown = null;
   const effets = new Set<string>();
   // Engagés, puis refermés par un résultat ou un échec. Ce qui reste à la fin est ce dont on ne
   // sait rien — et dont on ne DOIT rien supposer.
@@ -287,8 +290,17 @@ export function reconstruireEtatRun(entrees: readonly JournalEntry[]): Reconstru
       // Le raisonnement se raconte, il ne fait pas avancer l'état : seuls un effet engagé ou
       // exécuté comptent. Elles doivent malgré tout être DÉCLARÉES — une nature écrite par le
       // runtime et absente d'ici fait échouer la reconstruction du journal entier.
-      case ACTION_DECIDEE:
       case PROPOSITION_RECUE:
+        // ⚠️ On retient la proposition, et pas seulement le fait qu'il y en ait eu une.
+        //
+        // C'est elle — capacité ET arguments — qu'un accord humain autorise. La trace de la
+        // politique, écrite juste après, ne porte que le nom de la capacité : rejouable à partir
+        // d'elle, l'action perdrait ses arguments. Sans cette ligne, « le client a accordé » ne
+        // permettait de rien exécuter (EXEC-11).
+        derniereProposition = (etape.payload as { proposition?: unknown } | null)?.proposition ?? null;
+        break;
+
+      case ACTION_DECIDEE:
       case PROPOSITION_ILLISIBLE:
       case POLITIQUE_ALLOW:
       case POLITIQUE_REFUSE:
@@ -321,7 +333,8 @@ export function reconstruireEtatRun(entrees: readonly JournalEntry[]): Reconstru
           continue;
         }
         phase = "attente_accord";
-        actionEnAttente = etape.payload;
+        // La proposition, pas la trace de la politique : c'est ce que le client autorise.
+        actionEnAttente = derniereProposition;
         break;
 
       case ACCORD_ACCORDE:
@@ -334,9 +347,16 @@ export function reconstruireEtatRun(entrees: readonly JournalEntry[]): Reconstru
           });
           continue;
         }
-        // Un refus arrête le run sans exécuter l'action suspendue ; un accord le relance.
-        phase = etape.kind === ACCORD_REFUSE ? "termine" : "en_cours";
-        actionEnAttente = null;
+        // Un refus arrête le run sans exécuter l'action suspendue ; un accord le relance **avec
+        // elle**. Effacer l'action ici reviendrait à demander au modèle de la reproposer — et la
+        // politique la suspendrait de nouveau, indéfiniment. C'était le défaut EXEC-11.
+        if (etape.kind === ACCORD_REFUSE) {
+          phase = "termine";
+          actionEnAttente = null;
+        } else {
+          phase = "en_cours";
+          // `actionEnAttente` est conservée : elle porte ce que le client vient d'autoriser.
+        }
         break;
 
       case RUN_REPORTE:
@@ -358,6 +378,25 @@ export function reconstruireEtatRun(entrees: readonly JournalEntry[]): Reconstru
         if (etape.kind === RUN_REPORTE) pasDuCycle = 0;
         break;
       }
+
+      case REPRISE_APRES_OUTIL:
+        // ⚠️ **CE CAS MANQUAIT, ET LA REPRISE NE REPRENAIT DONC RIEN.** Sans lui, l'événement
+        // tombait dans le vide : la phase restait `attention_requise`, `peutReprendre` refusait, et
+        // la boucle remettait aussitôt de côté la mission que la reprise venait de remettre en
+        // file. Le dirigeant activait l'outil manquant, et il ne se passait toujours rien — le
+        // dommage même que la reprise avait été écrite pour réparer.
+        //
+        // Trouvé par la répétition générale (`docs/36-fermer-le-silence.md`, cas 10), et par elle
+        // seule : le test unitaire de la reprise éprouve le module, jamais la boucle qui le suit.
+        //
+        // ⚠️ Et le budget de pas REPART DE ZÉRO, comme après un report de run. Une mission arrêtée
+        // hier puis débloquée aujourd'hui entame un nouveau cycle de travail : lui laisser le
+        // compteur de l'ancien la ferait se refermer au premier pas, en boucle, sans jamais
+        // avancer.
+        phase = "en_cours";
+        pasDuCycle = 0;
+        actionEnAttente = null;
+        break;
 
       case ATTENTION_REQUISE:
         // Ni fin ni échec : le run est **arrêté**, et seul un geste humain le rouvrira. Aucune

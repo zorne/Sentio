@@ -43,6 +43,7 @@ const FLAGS: FeatureFlags = {
   inferenceOptOutProven: true,
   publicDiagnosticEnabled: false,
   checkoutEnabled: false,
+  recrutementSansPaiement: false,
 };
 
 describeIfDatabase("Le noyau contre un vrai Postgres", () => {
@@ -63,6 +64,11 @@ describeIfDatabase("Le noyau contre un vrai Postgres", () => {
     approvals = new PostgresApprovalStore(sql);
 
     await sql.query("insert into tenant (id, name) values ($1, $2)", [tenantId, "Entreprise noyau"]);
+    // Une mission sert toujours un objectif (`20260815120002`).
+    await sql.query(
+      "insert into objective (tenant_id, metric, target_value, horizon) values ($1, 'chiffre_affaires', 5000, 'mois')",
+      [tenantId],
+    );
     await sql.query(
       `insert into subscription (tenant_id, plan_id, status, current_period_start, current_period_end)
        select $1, id, 'active', now(), now() + interval '30 days' from plan where tier = 'start'`,
@@ -70,8 +76,8 @@ describeIfDatabase("Le noyau contre un vrai Postgres", () => {
     );
 
     const [definition] = await sql.query<{ id: string }>(
-      `insert into employee_definition (profession, version, dna)
-       values ('commercial', $1, '{}'::jsonb) returning id`,
+      `insert into employee_definition (gisement, version, dna, capacites)
+       values ('commercial', $1, '{}'::jsonb, '["relancer.prospect","qualifier.prospect"]'::jsonb) returning id`,
       [versionUnique()],
     );
     const [identity] = await sql.query<{ id: string }>("select * from reserve_identity($1)", [
@@ -85,8 +91,8 @@ describeIfDatabase("Le noyau contre un vrai Postgres", () => {
     employeeId = employee?.id as EmployeeId;
 
     const [task] = await sql.query<{ id: string }>(
-      "insert into task (tenant_id, employee_id, subject_kind, subject_id) " +
-        "values ($1, $2, 'lead', gen_random_uuid()) returning id",
+      "insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id) " +
+        "values ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), 'lead', gen_random_uuid()) returning id",
       [tenantId, employeeId],
     );
     taskId = task?.id as TaskId;
@@ -110,14 +116,19 @@ describeIfDatabase("Le noyau contre un vrai Postgres", () => {
   async function freshTenant(): Promise<{ tenantId: TenantId; employeeId: EmployeeId }> {
     const fresh = randomUUID() as TenantId;
     await sql.query("insert into tenant (id, name) values ($1, $2)", [fresh, "Entreprise d'essai"]);
+    // Une mission sert toujours un objectif (`20260815120002`).
+    await sql.query(
+      "insert into objective (tenant_id, metric, target_value, horizon) values ($1, 'chiffre_affaires', 5000, 'mois')",
+      [fresh],
+    );
     await sql.query(
       `insert into subscription (tenant_id, plan_id, status, current_period_start, current_period_end)
        select $1, id, 'active', now(), now() + interval '30 days' from plan where tier = 'start'`,
       [fresh],
     );
     const [definition] = await sql.query<{ id: string }>(
-      `insert into employee_definition (profession, version, dna)
-       values ('commercial', $1, '{}'::jsonb) returning id`,
+      `insert into employee_definition (gisement, version, dna, capacites)
+       values ('commercial', $1, '{}'::jsonb, '["relancer.prospect","qualifier.prospect"]'::jsonb) returning id`,
       [versionUnique()],
     );
     const [identity] = await sql.query<{ id: string }>("select * from reserve_identity($1)", [
@@ -162,6 +173,11 @@ describeIfDatabase("Le noyau contre un vrai Postgres", () => {
     // ILLIMITÉ, aux frais des autres — le quota du fournisseur étant unique et partagé.
     const resilie = randomUUID() as TenantId;
     await sql.query("insert into tenant (id, name) values ($1, $2)", [resilie, "Entreprise résiliée"]);
+    // Une mission sert toujours un objectif (`20260815120002`).
+    await sql.query(
+      "insert into objective (tenant_id, metric, target_value, horizon) values ($1, 'chiffre_affaires', 5000, 'mois')",
+      [resilie],
+    );
     await sql.query(
       `insert into subscription (tenant_id, plan_id, status, current_period_start, current_period_end)
        select $1, id, 'canceled', now() - interval '60 days', now() - interval '30 days'
@@ -409,7 +425,7 @@ describeIfDatabase("Le noyau contre un vrai Postgres", () => {
       employeeId,
       sendingDomainId: domain?.id as string,
       subject: "Vos fenêtres",
-      idempotencyKey: "envoyer_un_message:integration",
+      idempotencyKey: "envoyer.prospect:integration",
     };
     expect(await store.claim(claim)).toBe(true);
     expect(await store.claim(claim)).toBe(false);
@@ -451,11 +467,11 @@ describeIfDatabase("Le noyau contre un vrai Postgres", () => {
       employeeId,
       sendingDomainId: domain?.id as string,
       subject: "Bonjour",
-      idempotencyKey: "envoyer_un_message:rebond",
+      idempotencyKey: "envoyer.prospect:rebond",
     });
     await store.confirm({
       tenantId,
-      idempotencyKey: "envoyer_un_message:rebond",
+      idempotencyKey: "envoyer.prospect:rebond",
       providerMessageId: "prov_1",
     });
 

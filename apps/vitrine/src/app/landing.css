@@ -4,7 +4,7 @@
    Le sujet du produit est la relation entre un humain et une machine à
    qui il délègue. La typographie porte ce sujet, elle ne l'illustre pas :
 
-     · voix humaine  → sérif éditorial (Instrument Serif)
+     · voix humaine  → sérif éditorial (Newsreader, à axe optique)
      · voix machine  → monospace (IBM Plex Mono)
      · interface     → sans-serif neutre (Inter), qui s'efface
 
@@ -13,7 +13,7 @@
    été supprimé (les trois cartes de bénéfices, notamment).
    ════════════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..600;1,6..72,200..600&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 .lp {
   --ink: #f4f5f6;
@@ -26,7 +26,20 @@
   --mint-dim: rgba(46, 230, 245, 0.12);
   --mint-line: rgba(46, 230, 245, 0.32);
   --amber: #f5c451;
-  --serif: 'Instrument Serif', Georgia, serif;
+  /* ══ LA TYPOGRAPHIE — changée le 2026-08-28, et pas pour la nouveauté ══
+     `Instrument Serif` est une police d'AFFICHAGE : dessinée pour les grandes tailles, déliés
+     fins, chasse serrée. Elle était magnifique dans le titre d'accueil — et elle composait aussi
+     les messages de Lady à 19 px, où ses pleins et déliés se cassent et où la lecture fatigue.
+
+     `Newsreader` porte les deux, parce qu'elle a un axe optique (`opsz`) : le même dessin
+     s'épaissit et s'ouvre tout seul en petit corps, se resserre et s'affine en grand. Une seule
+     voix pour la page et pour la conversation, sans sacrifier ni l'une ni l'autre.
+
+     Et `Inter` cède la place à `Instrument Sans` (jeton `--sans`, déclaré dans `globals.css`). Inter est la police par défaut de tout ce qui
+     se construit aujourd'hui : correcte, et parfaitement anonyme. Instrument Sans a la même
+     clarté avec un peu de voix, et elle est du même atelier que rien du tout — ce qui compte,
+     c'est qu'elle ne fasse pas « encore un SaaS ». */
+  --serif: 'Newsreader', Georgia, 'Times New Roman', serif;
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --shell: 1180px;
@@ -579,3 +592,9 @@ html { scroll-behavior: smooth; }
 .lp-scrollnav a:hover .lp-sn-dot { opacity: 1; }
 @media (max-width: 900px) { .lp-scrollnav { display: none; } }
 @media (prefers-reduced-motion: reduce) { .lp-sn-lbl { opacity: 1 !important; transform: none !important; } }
+
+/* ── Le temps d'avant : le panneau est éteint, parce qu'il n'y a personne. ────────────────────
+   C'est le seul état de la scène où il ne se passe rien, et c'est ce qui doit se voir. */
+.lp-tone-sans { border-color: rgba(255, 255, 255, 0.07); background: rgba(255, 255, 255, 0.012); }
+.lp-tone-sans .lp-out-body { color: rgba(255, 255, 255, 0.3); }
+.lp-state-sans { color: rgba(255, 255, 255, 0.28); }

@@ -7,10 +7,30 @@
 // API compatible OpenAI (chat/completions + tool_calls). Aucun SDK, un
 // simple fetch — même principe que le provider Gemini.
 //
-// ATTENTION (ADR-004) : le tier gratuit Groq peut utiliser les données
-// pour améliorer ses services. Marqué `data_policy: 'free'` dans la
-// credential côté BYOK ; le gateway le refusera automatiquement pour
-// des dataClass='real'. Ici en Phase 1 démo : dataClass='test' → OK.
+// ⚠️ CE FOURNISSEUR EST ÉCARTÉ PAR `adr/0009`, ET IL EST LE SEUL CONSTRUIT.
+//
+// `adr/0009` (acceptée, 2026-07-28) retient **Mistral** comme principal et écarte Groq :
+// américain, donc transfert hors UE, clauses contractuelles types et analyse d'impact —
+// « un arbitrage juridique, pas technique ». Aucune révision depuis. `providers/` ne contient
+// pourtant que ce fichier, et `buildDiagnosticGateway` l'enregistre en dur.
+//
+// Le tier gratuit Groq peut utiliser les données pour améliorer ses services : il est donc
+// `dataPolicy: 'free'`, et la règle d'or le saute pour toute donnée `real`.
+//
+// ⚠️ LA LIGNE QUI ÉTAIT ICI DISAIT : « Ici en Phase 1 démo : dataClass='test' → OK. »
+// C'est cette hypothèse qui a rendu la protection inopérante. Le diagnostic public et le
+// conseiller marquaient leur trafic `test` alors qu'ils envoient des données réelles dès la
+// première question (`adr/0009`, compromis 4) : la règle d'or, qui ne filtre que sur `real`,
+// ne se déclenchait jamais. Corrigé le 2026-08-29 — les trois appels publics sont `real`.
+//
+// Conséquence directe : tant que ce fichier est le seul fournisseur branché, le diagnostic
+// et le conseiller ÉCHOUENT au lieu d'envoyer. C'est voulu. Ce qui les rouvrira est un
+// fournisseur conforme — `mistral.ts` —, pas un retour en arrière sur l'étiquette.
+//
+// ⚠️ Le reste de cet en-tête parle de « Gemini », d'« ADR-016 » et d'« ADR-004 » : ce sont des
+// références de la vitrine d'AVANT la fusion, sans rapport avec la numérotation actuelle des
+// ADR, et il n'existe aucun `gemini.ts`. Conservées telles quelles pour ne pas réécrire une
+// histoire qu'on n'a pas vécue, mais elles ne désignent rien dans ce dépôt.
 // ════════════════════════════════════════════════════════════════════
 
 import type {
@@ -23,13 +43,42 @@ import { GatewayError } from "../index.js";
 
 const BASE_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-/** Chaîne de modèles Groq, dans l'ordre d'essai. Ordre : le plus capable
- *  d'abord. Tous ont un quota commun côté Groq (par compte, par jour) mais
- *  des limites par-minute distinctes — bascule utile en pointe. */
-const DEFAULT_MODEL_CHAIN = [
-  "llama-3.3-70b-versatile",
-  "llama-3.1-8b-instant",
-];
+/**
+ * Chaîne de modèles, dans l'ordre d'essai : le plus capable d'abord.
+ *
+ * ⚠️ CETTE LISTE A DÉJÀ TUÉ LE DIAGNOSTIC UNE FOIS, ET SANS PRÉVENIR.
+ *
+ * Elle nommait `llama-3.3-70b-versatile` et `llama-3.1-8b-instant`. Groq les a retirés, et
+ * l'appel a commencé à répondre « le modèle n'existe pas ». Côté visiteur : « nous n'avons pas
+ * pu vous répondre », à chaque question, pour toujours. Le produit n'était pas en panne, il
+ * était devenu muet, ce qui ne se voit dans aucune alerte.
+ *
+ * Deux leçons, et la seconde compte plus que la première :
+ *
+ *   1. **un fournisseur retire ses modèles sans prévenir.** Ce n'est pas un incident, c'est le
+ *      fonctionnement normal du marché : ce qui marche aujourd'hui sera retiré un jour ;
+ *   2. **le nom d'un modèle n'a donc rien à faire en dur.** `SENTIO_GROQ_MODELES` permet de le
+ *      changer sans redéployer, c'est-à-dire en quelques minutes plutôt qu'en une soirée.
+ *
+ * ⚠️ ET LE MODÈLE DOIT SAVOIR APPELER UN OUTIL. Le diagnostic n'extrait pas un profil en lisant
+ * du texte libre : il passe par un appel d'outil (`EXTRACTION_TOOL`). Un modèle qui ne les
+ * gère pas répondrait poliment sans jamais rien conclure, ce qui est pire qu'une erreur.
+ */
+const DEFAULT_MODEL_CHAIN = ["openai/gpt-oss-120b", "openai/gpt-oss-20b"];
+
+/**
+ * La chaîne effectivement essayée.
+ *
+ * ⚠️ Aucune validation du contenu : on ne connaît pas la liste des modèles de Groq, et refuser
+ * un nom qu'on ne reconnaît pas empêcherait précisément la correction d'urgence pour laquelle
+ * cette variable existe.
+ */
+function chaineDeModeles(): readonly string[] {
+  const brut = process.env["SENTIO_GROQ_MODELES"];
+  if (brut === undefined) return DEFAULT_MODEL_CHAIN;
+  const noms = brut.split(",").map((n) => n.trim()).filter((n) => n !== "");
+  return noms.length > 0 ? noms : DEFAULT_MODEL_CHAIN;
+}
 
 const MAX_LOOPS = 2;
 const DEFAULT_BACKOFF_MS = 2000;
@@ -67,7 +116,7 @@ function sleep(ms: number): Promise<void> {
 export class GroqProvider implements ModelProvider {
   readonly name = "groq" as const;
 
-  constructor(private readonly modelChain: string[] = DEFAULT_MODEL_CHAIN) {}
+  constructor(private readonly modelChain: readonly string[] = chaineDeModeles()) {}
 
   async generate(req: GenerateRequest, cred: TenantCredential): Promise<GenerateResult> {
     let lastError: Error | null = null;
@@ -215,6 +264,13 @@ export class GroqProvider implements ModelProvider {
 
     const body: Record<string, unknown> = {
       model,
+      // ⚠️ Les modèles « gpt-oss » RAISONNENT avant d'écrire, et ce raisonnement se paie sur le
+      // même budget de jetons que la réponse. Mesuré le 2026-08-28 : 111 jetons de raisonnement
+      // par défaut contre 8 en effort bas, sur la même question. Sur un premier contact, ce
+      // raisonnement n'améliore pas une question de deux lignes — il la mange, et il la ralentit.
+      //
+      // ⚠️ Envoyé UNIQUEMENT aux modèles qui le comprennent : ailleurs, ce champ fait un 400.
+      ...(model.includes("gpt-oss") ? { reasoning_effort: "low" } : {}),
       messages,
       max_tokens: req.maxTokens ?? 4096,
     };
@@ -245,6 +301,7 @@ export class GroqProvider implements ModelProvider {
 
     const data = (await res.json()) as {
       choices?: Array<{
+        finish_reason?: string;
         message?: {
           content?: string | null;
           tool_calls?: Array<{ function: { name: string; arguments: string } }>;
@@ -256,8 +313,21 @@ export class GroqProvider implements ModelProvider {
     const msg = data.choices?.[0]?.message;
     const rawToolCalls = msg?.tool_calls ?? [];
 
+    // ⚠️ UNE PHRASE COUPÉE NE DOIT JAMAIS ÊTRE RENDUE COMME UNE PHRASE ENTIÈRE.
+    //
+    // `finish_reason` n'était pas lu. Un modèle arrêté par le plafond de jetons rendait donc son
+    // début de phrase, et l'écran l'affichait tel quel : un visiteur a vu Lady lui demander
+    // « … et vous ne relancez aujourd'hui que la moitié, faute de ». Ce n'est pas une panne
+    // visible — c'est pire, le produit a l'air de délirer, et rien dans les journaux ne le dit.
+    //
+    // Vu pour de vrai le 2026-08-28, après le passage à un modèle à RAISONNEMENT : celui-ci
+    // dépense des jetons à réfléchir avant d'écrire, et le budget avait été taillé pour un modèle
+    // qui n'en dépense aucun.
+    const texte = msg?.content ?? "";
+    const coupe = data.choices?.[0]?.finish_reason === "length";
+
     return {
-      text: msg?.content ?? "",
+      text: coupe ? jusqu_a_la_derniere_phrase_entiere(texte) : texte,
       toolCalls: rawToolCalls.map((tc) => {
         let input: unknown = {};
         try {
@@ -277,4 +347,18 @@ export class GroqProvider implements ModelProvider {
       },
     };
   }
+}
+
+/**
+ * Ce qui reste d'un texte tronqué quand on retire la phrase inachevée.
+ *
+ * ⚠️ Rendre une chaîne VIDE plutôt qu'un fragment est délibéré. L'appelant sait traiter une
+ * absence de réponse — il a un repli et un message honnête. Il ne sait pas traiter une phrase qui
+ * s'arrête au milieu : il l'affiche, et c'est le dirigeant qui découvre le défaut.
+ */
+function jusqu_a_la_derniere_phrase_entiere(texte: string): string {
+  // Le point d'interrogation compte autant que le point : le diagnostic POSE des questions, et
+  // couper après « ? » est précisément le cas courant ici.
+  const fin = Math.max(texte.lastIndexOf("."), texte.lastIndexOf("?"), texte.lastIndexOf("!"));
+  return fin === -1 ? "" : texte.slice(0, fin + 1).trim();
 }

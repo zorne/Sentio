@@ -19,9 +19,26 @@ import { ConfirmLoginButton } from "@/components/ConfirmLoginButton";
 export default async function AuthCallbackPage({
   searchParams,
 }: {
-  searchParams: Promise<{ code?: string; error?: string; error_description?: string }>;
+  searchParams: Promise<{
+    code?: string;
+    error?: string;
+    error_description?: string;
+    next?: string;
+  }>;
 }) {
-  const { code, error, error_description } = await searchParams;
+  const { code, error, next } = await searchParams;
+
+  // ⚠️ ON N'AFFICHE PLUS `error_description`, ET LA DESTINATION EST FILTRÉE.
+  //
+  // `error_description` venait de la chaîne de requête et était rendu tel quel. React l'échappe,
+  // donc il n'y avait pas d'injection de code — mais un lien fabriqué faisait afficher la phrase
+  // de son choix sur une page portant le nom et le logo Sentio. De quoi bâtir un message de
+  // hameçonnage crédible avec notre propre page. On dit maintenant ce qu'on sait, nous.
+  //
+  // Et `next` ne peut désigner qu'un chemin de CE site : un « // » ou une adresse complète
+  // enverrait le client ailleurs après une connexion réussie, en lui laissant croire qu'il est
+  // encore chez nous.
+  const destination = next !== undefined && /^\/(?!\/)[\w\-/]*$/.test(next) ? next : "/espace";
 
   return (
     <section style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -31,7 +48,8 @@ export default async function AuthCallbackPage({
         {error ? (
           <>
             <p style={{ color: "var(--red)", fontSize: 13.5, marginBottom: 16 }}>
-              {error_description?.replace(/\+/g, " ") ?? "Le lien de connexion est invalide ou a expiré."}
+              Ce lien est invalide ou a déjà servi. Demandez-en un nouveau, il arrive tout de
+              suite.
             </p>
             <a href="/login" className="btn btn-secondary">Redemander un lien</a>
           </>
@@ -40,7 +58,7 @@ export default async function AuthCallbackPage({
             <p style={{ color: "var(--text-secondary)", fontSize: 13.5, marginBottom: 20 }}>
               Cliquez pour finaliser votre connexion.
             </p>
-            <ConfirmLoginButton code={code} />
+            <ConfirmLoginButton code={code} destination={destination} />
           </>
         ) : (
           <p style={{ color: "var(--text-tertiary)", fontSize: 13.5 }}>Lien de connexion incomplet.</p>

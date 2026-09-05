@@ -59,7 +59,7 @@ function input(overrides: Partial<FollowUpInput> = {}): FollowUpInput {
     optOutUrl: "https://client.fr/stop/abc",
     senderCompany: "Menuiseries Duval",
     rightsContact: "contact@client.fr",
-    idempotencyKey: "relancer_un_prospect:abc123:1",
+    idempotencyKey: "relancer.prospect:abc123:1",
     ...overrides,
   };
 }

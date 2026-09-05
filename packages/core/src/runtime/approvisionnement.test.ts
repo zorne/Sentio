@@ -21,6 +21,9 @@ function plan(entree: Partial<EntreeApprovisionnement> = {}): PlanDApprovisionne
     verdict: "ok",
     sujetsEligibles: sujets(50),
     restantDePeriode: null,
+    // Par défaut, aucun rythme imposé : la plupart des cas de ce fichier éprouvent les autres
+    // bornes, et un rythme non nul les masquerait.
+    rythmeVoulu: null,
     reglages: REGLAGES_RUNTIME_PAR_DEFAUT,
     ...entree,
   });
@@ -147,6 +150,7 @@ describe("le modèle ne décide rien ici", () => {
       verdict: "ok",
       sujetsEligibles: sujets(25),
       restantDePeriode: 7,
+      rythmeVoulu: null,
       reglages: REGLAGES_RUNTIME_PAR_DEFAUT,
     };
     expect(planifierLApprovisionnement(entree)).toEqual(planifierLApprovisionnement(entree));
@@ -162,5 +166,40 @@ describe("le motif du lot", () => {
 
   it("reprend la raison quand rien n'est ouvert", () => {
     expect(motifDuLot(plan({ verdict: "objectif_atteint" }))).toContain("objectif est atteint");
+  });
+});
+
+describe("Le rythme voulu par l'objectif borne le travail du jour", () => {
+  it("⭐ ouvre ce que la cible demande, et pas le plafond du jour", () => {
+    // Sans cette borne, un client visant 2 000 € et un client visant 20 000 € recevaient
+    // exactement le même travail : leur objectif ne pilotait rien.
+    const resultat = plan({ rythmeVoulu: 5 });
+
+    expect(resultat.kind).toBe("ouvrir");
+    if (resultat.kind !== "ouvrir") return;
+    expect(resultat.sujets).toHaveLength(5);
+    expect(resultat.borne).toBe("rythme_de_l_objectif");
+  });
+
+  it("ne permet JAMAIS de dépasser ce que le client a acheté", () => {
+    // Un objectif ambitieux ne donne pas le droit d'ouvrir plus que la formule, ni de brûler la
+    // réputation du client en un après-midi.
+    const resultat = plan({ rythmeVoulu: 10_000, restantDePeriode: 3 });
+
+    expect(resultat.kind).toBe("ouvrir");
+    if (resultat.kind !== "ouvrir") return;
+    expect(resultat.sujets).toHaveLength(3);
+    expect(resultat.borne).toBe("quota_de_periode");
+  });
+
+  it("s'efface quand la cible n'est pas calculable — on ne devine pas un rythme", () => {
+    const sansRythme = plan({ rythmeVoulu: null });
+    expect(sansRythme.kind).toBe("ouvrir");
+    if (sansRythme.kind !== "ouvrir") return;
+    expect(sansRythme.borne).not.toBe("rythme_de_l_objectif");
+  });
+
+  it("dit pourquoi il s'est arrêté là, en français", () => {
+    expect(motifDuLot(plan({ rythmeVoulu: 5 }))).toContain("rythme demandé par l'objectif");
   });
 });

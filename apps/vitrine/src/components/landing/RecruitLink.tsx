@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import type { MouseEvent, ReactNode } from "react";
 
 export function RecruitLink({
-  href = "/plans",
+  href = "/diagnostic",
   className,
   children,
 }: {

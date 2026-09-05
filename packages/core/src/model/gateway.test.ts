@@ -87,6 +87,7 @@ const PROVEN: FeatureFlags = {
   inferenceOptOutProven: true,
   publicDiagnosticEnabled: false,
   checkoutEnabled: false,
+  recrutementSansPaiement: false,
 };
 const NOT_PROVEN: FeatureFlags = { ...PROVEN, inferenceOptOutProven: false };
 

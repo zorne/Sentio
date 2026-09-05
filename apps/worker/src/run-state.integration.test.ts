@@ -2,9 +2,12 @@ import { randomUUID } from "node:crypto";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
+  ACCORD_ACCORDE,
+  ACCORD_REFUSE,
   ACTION_DECIDEE,
   ACTION_EXECUTEE,
   POLITIQUE_SUSPEND,
+  PROPOSITION_RECUE,
   RUN_DEMARRE,
   reconstruireEtatRun,
 } from "@sentio/core";
@@ -64,9 +67,14 @@ describeIfDatabase("Le journal et la reconstruction d'un run, sur un vrai Postgr
     sql = createPostgresClient(connectionString as string);
 
     await sql.query("insert into tenant (id, name) values ($1, $2)", [tenantId, "Entreprise EXEC-02"]);
+    // Une mission sert toujours un objectif (`20260815120002`).
+    await sql.query(
+      "insert into objective (tenant_id, metric, target_value, horizon) values ($1, 'chiffre_affaires', 5000, 'mois')",
+      [tenantId],
+    );
     const [definition] = await sql.query<{ id: string }>(
-      `insert into employee_definition (profession, version, dna)
-       values ('commercial', $1, '{}'::jsonb) returning id`,
+      `insert into employee_definition (gisement, version, dna, capacites)
+       values ('commercial', $1, '{}'::jsonb, '["relancer.prospect","qualifier.prospect"]'::jsonb) returning id`,
       [versionUnique()],
     );
     const [identity] = await sql.query<{ id: string }>("select * from reserve_identity($1)", ["commercial"]);
@@ -78,8 +86,8 @@ describeIfDatabase("Le journal et la reconstruction d'un run, sur un vrai Postgr
     employeeId = employee?.id as string;
 
     const [task] = await sql.query<{ id: string }>(
-      "insert into task (tenant_id, employee_id, subject_kind, subject_id) " +
-        "values ($1, $2, 'lead', gen_random_uuid()) returning id",
+      "insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id) " +
+        "values ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), 'lead', gen_random_uuid()) returning id",
       [tenantId, employeeId],
     );
     taskId = task?.id as string;
@@ -99,6 +107,22 @@ describeIfDatabase("Le journal et la reconstruction d'un run, sur un vrai Postgr
 
   async function ajouter(kind: string, cle: string | null = null, payload?: unknown) {
     return journal.append({ taskId, employeeId, kind, idempotencyKey: cle, payload });
+  }
+
+  /** Une mission neuve, avec son propre journal. Les cas qui rejouent une suspension complète ne
+   *  peuvent pas partager celui des autres : ils y trouveraient une suspension déjà ouverte. */
+  async function missionNeuve(): Promise<{ id: string; ecrire: typeof ajouter }> {
+    const [ligne] = await sql.query<{ id: string }>(
+      "insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id) " +
+        "values ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), 'lead', gen_random_uuid()) returning id",
+      [tenantId, employeeId],
+    );
+    const id = ligne?.id as string;
+    return {
+      id,
+      ecrire: (kind, cle = null, payload) =>
+        journal.append({ taskId: id, employeeId, kind, idempotencyKey: cle, payload }),
+    };
   }
 
   it("rend un rang exploitable, et non le texte que node-postgres renvoie pour un bigint", async () => {
@@ -144,8 +168,8 @@ describeIfDatabase("Le journal et la reconstruction d'un run, sur un vrai Postgr
   // (celle qui a commencé le plus tôt peut écrire en dernier).
   it("rend l'ordre d'écriture même quand les horodatages disent l'inverse", async () => {
     const [tache] = await sql.query<{ id: string }>(
-      "insert into task (tenant_id, employee_id, subject_kind, subject_id) " +
-        "values ($1, $2, 'lead', gen_random_uuid()) returning id",
+      "insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id) " +
+        "values ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), 'lead', gen_random_uuid()) returning id",
       [tenantId, employeeId],
     );
     const contradictoire = tache?.id as string;
@@ -219,19 +243,58 @@ describeIfDatabase("Le journal et la reconstruction d'un run, sur un vrai Postgr
   });
 
   it("porte l'action suspendue jusqu'à l'état relu, sans mémoire intermédiaire", async () => {
-    await ajouter(POLITIQUE_SUSPEND, null, { outil: "mail.send", a: "julie@exemple.fr" });
+    // ⚠️ L'action retenue est celle de la PROPOSITION, pas la trace de la politique.
+    //
+    // La trace ne porte que le nom de la capacité et sa classe d'effet ; l'action, elle, a des
+    // arguments. Reconstruire depuis la trace donnait une action qu'on ne pouvait pas rejouer —
+    // c'est ce qui empêchait un accord humain d'aboutir à quoi que ce soit (EXEC-11).
+    const proposition = { kind: "agir", capacite: "envoyer.prospect", entree: { a: "julie@exemple.fr" } };
+    await ajouter(PROPOSITION_RECUE, null, { fournisseur: "faux", jetons: 12, proposition });
+    await ajouter(POLITIQUE_SUSPEND, null, { capacite: "envoyer.prospect", classe_effet: "external_irreversible" });
 
     const resultat = reconstruireEtatRun(await journal.forTask(taskId));
     if (!resultat.ok) throw new Error(`journal incohérent : ${JSON.stringify(resultat.anomalies)}`);
 
     expect(resultat.etat.phase).toBe("attente_accord");
-    expect(resultat.etat.actionEnAttente).toEqual({ outil: "mail.send", a: "julie@exemple.fr" });
+    expect(resultat.etat.actionEnAttente).toEqual(proposition);
+  });
+
+  it("garde l'action autorisée après l'accord — sinon le client accorderait dans le vide", async () => {
+    const mission = await missionNeuve();
+    const proposition = { kind: "agir", capacite: "envoyer.prospect", entree: { a: "julie@exemple.fr" } };
+    await mission.ecrire(RUN_DEMARRE);
+    await mission.ecrire(PROPOSITION_RECUE, null, { fournisseur: "faux", jetons: 12, proposition });
+    await mission.ecrire(POLITIQUE_SUSPEND, null, { capacite: "envoyer.prospect" });
+    await mission.ecrire(ACCORD_ACCORDE, null, { approval_id: "peu-importe" });
+
+    const resultat = reconstruireEtatRun(await journal.forTask(mission.id));
+    if (!resultat.ok) throw new Error(`journal incohérent : ${JSON.stringify(resultat.anomalies)}`);
+
+    expect(resultat.etat.phase).toBe("en_cours");
+    // C'est elle que le runtime exécutera : l'effacer reviendrait à redemander au modèle, qui
+    // proposerait autre chose, que la politique suspendrait de nouveau.
+    expect(resultat.etat.actionEnAttente).toEqual(proposition);
+  });
+
+  it("laisse tomber l'action après un refus — un refus n'exécute rien", async () => {
+    const mission = await missionNeuve();
+    const proposition = { kind: "agir", capacite: "envoyer.prospect", entree: { a: "julie@exemple.fr" } };
+    await mission.ecrire(RUN_DEMARRE);
+    await mission.ecrire(PROPOSITION_RECUE, null, { fournisseur: "faux", jetons: 12, proposition });
+    await mission.ecrire(POLITIQUE_SUSPEND, null, { capacite: "envoyer.prospect" });
+    await mission.ecrire(ACCORD_REFUSE, null, { approval_id: "peu-importe" });
+
+    const resultat = reconstruireEtatRun(await journal.forTask(mission.id));
+    if (!resultat.ok) throw new Error(`journal incohérent : ${JSON.stringify(resultat.anomalies)}`);
+
+    expect(resultat.etat.phase).toBe("termine");
+    expect(resultat.etat.actionEnAttente).toBeNull();
   });
 
   it("ne mélange jamais deux tâches : chaque run se reconstruit sur son seul journal", async () => {
     const [autre] = await sql.query<{ id: string }>(
-      "insert into task (tenant_id, employee_id, subject_kind, subject_id) " +
-        "values ($1, $2, 'lead', gen_random_uuid()) returning id",
+      "insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id) " +
+        "values ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), 'lead', gen_random_uuid()) returning id",
       [tenantId, employeeId],
     );
     const autreTaskId = autre?.id as string;

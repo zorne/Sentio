@@ -36,8 +36,8 @@ export function Nav() {
           Sentio
         </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <RecruitLink href="/plans" className="lp-btn lp-btn--ghost lp-btn--sm">
-            Recruter
+          <RecruitLink href="/diagnostic" className="lp-btn lp-btn--ghost lp-btn--sm">
+            Parler à Sentio
           </RecruitLink>
         </div>
       </div>

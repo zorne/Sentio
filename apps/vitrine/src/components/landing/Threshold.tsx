@@ -108,8 +108,8 @@ export function Threshold() {
               demandera jamais.
             </p>
             <div className="lp-th-act">
-              <RecruitLink href="/plans" className="lp-btn lp-btn--primary">
-                Recruter mon employé
+              <RecruitLink href="/diagnostic" className="lp-btn lp-btn--primary">
+                Parler à Sentio
               </RecruitLink>
               <button className="lp-btn lp-btn--ghost" onClick={() => setVerdict(null)}>
                 Revoir la décision

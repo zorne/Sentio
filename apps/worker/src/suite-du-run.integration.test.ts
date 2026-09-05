@@ -66,9 +66,14 @@ describeIfDatabase("EXEC-08 — replanifier, terminer, ou appeler un humain", ()
     sql = createPostgresClient(connectionString as string);
 
     await sql.query("insert into tenant (id, name) values ($1, $2)", [tenantId, "Entreprise EXEC-08"]);
+    // Une mission sert toujours un objectif (`20260815120002`).
+    await sql.query(
+      "insert into objective (tenant_id, metric, target_value, horizon) values ($1, 'chiffre_affaires', 5000, 'mois')",
+      [tenantId],
+    );
     const [definition] = await sql.query<{ id: string }>(
-      `insert into employee_definition (profession, version, dna)
-       values ('commercial', $1, '{}'::jsonb) returning id`,
+      `insert into employee_definition (gisement, version, dna, capacites)
+       values ('commercial', $1, '{}'::jsonb, '["relancer.prospect","qualifier.prospect"]'::jsonb) returning id`,
       [versionUnique()],
     );
     const [identity] = await sql.query<{ id: string }>("select * from reserve_identity($1)", [
@@ -98,8 +103,8 @@ describeIfDatabase("EXEC-08 — replanifier, terminer, ou appeler un humain", ()
   /** Une tâche neuve, déjà inscrite dans la file et verrouillée comme le ferait un battement. */
   async function tacheEnCours(): Promise<TaskId> {
     const [task] = await sql.query<{ id: string }>(
-      "insert into task (tenant_id, employee_id, subject_kind, subject_id, state) " +
-        "values ($1, $2, 'lead', gen_random_uuid(), 'in_progress') returning id",
+      "insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id, state) " +
+        "values ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), 'lead', gen_random_uuid(), 'in_progress') returning id",
       [tenantId, employeeId],
     );
     const taskId = task?.id as TaskId;
@@ -249,6 +254,7 @@ describeIfDatabase("EXEC-08 — replanifier, terminer, ou appeler un humain", ()
           motif: "verification_humaine",
           nature: ATTENTION_REQUISE,
           detail: "issue inconnue sur un envoi",
+          manque: null,
         },
       },
     );

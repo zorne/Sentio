@@ -23,6 +23,16 @@
  * Réalise : ACQUIS-14
  */
 
+import {
+  type Constat,
+  type Domaine,
+  type GenreDeConstat,
+  type Objet,
+  type SourceDeConstat,
+  CONFIANCE_PAR_SOURCE,
+} from "./audit.js";
+import { composer, diagnostiquer, ROLE_PAR_DOMAINE, type ConfigurationProposee } from "./composition.js";
+
 /** Les freins que Sentio sait traiter aujourd'hui. Un frein absent de cette liste est hors périmètre. */
 export const HANDLED_FRICTIONS = {
   /** « Personne ne nous connaît » — pas assez d'entreprises approchées. */
@@ -65,17 +75,34 @@ export interface DiagnosticProfile {
   readonly targetCustomers: string | null;
   /** Le client dispose-t-il déjà d'une liste de prospects ? Décide du premier pas (`adr/0016`). */
   readonly hasProspectList: boolean | null;
+  /**
+   * Ce qui arrive aux demandes que le client reçoit SANS les avoir cherchées.
+   *
+   * ⚠️ C'est la question qui rend le diagnostic capable de voir ce que le dirigeant ne déclare
+   * pas. Le cas canonique de la vision (§7) : il demande de la prospection alors que sa
+   * prospection fonctionne et que ce sont ses demandes entrantes qui se perdent. Sans cette
+   * question, Sentio ne peut pas le constater — donc pas le dire.
+   *
+   * Facultative : un diagnostic mené sans elle reste valable, il voit simplement moins.
+   */
+  readonly inboundHandling: "traite" | "irregulier" | "perdu" | null;
 }
 
-/** Ce que le calibrage fixe. Rien ici ne touche l'ADN : ce sont des données d'entreprise. */
+/**
+ * Ce que le diagnostic fixe. Rien ici ne touche le noyau : ce sont des données d'entreprise.
+ *
+ * ⚠️ `role` est une SORTIE, jamais une entrée (`docs/adr/0029`). L'ancien champ `profession`,
+ * figé à « commercial », disait l'inverse : il décidait avant d'avoir regardé.
+ */
 export interface Calibration {
-  readonly profession: "commercial";
+  /** Ce sur quoi Lady se concentre. Décidé par les constats, pas choisi dans un catalogue. */
+  readonly role: string;
   /** Capacités activées à la création de l'employé. */
   readonly capabilities: readonly string[];
   /** Priorité de travail, dans l'ordre : c'est ce que l'employé fera en premier. */
   readonly priorities: readonly string[];
   readonly tone: "sobre" | "direct" | "consultatif";
-  /** Ce que l'employé ne fera pas pour ce client, en plus des limites de l'ADN. */
+  /** Ce que l'employé ne fera pas pour ce client, en plus des limites du noyau. */
   readonly exclusions: readonly string[];
   /** Premier pas concret, lisible par le dirigeant. */
   readonly firstStep: string;
@@ -148,44 +175,38 @@ export function recommend(profile: DiagnosticProfile): RecommendationDecision {
   const friction = profile.friction as HandledFriction;
   const objective = profile.objective as NonNullable<DiagnosticProfile["objective"]>;
 
-  // 3. Le calibrage. Chaque branche est une règle lisible, pas une pondération opaque.
-  const capabilities = ["trouver_des_prospects", "qualifier_un_prospect", "mettre_a_jour_une_fiche"];
-  const priorities: string[] = [];
-  const grounds: string[] = [
-    `objectif annoncé : ${objective.target} ${objective.metric} par ${objective.horizon}`,
-    `clients visés : ${profile.targetCustomers as string}`,
-  ];
+  // 3. L'AUDIT — ce qu'on constate, y compris ce que le dirigeant n'a pas dit.
+  const constats = relever(profile);
 
-  switch (friction) {
-    case HANDLED_FRICTIONS.tooFewProspects:
-      capabilities.push("envoyer_un_message", "relancer_un_prospect");
-      priorities.push("élargir le nombre d'entreprises approchées", "engager la conversation");
-      grounds.push("frein : trop peu d'entreprises approchées");
-      break;
-    case HANDLED_FRICTIONS.poorTargeting:
-      capabilities.push("envoyer_un_message");
-      priorities.push("resserrer le ciblage avant d'écrire", "n'écrire qu'aux entreprises qualifiées");
-      grounds.push("frein : du volume, mais mal ciblé");
-      break;
-    case HANDLED_FRICTIONS.noFollowUp:
-      capabilities.push("envoyer_un_message", "relancer_un_prospect");
-      priorities.push("reprendre les conversations laissées sans réponse", "relancer avec tact");
-      grounds.push("frein : des contacts entamés, jamais repris");
-      break;
-    case HANDLED_FRICTIONS.noTime:
-      capabilities.push("envoyer_un_message", "relancer_un_prospect");
-      priorities.push("prendre en charge la prospection de bout en bout");
-      grounds.push("frein : le dirigeant prospecte lui-même, entre deux chantiers");
-      break;
+  // 4. Le DIAGNOSTIC — les constats pondérés en besoins, domaine par domaine.
+  const besoins = diagnostiquer(constats);
+
+  // 5. La COMPOSITION — le choix des briques. Rien n'est rédigé ici, tout est sélectionné.
+  const composition = composer(besoins);
+
+  if (composition.statut === "hors_perimetre") {
+    return { status: "hors_perimetre", detected: composition.domaine, reason: composition.motif };
+  }
+  if (composition.statut === "aucun_besoin") {
+    // Un dossier complet dont aucun constat ne ressort : on ne fabrique pas un besoin pour
+    // pouvoir vendre. Le frein déclaré reste la seule chose à creuser.
+    return { status: "incomplet", missing: ["ce qui vous bloque concrètement"] };
   }
 
-  // 4. Le ton suit la taille, parce qu'on n'écrit pas à un artisan comme à une direction.
+  const config = composition.configuration;
+  const grounds = [
+    `objectif annoncé : ${objective.target} ${objective.metric} par ${objective.horizon}`,
+    `clients visés : ${profile.targetCustomers as string}`,
+    ...config.motifs,
+  ];
+
+  // 6. Le ton suit la taille, parce qu'on n'écrit pas à un artisan comme à une direction.
   const headcount = profile.headcount;
   const tone: Calibration["tone"] =
     headcount === null || headcount <= 10 ? "direct" : headcount <= 50 ? "sobre" : "consultatif";
   if (headcount !== null) grounds.push(`taille : ${headcount} personnes`);
 
-  // 5. Le premier pas dépend de ce que le client a sous la main — et il ne ment pas : sans liste,
+  // 7. Le premier pas dépend de ce que le client a sous la main — et il ne ment pas : sans liste,
   //    la V1 ne va pas en chercher toute seule (`adr/0016`).
   const firstStep =
     profile.hasProspectList === true
@@ -195,17 +216,114 @@ export function recommend(profile: DiagnosticProfile): RecommendationDecision {
     grounds.push("aucune liste de prospects disponible : la première étape est de la constituer");
   }
 
+  // Le frein déclaré reste tracé — il est une DONNÉE du dossier, pas la décision. Le relire
+  // ensuite permet de voir quand Sentio a conclu autre chose que ce qu'on lui demandait.
+  grounds.push(`frein déclaré par le dirigeant : ${friction}`);
+
   return {
     status: "recommande",
     calibration: {
-      profession: "commercial",
-      capabilities,
-      priorities,
+      role: config.role,
+      capabilities: config.capacites,
+      priorities: config.priorites,
       tone,
-      // Toujours présentes : ce sont les exclusions qui protègent la réputation du client.
-      exclusions: ["particuliers", "clients existants du client", "concurrents déclarés"],
+      exclusions: config.limites,
       firstStep,
     },
     grounds,
   };
 }
+
+/**
+ * Relève les constats à partir de ce que le dirigeant a déclaré.
+ *
+ * ⚠️ **Un constat déduit n'est pas un constat mesuré**, et sa confiance le dit. C'est ce qui
+ * empêche une déduction plausible de peser autant qu'une observation.
+ *
+ * Le mécanisme important est la **force** : quand le dirigeant dit « on parle aux mauvaises
+ * personnes », il déclare implicitement que le volume ne manque pas. Ce constat-là pèse
+ * négativement sur la recherche, et c'est ainsi que Sentio peut conclure autre chose que ce qu'on
+ * lui demandait — sans jamais inventer de donnée.
+ */
+export function relever(profile: DiagnosticProfile): readonly Constat[] {
+  const constats: Constat[] = [];
+  const noter = (
+    genre: GenreDeConstat,
+    domaine: Domaine,
+    source: SourceDeConstat,
+    libelle: string,
+    objet: Objet = "prospect",
+  ): void => {
+    constats.push({
+      genre,
+      domaine,
+      objet,
+      source,
+      confiance: CONFIANCE_PAR_SOURCE[source],
+      libelle,
+    });
+  };
+
+  switch (profile.friction) {
+    case HANDLED_FRICTIONS.tooFewProspects:
+      noter("goulot", "recherche_selection", "declare", "trop peu d'entreprises approchées");
+      noter("opportunite", "communication_sortante", "deduit",
+        "engager la conversation dès que la liste s'élargit");
+      break;
+
+    case HANDLED_FRICTIONS.poorTargeting:
+      noter("faiblesse", "evaluation", "declare", "du volume, mais mal ciblé");
+      // Dire « mal ciblé » revient à dire que le volume ne manque pas. On l'écrit.
+      noter("force", "recherche_selection", "deduit",
+        "le nombre d'entreprises approchées ne manque pas");
+      noter("opportunite", "communication_sortante", "deduit",
+        "n'écrire qu'aux entreprises retenues");
+      break;
+
+    case HANDLED_FRICTIONS.noFollowUp:
+      noter("goulot", "communication_sortante", "declare",
+        "des conversations entamées, jamais reprises");
+      noter("faiblesse", "donnees_fiches", "deduit",
+        "sans trace des échanges, une relance régulière est impossible");
+      break;
+
+    case HANDLED_FRICTIONS.noTime:
+      noter("goulot", "communication_sortante", "declare",
+        "le dirigeant prospecte lui-même, entre deux chantiers");
+      noter("faiblesse", "donnees_fiches", "deduit", "faute de temps, les fiches ne suivent pas");
+      noter("risque", "temps_echeances", "deduit",
+        "une tâche récurrente portée par une seule personne s'arrête dès qu'elle s'absente");
+      break;
+  }
+
+  // Ce que le client reçoit sans l'avoir cherché. C'est là que se cache le plus souvent l'écart
+  // entre ce qu'un dirigeant demande et ce qui le bloque réellement.
+  if (profile.inboundHandling === "perdu") {
+    noter("goulot", "communication_entrante", "declare",
+      "les demandes entrantes se perdent", "demande");
+  } else if (profile.inboundHandling === "irregulier") {
+    noter("faiblesse", "communication_entrante", "declare",
+      "les demandes entrantes sont traitées quand quelqu'un y pense", "demande");
+  } else if (profile.inboundHandling === "traite") {
+    noter("force", "communication_entrante", "declare",
+      "les demandes entrantes sont prises en charge", "demande");
+  }
+
+  if (profile.hasProspectList === true) {
+    noter("force", "recherche_selection", "deduit", "une liste d'entreprises existe déjà");
+  } else if (profile.hasProspectList === false) {
+    noter("faiblesse", "recherche_selection", "deduit", "aucune liste d'entreprises à approcher");
+  }
+
+  // Une équipe très réduite absorbe mal une tâche récurrente : c'est un risque, pas une faiblesse.
+  if (profile.headcount !== null && profile.headcount <= 3) {
+    noter("risque", "donnees_fiches", "deduit",
+      `à ${profile.headcount} personnes, le suivi passe après le travail livré`);
+  }
+
+  return constats;
+}
+
+/** Le rôle qu'un domaine dominant fait annoncer. Réexporté pour la restitution au dirigeant. */
+export { ROLE_PAR_DOMAINE };
+export type { ConfigurationProposee };

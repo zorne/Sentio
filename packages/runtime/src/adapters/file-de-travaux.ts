@@ -76,8 +76,28 @@ export class PostgresFileDeTravaux implements FileDeTravaux {
    * lue dans `plan.job_priority` (`FOND-17`, `EXEC-13`). Puis l'échéance, puis l'identifiant :
    * sans ce dernier départage, deux travaux de même priorité et de même échéance se rendraient
    * dans un ordre arbitraire, et une file « équitable » deviendrait invérifiable.
+   *
+   * ══ D'OÙ VIENT L'HEURE, ET POURQUOI CE N'EST PLUS DE L'APPLICATION ══
+   *
+   * `next_run_at` est posé par la base — `now()` au moment de l'insertion, en MICROsecondes. Le
+   * comparer à un `Date` JS, qui n'a que la milliseconde, faisait perdre jusqu'à 999 µs à
+   * l'aller-retour : un travail inséré à `…437294` était comparé à `…437000`, donc jugé **pas
+   * encore dû**, et le battement passait sans le prendre.
+   *
+   * Ce n'était pas théorique : `repetition-generale.integration.test.ts` échouait une fois sur
+   * quatre — l'accord du dirigeant était écrit, et l'action n'arrivait jamais. Instrumenter le
+   * faisait disparaître, parce que la moindre requête ajoutée poussait l'horloge dans la
+   * milliseconde suivante. C'est la signature d'une course, et c'est pourquoi personne ne l'avait
+   * vue : tout ce qu'on ajoutait pour l'observer la masquait.
+   *
+   * En production, la même comparaison mélangeait l'horloge de Postgres et celle du processus —
+   * deux machines, deux dérives. `composition.ts` contournait déjà le symptôme en relisant son
+   * horloge entre l'approvisionnement et l'exécution ; le contournement n'est plus nécessaire.
+   *
+   * ⚠️ AUCUNE MARGE N'EST AJOUTÉE. Un « `- 1 milliseconde` » de confort masquerait la course sans
+   * la supprimer, et se paierait un jour sur une machine plus lente. La base est la seule horloge.
    */
-  async prendre(input: { pris_par: string; maintenant: Date }): Promise<TravailPris | null> {
+  async prendre(input: { pris_par: string; maintenant?: Date }): Promise<TravailPris | null> {
     const rows = await this.sql.query<{
       tenant_id: string;
       task_id: string;
@@ -85,17 +105,31 @@ export class PostgresFileDeTravaux implements FileDeTravaux {
       attempts: number;
       repris: boolean;
     }>(
-      `with candidat as (
+      `with instant as (
+         -- Fourni ⇒ instant CHOISI (suites qui déplacent le temps). Absent ⇒ la base tranche.
+         select coalesce($2::timestamptz, now()) as t
+       ),
+       candidat as (
          select j.id, (j.locked_at is not null) as repris
            from job j
-          where j.next_run_at <= $2
-            and (j.locked_at is null or j.locked_at < $2 - make_interval(mins => $3))
+          where j.next_run_at <= (select t from instant)
+            and (j.locked_at is null
+                 or j.locked_at < (select t from instant) - make_interval(mins => $3))
+            -- ⚠️ L'ARRÊT DU DIRIGEANT (LADY-W). Refuser d'ouvrir de nouvelles missions ne suffit
+            -- pas : celles déjà en file partiraient quand même, et « stop » ne stopperait rien
+            -- de ce qui est déjà préparé. Le travail n'est pas supprimé — il n'est pas pris.
+            and not exists (
+              select 1 from task t
+                join employee e on e.tenant_id = t.tenant_id and e.id = t.employee_id
+               where t.tenant_id = j.tenant_id and t.id = j.task_id
+                 and e.en_pause_depuis is not null
+            )
           order by j.priority desc, j.next_run_at, j.id
           for update of j skip locked
           limit 1
        )
        update job
-          set locked_at = $2,
+          set locked_at = (select t from instant),
               locked_by = $1,
               -- « attempts » ne compte PAS les passages normaux : il compte les REPRISES, donc
               -- les fois où un bail a expiré sans que rien n'aboutisse. C'est le seul chiffre qui
@@ -108,7 +142,7 @@ export class PostgresFileDeTravaux implements FileDeTravaux {
           and t.tenant_id = job.tenant_id
           and t.id = job.task_id
        returning job.tenant_id, job.task_id, t.employee_id, job.attempts, candidat.repris`,
-      [input.pris_par, input.maintenant, this.bailMinutes],
+      [input.pris_par, input.maintenant ?? null, this.bailMinutes],
     );
 
     const row = rows[0];

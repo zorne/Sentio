@@ -59,7 +59,7 @@ function input(overrides: Partial<SendMessageInput> = {}): SendMessageInput {
     senderCompany: "Menuiseries Duval",
     dataSource: "fichier fourni par Menuiseries Duval",
     rightsContact: "contact@client.fr",
-    idempotencyKey: "envoyer_un_message:abc123",
+    idempotencyKey: "envoyer.prospect:abc123",
     ...overrides,
   };
 }
@@ -189,6 +189,6 @@ describe("Capacité d'envoi — ce qu'elle pose sur le message", () => {
 
     await capability.execute(input());
 
-    expect(sent[0]?.idempotencyKey).toBe("envoyer_un_message:abc123");
+    expect(sent[0]?.idempotencyKey).toBe("envoyer.prospect:abc123");
   });
 });

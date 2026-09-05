@@ -342,7 +342,11 @@ export async function decideNextAction(
   // ── Verrou de métier. Que le modèle l'ait demandée ne rend rien permis : une capacité hors de
   //    la liste de cet employé est refusée avant même de savoir si elle existe.
   if (!input.capacitesAutorisees.includes(proposition.capabilityKey)) {
-    const decision = await deps.policy.refuse(demande, input.capacitesAutorisees);
+    const decision = await deps.policy.refuse(
+      demande,
+      input.capacitesAutorisees,
+      "hors_du_perimetre",
+    );
     return { kind: "refuse", raison: decision.outcome === "refuse" ? decision.reason : "hors périmètre" };
   }
 
@@ -353,7 +357,14 @@ export async function decideNextAction(
     effectClass = deps.registry.contract(proposition.capabilityKey).effectClass;
   } catch (error) {
     if (error instanceof CapabilityUnavailable) {
-      const decision = await deps.policy.refuse(demande, input.capacitesAutorisees);
+      // ⚠️ La MÊME méthode, une cause DIFFÉRENTE. Ici la capacité était bien dans la liste
+      // autorisée : c'est son contrat qui manque au registre de cet exécutant. Le dirigeant n'a
+      // rien à activer.
+      const decision = await deps.policy.refuse(
+        demande,
+        input.capacitesAutorisees,
+        "capacite_inconnue_du_registre",
+      );
       return {
         kind: "refuse",
         raison: decision.outcome === "refuse" ? decision.reason : error.message,

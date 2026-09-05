@@ -22,6 +22,7 @@
 // Réalise : ACQUIS-15
 // ════════════════════════════════════════════════════════════════════
 
+import { CAPACITES } from "@sentio/domain";
 import type { Calibration, RecommendationDecision } from "@sentio/domain";
 
 export interface EmployeePresentation {
@@ -46,17 +47,51 @@ export interface PresentEmployeeDeps {
  *  `capability.name` en base (migration `20260729120039_adn_commercial_v1.sql`), recopiés ici
  *  plutôt que lus en base : ce module n'a pas de connexion, et ces intitulés ne changent pas
  *  sans une migration qui les changerait aussi. */
+/**
+ * ⚠️ CE QUI S'EXÉCUTE VRAIMENT AUJOURD'HUI, ET RIEN D'AUTRE.
+ *
+ * Constat P0-3 de `docs/35` : le diagnostic annonçait les cinq capacités à un visiteur qui n'a
+ * pas encore recruté, alors que trois d'entre elles n'ont aucun moteur monté — le runtime les
+ * refuse (`CapabilityUnavailable`). Promettre avant l'achat ce qu'on refusera après est la faute
+ * la plus chère du produit.
+ *
+ * ⚠️ RECOPIÉ ICI, ET C'EST UN COMPROMIS ASSUMÉ. La vérité vit en base (`capability.disponible`)
+ * et un test d'intégration l'y tient synchrone avec le code ; mais ce module n'a pas de connexion,
+ * comme le dit déjà `CAPABILITY_WORDING` juste en dessous. Le contrôle qui interdit la divergence
+ * est donc ici aussi : `presentation.test.ts` compare cette liste aux moteurs montés.
+ */
+export const CAPACITES_REELLEMENT_EXECUTABLES: readonly string[] = [
+  CAPACITES.rechercherProspect,
+  CAPACITES.qualifierProspect,
+  CAPACITES.mettreAJourProspect,
+];
+
 const CAPABILITY_WORDING: Record<string, string> = {
-  trouver_des_prospects: "repérer les entreprises à approcher",
-  qualifier_un_prospect: "vérifier qu'un contact correspond vraiment à ce que vous vendez",
-  envoyer_un_message: "engager la conversation avec un premier message",
-  relancer_un_prospect: "revenir vers ceux restés sans réponse",
-  mettre_a_jour_une_fiche: "tenir votre fiche client à jour",
+  [CAPACITES.rechercherProspect]: "repérer les entreprises à approcher",
+  [CAPACITES.qualifierProspect]: "vérifier qu'un contact correspond vraiment à ce que vous vendez",
+  [CAPACITES.envoyerProspect]: "engager la conversation avec un premier message",
+  [CAPACITES.relancerProspect]: "revenir vers ceux restés sans réponse",
+  [CAPACITES.mettreAJourProspect]: "tenir votre fiche client à jour",
 };
 
-const FALLBACK_TITLES: Record<Calibration["profession"], string> = {
-  commercial: "chargé de développement commercial",
+/**
+ * Comment on présente au dirigeant le rôle décidé par le diagnostic.
+ *
+ * ⚠️ Ce n'est PAS un catalogue de métiers : c'est la restitution d'une composition. Le rôle est
+ * une sortie du diagnostic (`docs/adr/0029`), et un rôle qu'on ne saurait pas nommer n'empêche
+ * pas de présenter l'employé — d'où le repli générique, plutôt qu'un écran d'erreur.
+ */
+const TITRE_PAR_ROLE: Record<string, string> = {
+  prospection: "chargé de développement commercial",
+  qualification: "chargé de qualification",
+  relation_client: "chargé de la relation client",
+  administration_commerciale: "assistant administratif commercial",
+  administration: "assistant administratif",
+  suivi: "chargé de suivi",
+  pilotage: "chargé du pilotage",
 };
+
+const TITRE_GENERIQUE = "employé numérique";
 
 /** Un prénom illustratif pour la présentation — pas une identité réservée. La vraie identité,
  *  tirée du réservoir de 300+ noms (FOND-34) et jamais réutilisée, n'est assignée qu'au
@@ -104,12 +139,24 @@ function parsePresentation(raw: unknown): EmployeePresentation | null {
 
 /** Le repli — jamais un écran d'erreur, une présentation un peu plus sobre mais tout aussi
  *  honnête, entièrement dérivée des faits que `recommend()` a déjà établis. */
+/**
+ * Ce qu'elle fera, dérivé de ce qu'elle SAIT faire aujourd'hui.
+ *
+ * Une capacité prévue par la composition mais dépourvue de moteur n'est pas annoncée : elle le
+ * sera le jour où elle marchera.
+ */
+function ceQuElleSaitFaire(calibration: Calibration): readonly string[] {
+  return calibration.capabilities
+    .filter((key) => CAPACITES_REELLEMENT_EXECUTABLES.includes(key))
+    .map((key) => CAPABILITY_WORDING[key] ?? key);
+}
+
 function fallbackPresentation(decision: RecommendedDecision): EmployeePresentation {
   const { calibration, grounds } = decision;
-  const whatTheyDo = calibration.capabilities.map((key) => CAPABILITY_WORDING[key] ?? key);
+  const whatTheyDo = ceQuElleSaitFaire(calibration);
   return {
     firstName: pickPreviewName(grounds.join("|")),
-    title: FALLBACK_TITLES[calibration.profession],
+    title: TITRE_PAR_ROLE[calibration.role] ?? TITRE_GENERIQUE,
     mission: calibration.priorities[0] ?? "prendre en charge une partie de votre prospection",
     whatTheyDo,
     whyRecommended: grounds.join(". "),
@@ -124,7 +171,15 @@ export async function presentEmployee(
   try {
     const raw = await deps.present({ calibration: decision.calibration, grounds: decision.grounds });
     const parsed = parsePresentation(raw);
-    if (parsed) return parsed;
+    // ⚠️ CE QU'ELLE SAIT FAIRE NE VIENT JAMAIS DU MODÈLE, MÊME QUAND IL RÉPOND BIEN.
+    //
+    // Le modèle rédige : le prénom, le titre, la mission, la raison, le premier pas. Il ne
+    // DÉCLARE pas ce dont le produit est capable — c'est un fait vérifiable, pas une écriture, et
+    // rien ne l'empêchait de promettre l'envoi d'emails à un visiteur qui n'a pas encore recruté.
+    //
+    // Même famille que l'invariant 4 du dépôt (aucun chiffre calculé par un modèle) : ce qui
+    // engage Sentio se lit dans le système, jamais dans une phrase engendrée.
+    if (parsed) return { ...parsed, whatTheyDo: ceQuElleSaitFaire(decision.calibration) };
   } catch {
     // Panne réseau, réponse vide : le repli prend le relais silencieusement.
   }

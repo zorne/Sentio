@@ -16,7 +16,7 @@ import { createPostgresClient, type PostgresClient } from "./adapters/postgres-n
 import type { EmployeeId, TenantId } from "@sentio/domain";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { PostgresApprovisionnementStore, RegistreDeGisementsParMetier } from "@sentio/runtime";
+import { PostgresApprovisionnementStore, RegistreDeGisementsEnMemoire } from "@sentio/runtime";
 import { PostgresApprovalStore } from "@sentio/runtime";
 import { PostgresEffectLedger } from "@sentio/runtime";
 import { PostgresFileDeTravaux } from "@sentio/runtime";
@@ -38,7 +38,7 @@ import { executerLesTravauxDus, type BoucleDeps } from "@sentio/runtime";
  *   · **le fournisseur de modèle** — un vrai appel rendrait le test lent, payant, non
  *     reproductible, et ferait transiter des données vers un tiers depuis une suite de tests.
  *     Le Gateway, lui, est le VRAI : routage, enveloppes, plafonds et comptage sont exercés.
- *   · **le moteur de capacité** — `qualifier_un_prospect` n'a pas encore de moteur dans
+ *   · **le moteur de capacité** — `qualifier.prospect` n'a pas encore de moteur dans
  *     `packages/capabilities` (voir le compte rendu). Le faux est enregistré sous la même clé de
  *     moteur (`base`) que la liaison réelle en base : c'est donc bien `capability_binding` qui
  *     le résout, pas le test.
@@ -61,7 +61,13 @@ if (connectionString === undefined && process.env["SENTIO_REQUIRE_DB_TESTS"] ===
 const describeIfDatabase = connectionString === undefined ? describe.skip : describe;
 
 /** La capacité que l'employé propose dans ces tests : écriture interne, donc pas de suspension. */
-const CAPACITE = "qualifier_un_prospect";
+const CAPACITE = "qualifier.prospect";
+/**
+ * Une capacité connue du registre, applicable au même sujet (`lead`), mais JAMAIS activée pour
+ * l'employé. C'est la seule forme qui atteigne le verrou « hors de la liste de cet employé » sans
+ * être interceptée avant par le garde du contrat manquant.
+ */
+const CAPACITE_NON_ACTIVEE = "mettre_a_jour.prospect";
 
 describeIfDatabase("EXEC-12 — la boucle complète", () => {
   let sql: PostgresClient;
@@ -119,6 +125,18 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
       key: CAPACITE,
       effectClass: "internal_write",
       description: "Vérifier qu'un prospect correspond à ce que le client vend.",
+    });
+    // ⚠️ UN SECOND CONTRAT, ET IL A UNE RAISON PRÉCISE.
+    //
+    // Pour éprouver le verrou « capacité hors de la liste de cet employé », il faut une capacité
+    // qui EXISTE au registre mais qui n'est PAS activée. Sans elle, proposer une capacité inconnue
+    // ferait refuser par l'AUTRE garde — celui du contrat manquant, quelques lignes plus bas dans
+    // `decideNextAction` — et le test passerait au vert sans jamais toucher le verrou qu'il vise.
+    // Mesuré par mutation : c'est exactement ce qui se produisait.
+    registry.registerContract({
+      key: CAPACITE_NON_ACTIVEE,
+      effectClass: "internal_write",
+      description: "Consigner l'état d'une fiche.",
     });
     registry.registerEngine({
       // Même clé de moteur que la liaison semée par la migration de l'ADN Commercial : c'est
@@ -179,8 +197,8 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     );
 
     const [definition] = await sql.query<{ id: string }>(
-      `insert into employee_definition (profession, version, dna)
-       values ('commercial', $1, $2::jsonb) returning id`,
+      `insert into employee_definition (gisement, version, dna, capacites)
+       values ('commercial', $1, $2::jsonb, '["relancer.prospect","qualifier.prospect"]'::jsonb) returning id`,
       [
         versionUnique(),
         JSON.stringify({
@@ -219,11 +237,25 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     return { tenantId: tenantId as TenantId, employeeId: employee?.id as EmployeeId };
   }
 
+  /**
+   * L'heure SELON LA BASE.
+   *
+   * ⚠️ Ce n'est pas une coquetterie : c'est la cause d'un échec intermittent poursuivi sur trois
+   * étapes. `job.next_run_at` reçoit le `now()` de Postgres ; `prendre()` compare
+   * `next_run_at <= maintenant`, où `maintenant` venait de l'horloge du processus Node. Un
+   * décalage d'une milliseconde entre les deux horloges suffit à rendre le travail « pas encore
+   * dû » — l'exécutant ne prend rien, le journal reste vide, et le test échoue sur une assertion
+   * qui n'a rien à voir avec ce qu'elle vérifie.
+   *
+   * En production le même décalage est sans conséquence : le battement suivant reprend le travail
+   * quelques minutes plus tard. En test, il n'y a pas de battement suivant.
+   */
+
   async function approvisionner(...tenantIds: TenantId[]): Promise<void> {
     await approvisionnerLeJour(
       {
         store: new PostgresApprovisionnementStore(sql),
-        gisements: RegistreDeGisementsParMetier.commercial(sql),
+        gisements: RegistreDeGisementsEnMemoire.commercial(sql),
         journal: new PostgresJournalWriter(sql),
       },
       new Date(),
@@ -259,12 +291,21 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     return tache?.id as string;
   }
 
+  /** Proposer une capacité PRÉCISE — sert à éprouver le garde aval sur une capacité hors liste. */
+  function proposerLaCapacite(cle: string, combien: number): void {
+    reponses = Array.from({ length: combien }, () =>
+      JSON.stringify({ action: "agir", capacite: cle, entree: {}, pourquoi: "essai du garde aval" }),
+    );
+  }
+
   function proposerUneAction(combien: number): void {
     reponses = Array.from({ length: combien }, () =>
       JSON.stringify({
         action: "agir",
         capacite: CAPACITE,
-        entree: { lead_id: randomUUID() },
+        // ⚠️ Vide, et c'est le sujet : depuis `attelage.ts`, le modèle ne nomme jamais la fiche
+        // sur laquelle il agit. Elle vient de la mission.
+        entree: {},
         pourquoi: "ce prospect correspond à la cible déclarée",
       }),
     );
@@ -282,12 +323,31 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
 
     const rapport = await executerLesTravauxDus(deps(), {
       prisPar: "exécutant-de-test",
-      maintenant: new Date(),
       dataClass: "synthetic",
       maxTravaux: 1,
     });
 
-    expect(rapport).toEqual({ traites: 1, echoues: 0 });
+    // ⚠️ `motifs` compte ce que le pas a PRODUIT, pas seulement qu'il est passé. Sans lui,
+    // « traité » ne disait que « aucune exception levée » — un run reporté faute de fournisseur
+    // conforme comptait donc comme un succès.
+    expect(rapport).toMatchObject({ traites: 1, echoues: 0, motifs: { pas_suivant: 1 } });
+
+    // ⚠️ Et le même détail RATTACHÉ À SON EMPLOYÉ : c'est ce que le compteur relit pour répondre
+    // « du travail se fait-il ? » entreprise par entreprise. Les compteurs globaux ne le peuvent
+    // pas : dix entreprises qui travaillent masquent la onzième qui ne travaille pas.
+    expect(rapport.pas).toEqual([
+      {
+        tenantId,
+        employeeId: expect.any(String),
+        motif: "pas_suivant",
+        manque: null,
+        // Le run a bien exécuté une action : il n'a pas payé pour rien, et son « terminé » vaut
+        // vraiment aboutissement. C'est le chiffre qui distingue « le modèle a jugé qu'il n'y
+        // avait rien à faire » de « la chaîne tourne à vide ».
+        aPayeSansRienProduire: false,
+        actionsExecutees: 1,
+      },
+    ]);
 
     // La chaîne complète est au journal, dans l'ordre, et `run_demarre` ouvre la marche.
     const chaine = await natures(tenantId, await laMission(tenantId));
@@ -319,8 +379,7 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     for (let i = 0; i < 3; i++) {
       await executerLesTravauxDus(deps(), {
         prisPar: "exécutant-de-test",
-        maintenant: new Date(),
-        dataClass: "synthetic",
+          dataClass: "synthetic",
         maxTravaux: 1,
       });
     }
@@ -339,8 +398,7 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     for (let i = 0; i < REGLAGES_RUNTIME_PAR_DEFAUT.pasMaximumParRun; i++) {
       await executerLesTravauxDus(deps(), {
         prisPar: "exécutant-de-test",
-        maintenant: new Date(),
-        dataClass: "synthetic",
+          dataClass: "synthetic",
         maxTravaux: 1,
       });
     }
@@ -363,7 +421,6 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
 
     await executerLesTravauxDus(deps(), {
       prisPar: "exécutant-de-test",
-      maintenant: new Date(),
       dataClass: "synthetic",
       maxTravaux: 1,
     });
@@ -405,13 +462,11 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     try {
       const file = new PostgresFileDeTravaux(sql);
       const autre = new PostgresFileDeTravaux(second);
-      const maintenant = new Date();
-
       const pris = await Promise.all([
-        file.prendre({ pris_par: "A", maintenant }),
-        autre.prendre({ pris_par: "B", maintenant }),
-        file.prendre({ pris_par: "A", maintenant }),
-        autre.prendre({ pris_par: "B", maintenant }),
+        file.prendre({ pris_par: "A" }),
+        autre.prendre({ pris_par: "B" }),
+        file.prendre({ pris_par: "A" }),
+        autre.prendre({ pris_par: "B" }),
       ]);
 
       const identifiants = pris.filter((t) => t !== null).map((t) => t!.taskId);
@@ -427,9 +482,8 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     const { tenantId } = await entreprise({ prospects: 1 });
     await approvisionner(tenantId);
     const file = new PostgresFileDeTravaux(sql);
-    const maintenant = new Date();
 
-    expect(await file.prendre({ pris_par: "A", maintenant })).not.toBeNull();
+    expect(await file.prendre({ pris_par: "A" })).not.toBeNull();
     // Le second passage ne le revoit pas : le bail n'a pas expiré.
     const [deuxieme] = await sql.query<{ n: string }>(
       `select count(*) as n from job j join task t on t.id = j.task_id
@@ -445,7 +499,9 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
 
     // Un exécutant prend le travail… puis meurt. Le verrou n'est jamais rendu.
     const bail = new PostgresFileDeTravaux(sql, 10);
-    expect(await bail.prendre({ pris_par: "mort", maintenant: new Date() })).not.toBeNull();
+    expect(
+      await bail.prendre({ pris_par: "mort" }),
+    ).not.toBeNull();
 
     // Onze minutes plus tard, un autre le reprend — et compte la reprise.
     const plusTard = new Date(Date.now() + 11 * 60 * 1000);
@@ -470,7 +526,6 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     const avant = appelsAuModele;
     await executerLesTravauxDus(deps(), {
       prisPar: "exécutant-de-test",
-      maintenant: new Date(),
       dataClass: "synthetic",
       maxTravaux: 1,
     });
@@ -500,7 +555,7 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     const meme = JSON.stringify({
       action: "agir",
       capacite: CAPACITE,
-      entree: { lead_id: "6f0f6b8e-0000-4000-8000-000000000001" },
+      entree: {},
       pourquoi: "le même prospect, deux fois",
     });
     reponses = [meme, meme];
@@ -508,8 +563,7 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     for (let i = 0; i < 2; i++) {
       await executerLesTravauxDus(deps(), {
         prisPar: "exécutant-de-test",
-        maintenant: new Date(),
-        dataClass: "synthetic",
+          dataClass: "synthetic",
         maxTravaux: 1,
       });
     }
@@ -548,7 +602,6 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
     const avant = appelsAuModele;
     await executerLesTravauxDus(deps(), {
       prisPar: "exécutant-de-test",
-      maintenant: new Date(),
       dataClass: "synthetic",
       maxTravaux: 1,
     });
@@ -576,7 +629,6 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
 
     await executerLesTravauxDus(deps(), {
       prisPar: "exécutant-de-test",
-      maintenant: new Date(),
       dataClass: "synthetic",
       maxTravaux: 8,
     });
@@ -603,20 +655,309 @@ describeIfDatabase("EXEC-12 — la boucle complète", () => {
 
   it("refuse une capacité que le client n'a pas activée, sans appeler aucun moteur", async () => {
     effets = [];
-    const { tenantId } = await entreprise({ prospects: 1, capaciteActive: false });
+    // ⚠️ CE CAS A DÛ ÊTRE RÉÉCRIT DEUX FOIS, ET LA SECONDE EST LA PLUS INSTRUCTIVE.
+    //
+    // Il recrutait d'abord SANS capacité. Le filtrage par capacité de l'approvisionnement l'a
+    // rendu muet : plus aucune mission ne s'ouvrait. On a donc activé puis révoqué en vol.
+    //
+    // Puis le FILTRAGE PAR SUJET de `next-step` l'a rendu muet à son tour : une liste vide
+    // s'arrête AVANT le modèle, en `capacite_absente`, et le garde aval n'était plus atteint. Le
+    // test passait au vert pour la mauvaise raison — exactement le risque que ce filtre fait
+    // courir : prendre silencieusement la place de la frontière qu'il devait seulement soulager.
+    //
+    // La forme juste est donc celle-ci : l'employé GARDE une capacité applicable (la liste n'est
+    // pas vide, le filtre laisse passer), et le modèle en propose une AUTRE, non activée. C'est
+    // le seul chemin qui atteint encore `decideNextAction` — et c'est le vrai scénario de
+    // production, puisqu'un modèle peut toujours nommer ce qu'on ne lui a pas proposé.
+    const { tenantId } = await entreprise({ prospects: 1, capaciteActive: true });
     await approvisionner(tenantId);
-    proposerUneAction(1);
+    proposerLaCapacite(CAPACITE_NON_ACTIVEE, 1);
+
+    // ⚠️ Ce cas n'exécute QU'UN travail et vérifie que c'est le sien. Or la file est globale :
+    // rien ne garantit que le travail pris soit celui de cette entreprise, et un reliquat d'un
+    // cas précédent le faisait échouer par intermittence — mesuré le 2026-08-15 à 2 échecs sur 9
+    // quand la suite tourne au sein de l'ensemble des paquets, 0 sur 16 quand elle tourne seule.
+    //
+    // On repousse donc les travaux des AUTRES entreprises au lieu de les supprimer : ce qu'ils
+    // ont écrit reste intact, ils ne disputent simplement plus le tour. Un test qui échoue au
+    // hasard ne vaut pas mieux qu'un test qui ne teste rien — on ne relance pas jusqu'au vert.
+    await sql.query("update job set next_run_at = now() + interval '1 hour' where tenant_id <> $1", [
+      tenantId,
+    ]);
 
     await executerLesTravauxDus(deps(), {
       prisPar: "exécutant-de-test",
-      maintenant: new Date(),
       dataClass: "synthetic",
       maxTravaux: 1,
     });
 
-    const chaine = await natures(tenantId, await laMission(tenantId));
+    // ⚠️ Diagnostic avant assertion. Ce cas a déjà échoué sur un journal vide, et « vide » a
+    // deux causes très différentes : soit la mission n'a jamais été ouverte, soit elle l'a été
+    // mais l'exécutant a pris le travail d'un autre. Les distinguer ici évite de rejouer
+    // l'enquête à chaque occurrence — un test instable qu'on ne sait pas lire se contourne au
+    // lieu de se corriger.
+    const mission = await laMission(tenantId);
+    expect(mission, "aucune mission ouverte : l'approvisionnement a refusé").toBeDefined();
+
+    const chaine = await natures(tenantId, mission);
+    expect(chaine, "journal vide : l'exécutant a pris le travail d'une autre entreprise").toContain(
+      "politique_refuse",
+    );
+    expect(chaine).not.toContain("action_engagee");
+    expect(effets).toHaveLength(0);
+  });
+
+  it("⭐ aucune capacité applicable : la mission s'ARRÊTE avant le modèle, et dit ce qui manque", async () => {
+    // ⚠️ LE CAS QUE LE FILTRAGE PAR SUJET A CRÉÉ, ET QU'IL DOIT DONC FERMER LUI-MÊME.
+    //
+    // Filtrer la liste rend possible qu'elle devienne vide. Livrer le filtre en laissant ce cas
+    // ouvert aurait introduit un mode de défaillance silencieux dans le lot même qui prétend en
+    // fermer un.
+    //
+    // Trois choses se vérifient ici, et la troisième est la plus importante :
+    //   · AUCUN appel au modèle — on ne paie pas pour une liste vide ;
+    //   · l'état est `needs_attention`, jamais `failed` — le dirigeant PEUT y remédier ;
+    //   · le motif nomme le sujet et ce qui est activé, pour que le futur canal d'alerte ait
+    //     quelque chose d'utile à acheminer plutôt qu'un « ça a échoué ».
+    effets = [];
+    const { tenantId, employeeId } = await entreprise({ prospects: 1, capaciteActive: true });
+    await approvisionner(tenantId);
+    // On retire la seule capacité applicable : la liste filtrée devient vide.
+    await sql.query(
+      "update employee_capability set enabled = false where tenant_id = $1 and employee_id = $2",
+      [tenantId, employeeId],
+    );
+
+    const appelsAvant = appelsAuModele;
+    await executerLesTravauxDus(deps(), {
+      prisPar: "exécutant-de-test",
+      dataClass: "synthetic",
+      maxTravaux: 1,
+    });
+
+    const mission = await laMission(tenantId);
+    const chaine = await natures(tenantId, mission);
+    expect(chaine, "journal vide : l'exécutant a pris le travail d'une autre entreprise").toContain(
+      "attention_requise",
+    );
+    expect(chaine).not.toContain("proposition_recue");
+    expect(chaine).not.toContain("action_engagee");
+    expect(appelsAuModele).toBe(appelsAvant);
+    expect(effets).toHaveLength(0);
+
+    const [etat] = await sql.query<{ state: string }>("select state from task where id = $1", [mission]);
+    expect(etat?.state).toBe("needs_attention");
+
+    const [evenement] = await sql.query<{ payload: Record<string, unknown> }>(
+      `select payload from execution_event
+        where tenant_id = $1 and task_id = $2 and kind = 'attention_requise'
+        order by seq desc limit 1`,
+      [tenantId, mission],
+    );
+    expect(String(evenement?.payload["detail"])).toContain("lead");
+
+    // ⚠️ LA CAUSE, ET PAS SEULEMENT LE MOTIF. Le motif est unifié pour la reprise ; c'est la cause
+    // qui décide À QUI l'on parle. Ici le dirigeant peut activer l'outil : elle doit le dire.
+    expect(evenement?.payload["cause"]).toBe("capacite_non_activee");
+  });
+
+  it("⭐ même arrêt, mais la cause dit que le manque est CHEZ NOUS", async () => {
+    // ⚠️ LE CAS 9 — DEUX MANQUES SOUS UN SEUL MOTIF, ET DEUX DESTINATAIRES.
+    //
+    // Ici la capacité applicable EST activée : le dirigeant a fait son travail. C'est le moteur
+    // qui manque, et le monter est un déploiement — le nôtre. Le motif reste `capacite_absente`,
+    // parce que la reprise traite les deux de la même façon : ce sont deux attentes qu'une même
+    // relance résout. Mais la cause diffère, et c'est elle qui empêche d'envoyer le dirigeant
+    // chercher un bouton qui n'existe pas.
+    effets = [];
+    const { tenantId, employeeId } = await entreprise({ prospects: 1, capaciteActive: true });
+    await approvisionner(tenantId);
+
+    // La seule capacité activée devient une capacité applicable au sujet que ce registre ne sert
+    // PAS. La liste applicable n'est donc pas vide ; la liste autorisée, si.
+    await sql.query(
+      "update employee_capability set enabled = false where tenant_id = $1 and employee_id = $2",
+      [tenantId, employeeId],
+    );
+    await sql.query(
+      `insert into employee_capability (tenant_id, employee_id, capability_id, enabled)
+       select $1, $2, c.id, true from capability c where c.key = 'envoyer.prospect'
+       on conflict (employee_id, capability_id) do update set enabled = true`,
+      [tenantId, employeeId],
+    );
+
+    const appelsAvant = appelsAuModele;
+    await executerLesTravauxDus(deps(), {
+      prisPar: "exécutant-de-test",
+      dataClass: "synthetic",
+      maxTravaux: 1,
+    });
+
+    const mission = await laMission(tenantId);
+    const [evenement] = await sql.query<{ payload: Record<string, unknown> }>(
+      `select payload from execution_event
+        where tenant_id = $1 and task_id = $2 and kind = 'attention_requise'
+        order by seq desc limit 1`,
+      [tenantId, mission],
+    );
+
+    expect(evenement?.payload["motif"], "la reprise doit continuer à trouver ce motif").toBe(
+      "capacite_absente",
+    );
+    expect(evenement?.payload["cause"]).toBe("moteur_non_monte");
+    // Toujours aucun appel payant : on s'arrête avant le modèle dans les deux cas.
+    expect(appelsAuModele).toBe(appelsAvant);
+  });
+
+  it("⭐ une capacité SANS MOTEUR n'est jamais proposée — aucun appel payant n'est brûlé", async () => {
+    // ⚠️ CE CAS ÉCONOMISE UN APPEL FACTURÉ, ET IL A ÉTÉ CONÇU EN LE MESURANT.
+    //
+    // `envoyer.prospect` peut être activée pour l'employé sans qu'aucun moteur ne la serve — c'est
+    // exactement l'état de la production aujourd'hui (`composition.ts` ne la monte pas). Avant ce
+    // filtre : elle passait, le modèle la proposait — appel facturé —, puis `engineFor` échouait
+    // et la mission mourait en `failed`, terminale, son prospect exclu du vivier pour toujours.
+    //
+    // ⚠️ Et la question se pose au REGISTRE DE CET HÔTE, jamais à `capability.disponible`. Ce test
+    // le prouve : `qualifier.prospect` reste proposée parce que CE registre la sert, quoi que dise
+    // la colonne — un hôte qui monte ses propres moteurs ne doit pas voir son travail écarté.
+    effets = [];
+    const { tenantId, employeeId } = await entreprise({ prospects: 1, capaciteActive: true });
+    await approvisionner(tenantId);
+
+    // On active AUSSI une capacité qu'aucun moteur de ce registre ne sert.
+    await sql.query(
+      `insert into employee_capability (tenant_id, employee_id, capability_id, enabled)
+       select $1, $2, c.id, true from capability c where c.key = 'envoyer.prospect'
+       on conflict (employee_id, capability_id) do update set enabled = true`,
+      [tenantId, employeeId],
+    );
+
+    // Le modèle propose la capacité sans moteur. Elle ne devrait même pas lui être offerte.
+    proposerLaCapacite("envoyer.prospect", 1);
+
+    await executerLesTravauxDus(deps(), {
+      prisPar: "exécutant-de-test",
+      dataClass: "synthetic",
+      maxTravaux: 1,
+    });
+
+    const mission = await laMission(tenantId);
+    const chaine = await natures(tenantId, mission);
+
+    // La proposition a bien eu lieu — la mission n'est pas bloquée, `qualifier.prospect` reste
+    // proposable — mais `envoyer.prospect` a été REFUSÉE sans qu'aucun moteur ne soit approché.
     expect(chaine).toContain("politique_refuse");
     expect(chaine).not.toContain("action_engagee");
     expect(effets).toHaveLength(0);
+  });
+
+  it("MUTATION — une mission créée HORS approvisionnement est refusée si la capacité n'est pas activée", async () => {
+    // ⚠️ DÉFENSE EN PROFONDEUR, ET LE TEST QUI LA GARDE.
+    //
+    // L'approvisionnement écarte désormais en amont tout travail qu'aucune capacité activée ne
+    // sert. C'est une ÉCONOMIE — ne pas ouvrir une mission vouée à l'échec —, jamais une
+    // frontière de sécurité. La frontière reste ici, au moment d'agir : `next-step` relit les
+    // capacités à chaque pas et `decideNextAction` refuse ce qui n'y figure pas.
+    //
+    // Le cas est donc construit en contournant totalement l'approvisionnement — exactement ce que
+    // ferait un script de reprise, un futur gisement, ou un chemin qu'on n'a pas encore écrit. La
+    // capacité n'a JAMAIS été activée pour cet employé : ce n'est pas une révocation en vol (cas
+    // du test précédent), c'est une mission qui n'aurait jamais dû exister.
+    effets = [];
+    // La capacité activée reste `qualifier.prospect` : la liste filtrée n'est donc pas vide et le
+    // filtre amont laisse passer. Le modèle propose `envoyer.prospect`, jamais activée — seul le
+    // garde aval peut la refuser.
+    const { tenantId, employeeId } = await entreprise({ prospects: 1, capaciteActive: true });
+
+    const [prospect] = await sql.query<{ id: string }>(
+      "select id from lead where tenant_id = $1 limit 1",
+      [tenantId],
+    );
+    const [mission] = await sql.query<{ id: string }>(
+      `insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id, state)
+       select $1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'),
+              'lead', $3, 'pending'
+       returning id`,
+      [tenantId, employeeId, prospect?.id],
+    );
+    await sql.query("insert into job (tenant_id, task_id, priority) values ($1, $2, 0)", [
+      tenantId,
+      mission?.id,
+    ]);
+
+    // Même précaution que le cas précédent : la file est globale, on écarte le travail des autres.
+    await sql.query("update job set next_run_at = now() + interval '1 hour' where tenant_id <> $1", [
+      tenantId,
+    ]);
+    proposerLaCapacite(CAPACITE_NON_ACTIVEE, 1);
+
+    await executerLesTravauxDus(deps(), {
+      prisPar: "exécutant-de-test",
+      dataClass: "synthetic",
+      maxTravaux: 1,
+    });
+
+    const chaine = await natures(tenantId, mission?.id as string);
+    expect(chaine, "journal vide : l'exécutant a pris le travail d'une autre entreprise").toContain(
+      "politique_refuse",
+    );
+    expect(chaine).not.toContain("action_engagee");
+    expect(effets).toHaveLength(0);
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // L'ÉCHÉANCE — quelle horloge tranche, et pourquoi ce n'est pas celle du processus.
+  //
+  // ⚠️ CE CAS EST DÉTERMINISTE, ET IL REPRODUIT UN DÉFAUT QUI NE L'ÉTAIT PAS.
+  //
+  // `repetition-generale` échouait une fois sur quatre : l'accord du dirigeant était écrit, et
+  // l'action n'arrivait jamais. Cause mesurée : `next_run_at` est posé par Postgres en
+  // MICROsecondes, et un `Date` JS n'en garde que la milliseconde. L'aller-retour rabotait
+  // jusqu'à 999 µs, donc un travail tout juste inséré redevenait « pas encore dû ».
+  //
+  // Ici, on force la microseconde au lieu de l'attendre : `next_run_at` porte 500 µs au-delà de
+  // sa milliseconde. Le défaut cesse d'être une course et devient un fait vérifiable.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  it("⭐⭐ prend un travail dû à 500 µs près — la base tranche, pas l'horloge du processus", async () => {
+    const { tenantId } = await entreprise({ prospects: 1 });
+    await approvisionner(tenantId);
+    const file = new PostgresFileDeTravaux(sql);
+
+    // Une échéance à 500 µs au-delà de sa milliseconde, dans le passé : elle est DUE.
+    const [pose] = await sql.query<{ echeance: Date }>(
+      `update job
+          set next_run_at = date_trunc('milliseconds', now()) + interval '500 microseconds'
+                            - interval '1 second'
+        where tenant_id = $1
+       returning next_run_at as echeance`,
+      [tenantId],
+    );
+    expect(pose?.echeance).toBeDefined();
+
+    // Ce que l'application aurait comparé : la même échéance, rabotée à la milliseconde. Elle
+    // devient ANTÉRIEURE de 500 µs — donc « pas encore due ».
+    const rabotee = new Date(pose!.echeance.getTime());
+
+    // ⚠️ L'ANCIEN COMPORTEMENT, reproduit exprès : avec cet instant, le travail est manqué.
+    expect(await file.prendre({ pris_par: "horloge-du-processus", maintenant: rabotee })).toBeNull();
+
+    // ⭐ Sans instant, la base compare ses propres microsecondes : le travail est pris.
+    const pris = await file.prendre({ pris_par: "horloge-de-la-base" });
+    expect(pris).not.toBeNull();
+    expect(pris!.tenantId).toBe(tenantId);
+  });
+
+  it("un instant CHOISI reste honoré — l'horloge injectable n'a pas disparu", async () => {
+    const { tenantId } = await entreprise({ prospects: 1 });
+    await approvisionner(tenantId);
+    const file = new PostgresFileDeTravaux(sql);
+
+    // Une heure avant l'échéance : rien n'est dû, et c'est le test qui le décide.
+    const uneHeureAvant = new Date(Date.now() - 3_600_000);
+    expect(await file.prendre({ pris_par: "voyageur", maintenant: uneHeureAvant })).toBeNull();
+
+    // Le même travail, sans instant imposé : dû.
+    expect(await file.prendre({ pris_par: "maintenant" })).not.toBeNull();
   });
 });

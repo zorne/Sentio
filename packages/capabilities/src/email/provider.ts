@@ -22,6 +22,18 @@ export interface OutgoingEmail {
   readonly subject: string;
   readonly text: string;
   /**
+   * La version mise en forme, quand le message en a une.
+   *
+   * ⚠️ ELLE NE REMPLACE JAMAIS `text`, ELLE S'AJOUTE. Beaucoup de messageries d'entreprise
+   * affichent la version texte, et un message qui n'en a pas est plus souvent classé en
+   * indésirable. Les deux partent ensemble, et la messagerie choisit.
+   *
+   * Les messages que l'employée envoie à des prospects n'en ont pas : un email commercial en
+   * texte simple ressemble à un email écrit par une personne, ce qui est exactement le but. Elle
+   * sert aux messages que SENTIO adresse à SON client, comme la présentation de son employée.
+   */
+  readonly html?: string;
+  /**
    * Clé d'idempotence de l'action. Transmise au service quand il sait la lire : la déduplication
    * tient alors des deux côtés, pas seulement du nôtre.
    */

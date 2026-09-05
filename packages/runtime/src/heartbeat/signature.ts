@@ -12,6 +12,9 @@ export {
   HEARTBEAT_HEADER,
   signHeartbeat,
   verifyHeartbeat,
+  CHARGE_HEADER,
+  signerLaCharge,
+  verifierLaCharge,
   type HeartbeatRejection,
   type SignatureVerdict,
 } from "@sentio/domain";

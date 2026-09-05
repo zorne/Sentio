@@ -8,7 +8,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
   GisementDeProspects,
   PostgresApprovisionnementStore,
-  RegistreDeGisementsParMetier,
+  RegistreDeGisementsEnMemoire,
 } from "@sentio/runtime";
 import { PostgresJournalWriter } from "@sentio/runtime";
 import { approvisionnerLeJour, jourUtc } from "@sentio/runtime";
@@ -88,6 +88,9 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     const tenantId = randomUUID();
     tenants.push(tenantId);
     await sql.query("insert into tenant (id, name) values ($1, $2)", [tenantId, "Entreprise EXEC-17"]);
+    // Cette suite pose elle-même l'objectif, plus bas, parce que son état est précisément ce
+    // qu'elle fait varier — actif, atteint, retiré, ou aucun. Depuis `20260815120002` une
+    // entreprise n'en porte qu'un actif : en ajouter un ici en écraserait le sens.
 
     const abonnement = options.abonnement ?? "active";
     if (abonnement !== "aucun") {
@@ -103,15 +106,15 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     if (objectif !== "aucun") {
       await sql.query(
         `insert into objective (tenant_id, metric, target_value, horizon, state, achieved_at)
-         values ($1, '€ de chiffre d''affaires', 5000, 'mois', $2, $3)`,
+         values ($1, 'chiffre_affaires', 5000, 'mois', $2, $3)`,
         [tenantId, objectif, objectif === "atteint" ? new Date() : null],
       );
     }
 
     const profession = options.profession ?? "commercial";
     const [definition] = await sql.query<{ id: string }>(
-      `insert into employee_definition (profession, version, dna)
-       values ($1, $2, '{}'::jsonb) returning id`,
+      `insert into employee_definition (gisement, version, dna, capacites)
+       values ($1, $2, '{}'::jsonb, '["relancer.prospect","qualifier.prospect"]'::jsonb) returning id`,
       [profession, versionUnique()],
     );
     const [identity] = await sql.query<{ id: string }>("select * from reserve_identity($1)", [
@@ -121,6 +124,17 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
       `insert into employee (tenant_id, employee_definition_id, identity_id, autonomy)
        values ($1, $2, $3, 'confirm_once') returning id`,
       [tenantId, definition?.id, identity?.id],
+    );
+    // ⚠️ Depuis la priorisation, l'approvisionnement écarte tout travail qu'aucune capacité
+    // activée ne sert — ouvrir une mission que le run ne pourrait qu'échouer consommerait un
+    // créneau pour rien. Ces lignes sont ce que `appliquer_la_configuration` écrit en production ;
+    // sans elles, cette suite éprouverait un employé qui ne peut rien faire, pas les quotas.
+    await sql.query(
+      `insert into employee_capability (tenant_id, employee_id, capability_id, enabled)
+       select $1, $2, c.id, true
+         from capability c
+        where c.key in ('qualifier.prospect', 'rechercher.prospect')`,
+      [tenantId, employee?.id],
     );
 
     for (let i = 0; i < (options.prospects ?? 0); i++) {
@@ -137,7 +151,7 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
   function deps(client: PostgresClient = sql) {
     return {
       store: new PostgresApprovisionnementStore(client),
-      gisements: RegistreDeGisementsParMetier.commercial(client),
+      gisements: RegistreDeGisementsEnMemoire.commercial(client),
       journal,
     };
   }
@@ -181,6 +195,23 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     return Number(row?.n ?? 0);
   }
 
+  /**
+   * Les missions portant sur un PROSPECT, à l'exclusion des missions de recherche.
+   *
+   * ⚠️ Pourquoi ce compte séparé existe depuis la priorisation. Un employé qui a des prospects à
+   * traiter reçoit aussi, désormais, une part de recherche — la règle « s'il reste un prospect,
+   * ne cherche jamais » a été remplacée par une répartition. Les cas ci-dessous éprouvent des
+   * quotas et des filtres qui portent sur les PROSPECTS ; compter la recherche avec eux ferait
+   * échouer un test de quota pour une raison qui n'a rien à voir avec le quota.
+   */
+  async function missionsSurProspect(tenantId: TenantId): Promise<number> {
+    const [row] = await sql.query<{ n: string }>(
+      "select count(*) as n from task where tenant_id = $1 and subject_kind = 'lead'",
+      [tenantId],
+    );
+    return Number(row?.n ?? 0);
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // Le cas nominal
   // ═══════════════════════════════════════════════════════════════════════════
@@ -203,10 +234,12 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     expect(Number(enFile?.n)).toBe(10);
   });
 
-  it("n'ouvre que ce qui existe : trois prospects, trois missions", async () => {
+  it("n'ouvre que ce qui existe : trois prospects, trois missions de traitement", async () => {
     const { tenantId } = await entreprise({ prospects: 3 });
     await approvisionnerLeJour(deps(), new Date());
-    expect(await missions(tenantId)).toBe(3);
+    expect(await missionsSurProspect(tenantId)).toBe(3);
+    // Et une recherche en plus : le vivier se reconstitue au lieu d'attendre l'épuisement.
+    expect(await missions(tenantId)).toBe(4);
   });
 
   it("ne prend jamais un prospect exclu, désinscrit, écarté ou sans adresse", async () => {
@@ -231,16 +264,55 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     );
 
     const gisement = new GisementDeProspects(sql);
-    const eligibles = await gisement.sujetsEligibles({ tenantId, employeeId, limite: 50 });
+    const { sujets: eligibles } = await gisement.sujetsEligibles({
+      tenantId,
+      employeeId,
+      limite: 50,
+      jour: jourUtc(new Date()),
+    });
 
     // Un seul prospect contactable — et le filtre est en SQL, pas après coup : entre une lecture
     // et une écriture, un prospect désinscrit redeviendrait candidat.
-    expect(eligibles).toHaveLength(1);
+    //
+    // On ne retient ici que les sujets `lead` : le gisement propose aussi une recherche depuis la
+    // priorisation, et c'est le filtre sur les PROSPECTS qui est éprouvé ici.
+    const prospects = eligibles.filter((sujet) => sujet.kind === "lead");
+    expect(prospects).toHaveLength(1);
     const [bonne] = await sql.query<{ id: string }>(
       "select id from lead where tenant_id = $1 and email = 'ok@exemple.fr'",
       [tenantId],
     );
-    expect(eligibles[0]?.id).toBe(bonne?.id);
+    expect(prospects[0]?.id).toBe(bonne?.id);
+  });
+
+  it("⭐ ouvre du travail pour un prospect SANS adresse qui n'est pas encore qualifié", async () => {
+    // ⚠️ CE TEST EST LE CONSTAT P0-1 RENDU MÉCANIQUE.
+    //
+    // L'annuaire public de l'État ne donne aucune adresse email — c'est structurel. Le filtre
+    // d'éligibilité en exigeait une : la recherche de prospects, une fois branchée, n'aurait donc
+    // ouvert aucune mission, et **rien ne l'aurait dit**. Le runtime aurait continué de tourner à
+    // vide en paraissant fonctionner.
+    //
+    // La règle juste n'est pas « a une adresse » mais « il reste quelque chose à faire ». Le cas
+    // symétrique — qualifié ET sans adresse, donc plus rien à faire — reste écarté par le test
+    // juste au-dessus, qui n'a pas été modifié.
+    const { tenantId, employeeId } = await entreprise({ prospects: 0 });
+
+    await sql.query(
+      `insert into lead (tenant_id, company_name, email, external_ref, source, qualification)
+       values ($1, 'Trouvee dans l''annuaire', null, '48250999900023', 'annuaire_public', 'nouveau')`,
+      [tenantId],
+    );
+
+    const gisement = new GisementDeProspects(sql);
+    const { sujets: eligibles } = await gisement.sujetsEligibles({
+      tenantId,
+      employeeId,
+      limite: 50,
+      jour: jourUtc(new Date()),
+    });
+
+    expect(eligibles.filter((sujet) => sujet.kind === "lead")).toHaveLength(1);
   });
 
   it("n'ouvre rien pour un métier sans gisement, et ne retombe pas sur celui d'un autre", async () => {
@@ -250,7 +322,7 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     const rapport = await approvisionnerLeJour(deps(), new Date());
 
     expect(await missions(tenantId)).toBe(0);
-    expect(rapport.refus["metier_sans_gisement"]).toBeGreaterThanOrEqual(1);
+    expect(rapport.refus["gisement_inconnu"]).toBeGreaterThanOrEqual(1);
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -277,7 +349,9 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     const { tenantId, employeeId } = await entreprise({ prospects: 5 });
     await approvisionnerLeJour(deps(), new Date());
     const engagees = await missions(tenantId);
-    expect(engagees).toBe(5);
+    // Cinq prospects, plus la part de recherche que la priorisation accorde au même employé.
+    expect(await missionsSurProspect(tenantId)).toBe(5);
+    expect(engagees).toBe(6);
 
     await sql.query(
       "update objective set state = 'atteint', achieved_at = now() where tenant_id = $1",
@@ -319,7 +393,9 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     await approvisionnerLeJour(deps(), new Date());
 
     const [mission] = await sql.query<{ subject_id: string }>(
-      "select subject_id from task where tenant_id = $1",
+      // La mission de PROSPECT : l'employé en a aussi une de recherche depuis la priorisation, et
+      // c'est le doublon sur un prospect qu'on éprouve ici.
+      "select subject_id from task where tenant_id = $1 and subject_kind = 'lead'",
       [tenantId],
     );
 
@@ -327,13 +403,13 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     // reprise, ou un chemin de code qu'on n'a pas encore écrit.
     await expect(
       sql.query(
-        `insert into task (tenant_id, employee_id, subject_kind, subject_id)
-         values ($1, $2, 'lead', $3)`,
+        `insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id)
+         values ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), 'lead', $3)`,
         [tenantId, employeeId, mission?.subject_id],
       ),
     ).rejects.toThrow();
 
-    expect(await missions(tenantId)).toBe(1);
+    expect(await missionsSurProspect(tenantId)).toBe(1);
   });
 
   it("MUTATION — un battement rejoué n'ouvre rien, et un second lot du jour est refusé", async () => {
@@ -390,16 +466,16 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     await abaisserLeQuota("start", 2);
 
     await sql.query(
-      `insert into task (tenant_id, employee_id, subject_kind, subject_id) values
-         ($1, $2, 'lead', gen_random_uuid()), ($1, $2, 'lead', gen_random_uuid())`,
+      `insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id) values
+         ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), 'lead', gen_random_uuid()), ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), 'lead', gen_random_uuid())`,
       [tenantId, employeeId],
     );
 
     // Insertion directe, hors de tout code d'approvisionnement : c'est le déclencheur qui refuse.
     await expect(
       sql.query(
-        `insert into task (tenant_id, employee_id, subject_kind, subject_id)
-         values ($1, $2, 'lead', gen_random_uuid())`,
+        `insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id)
+         values ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), 'lead', gen_random_uuid())`,
         [tenantId, employeeId],
       ),
     ).rejects.toThrow(/quota_de_periode_atteint/);
@@ -419,8 +495,8 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
       await Promise.allSettled(
         Array.from({ length: 8 }, (_, index) =>
           clients[index % clients.length]!.query(
-            `insert into task (tenant_id, employee_id, subject_kind, subject_id)
-             values ($1, $2, 'lead', gen_random_uuid())`,
+            `insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id)
+             values ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), 'lead', gen_random_uuid())`,
             [tenantId, employeeId],
           ),
         ),
@@ -443,8 +519,8 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
     const { tenantId, employeeId } = await entreprise();
     await expect(
       sql.query(
-        `insert into task (tenant_id, employee_id, subject_kind, subject_id)
-         values ($1, $2, '   ', gen_random_uuid())`,
+        `insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id)
+         values ($1, $2, (select o.id from objective o where o.tenant_id = $1 and o.state = 'actif'), '   ', gen_random_uuid())`,
         [tenantId, employeeId],
       ),
     ).rejects.toThrow();
@@ -460,8 +536,11 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
 
     await approvisionnerLeJour(deps(), new Date());
 
+    // `a` sature son plafond du jour (dix créneaux, répartis entre traitement et recherche) ;
+    // `b` n'a que quatre prospects, plus sa part de recherche.
     expect(await missions(a.tenantId)).toBe(10);
-    expect(await missions(b.tenantId)).toBe(4);
+    expect(await missionsSurProspect(b.tenantId)).toBe(4);
+    expect(await missions(b.tenantId)).toBe(5);
 
     const [croisees] = await sql.query<{ n: string }>(
       `select count(*) as n from task t join lead l on l.id = t.subject_id
@@ -476,17 +555,22 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
 
     // Un second employé dans la même entreprise.
     const [definition] = await sql.query<{ id: string }>(
-      `insert into employee_definition (profession, version, dna)
-       values ('commercial', $1, '{}'::jsonb) returning id`,
+      `insert into employee_definition (gisement, version, dna, capacites)
+       values ('commercial', $1, '{}'::jsonb, '["relancer.prospect","qualifier.prospect"]'::jsonb) returning id`,
       [versionUnique()],
     );
     const [identity] = await sql.query<{ id: string }>("select * from reserve_identity($1)", [
       "commercial",
     ]);
-    await sql.query(
+    const [second] = await sql.query<{ id: string }>(
       `insert into employee (tenant_id, employee_definition_id, identity_id, autonomy)
-       values ($1, $2, $3, 'confirm_once')`,
+       values ($1, $2, $3, 'confirm_once') returning id`,
       [tenantId, definition?.id, identity?.id],
+    );
+    await sql.query(
+      `insert into employee_capability (tenant_id, employee_id, capability_id, enabled)
+       select $1, $2, c.id, true from capability c where c.key = 'qualifier.prospect'`,
+      [tenantId, second?.id],
     );
 
     await approvisionnerLeJour(deps(), new Date());
@@ -515,6 +599,16 @@ describeIfDatabase("EXEC-17 — d'où vient le travail", () => {
 
   it("inscrit le lot du jour même quand rien n'est ouvert, avec son motif", async () => {
     const { tenantId, employeeId } = await entreprise({ prospects: 0 });
+    // ⚠️ 0 prospect ne suffit plus à rendre « aucun sujet éligible » depuis la mission
+    // `recherche` (`mission-de-recherche.integration.test.ts`) : sans lead, le gisement propose
+    // justement une recherche. Pour éprouver ici le cas où RIEN n'est vraiment éligible, on bloque
+    // aussi ce repli avec une recherche déjà active.
+    await sql.query(
+      `insert into task (tenant_id, employee_id, objective_id, subject_kind, subject_id, state)
+       select $1, $2, (select id from objective where tenant_id = $1 and state = 'actif'),
+              'recherche', $3, 'pending'`,
+      [tenantId, employeeId, randomUUID()],
+    );
     await approvisionnerLeJour(deps(), new Date());
 
     const [lot] = await sql.query<{ ouvertes: number; motif: string }>(

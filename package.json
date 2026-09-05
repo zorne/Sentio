@@ -11,25 +11,36 @@
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm -r --if-present run test",
     "build": "pnpm -r --if-present run build",
-    "verify": "pnpm run lint && pnpm run verify:frontieres && pnpm run backlog:verifier && pnpm run typecheck && pnpm run test && pnpm run build && pnpm run functions:verify",
+    "verify": "pnpm run lint && pnpm run verify:frontieres && pnpm run backlog:verifier && pnpm run typecheck && pnpm run verify:base && pnpm run build",
     "verify:frontieres": "node scripts/verifier-frontieres.mjs",
+    "verify:base": "node scripts/verifier-avec-base.mjs",
     "backlog:etat": "node scripts/etat-du-backlog.mjs",
     "backlog:verifier": "node scripts/etat-du-backlog.mjs --verifier",
     "functions:sync": "node scripts/sync-shared-to-functions.mjs",
-    "functions:verify": "pnpm run functions:sync && deno lint --config supabase/functions/deno.json supabase/functions/diagnostic supabase/functions/desinscription supabase/functions/battement supabase/functions/_shared && deno check --config supabase/functions/deno.json supabase/functions/diagnostic/index.ts supabase/functions/desinscription/index.ts supabase/functions/desinscription/index.test.ts supabase/functions/battement/sql.ts supabase/functions/battement/index.ts supabase/functions/battement/index.test.ts && deno test --config supabase/functions/deno.json --allow-env --allow-net --allow-read supabase/functions/diagnostic/ supabase/functions/desinscription/ supabase/functions/battement/",
+    "functions:verify": "pnpm run functions:sync && deno lint --config supabase/functions/deno.json supabase/functions/diagnostic supabase/functions/desinscription supabase/functions/battement supabase/functions/recrutement supabase/functions/_shared && deno check --config supabase/functions/deno.json supabase/functions/diagnostic/index.ts supabase/functions/desinscription/index.ts supabase/functions/desinscription/index.test.ts supabase/functions/battement/sql.ts supabase/functions/battement/index.ts supabase/functions/battement/index.test.ts supabase/functions/recrutement/index.ts supabase/functions/recrutement/index.test.ts && deno test --config supabase/functions/deno.json --allow-env --allow-net --allow-read supabase/functions/diagnostic/ supabase/functions/desinscription/ supabase/functions/battement/ supabase/functions/recrutement/",
     "functions:deploy": "pnpm run functions:verify && supabase functions deploy diagnostic",
     "prepare": "git config core.hooksPath .githooks",
-    "deploiement:verifier": "node scripts/verifier-le-deploiement.mjs"
+    "deploiement:verifier": "node scripts/verifier-le-deploiement.mjs",
+    "supabase:inventaire": "node scripts/inventaire-supabase.mjs",
+    "sauvegarde": "node scripts/sauvegarder.mjs",
+    "surveiller": "node scripts/surveiller.mjs",
+    "inviter": "vite-node scripts/inviter.ts"
   },
   "devDependencies": {
+    "@types/pg": "^8.20.0",
     "@typescript-eslint/eslint-plugin": "^8.18.0",
     "@typescript-eslint/parser": "^8.18.0",
     "eslint": "^9.17.0",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vite-node": "2.1.9"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild"
     ]
+  },
+  "dependencies": {
+    "@sentio/domain": "workspace:*",
+    "pg": "^8.22.0"
   }
 }

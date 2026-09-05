@@ -4,7 +4,7 @@ import { FullscreenToggle } from "@/components/FullscreenToggle";
 import "./globals.css";
 
 export const metadata = {
-  title: "Sentio — Dashboard",
+  title: "Sentio",
   description: "Console de pilotage Sentio",
 };
 

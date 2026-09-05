@@ -9,6 +9,8 @@
 import type { TenantId, TaskId, EmployeeId } from "@sentio/domain";
 import type { InferenceEnvelope, UsageMetric } from "@sentio/config";
 
+import type { JustificationDePriorisation } from "./runtime/priorisation.js";
+
 /** L'horloge, injectée : un test qui dépend de l'heure réelle est un test qui échouera un jour. */
 export interface Clock {
   now(): Date;
@@ -104,7 +106,18 @@ export interface FileDeTravaux {
    *
    * Rend `null` quand il n'y a rien à faire — le cas le plus fréquent, et pas une erreur.
    */
-  prendre(input: { pris_par: string; maintenant: Date }): Promise<TravailPris | null>;
+  /**
+   * ⚠️ `maintenant` est FACULTATIF, et son absence est le cas de production.
+   *
+   * L'échéance d'un travail (`next_run_at`) est posée par la BASE. La comparer à un instant venu
+   * de l'application mélange deux horloges : celle de Postgres, en microsecondes, et celle du
+   * processus, en millisecondes. Un aller-retour par un `Date` JS rabote jusqu'à 999 µs, donc un
+   * travail tout juste inséré peut se retrouver « pas encore dû » — mesuré, pas supposé.
+   *
+   * Omis, la base tranche seule. Fourni, c'est un instant CHOISI : les suites qui déplacent le
+   * temps (bail expiré, « rien n'est dû ») en ont besoin, et elles seules.
+   */
+  prendre(input: { pris_par: string; maintenant?: Date }): Promise<TravailPris | null>;
 
   /** Le travail redevient dû à cette date, et son verrou est rendu. */
   reporter(input: { tenantId: TenantId; taskId: TaskId; quand: Date }): Promise<void>;
@@ -124,17 +137,23 @@ export interface FileDeTravaux {
 }
 
 /**
- * Où un métier va chercher ses sujets de mission — **le seul endroit qui connaît le métier**.
+ * Où l'approvisionnement va chercher ses sujets de mission — **le seul endroit qui connaît la
+ * nature de ces sujets**.
  *
  * C'est la charnière qui garde l'approvisionnement généraliste : `planifierLApprovisionnement`
- * ne sait pas ce qu'est un prospect, il manipule des couples `(nature, identifiant)`. Le métier
- * Commercial rend des sujets `lead` ; un métier futur rendra autre chose, et ni le noyau ni le
+ * ne sait pas ce qu'est un prospect, il manipule des couples `(nature, identifiant)`. Le gisement
+ * « commercial » rend des sujets `lead` ; un gisement futur rendra autre chose, et ni le noyau ni le
  * schéma ne changeront.
  *
  * ⚠️ L'implémentation DOIT rendre une liste **ordonnée de façon déterministe** et **déjà filtrée**
  * (rien qui soit déjà pris en charge, exclu, ou inéligible). Deux appels sur le même état rendent
  * la même liste : sans ça, deux battements ouvriraient des missions différentes et « le même
  * travail » cesserait d'être décidable.
+ *
+ * ⚠️ **L'ORDRE N'EST PLUS UN DÉTAIL D'IMPLÉMENTATION : C'EST LA DÉCISION.** Quand un gisement sert
+ * plusieurs natures de travail, ce qu'il place en tête est ce que Lady fera — et ce choix doit
+ * pouvoir s'expliquer. D'où `justification` : le gisement ne rend plus seulement ce qu'il a choisi,
+ * mais **pourquoi**, dans une forme comparable d'un jour à l'autre (`prioriserLesTravaux`).
  *
  * Réalise : EXEC-17
  */
@@ -146,18 +165,32 @@ export interface GisementDeMissions {
     employeeId: EmployeeId;
     /** Borne haute demandée. Le gisement peut en rendre moins, jamais plus. */
     limite: number;
-  }): Promise<readonly { readonly kind: string; readonly id: string }[]>;
+    /**
+     * Le jour civil UTC du battement (`AAAA-MM-JJ`), tel que calculé par `jourUtc`. Un gisement
+     * qui doit fabriquer un sujet sans entité réelle derrière (une recherche, pas un prospect) en
+     * a besoin pour donner à ce sujet une identité déterministe — jamais pour cadencer quoi que
+     * ce soit lui-même, ça reste le rôle de `approvisionnement (tenant_id, employee_id, jour)`.
+     */
+    jour: string;
+  }): Promise<{
+    readonly sujets: readonly { readonly kind: string; readonly id: string }[];
+    /**
+     * Pourquoi ces sujets-là, dans cet ordre-là. `null` quand le gisement ne sert qu'une seule
+     * nature de travail : il n'y a alors aucun arbitrage à expliquer.
+     */
+    readonly justification: JustificationDePriorisation | null;
+  }>;
 }
 
 /**
- * Quel gisement sert quel métier.
+ * Quelle source alimente quel gisement.
  *
- * Résolu par `employee_definition.profession` — la même clé que l'ADN. Un métier sans gisement
- * n'ouvre aucune mission et le **dit** ; il ne retombe pas sur celui d'un autre métier, ce qui
+ * Résolu par `employee_definition.gisement`. Un gisement sans source déclarée
+ * n'ouvre aucune mission et le **dit** ; il ne retombe pas sur celui d'un autre, ce qui
  * ferait travailler un employé sur des sujets qui ne le concernent pas.
  */
 export interface RegistreDeGisements {
-  pour(profession: string): GisementDeMissions | null;
+  pour(gisement: string): GisementDeMissions | null;
 }
 
 /**
@@ -168,9 +201,9 @@ export interface RegistreDeGisements {
  * jour deux réponses différentes.
  */
 export interface ApprovisionnementStore {
-  /** Les employés à examiner aujourd'hui, avec leur métier. Ordonné, pour être rejouable. */
+  /** Les employés à examiner aujourd'hui, avec leur gisement. Ordonné, pour être rejouable. */
   employesAExaminer(): Promise<
-    readonly { tenantId: TenantId; employeeId: EmployeeId; profession: string }[]
+    readonly { tenantId: TenantId; employeeId: EmployeeId; gisement: string }[]
   >;
 
   /** Le verdict de `peut_ouvrir_une_mission()`, rendu tel quel — jamais interprété au passage. */
@@ -178,6 +211,15 @@ export interface ApprovisionnementStore {
 
   /** Missions encore autorisées par la formule sur la période. `null` = aucun plafond défini. */
   restantDePeriode(tenantId: TenantId): Promise<number | null>;
+
+  /**
+   * Ce que la CIBLE du dirigeant exige par jour ouvré. `null` quand elle n'est pas calculable —
+   * le client n'a pas déclaré son panier moyen ou son taux de conversion, et on ne les devine pas.
+   *
+   * C'est ce qui fait qu'un client visant 2 000 € et un client visant 20 000 € ne reçoivent plus
+   * le même travail.
+   */
+  rythmeVoulu(tenantId: TenantId): Promise<number | null>;
 
   /**
    * Ouvre les missions et enregistre le lot du jour, **de façon atomique**.

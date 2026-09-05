@@ -52,6 +52,21 @@ export interface ConfigurationWorker {
   readonly port: number;
   /** Ce qui identifie cet exécutant dans les verrous de la file. Sert au diagnostic. */
   readonly nomDeLExecutant: string;
+  /**
+   * La nature des données que cet exécutant traite — et donc ce qu'il a le droit d'envoyer à un
+   * modèle.
+   *
+   * ⚠️ **LE GESTE DANGEREUX EST L'INVERSE DE CELUI QU'ON CROIT.** `real` n'est pas un risque :
+   * c'est la valeur PRUDENTE. Une donnée déclarée `real` est refusée par le Gateway tant que
+   * l'opt-out d'entraînement n'est pas prouvé (`gateway.ts`, invariant 5). C'est `synthetic` qui
+   * **abaisse** la protection : déclarer synthétique une donnée réelle la ferait partir vers un
+   * fournisseur non conforme, sans qu'aucun garde ne s'y oppose.
+   *
+   * D'où la forme, calquée sur `SENTIO_OPT_OUT_PROUVE` : `real` par défaut, seule la chaîne
+   * **exacte** « synthetic » abaisse, et toute autre valeur fait ÉCHOUER le démarrage — une faute
+   * de frappe ne doit jamais devenir une protection en moins.
+   */
+  readonly classeDeDonnees: "real" | "synthetic";
 }
 
 /** Toutes les variables lues, en un seul endroit — la liste que l'exploitation doit connaître. */
@@ -59,6 +74,7 @@ export const VARIABLES = {
   databaseUrl: "DATABASE_URL",
   secret: "SENTIO_HEARTBEAT_SECRET",
   optOutProuve: "SENTIO_OPT_OUT_PROUVE",
+  classeDeDonnees: "SENTIO_CLASSE_DE_DONNEES",
   port: "PORT",
   nomDeLExecutant: "SENTIO_NOM_EXECUTANT",
   principal: {
@@ -209,6 +225,19 @@ export function lireLaConfiguration(env: Env): ConfigurationWorker {
     );
   }
 
+  // ⚠️ Ni repli, ni tolérance. « Synthetic », « synth », « 1 », « true » sont REFUSÉS — pas lus
+  // comme `real` « par prudence ». Un exécutant qui démarre en ayant ignoré ce réglage laisserait
+  // croire qu'il tourne en synthétique alors qu'il traite du réel, ce qui est exactement
+  // l'inverse de ce qu'on veut : mieux vaut ne pas démarrer.
+  const classe = texte(env, VARIABLES.classeDeDonnees);
+  if (classe !== undefined && classe !== "real" && classe !== "synthetic") {
+    manquements.push(
+      `${VARIABLES.classeDeDonnees} : attendu « real » ou « synthetic », exactement. ` +
+        "Toute autre valeur serait lue comme « real » — et un exécutant qu'on croit en essai " +
+        "traiterait des données réelles sans que personne ne le voie.",
+    );
+  }
+
   const portBrut = texte(env, VARIABLES.port);
   const port = portBrut === undefined ? 8080 : Number(portBrut);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
@@ -239,5 +268,7 @@ export function lireLaConfiguration(env: Env): ConfigurationWorker {
     reglages: reglages as ReglagesRuntime,
     port,
     nomDeLExecutant: texte(env, VARIABLES.nomDeLExecutant) ?? `worker-${process.pid}`,
+    // Absente = `real`. Le défaut protège ; il ne se contourne que par une déclaration exacte.
+    classeDeDonnees: classe === "synthetic" ? "synthetic" : "real",
   };
 }

@@ -35,6 +35,7 @@ describe("parseDiagnosticProfile — ce qui entre", () => {
       objective: { metric: "€ de chiffre d'affaires", target: 5000, horizon: "mois" },
       targetCustomers: "architectes et maîtres d'œuvre",
       hasProspectList: true,
+      inboundHandling: null,
     });
   });
 
@@ -49,6 +50,7 @@ describe("parseDiagnosticProfile — ce qui entre", () => {
       objective: null,
       targetCustomers: null,
       hasProspectList: null,
+      inboundHandling: null,
     });
   });
 

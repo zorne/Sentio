@@ -31,18 +31,22 @@ import { REGLAGES_RUNTIME_PAR_DEFAUT, type ReglagesRuntime } from "@sentio/confi
 import {
   ATTENTION_REQUISE,
   RUN_DEMARRE,
+  aPayeSansRienProduire,
   deciderLaSuite,
   executeDecidedAction,
   issueDepuisErreur,
   peutReprendre,
   reconstruireEtatRun,
+  type CapabilityEngine,
   type CapabilityRegistry,
   type EffectLedger,
   type EtatRun,
   type FileDeTravaux,
   type IssueDuPas,
   type JournalWriter,
+  type ManqueDOutil,
   type ModelGateway,
+  type PasDuBattement,
   type PolicyEngine,
   type ResultatExecution,
   type TravailPris,
@@ -50,8 +54,36 @@ import {
 import { ExecutionJournal, TenantScope, type SqlClient } from "@sentio/db";
 import type { TaskId, TenantId } from "@sentio/domain";
 
-import type { HeartbeatReport } from "./heartbeat/index.js";
+/**
+ * Ce que la boucle rapporte — distinct du compte rendu du battement, et c'est délibéré.
+ *
+ * La boucle DIT ce qu'elle a fait ; elle ne JUGE pas. Le verdict « normal / anormal » se calcule
+ * en connaissant aussi l'approvisionnement et la reprise, donc dans la composition. Mêler les deux
+ * ici obligerait la boucle à connaître des choses qu'elle n'exécute pas.
+ */
+export interface RapportDeBoucle {
+  readonly traites: number;
+  readonly echoues: number;
+  /** Ce que chaque pas a produit, par motif. Sans lui, un report ressemble à un succès. */
+  readonly motifs: Readonly<Record<string, number>>;
+  /** Runs qui ont consommé leur budget sans exécuter une seule action. */
+  readonly sansAction: number;
+  /**
+   * Ce que chaque pas a produit, **rattaché à son employé**.
+   *
+   * ⚠️ POURQUOI PAS SEULEMENT LES COMPTES. « Du travail se fait-il ? » ne se répond pas au niveau
+   * du battement : dix entreprises qui travaillent et une onzième totalement bloquée rendent des
+   * compteurs rassurants. Le compteur suit donc UN EMPLOYÉ, et c'est ce détail qui le permet.
+   *
+   * ⚠️ **CES LIGNES NE SORTENT PAS DU PROCESSUS.** Elles portent des identifiants d'entreprise :
+   * la composition les consomme et ne les fait suivre ni au compte rendu HTTP, ni au journal
+   * d'exploitation. Un rapport rendu à un planificateur n'a pas à savoir qui sont nos clients.
+   */
+  readonly pas: readonly PasDuBattement[];
+}
+import { atteler, EntreeRefusee } from "./attelage.js";
 import { decideNextStep } from "./next-step.js";
+import { reflechirApresLeRun } from "./reflexion.js";
 import { appliquerLaSuite } from "./suite-du-run.js";
 
 export interface BoucleDeps {
@@ -63,21 +95,43 @@ export interface BoucleDeps {
   readonly registry: CapabilityRegistry;
   readonly ledger: EffectLedger;
   /** Résout le moteur d'une capacité pour CETTE entreprise (`capability_binding`, NOYAU-18). */
-  readonly moteurPour: (
-    tenantId: TenantId,
-    capabilityKey: string,
-  ) => Promise<{ execute: (input: unknown) => Promise<unknown> }>;
+  readonly moteurPour: (tenantId: TenantId, capabilityKey: string) => Promise<CapabilityEngine>;
   readonly reglages?: ReglagesRuntime;
 }
 
 export interface OptionsDeBoucle {
   /** Qui prend le travail. Sert au diagnostic : « quel exécutant tenait ce verrou ? ». */
   readonly prisPar: string;
-  readonly maintenant: Date;
+  /**
+   * ⚠️ FACULTATIF, ET SON ABSENCE EST LE CAS DE PRODUCTION.
+   *
+   * Deux usages vivaient sous ce nom, et les confondre a coûté un défaut :
+   *
+   *   · **prendre un travail** — comparer une échéance posée par la BASE. C'est là que mélanger
+   *     l'horloge du processus et celle de Postgres faisait sauter des travaux dus (voir
+   *     `PostgresFileDeTravaux.prendre`). Omis, la base tranche seule ;
+   *   · **décider la suite** — arithmétique de cadence, sans aucune comparaison à la base. Elle
+   *     n'a jamais été en cause, et son comportement ne change pas.
+   *
+   * Fourni, c'est un instant CHOISI : les suites qui déplacent le temps — bail expiré, « rien
+   * n'est dû » — en ont besoin, et elles seules.
+   */
+  readonly maintenant?: Date;
   /** Borne d'un battement. Sans elle, un battement pourrait tourner sans fin. */
   readonly maxTravaux?: number;
-  /** Classe de données. `real` en production ; les tests utilisent `synthetic`. */
-  readonly dataClass?: "real" | "synthetic";
+  /**
+   * Classe de données traitées pendant ce battement.
+   *
+   * ⚠️ **OBLIGATOIRE, ET CE N'ÉTAIT PAS LE CAS.** Ce champ était facultatif et retombait sur
+   * `real` par un `??`. Le défaut était le bon — `real` est la valeur prudente, c'est `synthetic`
+   * qui abaisse la garde du Gateway — mais il était **invisible** : `composition.ts` ne le passait
+   * pas, et personne ne pouvait dire, en lisant le montage, dans quelle classe l'exécutant
+   * tournait.
+   *
+   * Le rendre obligatoire déplace la garantie du runtime vers le COMPILATEUR : aucun appelant,
+   * présent ou futur, ne peut plus hériter d'une classe de données sans l'avoir écrite.
+   */
+  readonly dataClass: "real" | "synthetic";
   readonly envelope?: string;
 }
 
@@ -91,25 +145,58 @@ export interface OptionsDeBoucle {
 export async function executerLesTravauxDus(
   deps: BoucleDeps,
   options: OptionsDeBoucle,
-): Promise<HeartbeatReport> {
+): Promise<RapportDeBoucle> {
   const reglages = deps.reglages ?? REGLAGES_RUNTIME_PAR_DEFAUT;
   const maxTravaux = options.maxTravaux ?? reglages.travauxMaxParBattement;
   let traites = 0;
   let echoues = 0;
+  /** Ce que chaque pas a produit, par motif. Sans ce compte, un report ressemble à un succès. */
+  const motifs: Record<string, number> = {};
+  /** Le même détail, rattaché à son employé : c'est ce que le compteur relit. */
+  const pas: PasDuBattement[] = [];
+  let sansAction = 0;
 
   for (let i = 0; i < maxTravaux; i++) {
+    // ⚠️ `maintenant` est passé TEL QUEL, `undefined` compris : c'est ainsi que la base devient
+    // l'horloge en production. Y substituer `new Date()` ici rétablirait exactement le défaut.
     const travail = await deps.file.prendre({
       pris_par: options.prisPar,
-      maintenant: options.maintenant,
+      ...(options.maintenant !== undefined && { maintenant: options.maintenant }),
     });
     // Plus rien de dû : le cas le plus fréquent, et pas une erreur.
     if (travail === null) break;
 
     try {
-      await executerUnPas(deps, options, travail);
+      // ⚠️ LE MOTIF EST COMPTÉ, PAS SEULEMENT LE PASSAGE. « Traité » disait seulement qu'aucune
+      // exception n'avait été levée : un run reporté faute de fournisseur conforme comptait donc
+      // comme un succès, et le compte rendu annonçait `{traites:N, echoues:0}` pendant que rien
+      // n'aboutissait. Un rapport rassurant et faux, toutes les dix minutes. C'est le motif qui
+      // dit si quelque chose a AVANCÉ.
+      const issue = await executerUnPas(deps, options, travail);
+      motifs[issue.motif] = (motifs[issue.motif] ?? 0) + 1;
+      if (issue.aPayeSansRienProduire) sansAction += 1;
+      pas.push({
+        tenantId: travail.tenantId,
+        employeeId: travail.employeeId,
+        motif: issue.motif,
+        manque: issue.manque,
+        aPayeSansRienProduire: issue.aPayeSansRienProduire,
+        actionsExecutees: issue.actionsExecutees,
+      });
       traites += 1;
     } catch (erreur) {
       echoues += 1;
+      // ⚠️ COMPTÉ COMME UN PAS, ET SANS ABOUTISSEMENT. Une interruption laissée hors du relevé
+      // rendrait un employé dont TOUS les pas plantent indistinct d'un employé qui n'avait rien à
+      // faire — c'est-à-dire silencieux au moment où il faut crier.
+      pas.push({
+        tenantId: travail.tenantId,
+        employeeId: travail.employeeId,
+        motif: "pas_interrompu",
+        manque: null,
+        aPayeSansRienProduire: false,
+        actionsExecutees: 0,
+      });
       // ⚠️ Le travail n'est PAS remis en file ici. Son bail expirera, et un exécutant le
       // reprendra — en comptant la reprise. Le remettre tout de suite ferait tourner en boucle
       // serrée une mission qui échoue à chaque fois, sans que le compteur de reprises ne bouge.
@@ -123,7 +210,7 @@ export async function executerLesTravauxDus(
     }
   }
 
-  return { traites, echoues };
+  return { traites, echoues, motifs, sansAction, pas };
 }
 
 /** L'état du run, relu depuis le journal. Jamais gardé, jamais recalculé de tête. */
@@ -152,7 +239,12 @@ async function executerUnPas(
   deps: BoucleDeps,
   options: OptionsDeBoucle,
   travail: TravailPris,
-): Promise<void> {
+): Promise<{
+  readonly motif: string;
+  readonly manque: ManqueDOutil | null;
+  readonly aPayeSansRienProduire: boolean;
+  readonly actionsExecutees: number;
+}> {
   const reglages = deps.reglages ?? REGLAGES_RUNTIME_PAR_DEFAUT;
   const { tenantId, taskId, employeeId } = travail;
 
@@ -164,21 +256,21 @@ async function executerUnPas(
       "reprises_epuisees",
       `Cette mission a été reprise ${travail.reprises} fois sans aboutir : elle n'est plus rejouée.`,
     );
-    return;
+    return { motif: "reprises_epuisees", manque: null, aPayeSansRienProduire: false, actionsExecutees: 0 };
   }
 
   // ── 2. Un journal incohérent ne rend pas un état, et on ne devine pas à sa place (EXEC-02).
   const avant = await relire(deps.sql, tenantId, taskId);
   if (!avant.ok) {
     await arreterPourHumain(deps, travail, "journal_incoherent", avant.detail);
-    return;
+    return { motif: "journal_incoherent", manque: null, aPayeSansRienProduire: false, actionsExecutees: 0 };
   }
 
   // ── 3. Le journal fait foi : s'il dit que ce run ne peut pas reprendre, la file avait tort.
   //    On la remet d'accord avec lui plutôt que de travailler sur un état que personne n'assume.
   if (!peutReprendre(avant.etat)) {
     await remettreLaFileDaccord(deps, travail, avant.etat);
-    return;
+    return { motif: "file_remise_d_accord", manque: null, aPayeSansRienProduire: false, actionsExecutees: 0 };
   }
 
   // ── Le premier événement de toute mission, sans exception. Sans lui, la reconstruction du pas
@@ -193,27 +285,76 @@ async function executerUnPas(
     });
   }
 
-  const issue = await unPasDeDecision(deps, options, travail);
+  // ── EXEC-11 — le client a tranché, et il a dit oui.
+  //
+  // ⚠️ On N'APPELLE PAS le modèle. L'action qu'il a proposée est déjà écrite au journal, et c'est
+  // ELLE que le client a autorisée — pas « une action de ce genre ». La reproposer laisserait le
+  // modèle en écrire une autre, que la politique suspendrait de nouveau : le client dirait oui
+  // indéfiniment sans que rien ne parte. C'était le défaut trouvé par la répétition générale.
+  const issue =
+    avant.etat.actionEnAttente !== null
+      ? await reprendreLActionAutorisee(deps, travail, avant.etat.actionEnAttente)
+      : await unPasDeDecision(deps, options, travail);
 
   // ── L'état relu APRÈS le pas : c'est lui qui porte le pas qu'on vient d'écrire, donc le budget
   //    réellement consommé. Le déduire ferait diverger la mémoire du processus et le journal.
   const apres = await relire(deps.sql, tenantId, taskId);
   if (!apres.ok) {
     await arreterPourHumain(deps, travail, "journal_incoherent", apres.detail);
-    return;
+    return { motif: "journal_incoherent", manque: null, aPayeSansRienProduire: false, actionsExecutees: 0 };
   }
 
+  // ⚠️ ICI, L'HORLOGE DU PROCESSUS RESTE LA BONNE. `deciderLaSuite` calcule une échéance future
+  // — de l'arithmétique de cadence, jamais une comparaison à une valeur venue de la base. C'est
+  // l'autre usage de `maintenant`, celui qui n'a jamais été en cause : son comportement ne change
+  // pas, et ce lot ne touche à aucun comportement métier.
   const suite = deciderLaSuite({
     issue,
     etat: apres.etat,
     reglages,
-    maintenant: options.maintenant,
+    maintenant: options.maintenant ?? new Date(),
   });
 
   await appliquerLaSuite(
     { journal: deps.journal, file: deps.file },
     { tenantId, taskId, employeeId, suite },
   );
+
+  // ── La réflexion, une fois le travail FINI et rendu à la file.
+  //
+  // ⚠️ Après `appliquerLaSuite`, jamais avant : la mission est déjà close et son verrou rendu,
+  // donc rien de ce qui suit ne peut la retenir ni la faire échouer. C'est la traduction en code
+  // de « la mémoire est un bonus, jamais une condition de succès ».
+  //
+  // Et seulement sur un run TERMINÉ : réfléchir sur un run reporté ou suspendu ferait retenir
+  // des conclusions tirées d'un travail à moitié fait.
+  if (suite.kind === "terminer" && suite.issue === "termine") {
+    await reflechirApresLeRun(
+      { sql: deps.sql, gateway: deps.gateway, journal: deps.journal, reglages },
+      {
+        tenantId,
+        taskId,
+        employeeId,
+        dataClass: options.dataClass,
+        envelope: options.envelope ?? "sold_employees",
+      },
+    );
+  }
+
+  // ⚠️ LE MANQUE VOYAGE AVEC LE MOTIF, ET IL S'ARRÊTERAIT ICI SANS CETTE LIGNE. C'est le dernier
+  // maillon du fil qui distingue « le dirigeant peut l'activer » de « nous devons le monter ».
+  //
+  // ⚠️ Et le second fait, celui qui ne se lit dans AUCUN motif : ce run a-t-il payé sans rien
+  // produire ? La règle est écrite une fois, dans le noyau ; la boucle la rapporte, elle ne la
+  // rejoue pas.
+  return {
+    motif: suite.motif,
+    manque: suite.kind === "attendre_humain" ? suite.manque : null,
+    aPayeSansRienProduire: aPayeSansRienProduire(apres.etat, reglages.pasMaximumParRun),
+    // ⚠️ CE QUE LE RUN A RÉELLEMENT FAIT, et non ce qu'il a traversé. C'est la seule mesure qui
+    // distingue « le modèle a jugé qu'il n'y avait rien à faire » de « la chaîne tourne à vide ».
+    actionsExecutees: apres.etat.actionsExecutees,
+  };
 }
 
 /**
@@ -224,6 +365,107 @@ async function executerUnPas(
  * conforme les transformerait en « le modèle n'a rien proposé », c'est-à-dire en travail
  * silencieusement non fait.
  */
+/**
+ * Exécute l'action que le client vient d'autoriser.
+ *
+ * ══ POURQUOI LA POLITIQUE N'EST PAS RECONSULTÉE ══
+ *
+ * Ce n'est pas un contournement : **l'accord EST la décision de politique**. La repasser au
+ * moteur reviendrait à redemander au client ce qu'il vient d'accorder.
+ *
+ * Mais on ne se fie pas au journal seul pour l'affirmer : l'accord est **relu en base** avant
+ * d'exécuter. Le journal dit ce qui s'est passé ; la table dit ce qui est vrai maintenant. Si
+ * l'accord a été révoqué entre-temps, rien ne part.
+ */
+/**
+ * Le moteur d'une capacité, **attelé à cette mission**.
+ *
+ * ⚠️ C'est ici que la cible d'une action est fixée, et elle vient de la base : le sujet de la
+ * mission, relu au moment d'agir. Le modèle n'a écrit que le geste. Sans cet attelage,
+ * `execute-action.ts` passerait au moteur l'entrée brute du modèle — c'est-à-dire lui laisserait
+ * désigner sur qui agir (`attelage.ts`).
+ *
+ * Le sujet est relu à chaque action plutôt que porté par `TravailPris` : une lecture de plus sur
+ * une ligne déjà verrouillée coûte peu, et la faire ici garde le port de la file inchangé pour
+ * tous ceux qui n'agissent pas.
+ */
+function moteurAttele(
+  deps: BoucleDeps,
+  travail: TravailPris,
+): (capabilityKey: string) => Promise<{ execute: (input: unknown) => Promise<unknown> }> {
+  return async (capabilityKey: string) => {
+    const moteur = await deps.moteurPour(travail.tenantId, capabilityKey);
+
+    const [mission] = await deps.sql.query<{ subject_kind: string; subject_id: string }>(
+      "select subject_kind, subject_id from task where tenant_id = $1 and id = $2",
+      [travail.tenantId, travail.taskId],
+    );
+    if (mission === undefined) {
+      throw new EntreeRefusee(
+        "La mission a disparu entre sa prise et son exécution : rien n'est exécuté sans savoir " +
+          "sur quoi.",
+      );
+    }
+
+    return atteler(moteur, capabilityKey, {
+      tenantId: travail.tenantId,
+      employeeId: travail.employeeId,
+      taskId: travail.taskId,
+      sujetKind: mission.subject_kind,
+      sujetId: mission.subject_id,
+    });
+  };
+}
+
+async function reprendreLActionAutorisee(
+  deps: BoucleDeps,
+  travail: TravailPris,
+  proposition: unknown,
+): Promise<IssueDuPas> {
+  const accords = await deps.sql.query<{ state: string }>(
+    `select state from approval
+      where tenant_id = $1 and task_id = $2
+      order by requested_at desc limit 1`,
+    [travail.tenantId, travail.taskId],
+  );
+
+  if (accords[0]?.state !== "granted") {
+    return {
+      kind: "contexte_incomplet",
+      detail:
+        "accord : le journal porte un accord accordé, la base non. Rien n'est exécuté — un " +
+        "accord révoqué entre-temps ne doit pas laisser partir l'action qu'il couvrait.",
+    };
+  }
+
+  const decision = {
+    kind: "agir" as const,
+    proposition: proposition as never,
+    decision: { outcome: "allow" as const, notify: true, basis: "accord_ponctuel" as const },
+  };
+
+  try {
+    const execution = await executeDecidedAction(
+      {
+        registry: deps.registry,
+        ledger: deps.ledger,
+        engineFor: moteurAttele(deps, travail),
+      },
+      {
+        tenantId: travail.tenantId,
+        taskId: travail.taskId,
+        employeeId: travail.employeeId,
+        decision,
+      },
+    );
+    return { kind: "decision", decision, execution };
+  } catch (erreur) {
+    const report = issueDepuisErreur(erreur);
+    if (report !== null) return report;
+    throw erreur;
+  }
+}
+
 async function unPasDeDecision(
   deps: BoucleDeps,
   options: OptionsDeBoucle,
@@ -242,12 +484,27 @@ async function unPasDeDecision(
         tenantId: travail.tenantId,
         taskId: travail.taskId,
         employeeId: travail.employeeId,
-        dataClass: options.dataClass ?? "real",
+        dataClass: options.dataClass,
         envelope: options.envelope ?? "sold_employees",
       },
     );
 
     if (!resultat.ok) {
+      if (resultat.raison === "aucune_capacite_applicable") {
+        // ⚠️ Un motif à part, jamais `echec_definitif`. Le dirigeant PEUT y remédier — c'est la
+        // seule information qui rend ce blocage actionnable, et la perdre reviendrait à laisser
+        // une mission mourir sans que personne ne sache qu'il lui manquait un outil.
+        return {
+          kind: "capacite_absente",
+          sujetKind: resultat.sujetKind,
+          // La cause vient du filtre, qui SAIT laquelle de ses deux conditions a vidé la liste.
+          // La recalculer ici la ferait diverger de lui au premier changement.
+          cause: resultat.cause,
+          detail:
+            `Cette mission porte sur « ${resultat.sujetKind} », et aucune capacité activée ne s'y ` +
+            `applique. Activées : ${resultat.capacitesActives.join(", ") || "aucune"}.`,
+        };
+      }
       return {
         kind: "contexte_incomplet",
         detail: resultat.manques.map((manque) => `${manque.quoi} : ${manque.detail}`).join(" | "),
@@ -260,7 +517,7 @@ async function unPasDeDecision(
         {
           registry: deps.registry,
           ledger: deps.ledger,
-          engineFor: (capabilityKey) => deps.moteurPour(travail.tenantId, capabilityKey),
+          engineFor: moteurAttele(deps, travail),
         },
         {
           tenantId: travail.tenantId,

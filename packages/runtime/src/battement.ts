@@ -51,6 +51,22 @@ export interface RapportDApprovisionnement {
   readonly ouvertes: number;
   /** Employés pour lesquels rien n'a été ouvert, par raison. Un chiffre sans raison n'aide pas. */
   readonly refus: Readonly<Record<string, number>>;
+  /**
+   * Les employés dont AUCUN travail n'a pu s'ouvrir faute d'outil activé.
+   *
+   * ⚠️ **LE CAS 3, ET IL EST DIFFÉRENT DE TOUS LES AUTRES.** Partout ailleurs, le silence se
+   * constate sur du travail COMMENCÉ : une mission bloquée, un run reporté. Ici il n'y a pas de
+   * mission — elle ne s'ouvre même pas — et tous nos détecteurs raisonnaient sur du travail
+   * existant. Le dirigeant ne pouvait donc jamais apprendre qu'il lui manquait un outil.
+   *
+   * Or c'est littéralement la promesse du produit : « elle demande de l'aide uniquement quand une
+   * limite réelle l'en empêche ». Une limite réelle l'en empêche, et elle ne demandait rien.
+   *
+   * La matière première existait depuis `451780c` — `justification.ecartes` porte
+   * « aucune_capacite_active » — et attendait un mécanisme. Le voici : ces employés entrent dans
+   * le compteur comme un cycle muet dont la cause est du ressort du dirigeant.
+   */
+  readonly sansOutil: readonly { tenantId: TenantId; employeeId: EmployeeId }[];
 }
 
 /** Le jour civil UTC, au format `AAAA-MM-JJ` — jamais le fuseau du processus, qui déciderait
@@ -73,13 +89,14 @@ export async function approvisionnerLeJour(
   const reglages = deps.reglages ?? REGLAGES_RUNTIME_PAR_DEFAUT;
   const jour = jourUtc(maintenant);
   const refus: Record<string, number> = {};
+  const sansOutil: { tenantId: TenantId; employeeId: EmployeeId }[] = [];
   let ouvertes = 0;
   let examines = 0;
 
   for (const employe of await deps.store.employesAExaminer()) {
     examines += 1;
     try {
-      ouvertes += await approvisionnerUnEmploye(deps, reglages, jour, employe, refus);
+      ouvertes += await approvisionnerUnEmploye(deps, reglages, jour, employe, refus, sansOutil);
     } catch (error) {
       refus["erreur"] = (refus["erreur"] ?? 0) + 1;
       await journaliser(deps, employe, APPROVISIONNEMENT_SANS_OUVERTURE, {
@@ -90,54 +107,74 @@ export async function approvisionnerLeJour(
     }
   }
 
-  return { examines, ouvertes, refus };
+  return { examines, ouvertes, refus, sansOutil };
 }
 
 async function approvisionnerUnEmploye(
   deps: ApprovisionnementDeps,
   reglages: ReglagesRuntime,
   jour: string,
-  employe: { tenantId: TenantId; employeeId: EmployeeId; profession: string },
+  employe: { tenantId: TenantId; employeeId: EmployeeId; gisement: string },
   refus: Record<string, number>,
+  sansOutil: { tenantId: TenantId; employeeId: EmployeeId }[],
 ): Promise<number> {
   const verdict = await deps.store.verdict(employe.tenantId, employe.employeeId);
 
   // ⚠️ Le gisement n'est interrogé QUE si le verdict est favorable. L'interroger avant coûterait
   // une lecture de prospects pour un employé dont l'abonnement est résilié — c'est-à-dire lire
   // des données client sans motif, ce que la collecte minimale interdit.
-  const gisement = verdict === "ok" ? deps.gisements.pour(employe.profession) : null;
+  const gisement = verdict === "ok" ? deps.gisements.pour(employe.gisement) : null;
   if (verdict === "ok" && gisement === null) {
-    // Un métier sans gisement n'ouvre rien, et le dit. Retomber sur le gisement d'un autre métier
-    // ferait travailler cet employé sur des sujets qui ne le concernent pas.
-    refus["metier_sans_gisement"] = (refus["metier_sans_gisement"] ?? 0) + 1;
+    // Un gisement qu'on ne sait pas alimenter n'ouvre rien, et le dit. Retomber sur celui d'un
+    // autre ferait travailler cet employé sur des sujets qui ne le concernent pas.
+    refus["gisement_inconnu"] = (refus["gisement_inconnu"] ?? 0) + 1;
     await journaliser(deps, employe, APPROVISIONNEMENT_SANS_OUVERTURE, {
       jour,
-      raison: "metier_sans_gisement",
-      metier: employe.profession,
+      raison: "gisement_inconnu",
+      gisement: employe.gisement,
     });
     return 0;
   }
 
   const restantDePeriode = verdict === "ok" ? await deps.store.restantDePeriode(employe.tenantId) : null;
-  const sujetsEligibles =
+  // Le rythme que la cible exige. `null` quand elle n'est pas calculable — le client n'a pas
+  // déclaré ce qu'il faut, et on ne le suppose pas à sa place.
+  const rythmeVoulu = verdict === "ok" ? await deps.store.rythmeVoulu(employe.tenantId) : null;
+  const recolte =
     gisement === null
-      ? []
+      ? { sujets: [], justification: null }
       : await gisement.sujetsEligibles({
           tenantId: employe.tenantId,
           employeeId: employe.employeeId,
+          jour,
           // On ne demande jamais plus que ce qu'on pourrait ouvrir : lire cent prospects pour en
           // retenir dix serait de la collecte sans usage.
-          limite: Math.min(reglages.missionsMaxParJour, restantDePeriode ?? reglages.missionsMaxParJour),
+          limite: Math.min(
+            reglages.missionsMaxParJour,
+            restantDePeriode ?? reglages.missionsMaxParJour,
+            rythmeVoulu ?? reglages.missionsMaxParJour,
+          ),
         });
 
   const plan = planifierLApprovisionnement({
     verdict,
-    sujetsEligibles,
+    sujetsEligibles: recolte.sujets,
     restantDePeriode,
+    rythmeVoulu,
     reglages,
   });
 
   if (plan.kind === "rien") {
+    // ⚠️ AUCUNE NATURE DE TRAVAIL N'A SURVÉCU AU FILTRE DES CAPACITÉS. Ce n'est pas « rien à
+    // faire » : c'est « rien de faisable », et c'est le dirigeant qui tient la solution. La
+    // distinction se lit dans la justification — des travaux écartés, et aucun retenu.
+    if (
+      recolte.justification !== null &&
+      recolte.justification.parts.length === 0 &&
+      recolte.justification.ecartes.length > 0
+    ) {
+      sansOutil.push({ tenantId: employe.tenantId, employeeId: employe.employeeId });
+    }
     refus[plan.raison] = (refus[plan.raison] ?? 0) + 1;
     if (plan.bloqueLaJournee) {
       await deps.store.enregistrerAucuneOuverture({
@@ -151,6 +188,10 @@ async function approvisionnerUnEmploye(
       jour,
       raison: plan.raison,
       detail: plan.detail,
+      // ⚠️ Journalisée AUSSI quand rien n'est ouvert — c'est même là qu'elle sert le plus : un
+      // employé qui n'ouvre rien parce que tous ses travaux sont écartés faute de capacité doit
+      // laisser une trace de ce manque, pas seulement un « aucun sujet éligible » indistinct.
+      ...(recolte.justification !== null && { priorisation: recolte.justification }),
     });
     return 0;
   }
@@ -175,6 +216,9 @@ async function approvisionnerUnEmploye(
     ouvertes,
     demandees: plan.sujets.length,
     borne: plan.borne,
+    // Pourquoi CE travail plutôt qu'un autre. Structure, jamais phrase : c'est ce qui permet de
+    // comparer deux jours et de retrouver quel facteur a fait basculer un choix.
+    ...(recolte.justification !== null && { priorisation: recolte.justification }),
   });
   return ouvertes;
 }

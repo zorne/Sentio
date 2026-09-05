@@ -126,6 +126,50 @@ prouvé, le fournisseur est **non conforme** et aucune donnée réelle ne doit y
 ([`19-fournisseurs-modeles.md`](19-fournisseurs-modeles.md), [`adr/0009`](adr/0009-fournisseur-inference-ue.md)).
 **Terminé quand :** une capture datée de l'opt-out est archivée avec le registre des traitements.
 
+### 0.6 — Prouver que l'alerte du planificateur arrive vraiment
+
+⛔ **Geste humain, et il ne se mécanise pas.** Le battement échoue bruyamment quand son verdict est
+`anormal` ([`36-fermer-le-silence.md`](36-fermer-le-silence.md), étape 6), et le seul canal qui
+atteigne une personne est l'email d'échec de GitHub Actions. **Un canal auquel personne n'est
+abonné est un silence de plus** : tant que cet email n'a pas été vu arriver une fois, on ne
+surveille rien, on l'espère.
+
+La preuve se fait en trois gestes, et le deuxième est le seul qui compte :
+
+1. sur GitHub, *Settings → Notifications → Actions* : les notifications d'échec sont actives et
+   pointent une adresse **vérifiée** que le fondateur relève réellement ;
+2. **provoquer un vrai échec** : lancer le battement à la main (*Actions → Battement → Run
+   workflow*) avec un secret `SENTIO_BATTEMENT_URL` volontairement faux. Le workflow doit échouer,
+   et l'email doit arriver. Rien d'autre ne prouve la chaîne — lire un réglage ne prouve qu'un
+   réglage ;
+3. rétablir le secret, et relancer une fois pour vérifier que le vert revient.
+
+⚠️ À refaire le jour où l'adresse du fondateur change, où GitHub modifie ses réglages de
+notification, ou où le dépôt change de propriétaire. Une preuve n'est valable que datée.
+
+**Terminé quand :** une capture datée de l'email d'échec reçu est archivée, et le battement est
+repassé au vert après rétablissement du secret.
+
+### 0.7 — Créer le guetteur externe, et le voir s'alarmer
+
+⛔ **Geste humain.** L'étape 0.6 couvre les pannes que le planificateur peut RAPPORTER. Celle-ci
+couvre celle qu'il ne peut pas : un workflow qui ne s'exécute plus n'échoue pas. Le guetteur est
+le seul témoin de sa propre absence.
+
+1. créer un contrôle sur [healthchecks.io](https://healthchecks.io) — gratuit, open source, et
+   rien qu'un jeton opaque n'en sort. Période **10 minutes**, tolérance **1 heure** : six
+   battements manqués, le même seuil que le signal interne ;
+2. poser son adresse de ping dans le secret GitHub `SENTIO_GUETTEUR_URL` ;
+3. **le voir s'alarmer** : désactiver le workflow une heure et attendre l'alerte. Un guetteur
+   qu'on n'a pas vu sonner est une hypothèse, pas une surveillance ;
+4. réactiver, et vérifier que le contrôle repasse au vert.
+
+⚠️ À faire **au moment d'armer le planificateur**, pas avant : tant que le cron est désarmé, le
+guetteur s'alarmerait d'un silence qu'on a décidé, et on apprendrait à ignorer ses alertes.
+
+**Terminé quand :** une capture datée de l'alerte reçue est archivée, et le contrôle est repassé
+au vert.
+
 ---
 
 # Phase 1 — Lot 0 : Fondations (~15 h, 38 tâches `FOND-01`→`FOND-38`)
